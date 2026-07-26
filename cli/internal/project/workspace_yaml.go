@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on canonical Repository IDs, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
- * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
- * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
+ * [INPUT]: Depends on canonical Module Paths, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Module h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
+ * [OUTPUT]: Provides strict skills.yaml/skills-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
+ * [POS]: Serves as the portable Module dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
@@ -16,34 +16,36 @@ import (
 	"unicode/utf8"
 
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
-	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
+	protocolmodule "github.com/skillsgo/skillsgo/protocol/module"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	WorkspaceManifestName = "skillsgo.yaml"
-	DependencyLockName    = "skillsgo-lock.yaml"
+	WorkspaceManifestName = "skills.yaml"
+	DependencyLockName    = "skills-lock.yaml"
 )
 
-func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
+func UserDeclarationRoot(home string) string { return filepath.Join(home, ".agents") }
+
+func UserStateRoot(home string) string { return filepath.Join(home, ".skillsgo") }
 
 type WorkspaceManifest struct {
-	Dependencies map[string]RepositoryDependency `yaml:"dependencies"`
+	Dependencies map[string]ModuleDependency `yaml:"dependencies"`
 }
 
-type RepositoryDependency struct {
+type ModuleDependency struct {
 	Version string   `yaml:"version"`
 	Skills  []string `yaml:"skills"`
 	Agents  []string `yaml:"agents"`
 }
 
 type DependencyLock struct {
-	Dependencies map[string]LockedRepository `yaml:"dependencies"`
+	Dependencies map[string]LockedModule `yaml:"dependencies"`
 }
 
-type LockedRepository struct {
+type LockedModule struct {
 	Version string `yaml:"version"`
 	Sum     string `yaml:"sum"`
 }
@@ -93,10 +95,10 @@ func ParseWorkspaceManifest(path string, data []byte) (WorkspaceManifest, error)
 	if err := rejectDuplicateMappingKeys(path, dependenciesNode); err != nil {
 		return WorkspaceManifest{}, err
 	}
-	manifest := WorkspaceManifest{Dependencies: make(map[string]RepositoryDependency, len(dependenciesNode.Content)/2)}
+	manifest := WorkspaceManifest{Dependencies: make(map[string]ModuleDependency, len(dependenciesNode.Content)/2)}
 	for index := 0; index < len(dependenciesNode.Content); index += 2 {
-		repositoryID, node := dependenciesNode.Content[index].Value, dependenciesNode.Content[index+1]
-		if err := validateRepositoryID(repositoryID); err != nil {
+		modulePath, node := dependenciesNode.Content[index].Value, dependenciesNode.Content[index+1]
+		if err := validateModulePath(modulePath); err != nil {
 			return WorkspaceManifest{}, fmt.Errorf("parse %s: %w", path, err)
 		}
 		if err := validateMapping(path, node, map[string]bool{"version": true, "skills": true, "agents": true}); err != nil {
@@ -111,14 +113,14 @@ func ParseWorkspaceManifest(path string, data []byte) (WorkspaceManifest, error)
 		if err := validateStringSequence(path, mappingValue(node, "agents"), "agents"); err != nil {
 			return WorkspaceManifest{}, err
 		}
-		dependency := RepositoryDependency{}
+		dependency := ModuleDependency{}
 		if err := node.Decode(&dependency); err != nil {
-			return WorkspaceManifest{}, fmt.Errorf("parse %s: invalid dependency %q: %w", path, repositoryID, err)
+			return WorkspaceManifest{}, fmt.Errorf("parse %s: invalid dependency %q: %w", path, modulePath, err)
 		}
-		if err := validateRepositoryDependency(repositoryID, dependency); err != nil {
+		if err := validateModuleDependency(modulePath, dependency); err != nil {
 			return WorkspaceManifest{}, fmt.Errorf("parse %s: %w", path, err)
 		}
-		manifest.Dependencies[repositoryID] = normalizedDependency(dependency)
+		manifest.Dependencies[modulePath] = normalizedDependency(dependency)
 	}
 	return manifest, nil
 }
@@ -136,8 +138,8 @@ func LoadDependencyLock(root string) (DependencyLock, error) {
 // either file, then returns one atomic YAML/Lock snapshot. found is false only
 // when neither declaration exists after recovery.
 func LoadWorkspaceState(root string) (manifest WorkspaceManifest, lock DependencyLock, found bool, err error) {
-	manifest = WorkspaceManifest{Dependencies: map[string]RepositoryDependency{}}
-	lock = DependencyLock{Dependencies: map[string]LockedRepository{}}
+	manifest = WorkspaceManifest{Dependencies: map[string]ModuleDependency{}}
+	lock = DependencyLock{Dependencies: map[string]LockedModule{}}
 	err = withWorkspaceMetadataLock(root, func() error {
 		loadedManifest, manifestErr := LoadWorkspaceManifest(root)
 		loadedLock, lockErr := LoadDependencyLock(root)
@@ -152,7 +154,7 @@ func LoadWorkspaceState(root string) (manifest WorkspaceManifest, lock Dependenc
 		case lockErr != nil && !os.IsNotExist(lockErr):
 			return lockErr
 		default:
-			return fmt.Errorf("skillsgo.yaml and skillsgo-lock.yaml must either both exist or both be absent")
+			return fmt.Errorf("skills.yaml and skills-lock.yaml must either both exist or both be absent")
 		}
 	})
 	return manifest, lock, found, err
@@ -170,10 +172,10 @@ func ParseDependencyLock(path string, data []byte) (DependencyLock, error) {
 	if err := rejectDuplicateMappingKeys(path, dependenciesNode); err != nil {
 		return DependencyLock{}, err
 	}
-	lock := DependencyLock{Dependencies: make(map[string]LockedRepository, len(dependenciesNode.Content)/2)}
+	lock := DependencyLock{Dependencies: make(map[string]LockedModule, len(dependenciesNode.Content)/2)}
 	for index := 0; index < len(dependenciesNode.Content); index += 2 {
-		repositoryID, node := dependenciesNode.Content[index].Value, dependenciesNode.Content[index+1]
-		if err := validateRepositoryID(repositoryID); err != nil {
+		modulePath, node := dependenciesNode.Content[index].Value, dependenciesNode.Content[index+1]
+		if err := validateModulePath(modulePath); err != nil {
 			return DependencyLock{}, fmt.Errorf("parse %s: %w", path, err)
 		}
 		if err := validateMapping(path, node, map[string]bool{"version": true, "sum": true}); err != nil {
@@ -185,14 +187,14 @@ func ParseDependencyLock(path string, data []byte) (DependencyLock, error) {
 		if err := validateStringScalar(path, mappingValue(node, "sum"), "sum"); err != nil {
 			return DependencyLock{}, err
 		}
-		var dependency LockedRepository
+		var dependency LockedModule
 		if err := node.Decode(&dependency); err != nil {
-			return DependencyLock{}, fmt.Errorf("parse %s: invalid lock for %q: %w", path, repositoryID, err)
+			return DependencyLock{}, fmt.Errorf("parse %s: invalid lock for %q: %w", path, modulePath, err)
 		}
 		if !protocolversion.IsImmutable(dependency.Version) || !protocolartifact.ValidSum(dependency.Sum) {
-			return DependencyLock{}, fmt.Errorf("parse %s: lock for %q requires an immutable version and valid h1 Sum", path, repositoryID)
+			return DependencyLock{}, fmt.Errorf("parse %s: lock for %q requires an immutable version and valid h1 Sum", path, modulePath)
 		}
-		lock.Dependencies[repositoryID] = dependency
+		lock.Dependencies[modulePath] = dependency
 	}
 	return lock, nil
 }
@@ -343,42 +345,42 @@ func mappingValue(node *yaml.Node, field string) *yaml.Node {
 	return nil
 }
 
-func validateRepositoryID(repositoryID string) error {
-	parsed, err := protocolrepositoryid.Parse(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+func validateModulePath(modulePath string) error {
+	parsed, err := protocolmodule.ParsePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return fmt.Errorf("invalid canonical Repository ID %q", modulePath)
 	}
 	return nil
 }
 
-func validateRepositoryDependency(repositoryID string, dependency RepositoryDependency) error {
+func validateModuleDependency(modulePath string, dependency ModuleDependency) error {
 	if !protocolversion.IsImmutable(dependency.Version) {
-		return fmt.Errorf("dependency %q requires an immutable version", repositoryID)
+		return fmt.Errorf("dependency %q requires an immutable version", modulePath)
 	}
 	if len(dependency.Skills) == 0 || len(dependency.Agents) == 0 {
-		return fmt.Errorf("dependency %q requires non-empty skills and agents", repositoryID)
+		return fmt.Errorf("dependency %q requires non-empty skills and agents", modulePath)
 	}
 	seenSkills := map[string]bool{}
 	for _, name := range dependency.Skills {
 		if !protocolmanifest.ValidName(name) && name != "." && !protocolartifact.ValidRelativePath(name) {
-			return fmt.Errorf("dependency %q contains invalid Skill selector %q", repositoryID, name)
+			return fmt.Errorf("dependency %q contains invalid Skill selector %q", modulePath, name)
 		}
 		if seenSkills[name] {
-			return fmt.Errorf("dependency %q contains duplicate Skill selector %q", repositoryID, name)
+			return fmt.Errorf("dependency %q contains duplicate Skill selector %q", modulePath, name)
 		}
 		seenSkills[name] = true
 	}
 	seenAgents := map[string]bool{}
 	for _, agentID := range dependency.Agents {
 		if agentID == "" || strings.TrimSpace(agentID) != agentID || strings.ContainsAny(agentID, " /\\\t\r\n") || seenAgents[agentID] {
-			return fmt.Errorf("dependency %q contains invalid or duplicate Agent %q", repositoryID, agentID)
+			return fmt.Errorf("dependency %q contains invalid or duplicate Agent %q", modulePath, agentID)
 		}
 		seenAgents[agentID] = true
 	}
 	return nil
 }
 
-func normalizedDependency(dependency RepositoryDependency) RepositoryDependency {
+func normalizedDependency(dependency ModuleDependency) ModuleDependency {
 	dependency.Skills = append([]string(nil), dependency.Skills...)
 	dependency.Agents = append([]string(nil), dependency.Agents...)
 	sort.Strings(dependency.Skills)
@@ -387,9 +389,9 @@ func normalizedDependency(dependency RepositoryDependency) RepositoryDependency 
 }
 
 func normalizedManifest(manifest WorkspaceManifest) WorkspaceManifest {
-	normalized := WorkspaceManifest{Dependencies: make(map[string]RepositoryDependency, len(manifest.Dependencies))}
-	for repositoryID, dependency := range manifest.Dependencies {
-		normalized.Dependencies[repositoryID] = normalizedDependency(dependency)
+	normalized := WorkspaceManifest{Dependencies: make(map[string]ModuleDependency, len(manifest.Dependencies))}
+	for modulePath, dependency := range manifest.Dependencies {
+		normalized.Dependencies[modulePath] = normalizedDependency(dependency)
 	}
 	return normalized
 }
@@ -398,16 +400,16 @@ func validateWorkspaceState(manifest WorkspaceManifest, lock DependencyLock) err
 	if len(manifest.Dependencies) != len(lock.Dependencies) {
 		return fmt.Errorf("Workspace Manifest and Dependency Lock must contain the same Repositories")
 	}
-	for repositoryID, dependency := range manifest.Dependencies {
-		if err := validateRepositoryID(repositoryID); err != nil {
+	for modulePath, dependency := range manifest.Dependencies {
+		if err := validateModulePath(modulePath); err != nil {
 			return err
 		}
-		if err := validateRepositoryDependency(repositoryID, dependency); err != nil {
+		if err := validateModuleDependency(modulePath, dependency); err != nil {
 			return err
 		}
-		locked, ok := lock.Dependencies[repositoryID]
+		locked, ok := lock.Dependencies[modulePath]
 		if !ok || locked.Version != dependency.Version || !protocolartifact.ValidSum(locked.Sum) {
-			return fmt.Errorf("Dependency Lock does not authenticate %s@%s", repositoryID, dependency.Version)
+			return fmt.Errorf("Dependency Lock does not authenticate %s@%s", modulePath, dependency.Version)
 		}
 	}
 	return nil

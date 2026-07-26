@@ -52,8 +52,8 @@ abstract interface class SkillsGateway {
   Future<DiscoveryPage> discover(
     DiscoveryCollection collection, {
     String query = '',
-    int offset = 0,
-    int limit = 20,
+    int page = 0,
+    int perPage = 20,
   });
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
   Future<AgentCatalog> inspectOnboardingAgents();
@@ -73,8 +73,8 @@ abstract interface class SkillsGateway {
     BatchTakeoverPlan plan,
     BatchTakeoverScope scope,
   );
-  Future<List<SourceFindResult>> findSources(
-    List<SourceFindQuery> queries, {
+  Future<List<List<SkillSummary>>> findSources(
+    List<ModuleFindQuery> queries, {
     int limit = 10,
   });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
@@ -89,7 +89,7 @@ abstract interface class SkillsGateway {
     bool confirmRisk = false,
     bool allowCritical = false,
   });
-  Future<List<InstallationExecution>> installRepositoryTargets(
+  Future<List<InstallationExecution>> installModuleTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {
     bool confirmRisk = false,

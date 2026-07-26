@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses Repository-only source coordinates, GitHub aliases and URLs, immutable or movable Selectors, and rejected legacy member syntax.
- * [OUTPUT]: Specifies canonical Repository parsing without public Skill paths or `/-/` compatibility.
+ * [INPUT]: Uses Module-only source coordinates, GitHub aliases and URLs, Go-compatible Version Queries plus head, and rejected legacy member syntax.
+ * [OUTPUT]: Specifies canonical Module parsing without public Skill paths or `/-/` compatibility.
  * [POS]: Serves as the executable contract for CLI Repository input normalization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,12 +14,14 @@ import (
 
 func TestParseCanonicalRepositoryInputs(t *testing.T) {
 	tests := map[string]Reference{
-		"owner/repo":                         {RepositoryID: "github.com/owner/repo", Version: "head"},
-		"github/owner/repo@release":          {RepositoryID: "github.com/owner/repo", Version: "release"},
-		"https://github.com/owner/repo.git":  {RepositoryID: "github.com/owner/repo", Version: "head"},
-		"github.com/owner/repo@v1.2.3":       {RepositoryID: "github.com/owner/repo", Version: "v1.2.3"},
-		"git.example.com/team/skills@main":   {RepositoryID: "git.example.com/team/skills", Version: "main"},
-		"Git.Example.COM/Team/Skills@v1.0.0": {RepositoryID: "git.example.com/Team/Skills", Version: "v1.0.0"},
+		"owner/repo":                         {ModulePath: "github.com/owner/repo", Version: "latest"},
+		"github/owner/repo@latest":           {ModulePath: "github.com/owner/repo", Version: "latest"},
+		"github/owner/repo@v1.2":             {ModulePath: "github.com/owner/repo", Version: "v1.2"},
+		"github/owner/repo@>=v1.2.3":         {ModulePath: "github.com/owner/repo", Version: ">=v1.2.3"},
+		"https://github.com/owner/repo.git":  {ModulePath: "github.com/owner/repo", Version: "latest"},
+		"github.com/owner/repo@v1.2.3":       {ModulePath: "github.com/owner/repo", Version: "v1.2.3"},
+		"git.example.com/team/skills@main":   {ModulePath: "git.example.com/team/skills", Version: "main"},
+		"Git.Example.COM/Team/Skills@v1.0.0": {ModulePath: "git.example.com/Team/Skills", Version: "v1.0.0"},
 	}
 	for input, expected := range tests {
 		t.Run(input, func(t *testing.T) {
@@ -42,14 +44,14 @@ func TestParseRejectsLegacySkillPaths(t *testing.T) {
 	}
 }
 
-func TestValidateRepositoryIDRejectsMemberAndNonCanonicalCoordinates(t *testing.T) {
+func TestValidateModulePathRejectsMemberAndNonCanonicalCoordinates(t *testing.T) {
 	for _, value := range []string{"github.com/owner/repo/-/demo", "GitHub.com/owner/repo", "https://github.com/owner/repo", "repo"} {
-		require.Error(t, ValidateRepositoryID(value), value)
+		require.Error(t, ValidateModulePath(value), value)
 	}
-	require.NoError(t, ValidateRepositoryID("github.com/owner/repo"))
+	require.NoError(t, ValidateModulePath("github.com/owner/repo"))
 }
 
-func TestParseRejectsAmbiguousLatest(t *testing.T) {
-	_, err := Parse("owner/repo@latest")
+func TestParseRejectsLegacyReleaseQuery(t *testing.T) {
+	_, err := Parse("owner/repo@release")
 	require.ErrorContains(t, err, "latest")
 }

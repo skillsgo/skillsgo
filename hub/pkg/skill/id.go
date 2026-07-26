@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on public host-qualified Repository coordinates.
- * [OUTPUT]: Provides canonical Repository ID parsing, formatting, and source URLs without member syntax.
- * [POS]: Serves as the public Repository ID value boundary for Hub source resolution and Catalog indexing.
+ * [INPUT]: Depends on public host-qualified Module Paths whose initial source is a Git repository.
+ * [OUTPUT]: Provides canonical Module Path parsing and GitHub-backed source validation without member syntax.
+ * [POS]: Serves as the public Module identity boundary for Hub source resolution and Catalog indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -10,23 +10,23 @@ import (
 	"fmt"
 	"strings"
 
-	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
+	protocolmodule "github.com/skillsgo/skillsgo/protocol/module"
 )
 
-type RepositoryID = protocolrepositoryid.ID
+type ModulePath = protocolmodule.Path
 
-func ParseRepositoryID(value string) (RepositoryID, error) {
-	return protocolrepositoryid.Parse(value)
+func ParseModulePath(value string) (ModulePath, error) {
+	return protocolmodule.ParsePath(value)
 }
 
-func parseGitHubRepositoryID(value string) (RepositoryID, error) {
-	repositoryID, err := ParseRepositoryID(value)
+func parseGitHubModulePath(value string) (ModulePath, error) {
+	modulePath, err := ParseModulePath(value)
 	if err != nil {
-		return RepositoryID{}, err
+		return ModulePath{}, err
 	}
-	parts := strings.Split(repositoryID.Repository, "/")
+	parts := strings.Split(modulePath.String(), "/")
 	if len(parts) != 3 || parts[0] != "github.com" {
-		return RepositoryID{}, fmt.Errorf("unsupported Repository %q", repositoryID.Repository)
+		return ModulePath{}, fmt.Errorf("unsupported Module Path %q", modulePath.String())
 	}
-	return repositoryID, nil
+	return modulePath, nil
 }

@@ -204,9 +204,8 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
                             gateway: current.gateway!,
                             catalog: current.catalog!,
                             detail: current.detail!,
-                            repositorySkills: current.repositorySkills!,
-                            repositorySkillsFuture:
-                                current.repositorySkillsFuture,
+                            moduleSkills: current.moduleSkills!,
+                            moduleSkillsFuture: current.moduleSkillsFuture,
                             preferredAction: current.preferredAction,
                             existingTargets: current.existingTargets!,
                             initialProjects: current.projects!,

@@ -25,9 +25,9 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetPath, 0o700))
 	require.NoError(t, os.WriteFile(skillPath, []byte("---\nname: ask-matt\n---\n"), 0o600))
 
-	managedRepositoryID := "fixtures.test/group/subgroup/collection"
+	managedModulePath := "fixtures.test/group/subgroup/collection"
 	managedAdd := execCLI(t, ctx, container,
-		"add", managedRepositoryID+"@v1.0.0", "--skill", "alpha",
+		"add", managedModulePath+"@v1.0.0", "--skill", "alpha",
 		"--agent", "codex",
 
 		"--yes",
@@ -38,17 +38,17 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "home", ".codex"), 0o755))
 
 	inventory := execCLI(t, ctx, container,
-		"inventory", "--project", "/e2e/project", "--output", "json",
+		"inventory", "--project", scenarioContainerPath(t, "project"), "--output", "json",
 	)
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
 	var report struct {
 		SchemaVersion int `json:"schemaVersion"`
 		Entries       []struct {
-			Name         string `json:"name"`
-			RepositoryID string `json:"repositoryId"`
-			Provenance   string `json:"provenance"`
-			Health       string `json:"health"`
-			Targets      []struct {
+			Name       string `json:"name"`
+			ModulePath string `json:"modulePath"`
+			Provenance string `json:"provenance"`
+			Health     string `json:"health"`
+			Targets    []struct {
 				Path string `json:"path"`
 			} `json:"targets"`
 		} `json:"entries"`
@@ -56,26 +56,26 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
 	require.Equal(t, 6, report.SchemaVersion)
 	entries := make(map[string]struct {
-		RepositoryID string
-		Provenance   string
-		Health       string
-		Path         string
+		ModulePath string
+		Provenance string
+		Health     string
+		Path       string
 	})
 	for _, entry := range report.Entries {
 		if len(entry.Targets) == 0 {
 			continue
 		}
 		entries[entry.Name] = struct {
-			RepositoryID string
-			Provenance   string
-			Health       string
-			Path         string
-		}{entry.RepositoryID, entry.Provenance, entry.Health, entry.Targets[0].Path}
+			ModulePath string
+			Provenance string
+			Health     string
+			Path       string
+		}{entry.ModulePath, entry.Provenance, entry.Health, entry.Targets[0].Path}
 	}
 	require.Equal(t, "external", entries["ask-matt"].Provenance)
-	require.Empty(t, entries["ask-matt"].RepositoryID)
-	require.Equal(t, "/e2e/project/.agents/skills/ask-matt", entries["ask-matt"].Path)
+	require.Empty(t, entries["ask-matt"].ModulePath)
+	require.Equal(t, scenarioContainerPath(t, "project", ".agents", "skills", "ask-matt"), entries["ask-matt"].Path)
 	require.Equal(t, "hub", entries["alpha"].Provenance)
-	require.Equal(t, managedRepositoryID, entries["alpha"].RepositoryID)
+	require.Equal(t, managedModulePath, entries["alpha"].ModulePath)
 	require.Equal(t, "healthy", entries["alpha"].Health)
 }

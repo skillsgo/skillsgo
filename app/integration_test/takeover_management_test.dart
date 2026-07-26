@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the rendered App, bundled CLI, disposable Hub, isolated user/project Agent roots, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Vendors, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Module Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,14 +14,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
 import 'package:window_manager/window_manager.dart';
 
+import 'support/journey_runtime.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  registerTakeoverManagementJourney();
+}
+
+void registerTakeoverManagementJourney() {
   testWidgets(
     'manages existing skills by location and refreshes exact counts',
     (tester) async {
-      final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX'];
-      expect(sandbox, isNotNull);
+      final runtime = await JourneyRuntime.start('takeover_management');
+      addTearDown(runtime.close);
+      final sandbox = runtime.sandbox.path;
       final userTarget = Directory('$sandbox/test-agent/skills/user-existing');
       final projectRoot = Directory('$sandbox/takeover-project');
       final projectTarget = Directory(
@@ -60,7 +67,10 @@ void main() {
         ]),
       );
 
-      await skillsgo.runSkillsGoApp(initializeBinding: false);
+      await skillsgo.runSkillsGoApp(
+        initializeBinding: false,
+        gateway: runtime.gateway,
+      );
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
@@ -77,11 +87,11 @@ void main() {
       await tester.tap(_railButton(find.text('takeover-project')));
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
-      expect(File('${projectRoot.path}/skillsgo.yaml').existsSync(), isTrue);
-      expect(File('${projectRoot.path}/skillsgo-lock.yaml').existsSync(), isTrue);
+      expect(File('${projectRoot.path}/skills.yaml').existsSync(), isTrue);
+      expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
         File(
-          '${projectRoot.path}/.skillsgo/vendor/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+          '${projectRoot.path}/.skillsgo/modules/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
         ).readAsBytesSync(),
         projectSkillBytes,
       );
@@ -99,12 +109,9 @@ void main() {
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
       await _pumpUntilTakeoverCount(tester, 0);
+      expect(File('$sandbox/home/.agents/skills.yaml').existsSync(), isTrue);
       expect(
-        File('$sandbox/home/.skillsgo/skillsgo.yaml').existsSync(),
-        isTrue,
-      );
-      expect(
-        File('$sandbox/home/.skillsgo/skillsgo-lock.yaml').existsSync(),
+        File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
         isTrue,
       );
       expect(

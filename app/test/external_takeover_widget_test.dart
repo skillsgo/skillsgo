@@ -46,17 +46,8 @@ void main() {
     );
     const detail = SkillDetail(
       name: 'external-demo',
-      source: 'External',
-      markdown: '# External instructions',
-      riskAssessment: SkillRiskAssessment.unknown,
-      files: [
-        SkillFile(path: 'SKILL.md', contents: '# External instructions'),
-        SkillFile(
-          path: 'scripts/run.sh',
-          contents: '#!/bin/sh',
-          executable: true,
-        ),
-      ],
+      path: '/tmp/external-demo',
+      content: '# External instructions',
     );
     await tester.pumpWidget(
       SkillsGoApp(

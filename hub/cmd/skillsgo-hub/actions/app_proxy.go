@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, immutable storage, Catalog, Repository source fetchers, and HTTP routing.
- * [OUTPUT]: Assembles health, Repository-enriched discovery/detail, add-time Repository resolution, immutable root Proxy routes, and authenticated Backfill administration with shared task infrastructure.
+ * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers, native Fiber routing, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, discovery reads, unified Module Version Queries, version-scoped Skill content, typed OpenAPI documentation, immutable Module routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,15 +22,17 @@ import (
 )
 
 func addProxyRoutes(
+	app *fiber.App,
 	r fiber.Router,
 	s storage.Backend,
 	l *log.Logger,
 	c *config.Config,
 ) error {
-	return addProxyRoutesWithCatalog(r, s, l, c, nil, nil, nil, false)
+	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, false)
 }
 
 func addProxyRoutesWithCatalog(
+	app *fiber.App,
 	r fiber.Router,
 	s storage.Backend,
 	l *log.Logger,
@@ -72,36 +74,35 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(&download.Opts{Storage: s, Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
-		publisher := newRepositoryPublisher(repositoryFetcher, s, metadata)
-		registerRepositoryResolutionRoute(r, publishedRepositoryResolver{metadata: metadata, materializer: publisher})
+		publisher := newModulePublisher(repositoryFetcher, s, metadata)
+		registerModuleSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
 		if err := registerRepositoryPrewarmJob(taskRuntime, publisher); err != nil {
 			return fmt.Errorf("register repository prewarm task: %w", err)
 		}
-		dp = withRepositoryInfo(dp, metadata, publisher)
+		dp = withModuleInfo(dp, metadata, publisher)
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
 		}
 		if adminEnabled {
 			if metadata.PostgresPool() == nil {
-				return fmt.Errorf("Repository Backfill administration requires PostgreSQL")
+				return fmt.Errorf("Module Backfill administration requires PostgreSQL")
 			}
 			backfills := newRepositoryBackfillService(metadata, taskRuntime, lister, publisher, l)
 			if err := backfills.Register(); err != nil {
-				return fmt.Errorf("register Repository Backfill task: %w", err)
+				return fmt.Errorf("register Module Backfill task: %w", err)
 			}
-			registerRepositoryBackfillRoutes(adminRouter, backfills)
+			registerModuleBackfillRoutes(adminRouter, backfills)
 		}
 		registerCatalogAPIRoutes(
 			r,
 			metadata,
 			dp,
-			metadataCache,
 		)
 	}
 
 	handlerOpts := &download.HandlerOpts{Protocol: dp, Logger: l, ArtifactOrigin: c.ArtifactOrigin}
+	api := registerHubAPIDocs(app, r, c, adminEnabled)
 	download.RegisterHandlers(r, handlerOpts)
-
-	return nil
+	return validateDocumentedProductRoutes(app, api, c.PathPrefix)
 }

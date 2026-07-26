@@ -93,18 +93,18 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   Future<DiscoveryPage> discover(
     DiscoveryCollection collection, {
     String query = '',
-    int offset = 0,
-    int limit = 20,
+    int page = 0,
+    int perPage = 20,
   }) async {
     collections.add(collection);
-    requestedOffsets.add(offset);
+    requestedPages.add(page);
     if (discoveryCompleters.isNotEmpty) {
       return discoveryCompleters.removeAt(0).future;
     }
     if (discoveryError != null) throw discoveryError!;
-    final configuredError = discoveryErrors['${collection.name}:$offset'];
+    final configuredError = discoveryErrors['${collection.name}:$page'];
     if (configuredError != null) throw configuredError;
-    final configured = discoveryPages['${collection.name}:$offset'];
+    final configured = discoveryPages['${collection.name}:$page'];
     if (configured != null) return configured;
     if (collection == DiscoveryCollection.search) queries.add(query);
     final skills = collection == DiscoveryCollection.search
@@ -114,25 +114,22 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<List<SourceFindResult>> findSources(
-    List<SourceFindQuery> requests, {
+  Future<List<List<SkillSummary>>> findSources(
+    List<ModuleFindQuery> requests, {
     int limit = 10,
   }) async {
     queries.addAll(requests.map((request) => request.name));
     if (discoveryError != null) throw discoveryError!;
     return requests
         .map(
-          (request) => SourceFindResult(
-            id: request.id,
-            skills: searchResults
-                .where(
-                  (skill) =>
-                      request.source.isEmpty ||
-                      skill.repositoryId == request.source,
-                )
-                .take(limit)
-                .toList(growable: false),
-          ),
+          (request) => searchResults
+              .where(
+                (skill) =>
+                    request.modulePath.isEmpty ||
+                    skill.modulePath == request.modulePath,
+              )
+              .take(limit)
+              .toList(growable: false),
         )
         .toList(growable: false);
   }

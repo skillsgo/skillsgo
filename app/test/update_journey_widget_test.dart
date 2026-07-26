@@ -30,9 +30,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(
-        const ValueKey(
-          'library-select-hub:github.com/test/skills:local-skill',
-        ),
+        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
       ),
     );
     await tester.pumpAndSettle();
@@ -58,7 +56,7 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          repositoryId: 'github.com/test/skills',
+          modulePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -86,9 +84,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(
-        const ValueKey(
-          'library-select-hub:github.com/test/skills:local-skill',
-        ),
+        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
       ),
     );
     await tester.pumpAndSettle();
@@ -97,7 +93,7 @@ void main() {
 
     expect(find.text('Select targets to update'), findsOneWidget);
     expect(find.text('2 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsOneWidget);
+    expect(find.textContaining('/tmp/project/skills.yaml'), findsOneWidget);
     await tester.tap(
       find
           .descendant(
@@ -108,7 +104,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('1 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsNothing);
+    expect(find.textContaining('/tmp/project/skills.yaml'), findsNothing);
     await tester.tap(find.text('Update selected targets'));
     await tester.pumpAndSettle();
 
@@ -135,7 +131,7 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          repositoryId: 'github.com/test/skills',
+          modulePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -163,9 +159,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(
-        const ValueKey(
-          'library-select-hub:github.com/test/skills:local-skill',
-        ),
+        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
       ),
     );
     await tester.pumpAndSettle();
@@ -210,7 +204,7 @@ void main() {
           path: '/tmp/local-skill',
           agents: ['codex'],
           targetCount: 1,
-          repositoryId: 'github.com/test/skills',
+          modulePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(

@@ -219,28 +219,6 @@ class StatusChip extends StatelessWidget {
   }
 }
 
-class SkillTrustChip extends StatelessWidget {
-  const SkillTrustChip({super.key, required this.trust});
-  final SkillTrustLevel trust;
-
-  @override
-  Widget build(BuildContext context) => StatusChip(
-    label: _trustLabel(context, trust),
-    color: _trustColor(context, trust),
-  );
-}
-
-class SkillRiskChip extends StatelessWidget {
-  const SkillRiskChip({super.key, required this.risk});
-  final SkillRiskAssessment risk;
-
-  @override
-  Widget build(BuildContext context) => StatusChip(
-    label: _riskLabel(context, risk),
-    color: _riskColor(context, risk),
-  );
-}
-
 class SecondaryCapsuleButton extends StatelessWidget {
   const SecondaryCapsuleButton({
     super.key,

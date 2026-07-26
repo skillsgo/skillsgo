@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses complete, minimally valid, malformed, type-invalid, length-boundary, and body-empty SKILL.md documents.
- * [OUTPUT]: Specifies lossless splitting, tolerant typed parsing, strict publication schema, optional fields, metadata types, and name grammar.
+ * [OUTPUT]: Specifies lossless splitting, tolerant typed parsing, strict core publication fields, ignored extension fields, metadata types, and name grammar.
  * [POS]: Serves as exhaustive manifest-format compatibility coverage shared by Hub publication and CLI reads.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,12 +39,12 @@ func TestSplitPreservesFrontmatterAndBody(t *testing.T) {
 }
 
 func TestParseTypedManifestWithoutPublicationPolicy(t *testing.T) {
-	input := document("name: Demo\ndescription: Example\nlicense: MIT\ncompatibility: Codex\nallowed-tools: Read\nmetadata:\n  owner: team", "body")
+	input := document("name: Demo\ndescription: Example\ncompatibility: Codex\nallowed-tools: Read\nmetadata:\n  owner: team", "body")
 	manifest, body, err := Parse(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Name != "Demo" || manifest.License != "MIT" || manifest.Metadata["owner"] != "team" || string(body) != "body" {
+	if manifest.Name != "Demo" || manifest.Metadata["owner"] != "team" || string(body) != "body" {
 		t.Fatalf("unexpected parse: %#v / %q", manifest, body)
 	}
 	if _, _, err := Parse([]byte("no frontmatter")); err == nil {
@@ -56,12 +56,12 @@ func TestParseTypedManifestWithoutPublicationPolicy(t *testing.T) {
 }
 
 func TestValidatePublishedCompleteManifest(t *testing.T) {
-	input := document("name: demo-skill\ndescription: Example\nlicense: MIT\ncompatibility: Codex 1\nallowed-tools: Read Write\nmetadata:\n  owner: team", "# Instructions")
+	input := document("name: demo-skill\ndescription: Example\ncompatibility: Codex 1\nallowed-tools: Read Write\nmetadata:\n  owner: team", "# Instructions")
 	manifest, err := ValidatePublished(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if manifest.Name != "demo-skill" || manifest.Description != "Example" || manifest.Compatibility != "Codex 1" || manifest.AllowedTools != "Read Write" || manifest.Metadata["owner"] != "team" {
+	if manifest.Name != "demo-skill" || manifest.Description != "Example" || manifest.Metadata["owner"] != "team" {
 		t.Fatalf("unexpected manifest %#v", manifest)
 	}
 	frontmatter, body, err := Split(input)
@@ -77,13 +77,11 @@ func TestValidatePublishedCompleteManifest(t *testing.T) {
 func TestValidateRejectsSchemaAndContentViolations(t *testing.T) {
 	longName := strings.Repeat("a", 65)
 	longDescription := strings.Repeat("界", 1025)
-	longCompatibility := strings.Repeat("x", 501)
 	tests := []struct{ name, frontmatter, body, contains string }{
 		{"invalid YAML", "name: [", "body", "YAML mapping"}, {"scalar root", "hello", "body", "YAML mapping"}, {"non-string key", "1: value\nname: demo\ndescription: Example", "body", "field names must be strings"},
 		{"missing name", "description: Example", "body", "required string field \"name\""}, {"numeric name", "name: 1\ndescription: Example", "body", "required string field \"name\""}, {"blank name", "name: '  '\ndescription: Example", "body", "required string field \"name\""},
 		{"uppercase name", "name: Demo\ndescription: Example", "body", "field \"name\""}, {"double hyphen", "name: demo--skill\ndescription: Example", "body", "field \"name\""}, {"long name", "name: " + longName + "\ndescription: Example", "body", "field \"name\""},
 		{"missing description", "name: demo", "body", "required string field \"description\""}, {"numeric description", "name: demo\ndescription: 1", "body", "required string field \"description\""}, {"long description", "name: demo\ndescription: " + longDescription, "body", "must not exceed 1024"},
-		{"blank license", "name: demo\ndescription: Example\nlicense: ''", "body", "license"}, {"numeric tools", "name: demo\ndescription: Example\nallowed-tools: 1", "body", "allowed-tools"}, {"long compatibility", "name: demo\ndescription: Example\ncompatibility: " + longCompatibility, "body", "must not exceed 500"},
 		{"metadata sequence", "name: demo\ndescription: Example\nmetadata: [one]", "body", "string-to-string mapping"}, {"metadata numeric value", "name: demo\ndescription: Example\nmetadata:\n  owner: 1", "body", "string-to-string mapping"},
 		{"empty body", "name: demo\ndescription: Example", " \n", "Markdown instructions"},
 	}

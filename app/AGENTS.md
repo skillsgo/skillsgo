@@ -33,7 +33,7 @@ flutter build macos --release
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
-| `integration_test/` | Rendered macOS journeys orchestrated by `/e2e/app` against real CLI and disposable Hub boundaries. |
+| `integration_test/` | Rendered macOS journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
 | `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
 | `docs/` | App-specific specifications, plans, and decisions. |
 | `THIRD_PARTY_NOTICES.md` | Licenses and attribution for vendored App UI code. |
@@ -41,7 +41,7 @@ flutter build macos --release
 ## Boundaries
 
 - The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. In Cloud mode it may call only the Cloud origin declared by `skillsgo hub info` for Cloud-composed ranking reads.
-- The CLI owns local installation, update, removal, target detection, `skillsgo.yaml`, `skillsgo-lock.yaml`, Scope Vendors, and Repository Projections.
+- The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Module Stores, and Repository Projections.
 - The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.

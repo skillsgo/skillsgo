@@ -164,13 +164,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final availableUpdateCount = updates.values
         .where((availability) => availability.state == UpdateState.available)
         .length;
-    final securityAdvisoryCount = (skills ?? const <InstalledSkill>[])
-        .where(
-          (skill) =>
-              skill.riskAssessment == SkillRiskAssessment.high ||
-              skill.riskAssessment == SkillRiskAssessment.critical,
-        )
-        .length;
     final plan = takeoverPlan;
     final planning = _library.value?.takeoverPlanning ?? false;
     final planError = _library.value?.takeoverPlanError;
@@ -294,22 +287,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           ),
                           description: Text(context.l10n.openAvailableUpdates),
                         ),
-                      ),
-                    ],
-                    if (reminderSettings?.securityAdvisory == true &&
-                        securityAdvisoryCount > 0) ...[
-                      const SizedBox(height: 14),
-                      SkillsAlert.destructive(
-                        icon: const HugeIcon(
-                          icon: HugeIcons.strokeRoundedAlert02,
-                          strokeWidth: 1.8,
-                        ),
-                        title: Text(
-                          context.l10n.securityAdvisoriesReminder(
-                            securityAdvisoryCount,
-                          ),
-                        ),
-                        description: Text(context.l10n.reviewInstalledSkills),
                       ),
                     ],
                     if (result != null) ...[

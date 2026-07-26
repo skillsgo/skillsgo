@@ -12,39 +12,38 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
-func TestSelectRepositoryMemberMatrix(t *testing.T) {
-	repository := "gitlab.example.com/group/subgroup/repo"
-	members := []hub.RepositoryMember{
-		{Info: hub.Info{RepositoryID: repository, SkillPath: ".", Name: "root"}},
-		{Info: hub.Info{RepositoryID: repository, SkillPath: "skills/alpha", Name: "alpha"}},
-		{Info: hub.Info{RepositoryID: repository, SkillPath: "other/alpha", Name: "alpha"}},
-		{Info: hub.Info{RepositoryID: repository, SkillPath: "other/beta", Name: "beta"}},
-		{Info: hub.Info{RepositoryID: repository, SkillPath: "tools/gamma", Name: "gamma"}},
+func TestSelectVersionSkillMatrix(t *testing.T) {
+	members := []hub.VersionSkill{
+		{Info: hub.Info{Path: ".", Name: "root"}},
+		{Info: hub.Info{Path: "skills/alpha", Name: "alpha"}},
+		{Info: hub.Info{Path: "other/alpha", Name: "alpha"}},
+		{Info: hub.Info{Path: "other/beta", Name: "beta"}},
+		{Info: hub.Info{Path: "tools/gamma", Name: "gamma"}},
 	}
-	member, err := selectRepositoryMember("alpha", members)
-	if err != nil || member.Info.SkillPath != "other/alpha" {
+	member, err := selectVersionSkill("alpha", members)
+	if err != nil || member.Info.Path != "other/alpha" {
 		t.Fatalf("name default = %#v, %v", member.Info, err)
 	}
-	member, err = selectRepositoryMember("skills/alpha", members)
-	if err != nil || member.Info.SkillPath != "skills/alpha" {
+	member, err = selectVersionSkill("skills/alpha", members)
+	if err != nil || member.Info.Path != "skills/alpha" {
 		t.Fatalf("path selector = %#v, %v", member.Info, err)
 	}
-	if _, err := selectRepositoryMember("missing", members); err == nil {
+	if _, err := selectVersionSkill("missing", members); err == nil {
 		t.Fatal("missing selector succeeded")
 	}
 	selected, err := selectRepositoryNames([]string{"skills/alpha"}, members, true)
 	if err != nil || len(selected) != 1 || selected[0] != "skills/alpha" {
 		t.Fatalf("exact path selection = %#v, %v", selected, err)
 	}
-	member, err = selectRepositoryMember("root", members)
+	member, err = selectVersionSkill("root", members)
 	if err != nil || member.Info.Name != "root" {
 		t.Fatalf("root selector = %#v, %v", member.Info, err)
 	}
 }
 
 func TestParseRepositorySelectorQueryPrecedence(t *testing.T) {
-	selector, query, err := parseRepositorySelector("find-skills@release", "v1.2.3")
-	if err != nil || selector != "find-skills" || query != "release" {
+	selector, query, err := parseRepositorySelector("find-skills@latest", "v1.2.3")
+	if err != nil || selector != "find-skills" || query != "latest" {
 		t.Fatalf("override = %q, %q, %v", selector, query, err)
 	}
 	selector, query, err = parseRepositorySelector("find-skills@main", "v1.2.3")

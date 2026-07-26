@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on menu requests, asynchronous Agent/Project/repository dependencies, failure copy, and location card rendering.
+ * [INPUT]: Depends on menu requests, asynchronous Agent/Project/Module dependencies, failure copy, and location card rendering.
  * [OUTPUT]: Provides the independent loading, content, and recoverable error states for the installation selector.
  * [POS]: Serves as the async dependency owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -46,8 +46,8 @@ class _AsyncInstallLocationCardState extends State<_AsyncInstallLocationCard> {
               gateway: ready.gateway!,
               catalog: ready.catalog!,
               detail: ready.detail!,
-              repositorySkills: ready.repositorySkills!,
-              repositorySkillsFuture: ready.repositorySkillsFuture,
+              moduleSkills: ready.moduleSkills!,
+              moduleSkillsFuture: ready.moduleSkillsFuture,
               preferredAction: ready.preferredAction,
               existingTargets: ready.existingTargets!,
               initialProjects: ready.projects!,

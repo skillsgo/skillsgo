@@ -210,7 +210,7 @@ App or CI caller
   -> CLI command boundary validates Repository coordinate, selected members, scope, and Agents
   -> CLI Hub adapter reads immutable Repository Info and ZIP resources
   -> CLI verifies Repository identity, archive size, and h1 Sum
-  -> CLI stages Scope Vendor and deterministic Repository Projections
+  -> CLI stages Scope Module Store and deterministic Repository Projections
   -> skillsgo-lock.yaml persistence fails
   -> CLI compensates the Repository transaction
   -> CLI writes one complete execution document to stdout
@@ -222,8 +222,8 @@ App or CI caller
 The CLI Hub adapter performs the required immutable protocol requests, such as:
 
 ```text
-GET /github.com/acme/skills/@v/v1.2.3.info
-GET /github.com/acme/skills/@v/v1.2.3.zip
+GET /github.com/acme/skills/versions/v1.2.3
+GET /github.com/acme/skills/versions/v1.2.3.zip
 ```
 
 The App never performs these requests.
@@ -251,13 +251,13 @@ The App never performs these requests.
 - stdout contains one schema-versioned failure document;
 - stderr may contain the permission diagnostic but is not parsed;
 - the process exits non-zero;
-- no partial Vendor, Projection, Dependency, or Lock becomes authoritative;
+- no partial Module Store, Projection, Dependency, or Lock becomes authoritative;
 - the App maps `workspace.persistence_failed` to ARB copy and offers retry because `retryable` is true.
 
 ## Acceptance Criteria
 
 1. The worked example produces one schema-versioned stdout failure document with the stable Repository coordinate and failed metadata path.
-2. The failed Repository transaction is compensated without exposing partial Vendor, Projection, Dependency, or Lock state.
+2. The failed Repository transaction is compensated without exposing partial Module Store, Projection, Dependency, or Lock state.
 3. `add`, `update`, and `remove` write complete results before returning non-zero.
 4. Failed targets use one nested error object; succeeded and skipped targets omit it.
 5. A recognized JSON or NDJSON failure before a normal result uses a final `phase: "error"` document.

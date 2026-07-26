@@ -36,7 +36,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
   bool managingTarget = false;
   CliStatus? cliStatus;
   List<AddedProject> addedProjects = const [];
-  List<SkillSummary> repositorySkills = const [];
+  List<SkillSummary> moduleSkills = const [];
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
   bool didOpenInitialPlan = false;
   bool get operating => widget.operation.operating;
@@ -95,13 +95,13 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
       addedProjects = values[1] as List<AddedProject>;
       riskPolicy = values[2] as PersonalRiskPolicy;
       if (mounted) setState(() {});
-      repositorySkills = await loadRepositorySkills(
+      moduleSkills = await loadModuleSkills(
         widget.gateway,
         widget.skill,
         detail!,
       );
     } on Object {
-      repositorySkills = [widget.skill];
+      moduleSkills = [widget.skill];
     }
     if (mounted) setState(() {});
   }
@@ -122,7 +122,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
         catalog: catalog,
         detail: detail!,
         projects: addedProjects,
-        repositorySkills: repositorySkills,
+        moduleSkills: moduleSkills,
         onProjectAdded: (project) {
           final index = addedProjects.indexWhere(
             (item) => item.id == project.id,
@@ -142,7 +142,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
             choice: choice,
             skill: widget.skill,
             immutableVersion: widget.skill.latestVersion,
-            repositorySkills: repositorySkills,
+            moduleSkills: moduleSkills,
             riskPolicy: riskPolicy,
           ),
         );
@@ -164,7 +164,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
     setState(() => managingTarget = true);
     try {
       final query = LibraryEntryQuery.byCoordinate(
-        repositoryId: widget.skill.repositoryId,
+        modulePath: widget.skill.modulePath,
         skillName: widget.skill.name,
         targetPath: target.path,
         agent: target.agent,
@@ -186,7 +186,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
           .read(libraryProvider.notifier)
           .refreshEntry(
             LibraryEntryQuery.byCoordinate(
-              repositoryId: widget.skill.repositoryId,
+              modulePath: widget.skill.modulePath,
               skillName: widget.skill.name,
             ),
           );

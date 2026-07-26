@@ -37,7 +37,7 @@ type repositoryInfo struct {
 
 // TestRepositoryArtifact verifies one tagged multi-Skill Repository fixture.
 func (m *E2eSuite) TestRepositoryArtifact() {
-	infoBody := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".info")
+	infoBody := m.getProxyArtifact(testRepository + "/versions/" + testSkillVersion)
 	var info repositoryInfo
 	m.Require().NoError(json.Unmarshal(infoBody, &info))
 	m.Equal(testSkillVersion, info.Version)
@@ -47,8 +47,8 @@ func (m *E2eSuite) TestRepositoryArtifact() {
 	m.Contains(memberPaths(info), "skills/resourceful")
 	m.Contains(memberPaths(info), "skills/alpha")
 
-	zipBody := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".zip")
-	zipBodyFromCache := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".zip")
+	zipBody := m.getProxyArtifact(testRepository + "/versions/" + testSkillVersion + ".zip")
+	zipBodyFromCache := m.getProxyArtifact(testRepository + "/versions/" + testSkillVersion + ".zip")
 	m.Equal(zipBody, zipBodyFromCache, "cached Repository zip must be byte-identical")
 
 	reader, err := zip.NewReader(bytes.NewReader(zipBody), int64(len(zipBody)))

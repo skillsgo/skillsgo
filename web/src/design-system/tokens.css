@@ -1,0 +1,35 @@
+/*
+ * [INPUT]: Depends on the SkillsGo editorial visual language and Magi's canonical #036669 brand token as its accent reference.
+ * [OUTPUT]: Provides semantic visual tokens for every Web surface.
+ * [POS]: Serves as the single visual-value source for product, documentation, and future blog adapters.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+:root {
+  --sg-paper: #f5f4ed;
+  --sg-paper-light: #faf9f5;
+  --sg-ink: #036669;
+  --sg-ink-rgb: 3 102 105;
+  --sg-ink-hover: #024f51;
+  --sg-copy: #504e49;
+  --sg-muted: #6b6a64;
+  --sg-line: #d8d5c8;
+  --sg-line-faint: #edebe1;
+  --sg-warm-sand: #e8e6dc;
+  --sg-near-black: #141413;
+  --sg-font-editorial: Charter, Georgia, "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", Palatino, serif;
+  --sg-font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --sg-font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --sg-measure-reading: 45rem;
+  --sg-frame-wide: 70rem;
+  --sg-frame-nav: 63.75rem;
+  --sg-radius-control: 999px;
+  --sg-radius-surface: 0.625rem;
+  --sg-space-section: clamp(4rem, 7vw, 6rem);
+  --sg-motion-fast: 150ms;
+  --sg-motion-base: 220ms;
+  --sg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[lang="zh-CN"] {
+  --sg-font-editorial: Charter, Georgia, "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+}

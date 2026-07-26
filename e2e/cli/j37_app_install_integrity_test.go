@@ -19,12 +19,12 @@ import (
 func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	repositoryID := "fixtures.test/group/subgroup/collection"
+	modulePath := "fixtures.test/group/subgroup/collection"
 	version := "v1.0.0"
 	add := execCLI(t, ctx, container,
-		"add", repositoryID+"@"+version,
+		"add", modulePath+"@"+version,
 		"--skill", "alpha",
-		"--project", "/e2e/project",
+		"--project", scenarioContainerPath(t, "project"),
 		"--agent", "codex",
 		"--yes",
 		"--output", "json",
@@ -33,15 +33,15 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	manifestBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifestBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBytes), repositoryID+":")
+	require.Contains(t, string(manifestBytes), modulePath+":")
 	require.Contains(t, string(manifestBytes), "version: "+version)
 	require.Contains(t, string(manifestBytes), "- alpha")
 	require.Contains(t, string(manifestBytes), "- codex")
-	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
+	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(sumBytes), repositoryID+":")
+	require.Contains(t, string(sumBytes), modulePath+":")
 	require.Contains(t, string(sumBytes), "version: "+version)
 	require.Contains(t, string(sumBytes), "sum: h1:")
 

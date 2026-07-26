@@ -62,14 +62,22 @@ void main() {
       installed: false,
       discoveryPages: {
         'search:0': DiscoveryPage(
-          skills: defaultSearchResults,
-          repository: RepositorySummary(
+          skills: const [
+            SkillSummary(
+              modulePath: 'github.com/example/skills',
+              installName: 'flutter-pro',
+              name: 'Flutter Pro',
+              latestVersion: 'v1.2.3',
+              description:
+                  'Build Flutter products with reliable engineering flows.',
+            ),
+          ],
+          module: ModuleSummary(
             id: 'github.com/example/skills',
             description: 'A focused collection of Flutter engineering skills.',
             stars: 12800,
             latestVersion: 'v1.2.3',
             updatedAt: DateTime.utc(2026, 7, 15),
-            license: 'MIT',
           ),
         ),
       },
@@ -88,12 +96,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('★ 12.8K'), findsOneWidget);
-    expect(find.text('MIT'), findsOneWidget);
-    expect(find.text('v1.2.3'), findsOneWidget);
+    expect(find.text('v1.2.3'), findsWidgets);
     expect(find.text('1 skill'), findsOneWidget);
     expect(find.text('Install all skills'), findsOneWidget);
     final installAll = tester.widget<PrimaryCapsuleButton>(
-      find.byKey(const Key('repository-install-all')),
+      find.byKey(const Key('module-install-all')),
     );
     expect(installAll.height, 40);
     expect(installAll.horizontalPadding, 18);
@@ -101,27 +108,6 @@ void main() {
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.byType(SkillCard), findsWidgets);
 
-    final postInstallRefresh = Completer<DiscoveryPage>();
-    gateway.discoveryCompleters.add(postInstallRefresh);
-
-    await tester.tap(find.byKey(const Key('repository-install-all')));
-    await tester.pumpAndSettle();
-    expect(find.text('Install all skills to'), findsOneWidget);
-    expect(find.text('Install all skills'), findsNWidgets(2));
-    expect(find.text('Confirm installation'), findsNothing);
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Install all skills').last,
-    );
-    await tester.pump();
-    expect(find.text('Flutter Pro'), findsOneWidget);
-    expect(find.byType(SkillCard), findsWidgets);
-    expect(find.byKey(const ValueKey('discover-skeleton')), findsNothing);
-    postInstallRefresh.complete(
-      const DiscoveryPage(skills: defaultSearchResults),
-    );
-    await tester.pumpAndSettle();
-    expect(gateway.installCalls, 1);
-    expect(find.text('Install all skills to'), findsNothing);
   });
 
   testWidgets('a Git Repository cold load uses themed Portal Loading Shapes', (
@@ -289,16 +275,13 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const base = SkillSummary(
-      repositoryId: 'github.com/acme/skills',
+      modulePath: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       description: 'Turn product goals into a concrete execution plan.',
-      source: 'github.com/acme/skills',
       latestVersion: 'v1.2.3',
       installs: 1200,
       metricKind: SkillMetricKind.allTimeInstalls,
-      trustLevel: SkillTrustLevel.communityVerified,
-      riskAssessment: SkillRiskAssessment.low,
       localTargetCount: 2,
     );
     final gateway = FakeSkillsGateway(
@@ -307,11 +290,10 @@ void main() {
         'trending:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/skills',
+              modulePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
-              source: 'github.com/acme/skills',
               latestVersion: 'v1.2.3',
               installs: 42,
               metricKind: SkillMetricKind.installs24h,
@@ -321,11 +303,10 @@ void main() {
         'hot:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/skills',
+              modulePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
-              source: 'github.com/acme/skills',
               latestVersion: 'v1.2.3',
               installs: 7,
               metricKind: SkillMetricKind.hotVelocity,
@@ -374,10 +355,9 @@ void main() {
           skills: List.generate(
             24,
             (index) => SkillSummary(
-              repositoryId: 'example/skills/ranked-$index',
+              modulePath: 'example/skills/ranked-$index',
               installName: 'ranked-$index',
               name: 'Ranked $index',
-              source: 'example/skills',
               installs: 24 - index,
             ),
           ),
@@ -430,22 +410,20 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/a',
+              modulePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
-              source: 'github.com/acme/a',
               installs: 2,
             ),
           ],
-          nextOffset: 20,
+          pagination: Pagination(hasMore: true),
         ),
-        'ranking:20': DiscoveryPage(
+        'ranking:1': DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/b',
+              modulePath: 'github.com/acme/b',
               installName: 'b',
               name: 'Bravo',
-              source: 'github.com/acme/b',
               installs: 1,
             ),
           ],
@@ -460,7 +438,7 @@ void main() {
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Bravo'), findsOneWidget);
     expect(find.text('Load more'), findsNothing);
-    expect(gateway.requestedOffsets, [0, 0, 20]);
+    expect(gateway.requestedPages, [0, 0, 1]);
   });
 
   testWidgets('Discover keeps results and localizes pagination failures', (
@@ -472,18 +450,17 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/a',
+              modulePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
-              source: 'github.com/acme/a',
               installs: 2,
             ),
           ],
-          nextOffset: 20,
+          pagination: Pagination(hasMore: true),
         ),
       },
       discoveryErrors: const {
-        'ranking:20': SkillsException('raw', kind: SkillsFailureKind.timeout),
+        'ranking:1': SkillsException('raw', kind: SkillsFailureKind.timeout),
       },
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));

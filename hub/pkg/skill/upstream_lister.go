@@ -26,7 +26,7 @@ type RepositoryTag struct {
 // RepositoryTagLister returns the upstream semantic Tag catalog with immutable
 // commit identities, excluding storage-only retained versions.
 type RepositoryTagLister interface {
-	ListRepositoryTags(ctx context.Context, repositoryID string) ([]RepositoryTag, error)
+	ListRepositoryTags(ctx context.Context, modulePath string) ([]RepositoryTag, error)
 }
 
 type RepositoryVersionLister interface {

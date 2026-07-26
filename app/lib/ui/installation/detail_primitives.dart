@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, domain detail models, InstallOperationController, localized status copy, and SkillsGo presentation primitives.
- * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Repository enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
+ * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Module enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
  * [POS]: Serves as the reusable detail and Installation Request presentation primitives.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -91,31 +91,31 @@ class SkillCardSkeleton extends StatelessWidget {
   );
 }
 
-Future<List<SkillSummary>> loadRepositorySkills(
+Future<List<SkillSummary>> loadModuleSkills(
   SkillsGateway gateway,
   SkillSummary current,
   SkillDetail detail,
 ) async {
-  final repository = detail.repository.trim();
-  if (repository.isEmpty) return [current];
+  final modulePath = detail.modulePath.trim();
+  if (modulePath.isEmpty) return [current];
   try {
     final skills = <String, SkillSummary>{};
-    var offset = 0;
+    var pageNumber = 0;
     while (true) {
       final page = await gateway.discover(
         DiscoveryCollection.search,
-        query: '$repository@${current.latestVersion}',
-        offset: offset,
-        limit: 100,
+        query: '$modulePath@${current.latestVersion}',
+        page: pageNumber,
+        perPage: 100,
       );
       for (final skill in page.skills) {
-        if (skill.repositoryId == repository) {
+        if (skill.modulePath == modulePath) {
           skills[skill.coordinateKey] = skill;
         }
       }
-      final next = page.nextOffset;
-      if (next == null || next <= offset) break;
-      offset = next;
+      final next = page.pagination.nextPage;
+      if (next == null || next <= pageNumber) break;
+      pageNumber = next;
     }
     skills[current.coordinateKey] = current;
     final values = skills.values.toList()
@@ -131,14 +131,14 @@ class InstallationSubmissionRequest {
     required this.choice,
     required this.skill,
     required this.immutableVersion,
-    required this.repositorySkills,
+    required this.moduleSkills,
     required this.riskPolicy,
   });
 
   final InstallLocationChoice choice;
   final SkillSummary skill;
   final String immutableVersion;
-  final List<SkillSummary> repositorySkills;
+  final List<SkillSummary> moduleSkills;
   final PersonalRiskPolicy riskPolicy;
 }
 
@@ -156,9 +156,9 @@ Future<InstallLocationSubmission> submitInstallationRequest(
     );
   }
   final operationRequest =
-      request.choice.action == InstallLocationAction.repositorySkills
-      ? InstallationRequest.repository(
-          request.repositorySkills,
+      request.choice.action == InstallLocationAction.moduleSkills
+      ? InstallationRequest.module(
+          request.moduleSkills,
           selections: request.choice.selections,
           riskPolicy: request.riskPolicy,
         )

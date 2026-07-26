@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on shared system vocabulary for trust, risk, metrics, discovery collections, and canonical Skill coordinates.
- * [OUTPUT]: Provides discovery summaries, batch Source Find queries/results, canonical coordinate identity and exact Repository member paths, repository metadata, pages, auditable files, and risk evidence.
+ * [INPUT]: Depends on shared system vocabulary for metrics, discovery collections, and canonical Skill coordinates.
+ * [OUTPUT]: Provides discovery summaries, canonical pagination, ordered Module-scoped candidate queries, canonical coordinate identity and exact Module member paths, Module metadata, pages, and auditable files.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,33 +9,27 @@ import 'skill_coordinate.dart';
 
 class SkillSummary {
   const SkillSummary({
-    required this.repositoryId,
+    required this.modulePath,
     required this.installName,
     required this.name,
-    required this.source,
-    this.skillPath = '',
+    this.path = '',
     this.installs = 0,
     this.imageUrl,
     this.latestVersion = 'main',
     this.description = '',
-    this.trustLevel = SkillTrustLevel.unverified,
-    this.riskAssessment = SkillRiskAssessment.unknown,
     this.metricKind,
     this.metricChange = 0,
     this.localTargetCount = 0,
   });
 
-  final String repositoryId;
+  final String modulePath;
   final String installName;
   final String name;
-  final String source;
-  final String skillPath;
+  final String path;
   final String? imageUrl;
   final int installs;
   final String latestVersion;
   final String description;
-  final SkillTrustLevel trustLevel;
-  final SkillRiskAssessment riskAssessment;
   final SkillMetricKind? metricKind;
   final int metricChange;
   final int localTargetCount;
@@ -43,22 +37,21 @@ class SkillSummary {
   bool get isInstalled => localTargetCount > 0;
 
   SkillCoordinate get coordinate =>
-      SkillCoordinate(repositoryId: repositoryId, name: name);
+      SkillCoordinate(modulePath: modulePath, name: name);
 
   String get coordinateKey => coordinate.key;
 
-  String get installationSelector => skillPath.isEmpty ? name : skillPath;
+  String get installationSelector => path.isEmpty ? name : path;
 }
 
-class RepositorySummary {
-  const RepositorySummary({
+class ModuleSummary {
+  const ModuleSummary({
     required this.id,
     this.imageUrl,
     this.description = '',
     this.stars = 0,
     this.latestVersion = '',
     this.updatedAt,
-    this.license,
   });
 
   final String id;
@@ -67,34 +60,35 @@ class RepositorySummary {
   final int stars;
   final String latestVersion;
   final DateTime? updatedAt;
-  final String? license;
 }
 
 class DiscoveryPage {
-  const DiscoveryPage({required this.skills, this.nextOffset, this.repository});
-
-  final List<SkillSummary> skills;
-  final int? nextOffset;
-  final RepositorySummary? repository;
-}
-
-class SourceFindQuery {
-  const SourceFindQuery({
-    required this.id,
-    required this.name,
-    this.source = '',
+  const DiscoveryPage({
+    required this.skills,
+    this.pagination = const Pagination(),
+    this.module,
   });
 
-  final String id;
-  final String name;
-  final String source;
+  final List<SkillSummary> skills;
+  final Pagination pagination;
+  final ModuleSummary? module;
 }
 
-class SourceFindResult {
-  const SourceFindResult({required this.id, required this.skills});
+class Pagination {
+  const Pagination({this.page = 0, this.perPage = 20, this.hasMore = false});
 
-  final String id;
-  final List<SkillSummary> skills;
+  final int page;
+  final int perPage;
+  final bool hasMore;
+
+  int? get nextPage => hasMore ? page + 1 : null;
+}
+
+class ModuleFindQuery {
+  const ModuleFindQuery({required this.name, this.modulePath = ''});
+
+  final String name;
+  final String modulePath;
 }
 
 class SkillFile {
@@ -115,11 +109,4 @@ class SkillFile {
   final bool executable;
   final bool binary;
   final bool truncated;
-}
-
-class SkillRiskEvidence {
-  const SkillRiskEvidence({required this.code, required this.path});
-
-  final String code;
-  final String path;
 }

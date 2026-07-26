@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with path-unique membership validation and deterministic name-or-path member selection; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Module/Skill identities, typed add-time Version Queries through unified Module metadata, exact Module Version resources, typed Module Info, bounded Module ZIP responses, and optional progress reporting.
+ * [OUTPUT]: Provides single-read revision-to-immutable Module metadata resolution, canonical downloads, direct Module Version Skill content reads, path-unique membership validation and deterministic member selection, discovery/update reads, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,68 +27,44 @@ import (
 	modmodule "golang.org/x/mod/module"
 )
 
-type Info = protocolapi.SkillInfo
-type Risk = protocolapi.Risk
+type Info = protocolapi.ModuleSkill
+type ModuleInfo = protocolapi.ModuleInfo
 
-const (
-	RiskUnknown  = protocolapi.RiskUnknown
-	RiskLow      = protocolapi.RiskLow
-	RiskMedium   = protocolapi.RiskMedium
-	RiskHigh     = protocolapi.RiskHigh
-	RiskCritical = protocolapi.RiskCritical
-)
-
-type RepositoryInfo = protocolapi.RepositoryInfo
-
-type RepositoryResource struct {
-	Info      RepositoryInfo
+type ModuleResource struct {
+	Info      ModuleInfo
 	InfoBytes []byte
-	Members   []RepositoryMember
+	Members   []VersionSkill
 	ZIP       []byte
 }
 
-// SelectRepositoryMember restores a persisted exact source path when present,
+// SelectVersionSkill restores a persisted exact source path when present,
 // then falls back to the lexicographically first path among name matches.
-func SelectRepositoryMember(selector string, members []RepositoryMember) (RepositoryMember, bool) {
+func SelectVersionSkill(selector string, members []VersionSkill) (VersionSkill, bool) {
 	for _, member := range members {
-		if selector == member.Info.SkillPath {
+		if selector == member.Info.Path {
 			return member, true
 		}
 	}
-	matches := make([]RepositoryMember, 0, 1)
+	matches := make([]VersionSkill, 0, 1)
 	for _, member := range members {
 		if selector == member.Info.Name {
 			matches = append(matches, member)
 		}
 	}
 	if len(matches) > 0 {
-		sort.Slice(matches, func(i, j int) bool { return matches[i].Info.SkillPath < matches[j].Info.SkillPath })
+		sort.Slice(matches, func(i, j int) bool { return matches[i].Info.Path < matches[j].Info.Path })
 		return matches[0], true
 	}
-	return RepositoryMember{}, false
+	return VersionSkill{}, false
 }
 
-type RepositoryMember struct {
-	Info      Info
-	InfoBytes []byte
-}
-
-type SkillProductMetadata struct {
-	RepositoryID          string  `json:"repositoryId"`
-	Name                  string  `json:"name"`
-	ImageURL              *string `json:"imageUrl"`
-	Stars                 int64   `json:"stars"`
-	RepositoryDescription string  `json:"repositoryDescription"`
-	TrustLevel            string  `json:"trustLevel"`
-	RiskAssessment        struct {
-		Level Risk `json:"level"`
-	} `json:"riskAssessment"`
+type VersionSkill struct {
+	Info Info
 }
 
 type SkillSummary struct {
-	RepositoryID  string `json:"repositoryId"`
+	ModulePath    string `json:"modulePath"`
 	Name          string `json:"name"`
-	Repository    string `json:"repository"`
 	LatestVersion string `json:"latestVersion"`
 }
 
@@ -137,118 +113,86 @@ func New(baseURL string, client *http.Client) (*Client, error) {
 	return &Client{baseURL: parsed.String(), http: client}, nil
 }
 
-func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*RepositoryResource, error) {
-	selector, err := protocolversion.ParseSelector(query)
+func (c *Client) Module(ctx context.Context, modulePath, query string) (*ModuleResource, error) {
+	parsedQuery, err := protocolversion.ParseQuery(query)
 	if err != nil {
 		return nil, err
 	}
-	resolved := selector.Value
-	if selector.Movable() {
-		resolution, resolveErr := c.ResolveRepository(ctx, repositoryID, selector.Value)
-		if resolveErr != nil {
-			return nil, resolveErr
-		}
-		resolved = resolution.Version
-	}
-	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, resolved+".info"))
+	infoBytes, err := c.get(ctx, c.versionEndpoint(modulePath, parsedQuery.Value, false))
 	if err != nil {
 		return nil, err
 	}
-	resource, err := ParseRepositoryInfo(repositoryID, infoBytes)
+	resource, err := ParseModuleInfo(modulePath, infoBytes)
 	if err != nil {
 		return nil, err
 	}
-	if resource.Info.Version != resolved {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Repository Info for unexpected immutable version %s", resource.Info.Version)}
+	if !protocolversion.IsImmutable(resource.Info.Version) || (!parsedQuery.Movable() && resource.Info.Version != parsedQuery.Value) {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Module Info for unexpected immutable version %s", resource.Info.Version)}
 	}
 	return resource, nil
 }
 
-func (c *Client) ResolveRepository(ctx context.Context, repositoryID, selector string) (protocolapi.RepositoryResolutionResponse, error) {
-	parsed, err := protocolversion.ParseSelector(selector)
-	if err != nil {
-		return protocolapi.RepositoryResolutionResponse{}, err
-	}
-	request := protocolapi.RepositoryResolutionRequest{SchemaVersion: protocolapi.SchemaVersion, RepositoryID: repositoryID, Selector: parsed.Value}
-	var response protocolapi.RepositoryResolutionResponse
-	if err := c.postJSON(ctx, "/api/v1/repository-resolutions", request, &response); err != nil {
-		return response, err
-	}
-	if response.SchemaVersion != protocolapi.SchemaVersion || response.RepositoryID != repositoryID ||
-		!protocolversion.IsImmutable(response.Version) || response.Time.IsZero() || response.Ref == "" || response.CommitSHA == "" {
-		return response, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Repository resolution for %s", repositoryID)}
-	}
-	return response, nil
-}
-
-func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, query string, progress func(current, total int64)) (*RepositoryResource, error) {
-	resource, err := c.Repository(ctx, repositoryID, query)
+func (c *Client) FetchModuleWithProgress(ctx context.Context, modulePath, query string, progress func(current, total int64)) (*ModuleResource, error) {
+	resource, err := c.Module(ctx, modulePath, query)
 	if err != nil {
 		return nil, err
 	}
-	archive, err := c.getWithProgress(ctx, c.endpoint(repositoryID, resource.Info.Version+".zip"), progress)
+	archive, err := c.getWithProgress(ctx, c.versionEndpoint(modulePath, resource.Info.Version, true), progress)
 	if err != nil {
 		return nil, err
 	}
 	if resource.Info.ArchiveSize != int64(len(archive)) {
-		return nil, fmt.Errorf("Hub returned an unexpected Repository Archive Size for %s@%s", repositoryID, resource.Info.Version)
+		return nil, fmt.Errorf("Hub returned an unexpected Module Archive Size for %s@%s", modulePath, resource.Info.Version)
 	}
-	if err := VerifyRepositorySum(archive, repositoryID, resource.Info.Version, resource.Info.Sum); err != nil {
+	if err := VerifyModuleSum(archive, modulePath, resource.Info.Version, resource.Info.Sum); err != nil {
 		return nil, err
 	}
 	resource.ZIP = archive
 	return resource, nil
 }
 
-func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {
-	if err := source.ValidateRepositoryID(repositoryID); err != nil {
+func ParseModuleInfo(modulePath string, infoBytes []byte) (*ModuleResource, error) {
+	if err := source.ValidateModulePath(modulePath); err != nil {
 		return nil, err
 	}
-	var info RepositoryInfo
+	var info ModuleInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
-		return nil, &ProtocolError{Err: fmt.Errorf("decode Repository Info: %w", err)}
+		return nil, &ProtocolError{Err: fmt.Errorf("decode Module Info: %w", err)}
 	}
 	if info.SchemaVersion != 1 {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Repository Info schema %d for %s", info.SchemaVersion, repositoryID), Incompatible: true}
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Module Info schema %d for %s", info.SchemaVersion, modulePath), Incompatible: true}
 	}
-	if info.Kind != "Repository" || info.ID != repositoryID ||
-		info.Version == "" || info.Ref == "" || info.CommitSHA == "" || info.TreeSHA == "" ||
+	if info.Kind != protocolapi.KindModule || info.ModulePath != modulePath ||
+		info.Version == "" || info.Time.IsZero() ||
 		!protocolartifact.ValidSum(info.Sum) || info.ArchiveSize <= 0 || len(info.Skills) == 0 {
-		return nil, fmt.Errorf("Hub returned incomplete Repository Info for %s", repositoryID)
+		return nil, fmt.Errorf("Hub returned incomplete Module Info for %s", modulePath)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
-		return nil, fmt.Errorf("Hub returned invalid Repository version for %s: %w", repositoryID, err)
+		return nil, fmt.Errorf("Hub returned invalid Module Version for %s: %w", modulePath, err)
 	}
-	resource := &RepositoryResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]RepositoryMember, 0, len(info.Skills))}
+	resource := &ModuleResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]VersionSkill, 0, len(info.Skills))}
 	seenPaths := map[string]bool{}
 	for _, member := range info.Skills {
-		validPath := member.SkillPath == "." || protocolartifact.ValidRelativePath(member.SkillPath)
-		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenPaths[member.SkillPath] || member.RepositoryID != repositoryID || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
-			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.Name)
+		validPath := member.Path == "." || protocolartifact.ValidRelativePath(member.Path)
+		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenPaths[member.Path] {
+			return nil, fmt.Errorf("Module Info contains inconsistent Skill %q", member.Name)
 		}
-		if err := validateAssessedInfo(repositoryID, member.Name, info.Version, member); err != nil {
-			return nil, err
-		}
-		seenPaths[member.SkillPath] = true
-		memberBytes, err := json.Marshal(member)
-		if err != nil {
-			return nil, fmt.Errorf("encode Repository member Info: %w", err)
-		}
-		resource.Members = append(resource.Members, RepositoryMember{Info: member, InfoBytes: memberBytes})
+		seenPaths[member.Path] = true
+		resource.Members = append(resource.Members, VersionSkill{Info: member})
 	}
 	return resource, nil
 }
 
-func (c *Client) SkillProduct(ctx context.Context, repositoryID, name string) (SkillProductMetadata, error) {
-	var metadata SkillProductMetadata
-	query := url.Values{"repositoryId": []string{repositoryID}, "name": []string{name}}
-	if err := c.getJSON(ctx, c.baseURL+"/api/v1/skills/detail?"+query.Encode(), &metadata); err != nil {
-		return SkillProductMetadata{}, err
+func (c *Client) ModuleVersionSkill(ctx context.Context, modulePath, version, skillPath string) (protocolapi.ModuleVersionSkill, error) {
+	var result protocolapi.ModuleVersionSkill
+	endpoint := c.versionEndpoint(modulePath, version, false) + "/skills?" + url.Values{"path": []string{skillPath}}.Encode()
+	if err := c.getJSON(ctx, endpoint, &result); err != nil {
+		return result, err
 	}
-	if metadata.RepositoryID != repositoryID || metadata.Name != name {
-		return SkillProductMetadata{}, fmt.Errorf("Hub returned mismatched Skill product metadata for %s:%s", repositoryID, name)
+	if result.ModulePath != modulePath || !protocolversion.IsImmutable(result.Version) || result.Name == "" || result.Path != skillPath || result.Time.IsZero() || result.ArchiveSize <= 0 {
+		return result, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Module Version Skill for %s@%s:%s", modulePath, version, skillPath)}
 	}
-	return metadata, nil
+	return result, nil
 }
 
 func (c *Client) readProductJSON(ctx context.Context, path string, query url.Values) (json.RawMessage, error) {
@@ -269,18 +213,18 @@ func (c *Client) readProductJSON(ctx context.Context, path string, query url.Val
 	return document, nil
 }
 
-func (c *Client) Discover(ctx context.Context, collection, search string, offset, limit int) (json.RawMessage, error) {
-	return c.DiscoverLocalized(ctx, collection, search, "", offset, limit)
+func (c *Client) Discover(ctx context.Context, collection, search string, page, perPage int) (json.RawMessage, error) {
+	return c.DiscoverLocalized(ctx, collection, search, "", page, perPage)
 }
 
-func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, locale string, offset, limit int) (json.RawMessage, error) {
-	query := url.Values{"offset": {fmt.Sprint(offset)}, "limit": {fmt.Sprint(limit)}}
+func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, locale string, page, perPage int) (json.RawMessage, error) {
+	query := url.Values{"page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
 	if strings.TrimSpace(locale) != "" {
 		query.Set("locale", strings.TrimSpace(locale))
 	}
 	path := "/api/v1/skills"
 	if collection == "search" {
-		path = "/api/v1/find"
+		path = "/api/v1/skills/find"
 		query.Set("q", search)
 	} else {
 		query.Set("sort", collection)
@@ -288,10 +232,10 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	return c.readProductJSON(ctx, path, query)
 }
 
-func (c *Client) FindLocalized(ctx context.Context, search, source, locale string, exactName bool, offset, limit int) (json.RawMessage, error) {
-	query := url.Values{"q": {search}, "offset": {fmt.Sprint(offset)}, "limit": {fmt.Sprint(limit)}}
-	if strings.TrimSpace(source) != "" {
-		query.Set("source", strings.TrimSpace(source))
+func (c *Client) FindLocalized(ctx context.Context, search, modulePath, locale string, exactName bool, page, perPage int) (json.RawMessage, error) {
+	query := url.Values{"q": {search}, "page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
+	if strings.TrimSpace(modulePath) != "" {
+		query.Set("modulePath", strings.TrimSpace(modulePath))
 	}
 	if strings.TrimSpace(locale) != "" {
 		query.Set("locale", strings.TrimSpace(locale))
@@ -299,15 +243,15 @@ func (c *Client) FindLocalized(ctx context.Context, search, source, locale strin
 	if exactName {
 		query.Set("exactName", "true")
 	}
-	return c.readProductJSON(ctx, "/api/v1/find", query)
+	return c.readProductJSON(ctx, "/api/v1/skills/find", query)
 }
 
-func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindRequest) (json.RawMessage, error) {
+func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindCandidatesRequest) (json.RawMessage, error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/find", bytes.NewReader(body))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/find-candidates", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -330,16 +274,16 @@ func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindRequest)
 	return json.RawMessage(encoded), nil
 }
 
-func (c *Client) Detail(ctx context.Context, repositoryID, name string) (json.RawMessage, error) {
-	return c.DetailLocalized(ctx, repositoryID, name, "")
+func (c *Client) Detail(ctx context.Context, modulePath, version, skillPath string) (json.RawMessage, error) {
+	return c.DetailLocalized(ctx, modulePath, version, skillPath, "")
 }
 
-func (c *Client) DetailLocalized(ctx context.Context, repositoryID, name, locale string) (json.RawMessage, error) {
-	query := url.Values{"repositoryId": []string{repositoryID}, "name": []string{name}}
-	if strings.TrimSpace(locale) != "" {
-		query.Set("locale", strings.TrimSpace(locale))
+func (c *Client) DetailLocalized(ctx context.Context, modulePath, version, skillPath, _ string) (json.RawMessage, error) {
+	result, err := c.ModuleVersionSkill(ctx, modulePath, version, skillPath)
+	if err != nil {
+		return nil, err
 	}
-	return c.readProductJSON(ctx, "/api/v1/skills/detail", query)
+	return json.Marshal(result)
 }
 
 func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (json.RawMessage, error) {
@@ -347,8 +291,8 @@ func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (jso
 		return nil, fmt.Errorf("Skill batch must contain 1 to 100 coordinates")
 	}
 	for _, coordinate := range skills {
-		if err := source.ValidateRepositoryID(coordinate.RepositoryID); err != nil || !protocolskillmanifest.ValidName(coordinate.Name) {
-			return nil, fmt.Errorf("invalid Skill coordinate %q:%q", coordinate.RepositoryID, coordinate.Name)
+		if err := source.ValidateModulePath(coordinate.ModulePath); err != nil || !protocolskillmanifest.ValidName(coordinate.Name) {
+			return nil, fmt.Errorf("invalid Skill coordinate %q:%q", coordinate.ModulePath, coordinate.Name)
 		}
 	}
 	body, err := json.Marshal(struct {
@@ -404,7 +348,7 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/updates/check", bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/check-update", bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
@@ -422,95 +366,43 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
 	}
 	var decoded catalogUpdateResponse
-	if json.Unmarshal(body, &decoded) != nil || decoded.SchemaVersion != 1 || len(decoded.Items) != len(skills) {
+	if json.Unmarshal(body, &decoded) != nil || len(decoded.Items) != len(skills) {
 		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
 	}
 	for index, item := range decoded.Items {
-		if item.RepositoryID != skills[index].RepositoryID || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
-			(item.Status == "available" && item.HeadVersion == "" && item.ReleaseVersion == "") ||
-			(item.HeadVersion != "" && !protocolversion.IsImmutable(item.HeadVersion)) ||
-			(item.ReleaseVersion != "" && !protocolversion.IsImmutable(item.ReleaseVersion)) {
+		if item.ModulePath != skills[index].ModulePath || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
+			(item.Status == "available" && item.LatestVersion == "") ||
+			(item.LatestVersion != "" && !protocolversion.IsImmutable(item.LatestVersion)) {
 			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update item")}
 		}
 	}
 	return decoded.Items, nil
 }
 
-func validateAssessedInfo(repositoryID, skillName, requestedVersion string, info Info) error {
-	if info.Version == "" || info.RepositoryID == "" || info.SkillPath == "" || (info.Risk != "" && !info.Risk.Valid()) {
-		return fmt.Errorf("Hub returned incomplete immutable Info for %s:%s", repositoryID, skillName)
-	}
-	if info.SchemaVersion != 1 {
-		return &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Info schema %d for %s:%s", info.SchemaVersion, repositoryID, skillName), Incompatible: true}
-	}
-	if info.Kind != "Skill" || info.RepositoryID != repositoryID || info.Name != skillName || info.Description == "" {
-		return fmt.Errorf("Hub returned incomplete immutable Info for %s:%s", repositoryID, skillName)
-	}
-	if err := source.ValidateVersion(info.Version); err != nil {
-		return fmt.Errorf("Hub returned an invalid immutable version for %s:%s: %w", repositoryID, skillName, err)
-	}
-	if protocolversion.IsImmutable(requestedVersion) && info.Version != requestedVersion {
-		return fmt.Errorf(
-			"Hub resolved %s@%s as unexpected immutable version %s",
-			repositoryID+":"+skillName, requestedVersion, info.Version,
-		)
-	}
-	return nil
-}
-
-func (c *Client) endpoint(skillID, file string) string {
-	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
+func (c *Client) versionEndpoint(modulePath, revision string, archive bool) string {
+	escapedID, err := modmodule.EscapePath(strings.Trim(modulePath, "/"))
 	if err != nil {
 		// Canonical IDs have already crossed the source parser boundary. Keep
 		// this helper total while allowing the Router to reject impossible IDs.
-		escapedID = strings.Trim(skillID, "/")
+		escapedID = strings.Trim(modulePath, "/")
 	}
-	for _, suffix := range []string{".info", ".zip"} {
-		if strings.HasSuffix(file, suffix) {
-			version := strings.TrimSuffix(file, suffix)
-			escapedVersion, escapeErr := modmodule.EscapeVersion(version)
-			if escapeErr == nil {
-				file = escapedVersion + suffix
-			}
-			break
-		}
+	escapedVersion, escapeErr := modmodule.EscapeVersion(revision)
+	if escapeErr == nil {
+		revision = escapedVersion
+	} else {
+		revision = url.PathEscape(revision)
 	}
-	return c.baseURL + "/" + escapedID + "/@v/" + file
+	suffix := ""
+	if archive {
+		suffix = ".zip"
+	}
+	return c.baseURL + "/api/v1/" + escapedID + "/versions/" + revision + suffix
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {
 	body, err := c.get(ctx, endpoint)
 	if err != nil {
 		return err
-	}
-	if err := json.Unmarshal(body, target); err != nil {
-		return &ProtocolError{Err: fmt.Errorf("解析 Hub 响应: %w", err)}
-	}
-	return nil
-}
-
-func (c *Client) postJSON(ctx context.Context, path string, source, target any) error {
-	encoded, err := json.Marshal(source)
-	if err != nil {
-		return err
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(encoded))
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", "application/json")
-	response, err := c.http.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, readErr := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if readErr != nil {
-		return readErr
-	}
-	if response.StatusCode != http.StatusOK {
-		return &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("X-Request-ID")}
 	}
 	if err := json.Unmarshal(body, target); err != nil {
 		return &ProtocolError{Err: fmt.Errorf("解析 Hub 响应: %w", err)}

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on repeated App-supplied Repository ID plus Skill name coordinates and the Hub client's Repository-fresh batch head/release read.
- * [OUTPUT]: Provides the read-only `updates check` machine command with independent head and release status per Library entry.
+ * [INPUT]: Depends on repeated App-supplied Module Path plus Skill name coordinates and the Hub client's Module-fresh latest read.
+ * [OUTPUT]: Provides the read-only `updates check` machine command with one Go-compatible latest status per Library entry.
  * [POS]: Serves as the batch update-availability boundary between the App's local inventory and the independently built Hub Catalog.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,22 +18,20 @@ import (
 )
 
 type catalogUpdateCandidate struct {
-	Key          string   `json:"key"`
-	RepositoryID string   `json:"repositoryId"`
-	Name         string   `json:"name"`
-	Versions     []string `json:"versions"`
+	Key        string   `json:"key"`
+	ModulePath string   `json:"modulePath"`
+	Name       string   `json:"name"`
+	Versions   []string `json:"versions"`
 }
 
 type catalogUpdateResult struct {
-	Key            string   `json:"key"`
-	RepositoryID   string   `json:"repositoryId"`
-	Name           string   `json:"name"`
-	Versions       []string `json:"versions"`
-	HeadVersion    string   `json:"headVersion,omitempty"`
-	ReleaseVersion string   `json:"releaseVersion,omitempty"`
-	HeadStatus     string   `json:"headStatus,omitempty"`
-	ReleaseStatus  string   `json:"releaseStatus,omitempty"`
-	Status         string   `json:"status"`
+	Key           string   `json:"key"`
+	ModulePath    string   `json:"modulePath"`
+	Name          string   `json:"name"`
+	Versions      []string `json:"versions"`
+	LatestVersion string   `json:"latestVersion,omitempty"`
+	LatestStatus  string   `json:"latestStatus,omitempty"`
+	Status        string   `json:"status"`
 }
 
 type catalogUpdateReport struct {
@@ -64,10 +62,10 @@ func newUpdatesCommand() *cobra.Command {
 			coordinates := make([]hub.SkillCoordinate, 0, len(candidates))
 			seenCoordinates := map[string]bool{}
 			for _, candidate := range candidates {
-				key := candidate.RepositoryID + "\x00" + candidate.Name
+				key := candidate.ModulePath + "\x00" + candidate.Name
 				if !seenCoordinates[key] {
 					seenCoordinates[key] = true
-					coordinates = append(coordinates, hub.SkillCoordinate{RepositoryID: candidate.RepositoryID, Name: candidate.Name})
+					coordinates = append(coordinates, hub.SkillCoordinate{ModulePath: candidate.ModulePath, Name: candidate.Name})
 				}
 			}
 			resolvedItems, err := client.CatalogUpdates(cmd.Context(), coordinates)
@@ -77,19 +75,18 @@ func newUpdatesCommand() *cobra.Command {
 			report := catalogUpdateReport{SchemaVersion: 1, Phase: "update-check", Items: make([]catalogUpdateResult, 0, len(candidates))}
 			resolvedByCoordinate := make(map[string]hub.CatalogUpdateItem, len(resolvedItems))
 			for _, item := range resolvedItems {
-				resolvedByCoordinate[item.RepositoryID+"\x00"+item.Name] = item
+				resolvedByCoordinate[item.ModulePath+"\x00"+item.Name] = item
 			}
 			for _, candidate := range candidates {
-				resolved := resolvedByCoordinate[candidate.RepositoryID+"\x00"+candidate.Name]
+				resolved := resolvedByCoordinate[candidate.ModulePath+"\x00"+candidate.Name]
 				item := catalogUpdateResult{
-					Key: candidate.Key, RepositoryID: candidate.RepositoryID, Name: candidate.Name, Versions: candidate.Versions,
-					HeadVersion: resolved.HeadVersion, ReleaseVersion: resolved.ReleaseVersion, Status: "unsupported",
+					Key: candidate.Key, ModulePath: candidate.ModulePath, Name: candidate.Name, Versions: candidate.Versions,
+					LatestVersion: resolved.LatestVersion, Status: "unsupported",
 				}
 				if resolved.Status == "available" {
-					item.HeadStatus = catalogCandidateStatus(candidate.Versions, resolved.HeadVersion)
-					item.ReleaseStatus = catalogCandidateStatus(candidate.Versions, resolved.ReleaseVersion)
+					item.LatestStatus = catalogCandidateStatus(candidate.Versions, resolved.LatestVersion)
 					item.Status = "current"
-					if item.HeadStatus == "update_available" || item.ReleaseStatus == "update_available" {
+					if item.LatestStatus == "update_available" {
 						item.Status = "update_available"
 					}
 				}
@@ -127,7 +124,7 @@ func decodeCatalogUpdateCandidates(raw []string) ([]catalogUpdateCandidate, erro
 	seenKeys := map[string]bool{}
 	for _, encoded := range raw {
 		var candidate catalogUpdateCandidate
-		if json.Unmarshal([]byte(encoded), &candidate) != nil || strings.TrimSpace(candidate.Key) == "" || source.ValidateRepositoryID(candidate.RepositoryID) != nil || !protocolskillmanifest.ValidName(candidate.Name) || len(candidate.Versions) == 0 || seenKeys[candidate.Key] {
+		if json.Unmarshal([]byte(encoded), &candidate) != nil || strings.TrimSpace(candidate.Key) == "" || source.ValidateModulePath(candidate.ModulePath) != nil || !protocolskillmanifest.ValidName(candidate.Name) || len(candidate.Versions) == 0 || seenKeys[candidate.Key] {
 			return nil, fmt.Errorf("invalid installed Skill update candidate")
 		}
 		seenKeys[candidate.Key] = true

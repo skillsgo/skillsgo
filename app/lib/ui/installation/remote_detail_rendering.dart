@@ -108,8 +108,8 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             RepositoryAvatar(
-                              source: value.source,
-                              imageUrl: value.imageUrl,
+                              source: value.modulePath,
+                              imageUrl: widget.skill.imageUrl,
                               size: 26,
                               borderRadius: 7,
                             ),
@@ -190,7 +190,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RepositoryAvatar(
-                source: widget.skill.source,
+                source: widget.skill.modulePath,
                 imageUrl: widget.skill.imageUrl,
                 size: 116,
                 borderRadius: 24,
@@ -215,9 +215,9 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        widget.skill.source,
+                        widget.skill.modulePath,
                         textDirection: contentTextDirection(
-                          widget.skill.source,
+                          widget.skill.modulePath,
                         ),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -253,9 +253,9 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       controller: detailScrollController,
       hero: SkillDetailHero(
         name: value.name,
-        source: value.source,
+        source: value.modulePath,
         description: value.description,
-        imageUrl: value.imageUrl,
+        imageUrl: widget.skill.imageUrl,
         avatarKey: const Key('detail-skill-avatar'),
         descriptionKey: const Key('detail-description-markdown'),
         actions: InstallLocationMenuAnchor(
@@ -297,7 +297,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       ),
       document: SkillMarkdownView(
         key: const Key('detail-instructions'),
-        data: value.markdown,
+        data: value.content,
         scrollable: false,
         stripFrontMatter: true,
       ),
@@ -314,15 +314,9 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     final items = [
       (
         label: context.l10n.detailRepository,
-        value: _repositoryDisplayName(
-          value.repository.isEmpty ? value.source : value.repository,
-        ),
+        value: _repositoryDisplayName(value.modulePath),
       ),
-      (label: context.l10n.detailStars, value: _compactCount(value.stars)),
-      (
-        label: context.l10n.detailUpdated,
-        value: _shortDate(value.sourceUpdatedAt),
-      ),
+      (label: context.l10n.detailUpdated, value: _shortDate(value.time)),
       (
         label: context.l10n.detailArchiveSize,
         value: _fileSize(value.archiveSize),
@@ -409,16 +403,6 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     return firstSegment.contains('.')
         ? repository.substring(firstSeparator + 1)
         : repository;
-  }
-
-  String _compactCount(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(value >= 10000000 ? 0 : 1)}M';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(value >= 100000 ? 0 : 1)}K';
-    }
-    return '$value';
   }
 
   String _shortDate(DateTime? value) {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Dart process, stream, UTF-8, and timeout primitives plus the App process contract.
- * [OUTPUT]: Provides the production ProcessRunner adapter with structured arguments, optional stdin, streamed stdout, bounded execution, and typed output.
+ * [INPUT]: Depends on Dart process, stream, UTF-8, timeout, working-directory, and child-environment primitives plus the App process contract.
+ * [OUTPUT]: Provides the production ProcessRunner adapter with structured arguments, optional stdin, streamed stdout, bounded execution, and optional process-scope isolation.
  * [POS]: Serves as the local operating-system process adapter used by the CLI machine-protocol module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,7 +11,10 @@ import 'dart:io';
 import '../domain/skills_gateway.dart';
 
 class IoProcessRunner implements ProcessRunner {
-  const IoProcessRunner();
+  const IoProcessRunner({this.workingDirectory, this.environment});
+
+  final String? workingDirectory;
+  final Map<String, String>? environment;
 
   static const commandTimeout = Duration(minutes: 2);
 
@@ -24,7 +27,12 @@ class IoProcessRunner implements ProcessRunner {
   }) async {
     try {
       if (onStdoutLine != null) {
-        final process = await Process.start(executable, arguments);
+        final process = await Process.start(
+          executable,
+          arguments,
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
         if (stdin != null) process.stdin.write(stdin);
         await process.stdin.close();
         final stdout = StringBuffer();
@@ -60,7 +68,12 @@ class IoProcessRunner implements ProcessRunner {
           stderr: timedOut ? 'Command timed out.' : stderr,
         );
       }
-      final process = await Process.start(executable, arguments);
+      final process = await Process.start(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+        environment: environment,
+      );
       if (stdin != null) process.stdin.write(stdin);
       await process.stdin.close();
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();

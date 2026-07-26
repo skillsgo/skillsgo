@@ -194,6 +194,7 @@ func defaultConfig() *Config {
 		Database: &DatabaseConfig{
 			Type:            "postgres",
 			DSN:             "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
+			Schema:          DefaultDatabaseSchema,
 			MaxOpenConns:    10,
 			MaxIdleConns:    5,
 			ConnMaxLifetime: 1800,
@@ -301,6 +302,9 @@ func envOverride(config *Config) error {
 	}
 	if config.Database.DSN == "" {
 		config.Database.DSN = "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
+	}
+	if config.Database.Schema == "" {
+		config.Database.Schema = DefaultDatabaseSchema
 	}
 	if config.Database.MaxOpenConns == 0 {
 		config.Database.MaxOpenConns = 10
@@ -442,6 +446,9 @@ func validateDatabase(validate *validator.Validate, database *DatabaseConfig) er
 	}
 	if database.DSN == "" {
 		return fmt.Errorf("database DSN is required")
+	}
+	if !ValidDatabaseSchema(database.Schema) {
+		return fmt.Errorf("database schema must be a lower-case PostgreSQL identifier")
 	}
 	return nil
 }

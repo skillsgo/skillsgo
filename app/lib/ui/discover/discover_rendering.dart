@@ -166,7 +166,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
               ? null
               : failureCopy(context, state.refreshError!).message,
           canLoadMore:
-              state.nextOffset != null &&
+              state.nextPage != null &&
               !state.loading &&
               !state.refreshing &&
               !state.loadingMore,
@@ -190,7 +190,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
             slivers: [
               if (title != null) _discoverTitleSliver(title),
               if (source != null)
-                _sourceContextSliver(source, state.results!, state.repository),
+                _sourceContextSliver(source, state.results!, state.module),
               SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
@@ -349,7 +349,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
   Widget _sourceContextSliver(
     String source,
     List<SkillSummary> skills,
-    RepositorySummary? repository,
+    ModuleSummary? module,
   ) => SliverToBoxAdapter(
     child: Semantics(
       container: true,
@@ -364,14 +364,14 @@ extension _DiscoverRendering on _DiscoverScreenState {
               : context.skillsComponents.cardRest,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: _RepositorySourceHeader(
-          source: source,
+        child: _ModuleSourceHeader(
+          modulePath: source,
           skills: skills,
-          repository: repository,
+          module: module,
           onInstallAll: (present) => _installFromCard(
             present,
             skills.first,
-            preferredAction: InstallLocationAction.repositorySkills,
+            preferredAction: InstallLocationAction.moduleSkills,
           ),
         ),
       ),

@@ -14,17 +14,14 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
-func commandTestRepositoryInfo(t *testing.T, repositoryID, version, commit string, members ...hub.Info) []byte {
+func commandTestModuleInfo(t *testing.T, modulePath, version, commit string, members ...hub.Info) []byte {
 	t.Helper()
-	encoded, err := json.Marshal(hub.RepositoryInfo{
+	encoded, err := json.Marshal(hub.ModuleInfo{
 		SchemaVersion: 1,
-		Kind:          "Repository",
-		ID:            repositoryID,
+		Kind:          "Module",
+		ModulePath:    modulePath,
 		Version:       version,
 		Time:          time.Unix(1, 0).UTC(),
-		Ref:           members[0].Ref,
-		CommitSHA:     commit,
-		TreeSHA:       "repository-tree",
 		Sum:           "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 		ArchiveSize:   1,
 		Skills:        members,

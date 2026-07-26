@@ -65,7 +65,7 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's reviewed conversion of selected External Installations into ordinary managed Repository dependencies. skills.sh fixes only the Repository source; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Repository and immutable-version choice before one confirmation.
+The user's reviewed conversion of selected External Installations into ordinary managed Module dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Module and immutable-version choice before one confirmation.
 _Avoid_: automatic identity inference, content-authenticated takeover, implicit import, unmatched Local import
 
 **Adoption Review**:
@@ -85,7 +85,7 @@ A reviewed, state-bound exact-path removal of healthy External Installations. Un
 _Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory that is not derived from a declared Repository Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Repository dependency.
+A Skill found in an Installed Agent's directory that is not derived from a declared Module Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Module dependency.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:
@@ -99,10 +99,6 @@ _Avoid_: published Skill, Hub artifact, unmanaged installation
 **Version Divergence**:
 The valid state in which targets for one Skill intentionally use different immutable versions. The Library displays the versions and never silently rewrites project requirements to make them uniform.
 _Avoid_: version conflict, automatic repair state
-
-**Skill Risk Policy**:
-The installation decision derived from a risk assessment for one immutable artifact. Personal requires additional confirmation for high risk, blocks critical risk by default with an explicit override, and never silently deletes an installed target after a later warning.
-_Avoid_: safety score toggle, automatic deletion
 
 **Product-led Growth**:
 The adoption model in which Personal works without registration and team creation, trial, invitation, and seat purchase are self-service.

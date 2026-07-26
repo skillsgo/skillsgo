@@ -126,7 +126,7 @@ func NewServer(strg storage.Backend) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestPath := r.URL.Path
 		switch {
-		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, "/@v/list"):
+		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, "/versions/list"):
 			listHandler.ServeHTTP(w, r)
 		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, ".info"):
 			infoHandler.ServeHTTP(w, r)

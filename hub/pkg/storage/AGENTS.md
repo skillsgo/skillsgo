@@ -4,7 +4,8 @@
 ## Members
 
 - `backend.go`, `getter.go`, `saver.go`, `lister.go`, `deleter.go`, and `cataloger.go`: define the backend-neutral artifact storage capabilities.
-- `immutable.go`, `immutable_test.go`: define bounded `PutIfAbsent`, identical-content idempotency, immutable conflict detection, and the process-local fallback used only when a backend has no stronger native implementation.
+- `immutable.go`, `immutable_test.go`: define bounded `PutIfAbsent`, identical-content idempotency, immutable conflict detection, Skill-content delegation, and the process-local fallback used only when a backend has no stronger native implementation.
+- `skill_content.go`: defines bounded create-only SKILL.md sidecars keyed by immutable Module Version plus exact Skill path.
 - `fs/`: persists Info and ZIP pairs through filesystem-native create-only publication and verifies existing bytes under cross-process races.
 - `gcp/`, `s3/`, and `azureblob/`: adapt provider-native conditional object creation to the immutable coordinate contract.
 - `mongo/`: reserves a unique coordinate and archive digest before GridFS upload so identical retries can complete interrupted publication.

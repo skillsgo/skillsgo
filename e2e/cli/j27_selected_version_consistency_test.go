@@ -30,7 +30,7 @@ func TestJ27SelectedSkillsShareRepositoryVersion(t *testing.T) {
 	requireNoLocalInstallation(t, sandboxRoot)
 
 	head := execCLI(t, ctx, container,
-		"add", "https://fixtures.test/group/subgroup/mixed@head", "--skill", "alpha", "--skill", "beta",
+		"add", "https://fixtures.test/group/subgroup/mixed@main", "--skill", "alpha", "--skill", "beta",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, head.exitCode, head.output)
@@ -42,7 +42,7 @@ func TestJ27SelectedSkillsShareRepositoryVersion(t *testing.T) {
 	beta, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "beta", "SKILL.md"))
 	require.NoError(t, err)
 	require.Contains(t, string(beta), "Beta v2.")
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "version: "+installed.Version)
 	require.Contains(t, string(manifest), "- alpha")

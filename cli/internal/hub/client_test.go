@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies product-API movable resolution followed by exact root Proxy reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
+ * [OUTPUT]: Specifies product-API movable resolution followed by exact Module Version metadata/ZIP reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
@@ -74,27 +75,14 @@ func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	}
 }
 
-func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *testing.T) {
+func TestModuleMovableRevisionUsesUnifiedCanonicalInfo(t *testing.T) {
 	repository, version := "github.com/example/untagged", "v0.0.0-20260718120000-abcdef123456"
-	requests := make([]string, 0, 2)
+	requests := make([]string, 0, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		requests = append(requests, request.Method+" "+request.URL.Path)
-		switch request.URL.Path {
-		case "/api/v1/repository-resolutions":
-			if request.Method != http.MethodPost {
-				t.Fatalf("unexpected resolution method %s", request.Method)
-			}
-			var body protocolapi.RepositoryResolutionRequest
-			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
-				t.Fatal(err)
-			}
-			if body.RepositoryID != repository || body.Selector != "feature/deep" {
-				t.Fatalf("unexpected resolution request: %#v", body)
-			}
-			fmt.Fprintf(w, `{"schemaVersion":1,"repositoryId":%q,"version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/feature/deep","commitSHA":"abcdef1234567890"}`, repository, version)
-		case "/" + repository + "/@v/" + version + ".info":
-			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, version)
-		default:
+		requests = append(requests, request.Method+" "+request.URL.RequestURI())
+		if request.URL.EscapedPath() == "/api/v1/"+repository+"/versions/feature%2Fdeep" {
+			fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Module","modulePath":%q,"version":%q,"time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"root","path":"."}]}`, repository, version, strings.Repeat("A", 43)+"=")
+		} else {
 			http.NotFound(w, request)
 		}
 	}))
@@ -103,39 +91,39 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Repository(t.Context(), repository, "feature/deep")
+	resource, err := client.Module(t.Context(), repository, "feature/deep")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resource.Info.Version != version || len(requests) != 2 || requests[0] != "POST /api/v1/repository-resolutions" || !strings.HasSuffix(requests[1], version+".info") {
+	if resource.Info.Version != version || len(requests) != 1 || requests[0] != "GET /api/v1/"+repository+"/versions/feature%2Fdeep" {
 		t.Fatalf("unexpected resolution flow: version=%q requests=%v", resource.Info.Version, requests)
 	}
 }
 
 func TestProxyEndpointEscapesRepositoryPathCase(t *testing.T) {
-	repositoryID := "git.example.com/Example/Skills"
+	modulePath := "git.example.com/Example/Skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.EscapedPath() != "/git.example.com/!example/!skills/@v/v1.2.3.info" {
+		if request.URL.EscapedPath() != "/api/v1/git.example.com/!example/!skills/versions/v1.2.3" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Name":"demo","Description":"test"}]}`, repositoryID, strings.Repeat("A", 43)+"=", repositoryID)
+		fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Module","modulePath":%q,"version":"v1.2.3","time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"demo","path":"."}]}`, modulePath, strings.Repeat("A", 43)+"=")
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Repository(t.Context(), repositoryID, "v1.2.3"); err != nil {
+	if _, err := client.Module(t.Context(), modulePath, "v1.2.3"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
-	repositoryID := "github.com/example/skills"
+	modulePath := "github.com/example/skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/github.com/example/skills/@v/v1.5.19.info":
-			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":"github.com/example/skills","SkillPath":"demo","Name":"demo","Description":"test","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}]}`))
+		case "/api/v1/github.com/example/skills/versions/v1.5.19":
+			_, _ = w.Write([]byte(`{"schemaVersion":1,"kind":"Module","modulePath":"github.com/example/skills","version":"v1.5.19","time":"2026-07-18T12:00:00Z","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","archiveSize":1,"skills":[{"name":"demo","path":"demo"}]}`))
 		default:
 			http.NotFound(w, request)
 		}
@@ -145,7 +133,7 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Repository(t.Context(), repositoryID, "v1.5.19")
+	resource, err := client.Module(t.Context(), modulePath, "v1.5.19")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,21 +142,21 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	}
 }
 
-func TestRepositoryInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
-	repositoryID := "github.com/example/skills"
-	info := protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID,
-		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "repository-tree",
+func TestModuleInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
+	modulePath := "github.com/example/skills"
+	info := protocolapi.ModuleInfo{SchemaVersion: 1, Kind: protocolapi.KindModule, ModulePath: modulePath,
+		Version: "v1.0.0", Time: time.Unix(1, 0).UTC(),
 		Sum: "h1:" + strings.Repeat("A", 43) + "=", ArchiveSize: 1,
-		Skills: []protocolapi.SkillInfo{
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "one", Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree-one", Name: "shared", Description: "One"},
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "two", Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree-two", Name: "shared", Description: "Two"},
+		Skills: []protocolapi.ModuleSkill{
+			{Name: "shared", Path: "one"},
+			{Name: "shared", Path: "two"},
 		},
 	}
 	encoded, err := json.Marshal(info)
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := ParseRepositoryInfo(repositoryID, encoded)
+	resource, err := ParseModuleInfo(modulePath, encoded)
 	if err != nil || len(resource.Members) != 2 {
 		t.Fatalf("duplicate-name members = %#v, %v", resource, err)
 	}

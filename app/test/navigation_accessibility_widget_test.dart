@@ -27,10 +27,9 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          repositoryId: 'example/skills/skill-$index',
+          modulePath: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
-          source: 'example/skills',
           installs: index,
         ),
       ),
@@ -71,7 +70,7 @@ void main() {
     expect(find.text('Skill 20'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-${const SkillCoordinate(repositoryId: 'example/skills/skill-20', name: 'Skill 20').key}',
+      'skill-card-${const SkillCoordinate(modulePath: 'example/skills/skill-20', name: 'Skill 20').key}',
     );
   });
 
@@ -267,10 +266,9 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          repositoryId: 'example/skills/skill-$index',
+          modulePath: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
-          source: 'example/skills',
           installs: index,
         ),
       ),

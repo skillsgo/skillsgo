@@ -6,26 +6,15 @@
  */
 import 'package:skillsgo/domain/skills_gateway.dart';
 
-SkillDetail withoutInstallationTargets(
-  SkillDetail detail, {
-  SkillRiskAssessment? riskAssessment,
-}) => SkillDetail(
+SkillDetail withoutInstallationTargets(SkillDetail detail) => SkillDetail(
   name: detail.name,
-  source: detail.source,
-  markdown: detail.markdown,
-  files: detail.files,
+  path: detail.path,
+  content: detail.content,
+  modulePath: detail.modulePath,
+  version: detail.version,
+  time: detail.time,
+  archiveSize: detail.archiveSize,
   description: detail.description,
-  requestedVersion: detail.requestedVersion,
-  immutableVersion: detail.immutableVersion,
-  commitSHA: detail.commitSHA,
-  treeSHA: detail.treeSHA,
-  sourceRef: detail.sourceRef,
-  sum: detail.sum,
-  trustLevel: detail.trustLevel,
-  riskAssessment: riskAssessment ?? detail.riskAssessment,
-  riskScannerVersion: detail.riskScannerVersion,
-  riskEvidence: detail.riskEvidence,
-  hubExecutableSignal: detail.hubExecutableSignal,
 );
 
 CommandResult successCommand(List<String> command) => CommandResult(
