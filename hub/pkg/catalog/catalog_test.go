@@ -28,7 +28,7 @@ func openTestCatalog(t *testing.T) *Catalog {
 	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	c, err := Open(ctx, config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	c, err := Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	return c
@@ -248,12 +248,21 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	} {
 		require.NoError(t, upsertTestSkill(t, c, skill))
 	}
+	candidates, err := c.TranslationCandidates(t.Context(), "zh-Hans", "prompt", 10)
+	require.NoError(t, err)
+	var oneDigest string
+	for _, candidate := range candidates {
+		if candidate.ResourceKind == LocalizedSkill && candidate.Description == "Canonical one" {
+			oneDigest = candidate.ContentDigest
+		}
+	}
+	require.NotEmpty(t, oneDigest)
 	require.NoError(t, c.UpsertLocalizedDescription(t.Context(), LocalizedDescription{
 		ResourceKind:  LocalizedSkill,
-		ResourceID:    "github.com/acme/one:shared",
-		Locale:        "zh-Hans",
+		Lang:          "zh-Hans",
+		ResultKind:    LocalizationTranslated,
 		Description:   "本地化一",
-		SourceDigest:  "digest",
+		SourceDigest:  oneDigest,
 		PromptVersion: "prompt",
 	}))
 
@@ -286,7 +295,8 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 
-	skill := &Skill{PackagePath: "github.com/acme/skills", Path: "review", Name: "review", Description: "Review a change", LatestVersion: "main"}
+	documentDigest := ContentDigest([]byte("---\nname: review\ndescription: Review a change\n---\n\nReview changes.\n"))
+	skill := &Skill{PackagePath: "github.com/acme/skills", Path: "review", Name: "review", Description: "Review a change", DocumentDigest: documentDigest, LatestVersion: "main"}
 	require.NoError(t, upsertTestSkill(t, c, skill))
 	candidates, err := c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
@@ -294,7 +304,7 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.Equal(t, LocalizedSkill, candidates[0].ResourceKind)
 
 	require.NoError(t, c.UpsertLocalizedDescription(ctx, LocalizedDescription{
-		ResourceKind: LocalizedSkill, ResourceID: skillResourceID(skill.PackagePath, skill.Name), Locale: "zh-CN", Description: "审查变更",
+		ResourceKind: LocalizedSkill, Lang: "zh-CN", ResultKind: LocalizationTranslated, Description: "审查变更",
 		SourceDigest: DescriptionDigest(skill.Description), PromptVersion: "description-v1",
 	}))
 	localizedResults, err := c.SearchLocalized(ctx, "审查", "zh-CN", 10, 0)
@@ -304,6 +314,15 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, candidates)
+
+	fork := &Skill{PackagePath: "github.com/acme/forked-skills", Path: "review", Name: "review", Description: skill.Description, DocumentDigest: documentDigest, LatestVersion: "main"}
+	require.NoError(t, upsertTestSkill(t, c, fork))
+	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, candidates, "an identical description in a fork must reuse the global localization")
+	documentCandidates, err := c.DocumentTranslationCandidates(ctx, "zh-CN", 10)
+	require.NoError(t, err)
+	require.Len(t, documentCandidates, 1, "identical forked SKILL.md content must produce one global candidate")
 
 	skill.Description = "Review code changes"
 	require.NoError(t, upsertTestSkill(t, c, skill))

@@ -15,7 +15,6 @@ var databaseSchemaPattern = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 // DatabaseConfig configures the Hub catalog and search metadata database.
 // Artifacts remain in Storage; this database only stores queryable metadata.
 type DatabaseConfig struct {
-	Type            string `envconfig:"SKILLSGO_HUB_DATABASE_TYPE" validate:"eq=postgres"`
 	DSN             string `envconfig:"SKILLSGO_HUB_DATABASE_DSN"`
 	Schema          string `envconfig:"SKILLSGO_HUB_DATABASE_SCHEMA"`
 	MaxOpenConns    int    `envconfig:"SKILLSGO_HUB_DATABASE_MAX_OPEN_CONNS" validate:"min=1"`

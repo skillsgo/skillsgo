@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on one validated immutable Repository release aggregate, immutable artifact and Skill-content storage, and the Catalog publication transaction.
- * [OUTPUT]: Provides retry-safe artifact then Skill-content residency followed by atomic Catalog visibility without unsafe cross-adapter delete compensation.
- * [POS]: Serves as the deep Repository Publication commit state machine used by demand materialization and Backfill.
+ * [INPUT]: Depends on one validated immutable Repository release aggregate, immutable artifact storage, digest-addressed Skill-content storage, and the Catalog publication transaction.
+ * [OUTPUT]: Provides retry-safe artifact then content-addressed Skill residency followed by atomic Catalog visibility without unsafe delete compensation.
+ * [POS]: Serves as the Repository Publication commit state machine used by demand materialization and Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -28,7 +28,7 @@ func newPackagePublicationCommit(backend storage.Backend, metadata *catalog.Cata
 }
 
 type moduleSkillContent struct {
-	path    string
+	digest  string
 	content []byte
 }
 
@@ -52,7 +52,7 @@ func (commit *modulePublicationCommit) Publish(
 		return created, errors.New("Artifact storage does not support immutable Skill content")
 	}
 	for _, skillContent := range skillContents {
-		if _, err := commit.contents.PutSkillContentIfAbsent(ctx, packagePath, version.Version, skillContent.path, skillContent.content); err != nil {
+		if _, err := commit.contents.PutSkillContentIfAbsent(ctx, skillContent.digest, skillContent.content); err != nil {
 			return created, err
 		}
 	}

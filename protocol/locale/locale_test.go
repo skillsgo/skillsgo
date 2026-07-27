@@ -28,3 +28,17 @@ func TestCanonicalRejectsUnsupportedShapes(t *testing.T) {
 		})
 	}
 }
+
+func TestCanonicalSupportedOwnsPresentationLanguageSet(t *testing.T) {
+	for input, want := range map[string]string{"ZH_hans_cn": "zh-Hans-CN", "zh_hant_tw": "zh-Hant-TW", "zh_hant_hk": "zh-Hant-HK", "pt_br": "pt-BR", "ja": "ja", "uk": "uk"} {
+		got, err := CanonicalSupported(input)
+		if err != nil || got != want {
+			t.Fatalf("CanonicalSupported(%q)=%q,%v; want %q", input, got, err, want)
+		}
+	}
+	for _, input := range []string{"", "zh-Hans", "zh-Hant", "zh-CN", "ja-JP", "en-US"} {
+		if _, err := CanonicalSupported(input); err == nil {
+			t.Fatalf("expected unsupported presentation language %q rejection", input)
+		}
+	}
+}

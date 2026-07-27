@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling with public PostgreSQL extension fallback, versioned Atlas SQL migrations, Hub database configuration, canonical Package Path plus Skill Name coordinates, and path-unique Package members.
- * [OUTPUT]: Provides the Packages/Versions/Skills persistence model, structured immutable Version publication, deterministic standalone Package Info, native pgx transaction scopes shared with River, discovery projections, and source cache state.
- * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, digest-addressed global localization state, immutable publication, Package Info, shared pgx transactions, discovery projections, and source cache state.
+ * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 // Package catalog stores searchable Skill metadata. Artifact bytes are owned by
@@ -39,9 +39,6 @@ type Catalog struct {
 }
 
 func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
-	if cfg.Type != "postgres" {
-		return nil, fmt.Errorf("unsupported database type %q", cfg.Type)
-	}
 	if cfg.Schema == "" {
 		cfg.Schema = config.DefaultDatabaseSchema
 	}
@@ -113,18 +110,20 @@ func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions,
 }
 
 type Skill struct {
-	RowID            int64     `db:"id" json:"-"`
-	PackageRowID     int64     `db:"package_id" json:"-"`
-	PackagePath      string    `db:"package_path" json:"packagePath"`
-	Name             string    `db:"name" json:"name"`
-	Description      string    `db:"description" json:"description"`
-	SourceHost       string    `db:"source_host" json:"sourceHost"`
-	SourceRepository string    `db:"source_repository" json:"sourceRepository"`
-	Path             string    `db:"path" json:"path"`
-	LatestVersion    string    `db:"latest_version" json:"latestVersion"`
-	Stars            int64     `db:"stars" json:"stars"`
-	CreatedAt        time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
+	RowID             int64     `db:"id" json:"-"`
+	PackageRowID      int64     `db:"package_id" json:"-"`
+	PackagePath       string    `db:"package_path" json:"packagePath"`
+	Name              string    `db:"name" json:"name"`
+	Description       string    `db:"description" json:"description"`
+	DescriptionDigest string    `db:"description_digest" json:"-"`
+	DocumentDigest    string    `db:"document_digest" json:"-"`
+	SourceHost        string    `db:"source_host" json:"sourceHost"`
+	SourceRepository  string    `db:"source_repository" json:"sourceRepository"`
+	Path              string    `db:"path" json:"path"`
+	LatestVersion     string    `db:"latest_version" json:"latestVersion"`
+	Stars             int64     `db:"stars" json:"stars"`
+	CreatedAt         time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt         time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type Package struct {
@@ -142,8 +141,11 @@ type Package struct {
 }
 
 const (
-	LocalizedPackage = "module"
-	LocalizedSkill   = "skill"
+	LocalizedPackage       = "package_description"
+	LocalizedSkill         = "skill_description"
+	LocalizedSkillDocument = "skill_document"
+	LocalizationTranslated = "translated"
+	LocalizationSource     = "source"
 )
 
 // TranslationCandidate is one source description whose persisted translation is absent or stale.
@@ -151,6 +153,7 @@ type TranslationCandidate struct {
 	ResourceKind  string `db:"resource_kind"`
 	ResourceID    string `db:"resource_id"`
 	Description   string `db:"description"`
+	ContentDigest string `db:"content_digest"`
 	SourceDigest  string `db:"source_digest"`
 	PromptVersion string `db:"prompt_version"`
 }
@@ -158,28 +161,32 @@ type TranslationCandidate struct {
 // LocalizedDescription is Hub-owned display/search enrichment and never artifact content.
 type LocalizedDescription struct {
 	ResourceKind  string
-	ResourceID    string
-	Locale        string
+	Lang          string
+	ResultKind    string
 	Description   string
 	SourceDigest  string
 	PromptVersion string
 }
 
 func DescriptionDigest(description string) string {
-	return fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(strings.TrimSpace(description))))
+	return fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(description)))
 }
 
-func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersion string, limit int) ([]TranslationCandidate, error) {
+func ContentDigest(content []byte) string {
+	return fmt.Sprintf("sha256:%x", sha256.Sum256(content))
+}
+
+func (c *Catalog) TranslationCandidates(ctx context.Context, lang, promptVersion string, limit int) ([]TranslationCandidate, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	stored, err := c.queries.TranslationCandidates(ctx, locale)
+	stored, err := c.queries.TranslationCandidates(ctx, lang)
 	if err != nil {
 		return nil, err
 	}
 	candidates := make([]TranslationCandidate, 0, limit)
 	for _, item := range stored {
-		row := TranslationCandidate{ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description, SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion}
+		row := TranslationCandidate{ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description, ContentDigest: item.ContentDigest, SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion}
 		if row.SourceDigest == DescriptionDigest(row.Description) && row.PromptVersion == promptVersion {
 			continue
 		}
@@ -192,29 +199,85 @@ func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersi
 }
 
 func (c *Catalog) UpsertLocalizedDescription(ctx context.Context, item LocalizedDescription) error {
-	return c.queries.UpsertLocalizedDescription(ctx, catalogsqlc.UpsertLocalizedDescriptionParams{
-		ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Locale: item.Locale, Description: item.Description,
-		SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion, CreatedAt: time.Now().UTC(),
+	text := pgtype.Text{String: item.Description, Valid: item.ResultKind == LocalizationTranslated}
+	return c.queries.UpsertLocalization(ctx, catalogsqlc.UpsertLocalizationParams{
+		ResourceKind: item.ResourceKind, Lang: item.Lang,
+		SourceDigest: item.SourceDigest, ResultKind: item.ResultKind, TextContent: text,
+		PromptVersion: item.PromptVersion, UpdatedAt: time.Now().UTC(),
 	})
 }
 
-func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resourceID, locale string) (string, bool, error) {
-	description, err := c.queries.LocalizedDescription(ctx, catalogsqlc.LocalizedDescriptionParams{ResourceKind: resourceKind, ResourceID: resourceID, Locale: locale})
+func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resourceID, lang string) (string, bool, error) {
+	var description pgtype.Text
+	var err error
+	if resourceKind == LocalizedPackage {
+		description, err = c.queries.PackageLocalizedDescription(ctx, catalogsqlc.PackageLocalizedDescriptionParams{Path: resourceID, Lang: lang})
+	} else {
+		packagePath, name, ok := strings.Cut(resourceID, ":")
+		if !ok {
+			return "", false, nil
+		}
+		description, err = c.queries.SkillLocalizedDescription(ctx, catalogsqlc.SkillLocalizedDescriptionParams{Path: packagePath, Name: name, Lang: lang})
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
-	return description, err == nil, err
+	return description.String, err == nil && description.Valid, err
+}
+
+type VersionSkillLocalization struct {
+	ResultKind    string
+	Text          string
+	SourceDigest  string
+	PromptVersion string
+}
+
+type DocumentTranslationCandidate struct {
+	DocumentDigest string
+	SourceDigest   string
+	PromptVersion  string
+}
+
+func (c *Catalog) DocumentTranslationCandidates(ctx context.Context, lang string, _ int) ([]DocumentTranslationCandidate, error) {
+	rows, err := c.queries.DocumentTranslationCandidates(ctx, lang)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]DocumentTranslationCandidate, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, DocumentTranslationCandidate{DocumentDigest: row.DocumentDigest, SourceDigest: row.SourceDigest, PromptVersion: row.PromptVersion})
+	}
+	return result, nil
+}
+
+func (c *Catalog) UpsertDocumentLocalization(ctx context.Context, lang, sourceDigest, resultKind, promptVersion string) error {
+	return c.queries.UpsertLocalization(ctx, catalogsqlc.UpsertLocalizationParams{
+		ResourceKind: LocalizedSkillDocument, Lang: lang,
+		SourceDigest: sourceDigest, ResultKind: resultKind, PromptVersion: promptVersion, UpdatedAt: time.Now().UTC(),
+	})
+}
+
+func (c *Catalog) LocalizedVersionSkill(ctx context.Context, packagePath, version, skillPath, resourceKind, lang string) (VersionSkillLocalization, bool, error) {
+	row, err := c.queries.VersionSkillLocalization(ctx, catalogsqlc.VersionSkillLocalizationParams{
+		PackagePath: packagePath, Version: version, SkillPath: skillPath, ResourceKind: resourceKind, Lang: lang,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return VersionSkillLocalization{}, false, nil
+	}
+	return VersionSkillLocalization{ResultKind: row.ResultKind, Text: row.TextContent.String, SourceDigest: row.SourceDigest, PromptVersion: row.PromptVersion}, err == nil, err
 }
 
 // VersionSkill is one immutable Skill snapshot contained by a Package Version.
 type VersionSkill struct {
-	VersionRowID int64     `db:"version_id" json:"-"`
-	Name         string    `db:"name" json:"name"`
-	Version      string    `db:"version" json:"version"`
-	CommitSHA    string    `db:"commit_sha" json:"commitSHA"`
-	Path         string    `db:"path" json:"path"`
-	CommitTime   time.Time `db:"commit_time" json:"commitTime"`
-	Description  string    `db:"description" json:"description"`
+	VersionRowID      int64     `db:"version_id" json:"-"`
+	Name              string    `db:"name" json:"name"`
+	Version           string    `db:"version" json:"version"`
+	CommitSHA         string    `db:"commit_sha" json:"commitSHA"`
+	Path              string    `db:"path" json:"path"`
+	CommitTime        time.Time `db:"commit_time" json:"commitTime"`
+	Description       string    `db:"description" json:"description"`
+	DescriptionDigest string    `db:"description_digest" json:"-"`
+	DocumentDigest    string    `db:"document_digest" json:"-"`
 }
 
 // PackageVersion is one immutable source and Artifact identity owned by a Package.
@@ -347,8 +410,13 @@ func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRow
 		return err
 	}
 	for _, candidate := range skills {
+		descriptionDigest := candidate.DescriptionDigest
+		if descriptionDigest == "" {
+			descriptionDigest = DescriptionDigest(candidate.Description)
+		}
 		if err := q.InsertSkill(ctx, catalogsqlc.InsertSkillParams{
 			VersionID: versionRowID, Name: candidate.Name, Path: candidate.Path, Description: candidate.Description,
+			DescriptionDigest: descriptionDigest, DocumentDigest: candidate.DocumentDigest,
 		}); err != nil {
 			return err
 		}
@@ -478,7 +546,7 @@ func (c *Catalog) UpdatePackageSourceMetadata(ctx context.Context, packagePath, 
 		return fmt.Errorf("module stars cannot be negative")
 	}
 	updated, err := c.queries.UpdatePackageSourceMetadata(ctx, catalogsqlc.UpdatePackageSourceMetadataParams{
-		PackagePath: packagePath, Description: description, Stars: stars, SourceEtag: pgtype.Text{String: etag, Valid: etag != ""},
+		PackagePath: packagePath, Description: description, DescriptionDigest: DescriptionDigest(description), Stars: stars, SourceEtag: pgtype.Text{String: etag, Valid: etag != ""},
 		SourceCheckedAt: checkedAt, SourceRetryAt: retryAt})
 	if err == nil && updated == 0 {
 		return pgx.ErrNoRows
@@ -626,7 +694,7 @@ func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exact
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := c.queries.SearchLocalizedSkills(ctx, catalogsqlc.SearchLocalizedSkillsParams{Query: strings.TrimSpace(query), Locale: locale, ExactName: exactName, PageLimit: int32(limit), PageOffset: int32(offset)})
+	rows, err := c.queries.SearchLocalizedSkills(ctx, catalogsqlc.SearchLocalizedSkillsParams{Query: strings.TrimSpace(query), Lang: locale, ExactName: exactName, PageLimit: int32(limit), PageOffset: int32(offset)})
 	if err != nil {
 		return nil, err
 	}
@@ -646,7 +714,7 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	limit = normalizeQueryLimit(limit)
 	locale = strings.TrimSpace(locale)
 	params := catalogsqlc.FindLocalizedSkillsBatchParams{
-		Locale:       locale,
+		Lang:         locale,
 		PageLimit:    int32(limit),
 		QueryIds:     make([]string, 0, len(queries)),
 		Queries:      make([]string, 0, len(queries)),
@@ -678,7 +746,7 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	}
 	if allExact {
 		rows, err := c.queries.FindExactLocalizedSkillsBatch(ctx, catalogsqlc.FindExactLocalizedSkillsBatchParams{
-			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, PackagePaths: params.PackagePaths,
+			Lang: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, PackagePaths: params.PackagePaths,
 		})
 		if err != nil {
 			return nil, err
@@ -733,7 +801,7 @@ func mapVersionSkills(rows []catalogsqlc.SkillsRow) []VersionSkill {
 	for _, row := range rows {
 		skills = append(skills, versionSkillFromValues(
 			row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
-			row.CommitTime, row.Description,
+			row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest,
 		))
 	}
 	return skills
@@ -742,7 +810,7 @@ func mapVersionSkills(rows []catalogsqlc.SkillsRow) []VersionSkill {
 func versionSkillFromCurrentRow(row catalogsqlc.CurrentSkillRow) *VersionSkill {
 	skill := versionSkillFromValues(
 		row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
-		row.CommitTime, row.Description,
+		row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest,
 	)
 	return &skill
 }
@@ -751,11 +819,12 @@ func versionSkillFromValues(
 	versionRowID int64,
 	name, version, commitSHA, path string,
 	commitTime time.Time,
-	description string,
+	description, descriptionDigest, documentDigest string,
 ) VersionSkill {
 	return VersionSkill{
 		VersionRowID: versionRowID, Name: name, Version: version, CommitSHA: commitSHA,
 		Path: path, CommitTime: commitTime.UTC(), Description: description,
+		DescriptionDigest: descriptionDigest, DocumentDigest: documentDigest,
 	}
 }
 

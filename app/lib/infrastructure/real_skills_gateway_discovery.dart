@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct `show` explicit-source routing, and strict `show --path` Package Version Skill detail loading.
+ * [OUTPUT]: Provides current-language Hub Find, Cloud Ranking/Trending/Hot, explicit-source `show`, and strict Package Version Skill detail loading with explicit source fallback.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -44,8 +44,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           trimmedQuery,
           '--hub',
           _hubOrigin,
-          '--content-locale',
-          await _contentLocale(),
+          '--lang',
+          await _contentLang(),
           '--page',
           '$page',
           '--per-page',
@@ -194,7 +194,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    final locale = await _contentLocale();
+    final lang = await _contentLang();
     final chunks = <List<PackageFindQuery>>[
       for (var start = 0; start < queries.length; start += _sourceFindChunkSize)
         queries.sublist(
@@ -214,7 +214,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       );
       final waveResults = await Future.wait([
         for (final chunk in wave)
-          _findSourceChunk(chunk, limit: limit, locale: locale),
+          _findSourceChunk(chunk, limit: limit, lang: lang),
       ]);
       for (final chunkResults in waveResults) {
         results.addAll(chunkResults);
@@ -226,7 +226,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   Future<List<List<SkillSummary>>> _findSourceChunk(
     List<PackageFindQuery> queries, {
     required int limit,
-    required String locale,
+    required String lang,
   }) async {
     final request = jsonEncode({
       'queries': [
@@ -245,8 +245,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       '-',
       '--hub',
       _hubOrigin,
-      '--content-locale',
-      locale,
+      '--lang',
+      lang,
       '--output',
       'json',
     ], stdin: request);
@@ -313,9 +313,16 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         kind: SkillsFailureKind.validation,
       );
     }
-    final uri = cloud.resolve(
-      'api/v1/rankings/$collection?page=$page&perPage=$perPage',
-    );
+    final lang = await _contentLang();
+    final uri = cloud
+        .resolve('api/v1/rankings/$collection')
+        .replace(
+          queryParameters: {
+            'page': '$page',
+            'perPage': '$perPage',
+            'lang': lang,
+          },
+        );
     final client = HttpClient();
     try {
       final request = await client
@@ -403,11 +410,14 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   }
 
   Future<DiscoveryPage> _discoverExplicitSource(String source) async {
+    final lang = await _contentLang();
     final result = await _runCli([
       'show',
       source,
       '--hub',
       _hubOrigin,
+      '--lang',
+      lang,
       '--output',
       'json',
     ]);
@@ -514,10 +524,13 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   }
 
   @override
-  Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
+  Future<SkillDetail> loadRemoteDetail(
+    SkillSummary skill, {
+    bool source = false,
+  }) async {
     await _ensureHubOrigin();
     try {
-      final result = await _runCli([
+      final args = [
         'show',
         '${skill.packagePath}@${skill.latestVersion}',
         '--path',
@@ -526,7 +539,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         _hubOrigin,
         '--output',
         'json',
-      ]);
+      ];
+      if (!source) args.addAll(['--lang', await _contentLang()]);
+      final result = await _runCli(args);
       if (!result.succeeded) throw _commandFailure(result);
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic>) {

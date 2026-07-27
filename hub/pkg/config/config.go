@@ -1,12 +1,13 @@
 /*
- * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including deployment discovery, global and administration Basic Auth, bounded Git repository cache policy, GitHub authentication, task execution, and optional translation.
+ * [INPUT]: Depends on YAML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
+ * [OUTPUT]: Provides validated Hub configuration including deployment discovery, authentication, cache policy, first-class Cloudflare R2 storage, task execution, and optional translation.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -16,14 +17,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/go-playground/validator/v10"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
+	"go.yaml.in/yaml/v3"
 )
 
-const defaultConfigFile = "skillsgo-hub.toml"
+const defaultConfigFile = "skillsgo-hub.yaml"
 
 // Config provides configuration values for all components.
 type Config struct {
@@ -73,7 +74,7 @@ type Config struct {
 // variables that are passed to the Go command.
 type EnvList []string
 
-// TokenList supports TOML arrays and comma, semicolon, or newline-delimited
+// TokenList supports YAML sequences and comma, semicolon, or newline-delimited
 // environment overrides.
 type TokenList []string
 
@@ -192,7 +193,6 @@ func defaultConfig() *Config {
 			Disk: &DiskConfig{},
 		},
 		Database: &DatabaseConfig{
-			Type:            "postgres",
 			DSN:             "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
 			Schema:          DefaultDatabaseSchema,
 			MaxOpenConns:    10,
@@ -202,8 +202,8 @@ func defaultConfig() *Config {
 		TaskQueue: &TaskQueueConfig{MaxWorkers: 10},
 		LLM: &LLMConfig{
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
-			TranslationLocales: []string{"zh-Hans"}, TranslationInterval: 900,
-			TranslationBatch: 100, PromptVersion: "description-v1",
+			TranslationLangs: []string{"en", "zh-Hans-CN", "zh-Hant-TW", "zh-Hant-HK", "ja", "ko", "fr", "de", "it", "es", "pt-BR", "ru", "ar", "hi", "id", "tr", "nl", "pl", "th", "vi", "ms", "sv", "uk"}, TranslationInterval: 900,
+			TranslationBatch: 100, DescriptionPromptVersion: "description-v7", DocumentPromptVersion: "skill-document-v9",
 		},
 	}
 }
@@ -257,7 +257,11 @@ func ParseConfigFile(configFile string) (*Config, error) {
 	config := defaultConfig()
 
 	// attempt to read the given config file
-	if _, err := toml.DecodeFile(configFile, config); err != nil {
+	contents, err := os.ReadFile(configFile)
+	if err != nil {
+		return nil, err
+	}
+	if err := decodeYAML(contents, config); err != nil {
 		return nil, err
 	}
 
@@ -280,6 +284,18 @@ func ParseConfigFile(configFile string) (*Config, error) {
 	return config, nil
 }
 
+func decodeYAML(contents []byte, destination any) error {
+	var document any
+	if err := yaml.Unmarshal(contents, &document); err != nil {
+		return err
+	}
+	normalized, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(normalized, destination)
+}
+
 // envOverride uses Environment variables to override unspecified properties.
 func envOverride(config *Config) error {
 	const defaultPort = ":3000"
@@ -290,15 +306,23 @@ func envOverride(config *Config) error {
 	if strings.TrimSpace(config.Mode) == "" {
 		config.Mode = "selfhost"
 	}
+	if config.StorageType == "r2" {
+		if config.Storage == nil {
+			config.Storage = &Storage{}
+		}
+		if config.Storage.R2 == nil {
+			config.Storage.R2 = &R2Config{}
+			if err := envconfig.Process("", config); err != nil {
+				return err
+			}
+		}
+	}
 	config.SkillCacheDir, err = resolveHubCacheDir(config.SkillCacheDir)
 	if err != nil {
 		return err
 	}
 	if config.Database == nil {
 		config.Database = &DatabaseConfig{}
-	}
-	if config.Database.Type == "" {
-		config.Database.Type = "postgres"
 	}
 	if config.Database.DSN == "" {
 		config.Database.DSN = "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
@@ -318,23 +342,19 @@ func envOverride(config *Config) error {
 	if config.LLM == nil {
 		config.LLM = defaultConfig().LLM
 	}
-	seenLocales := make(map[string]bool, len(config.LLM.TranslationLocales))
-	canonicalLocales := make([]string, 0, len(config.LLM.TranslationLocales))
-	for _, locale := range config.LLM.TranslationLocales {
-		canonical, canonicalErr := presentation.CanonicalLocale(locale)
+	seenLangs := make(map[string]bool, len(config.LLM.TranslationLangs))
+	canonicalLangs := make([]string, 0, len(config.LLM.TranslationLangs))
+	for _, lang := range config.LLM.TranslationLangs {
+		canonical, canonicalErr := presentation.CanonicalLang(lang)
 		if canonicalErr != nil {
 			return canonicalErr
 		}
-		if !seenLocales[canonical] {
-			seenLocales[canonical] = true
-			canonicalLocales = append(canonicalLocales, canonical)
+		if !seenLangs[canonical] {
+			seenLangs[canonical] = true
+			canonicalLangs = append(canonicalLangs, canonical)
 		}
 	}
-	config.LLM.TranslationLocales = canonicalLocales
-	config.Database.DSN, err = resolveHubDatabaseDSN(config.Database.Type, config.Database.DSN)
-	if err != nil {
-		return err
-	}
+	config.LLM.TranslationLangs = canonicalLangs
 	if config.StorageType == "disk" {
 		if config.Storage == nil {
 			config.Storage = &Storage{}
@@ -457,20 +477,16 @@ func validateStorage(validate *validator.Validate, storageType string, config *S
 	switch storageType {
 	case "memory":
 		return nil
-	case "mongo":
-		return validate.Struct(config.Mongo)
 	case "disk":
 		return validate.Struct(config.Disk)
-	case "minio":
-		return fmt.Errorf("storage type %q is not supported by Hub v1 because it cannot guarantee conditional create semantics", storageType)
 	case "gcp":
 		return validate.Struct(config.GCP)
 	case "s3":
 		return validate.Struct(config.S3)
+	case "r2":
+		return validate.Struct(config.R2)
 	case "azureblob":
 		return validate.Struct(config.AzureBlob)
-	case "external":
-		return validate.Struct(config.External)
 	default:
 		return fmt.Errorf("storage type %q is unknown", storageType)
 	}

@@ -44,11 +44,11 @@ ENV GOROOT="/usr/local/go" \
     GO111MODULE=on
 
 COPY --from=builder /bin/skillsgo-hub /bin/skillsgo-hub
-COPY --from=builder /src/hub/config.dev.toml /config/config.toml
+COPY --from=builder /src/hub/config.dev.yaml /config/config.yaml
 COPY --from=builder /usr/local/go/bin/go /usr/local/go/bin/go
 COPY --from=builder /usr/local/go/go.env /usr/local/go/go.env
 
-RUN chmod 644 /config/config.toml
+RUN chmod 644 /config/config.yaml
 
 # Git over credential-free HTTPS is the only public source transport.
 RUN apk add --no-cache git procps tini tzdata
@@ -66,4 +66,4 @@ EXPOSE 3000
 
 ENTRYPOINT [ "/sbin/tini", "--" ]
 
-CMD ["skillsgo-hub", "-config_file=/config/config.toml"]
+CMD ["skillsgo-hub", "-config_file=/config/config.yaml"]

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on net/http and the public Cloud DTOs for deterministic test behavior.
- * [OUTPUT]: Provides an in-memory Cloud HTTP mock with observable/resettable idempotent install events and configurable rankings.
+ * [INPUT]: Depends on net/http, public Cloud DTOs, and the shared presentation-language registry for deterministic test behavior.
+ * [OUTPUT]: Provides an in-memory Cloud HTTP mock with idempotent install events plus configurable, language-validated ranking reads.
  * [POS]: Serves as the public client-test double; it deliberately contains no private Cloud persistence or ranking logic.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/skillsgo/skillsgo/protocol/cloud"
+	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 )
 
 type Mock struct {
@@ -86,6 +87,10 @@ func (mock *Mock) install(w http.ResponseWriter, request *http.Request) {
 func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	kind := cloud.RankingKind(request.PathValue("kind"))
 	page, perPage, ok := pagination(request)
+	if lang := request.URL.Query().Get(cloud.RankingLangQuery); lang != "" {
+		canonical, err := protocollocale.CanonicalSupported(lang)
+		ok = ok && err == nil && canonical == lang
+	}
 	if !kind.Valid() || !ok {
 		writeJSON(w, http.StatusBadRequest, cloud.ErrorResponse{Error: "invalid ranking request"})
 		return

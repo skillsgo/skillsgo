@@ -1086,6 +1086,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get language => 'اللغة';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'السمة';
 
   @override

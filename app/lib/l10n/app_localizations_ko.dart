@@ -1043,6 +1043,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get language => '언어';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => '테마';
 
   @override

@@ -183,9 +183,13 @@ func ParsePackageInfo(packagePath string, infoBytes []byte) (*PackageResource, e
 	return resource, nil
 }
 
-func (c *Client) PackageVersionSkill(ctx context.Context, packagePath, version, skillPath string) (protocolapi.PackageVersionSkill, error) {
+func (c *Client) PackageVersionSkill(ctx context.Context, packagePath, version, skillPath, lang string) (protocolapi.PackageVersionSkill, error) {
 	var result protocolapi.PackageVersionSkill
-	endpoint := c.versionEndpoint(packagePath, version, false) + "/skills?" + url.Values{"path": []string{skillPath}}.Encode()
+	query := url.Values{"path": []string{skillPath}}
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
+	}
+	endpoint := c.versionEndpoint(packagePath, version, false) + "/skills?" + query.Encode()
 	if err := c.getJSON(ctx, endpoint, &result); err != nil {
 		return result, err
 	}
@@ -217,10 +221,10 @@ func (c *Client) Discover(ctx context.Context, collection, search string, page, 
 	return c.DiscoverLocalized(ctx, collection, search, "", page, perPage)
 }
 
-func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, locale string, page, perPage int) (json.RawMessage, error) {
+func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, lang string, page, perPage int) (json.RawMessage, error) {
 	query := url.Values{"page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
-	if strings.TrimSpace(locale) != "" {
-		query.Set("locale", strings.TrimSpace(locale))
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
 	}
 	path := "/api/v1/skills"
 	if collection == "search" {
@@ -232,13 +236,13 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	return c.readProductJSON(ctx, path, query)
 }
 
-func (c *Client) FindLocalized(ctx context.Context, search, packagePath, locale string, exactName bool, page, perPage int) (json.RawMessage, error) {
+func (c *Client) FindLocalized(ctx context.Context, search, packagePath, lang string, exactName bool, page, perPage int) (json.RawMessage, error) {
 	query := url.Values{"q": {search}, "page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
 	if strings.TrimSpace(packagePath) != "" {
 		query.Set("packagePath", strings.TrimSpace(packagePath))
 	}
-	if strings.TrimSpace(locale) != "" {
-		query.Set("locale", strings.TrimSpace(locale))
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
 	}
 	if exactName {
 		query.Set("exactName", "true")
