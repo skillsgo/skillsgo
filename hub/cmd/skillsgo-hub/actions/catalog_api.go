@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact and metadata resolution, and request validation.
- * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, ordered batch Skill-card hydration with opportunistic Repository metadata refresh, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Repository artifact and metadata resolution, and request validation.
+ * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, language-aware ordered batch Skill-card hydration with opportunistic Repository metadata refresh, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -96,6 +96,14 @@ func registerCatalogAPIRoutes(
 func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadataReader) fiber.Handler {
 	projection := skillCardProjection{catalog: metadata, repositories: repositories}
 	return func(c fiber.Ctx) error {
+		lang := ""
+		if rawLang := strings.TrimSpace(c.Query("lang")); rawLang != "" {
+			var err error
+			lang, err = presentation.CanonicalLang(rawLang)
+			if err != nil || lang != rawLang || len(lang) > 35 {
+				return writeAPIErrorCode(c, fiber.StatusBadRequest, "invalid_lang", "lang must be a supported presentation language")
+			}
+		}
 		var request skillBatchRequest
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
@@ -114,6 +122,7 @@ func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadat
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
 		}
+		projection.LocalizePaths(c.Context(), lang, cards)
 		return writeJSON(c, fiber.StatusOK, skillBatchResponse{Skills: cards})
 	}
 }
