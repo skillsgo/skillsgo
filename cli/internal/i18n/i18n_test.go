@@ -25,5 +25,24 @@ func TestLanguageSelectionAndFallback(t *testing.T) {
 func TestEnvironmentOverride(t *testing.T) {
 	t.Setenv("SKILLSGO_LANG", "zh-CN")
 	Configure("")
-	require.Equal(t, "跳过确认", T("flag.yes"))
+	require.Equal(t, "无需提示并确认执行", T("flag.yes"))
+}
+
+func TestNeutralLocalesDoNotExpressInterfaceLanguage(t *testing.T) {
+	for _, value := range []string{"C", "C.UTF-8", "POSIX", " posix "} {
+		require.True(t, neutralLocale(value), value)
+	}
+	require.False(t, neutralLocale("en_US.UTF-8"))
+	require.False(t, neutralLocale("zh_CN.UTF-8"))
+}
+
+func TestPickUsesConfiguredLanguage(t *testing.T) {
+	Configure("zh-CN")
+	require.Equal(t, "中文", Pick("English", "中文"))
+	Configure("en-US")
+	require.Equal(t, "English", Pick("English", "中文"))
+}
+
+func TestFirstAppleLanguage(t *testing.T) {
+	require.Equal(t, "zh-Hans-CN", firstAppleLanguage("(\n    \"zh-Hans-CN\",\n    \"en-CN\"\n)\n"))
 }

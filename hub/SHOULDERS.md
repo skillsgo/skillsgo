@@ -11,7 +11,6 @@ Thank you to the following **GIANTS**:
 
 * [github.com/Azure/azure-storage-blob-go](https://godoc.org/github.com/Azure/azure-storage-blob-go)
 
-* [github.com/BurntSushi/toml](https://godoc.org/github.com/BurntSushi/toml)
 
 * [github.com/DataDog/datadog-go](https://godoc.org/github.com/DataDog/datadog-go)
 
@@ -58,8 +57,6 @@ Thank you to the following **GIANTS**:
 * [github.com/mattn/go-colorable](https://godoc.org/github.com/mattn/go-colorable)
 
 * [github.com/mattn/go-isatty](https://godoc.org/github.com/mattn/go-isatty)
-
-* [github.com/minio/minio-go](https://godoc.org/github.com/minio/minio-go)
 
 * [github.com/mitchellh/go-homedir](https://godoc.org/github.com/mitchellh/go-homedir)
 

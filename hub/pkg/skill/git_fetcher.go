@@ -34,7 +34,7 @@ import (
 // packaging the Skill contents.
 func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error) {
 	const op errors.Op = "gitFetcher.Resolve"
-	skillID, err := ParseModulePath(skillPath)
+	skillID, err := ParsePackagePath(skillPath)
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
@@ -55,11 +55,11 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 
 // DiscoverRepository synchronizes and resolves a Repository once, scans the
 // selected commit once, and prepares every valid Skill from that snapshot.
-func (g *gitFetcher) DiscoverRepository(ctx context.Context, modulePath, revision string) (*RepositorySnapshot, error) {
+func (g *gitFetcher) DiscoverRepository(ctx context.Context, packagePath, revision string) (*RepositorySnapshot, error) {
 	const op errors.Op = "gitFetcher.DiscoverRepository"
-	repository, err := ParseModulePath(modulePath)
-	if err != nil || repository.String() != modulePath {
-		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", modulePath), errors.KindBadRequest)
+	repository, err := ParsePackagePath(packagePath)
+	if err != nil || repository.String() != packagePath {
+		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", packagePath), errors.KindBadRequest)
 	}
 	release, err := g.acquireRepository(repository.String())
 	if err != nil {
@@ -90,11 +90,11 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, modulePath, revisio
 	}
 	sort.Strings(candidates)
 	snapshot := &RepositorySnapshot{
-		ModulePath: modulePath, Version: resolution.Version,
+		PackagePath: packagePath, Version: resolution.Version,
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
 		Members: make([]RepositoryMember, 0, len(candidates)),
 	}
-	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, modulePath, resolution.Version, repoDir, resolution.CommitSHA)
+	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -134,7 +134,7 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, modulePath, revisio
 		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Content: append([]byte(nil), manifestSource...), Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {
-		return nil, errors.E(op, errors.S(modulePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
+		return nil, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
 	}
 	return snapshot, nil
 }
@@ -162,7 +162,7 @@ type repositoryMetadata struct {
 
 // syncRepository creates or refreshes one persistent no-checkout repository.
 // Skills in different subdirectories of the same repository share this cache.
-func (g *gitFetcher) syncRepository(ctx context.Context, skillID ModulePath) error {
+func (g *gitFetcher) syncRepository(ctx context.Context, skillID PackagePath) error {
 	_, err, _ := g.syncs.Do(skillID.String(), func() (any, error) {
 		const op errors.Op = "gitFetcher.syncRepository"
 		started := time.Now()
@@ -336,11 +336,11 @@ func gitTransportDiagnostic(output []byte) string {
 	return diagnostic[:maxBytes] + "…"
 }
 
-func validateRepositoryNetworkTarget(ctx context.Context, modulePath, cloneURL string) error {
+func validateRepositoryNetworkTarget(ctx context.Context, packagePath, cloneURL string) error {
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS")), "true") {
 		return nil
 	}
-	host := strings.SplitN(modulePath, "/", 2)[0]
+	host := strings.SplitN(packagePath, "/", 2)[0]
 	parsed, err := url.Parse(cloneURL)
 	if err != nil {
 		return fmt.Errorf("invalid Repository clone URL: %w", err)
@@ -398,7 +398,7 @@ func enforceRepositoryDiskLimit(root string) error {
 	})
 }
 
-func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID ModulePath) error {
+func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID PackagePath) error {
 	data, err := json.MarshalIndent(repositoryMetadata{
 		Repository: skillID.String(),
 		URL:        skillID.SourceURL(),
@@ -417,7 +417,7 @@ func isGitRepository(repoDir string) bool {
 	return cmd.Run() == nil
 }
 
-func resolveGitRevision(ctx context.Context, repoDir string, skillID ModulePath, revision string) (*Resolution, error) {
+func resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	requestedRevision := revision
 	query, err := protocolversion.ParseQuery(revision)
@@ -443,7 +443,7 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID ModulePath,
 			}
 			revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
 		} else {
-			return nil, errors.E(op, "Module has no version matching Query", errors.S(skillID.String()), errors.V(requestedRevision), errors.KindNotFound)
+			return nil, errors.E(op, "Package has no version matching Query", errors.S(skillID.String()), errors.V(requestedRevision), errors.KindNotFound)
 		}
 	}
 	resolvedRevision := revision

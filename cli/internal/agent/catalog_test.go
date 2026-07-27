@@ -19,10 +19,10 @@ func TestCatalogContainsOfficialSupportedAgents(t *testing.T) {
 	require.Len(t, catalog.All(), 75)
 	codex, ok := catalog.Get("codex")
 	require.True(t, ok)
-	require.Equal(t, filepath.Join("/home/user", ".codex", "skills"), codex.UserDir)
+	require.Equal(t, filepath.Join("/home/user", ".codex", "skills"), codex.GlobalDir)
 	eve, ok := catalog.Get("eve")
 	require.True(t, ok)
-	require.Empty(t, eve.UserDir)
+	require.Empty(t, eve.GlobalDir)
 }
 
 func TestSkillDeckAgentsExposeVerifiedRoots(t *testing.T) {
@@ -32,16 +32,16 @@ func TestSkillDeckAgentsExposeVerifiedRoots(t *testing.T) {
 	for _, testCase := range []struct {
 		id                 string
 		display            string
-		userDir            string
+		globalDir          string
 		projectDir         string
 		userDiscoveryRoots []string
 	}{
 		{
-			id: "qclaw", display: "QClaw", userDir: filepath.Join(home, ".qclaw", "skills"),
+			id: "qclaw", display: "QClaw", globalDir: filepath.Join(home, ".qclaw", "skills"),
 			userDiscoveryRoots: []string{filepath.Join(home, ".qclaw", "skills")},
 		},
 		{
-			id: "workbuddy", display: "WorkBuddy", userDir: filepath.Join(home, ".workbuddy", "skills"),
+			id: "workbuddy", display: "WorkBuddy", globalDir: filepath.Join(home, ".workbuddy", "skills"),
 			projectDir: ".codebuddy/skills",
 			userDiscoveryRoots: []string{
 				filepath.Join(home, ".workbuddy", "skills"),
@@ -53,11 +53,11 @@ func TestSkillDeckAgentsExposeVerifiedRoots(t *testing.T) {
 		require.True(t, ok, testCase.id)
 		require.Equal(t, testCase.display, definition.Display)
 		require.Equal(t, testCase.projectDir, definition.ProjectDir)
-		require.Equal(t, testCase.userDir, definition.UserDir)
+		require.Equal(t, testCase.globalDir, definition.GlobalDir)
 
-		roots, supported := catalog.SkillRoots(testCase.id, ScopeUser, "")
+		roots, supported := catalog.SkillRoots(testCase.id, ScopeGlobal, "")
 		require.True(t, supported, testCase.id)
-		require.Equal(t, definition.UserDir, roots.ManagedRoot)
+		require.Equal(t, definition.GlobalDir, roots.ManagedRoot)
 		require.Equal(t, testCase.userDiscoveryRoots, roots.DiscoveryRoots)
 		require.Equal(t, DiscoveryVerified, roots.Verification)
 
@@ -84,13 +84,13 @@ func TestWorkBuddyUserRootHonorsConfigDirectoryOverrides(t *testing.T) {
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 	definition, ok := catalog.Get("workbuddy")
 	require.True(t, ok)
-	require.Equal(t, filepath.Join(workBuddyRoot, "skills"), definition.UserDir)
+	require.Equal(t, filepath.Join(workBuddyRoot, "skills"), definition.GlobalDir)
 
 	t.Setenv("WORKBUDDY_CONFIG_DIR", "")
 	catalog = NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 	definition, ok = catalog.Get("workbuddy")
 	require.True(t, ok)
-	require.Equal(t, filepath.Join(codeBuddyRoot, "skills"), definition.UserDir)
+	require.Equal(t, filepath.Join(codeBuddyRoot, "skills"), definition.GlobalDir)
 }
 
 func TestSkillDeckStandaloneAgentsAreDetectedFromTheirConfigDirectories(t *testing.T) {
@@ -117,7 +117,7 @@ func TestSkillsSHSpecialDetectionRules(t *testing.T) {
 	require.False(t, catalog.DetectInstalled("universal"))
 	openclaw, ok := catalog.Get("openclaw")
 	require.True(t, ok)
-	require.Equal(t, filepath.Join(home, ".clawdbot", "skills"), openclaw.UserDir)
+	require.Equal(t, filepath.Join(home, ".clawdbot", "skills"), openclaw.GlobalDir)
 	require.Equal(t, []string{"reviewer", "writer"}, EveSubagents(cwd))
 }
 
@@ -134,7 +134,7 @@ func TestSkillsSHUniversalVisibility(t *testing.T) {
 
 func TestCatalogAcceptsIsolatedTestAgent(t *testing.T) {
 	home := t.TempDir()
-	testAgent := Definition{ID: "test-agent", Display: "Test Agent", ProjectDir: ".test-agent/skills", UserDir: filepath.Join(home, ".test-agent", "skills"), ShowInUniversalList: true, ShowInUniversalPrompt: true}
+	testAgent := Definition{ID: "test-agent", Display: "Test Agent", ProjectDir: ".test-agent/skills", GlobalDir: filepath.Join(home, ".test-agent", "skills"), ShowInUniversalList: true, ShowInUniversalPrompt: true}
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")}, WithDefinition(testAgent))
 	got, ok := catalog.Get("test-agent")
 	require.True(t, ok)
@@ -151,7 +151,7 @@ func TestSkillRootsSeparateManagedRootFromReadOnlyDiscoveryRoots(t *testing.T) {
 	home := t.TempDir()
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 
-	codex, ok := catalog.SkillRoots("codex", ScopeUser, "")
+	codex, ok := catalog.SkillRoots("codex", ScopeGlobal, "")
 	require.True(t, ok)
 	require.Equal(t, filepath.Join(home, ".codex", "skills"), codex.ManagedRoot)
 	require.Equal(t, []string{
@@ -161,7 +161,7 @@ func TestSkillRootsSeparateManagedRootFromReadOnlyDiscoveryRoots(t *testing.T) {
 	}, codex.DiscoveryRoots)
 	require.Equal(t, DiscoveryVerified, codex.Verification)
 
-	opencode, ok := catalog.SkillRoots("opencode", ScopeUser, "")
+	opencode, ok := catalog.SkillRoots("opencode", ScopeGlobal, "")
 	require.True(t, ok)
 	require.Equal(t, filepath.Join(home, ".config", "opencode", "skills"), opencode.ManagedRoot)
 	require.Equal(t, []string{
@@ -177,7 +177,7 @@ func TestVerifiedPriorityAgentsExposeOnlyDocumentedCompatibilityRoots(t *testing
 	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 
-	cursorUser, ok := catalog.SkillRoots("cursor", ScopeUser, "")
+	cursorUser, ok := catalog.SkillRoots("cursor", ScopeGlobal, "")
 	require.True(t, ok)
 	require.Equal(t, []string{
 		filepath.Join(home, ".cursor", "skills"),
@@ -211,7 +211,7 @@ func TestVerifiedPriorityAgentsExposeOnlyDocumentedCompatibilityRoots(t *testing
 	}, openClawProject.DiscoveryRoots)
 
 	for _, id := range []string{"claude-code", "hermes-agent"} {
-		roots, supported := catalog.SkillRoots(id, ScopeUser, "")
+		roots, supported := catalog.SkillRoots(id, ScopeGlobal, "")
 		require.True(t, supported)
 		require.Equal(t, []string{roots.ManagedRoot}, roots.DiscoveryRoots, id)
 		require.Equal(t, DiscoveryVerified, roots.Verification, id)
@@ -239,8 +239,8 @@ func TestEverySupportedScopeDefaultsToDiscoveringItsManagedRoot(t *testing.T) {
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 
 	for _, definition := range catalog.All() {
-		if definition.UserDir != "" {
-			roots, ok := catalog.SkillRoots(definition.ID, ScopeUser, "")
+		if definition.GlobalDir != "" {
+			roots, ok := catalog.SkillRoots(definition.ID, ScopeGlobal, "")
 			require.True(t, ok, definition.ID)
 			require.Contains(t, roots.DiscoveryRoots, roots.ManagedRoot, definition.ID)
 			require.Contains(t, []DiscoveryVerification{DiscoveryVerified, DiscoveryUnverified}, roots.Verification, definition.ID)
@@ -259,7 +259,7 @@ func TestStatusesExposeCanonicalScopesAndResolvedHostileUserPath(t *testing.T) {
 	require.NoError(t, os.MkdirAll(base, 0o755))
 	definition := Definition{
 		ID: "hostile-agent", Display: "Hostile Agent", ProjectDir: ".hostile/skills",
-		UserDir: filepath.Join(base, "skills"),
+		GlobalDir: filepath.Join(base, "skills"),
 	}
 	catalog := NewCatalog(
 		Paths{Home: home, ConfigHome: filepath.Join(home, ".config")},
@@ -276,8 +276,8 @@ func TestStatusesExposeCanonicalScopesAndResolvedHostileUserPath(t *testing.T) {
 	require.Equal(t, "hostile-agent", status.ID)
 	require.Equal(t, "Hostile Agent", status.DisplayName)
 	require.True(t, status.Installed)
-	require.Equal(t, []Scope{ScopeProject, ScopeUser}, status.SupportedScopes)
-	require.Equal(t, definition.UserDir, status.UserTarget.Path)
-	require.False(t, status.UserTarget.Exists)
-	require.Equal(t, []string{definition.UserDir}, status.DiscoveryRoots)
+	require.Equal(t, []Scope{ScopeProject, ScopeGlobal}, status.SupportedScopes)
+	require.Equal(t, definition.GlobalDir, status.GlobalTarget.Path)
+	require.False(t, status.GlobalTarget.Exists)
+	require.Equal(t, []string{definition.GlobalDir}, status.DiscoveryRoots)
 }

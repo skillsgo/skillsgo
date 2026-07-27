@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, and request validation.
- * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, ordered batch Skill-card hydration, Module-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, ordered batch Skill-card hydration, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -33,7 +33,7 @@ type skillsResponse struct {
 }
 
 type skillBatchRequest struct {
-	Skills []skillCoordinate `json:"skills"`
+	Skills []protocolapi.SkillPathCoordinate `json:"skills"`
 }
 
 type skillCoordinate = protocolapi.SkillCoordinate
@@ -85,7 +85,7 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&request); err != nil || len(request.Skills) == 0 || len(request.Skills) > 100 {
-			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Module Path and Skill Name coordinates")
+			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Package Path and Skill Path coordinates")
 		}
 		seen := make(map[string]bool, len(request.Skills))
 		for _, coordinate := range request.Skills {
@@ -95,7 +95,7 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 			}
 			seen[key] = true
 		}
-		cards, err := projection.Hydrate(c.Context(), request.Skills)
+		cards, err := projection.HydratePaths(c.Context(), request.Skills)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
 		}
@@ -117,7 +117,7 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill coordinate")
 			}
 			seen[key] = true
-			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.ModulePath, coordinate.Name)
+			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.PackagePath, coordinate.Name)
 			if err == nil {
 				available[key] = true
 			} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -128,45 +128,45 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 		if !ok {
 			return writeInternalAPIError(c, "catalog.update_check", fiber.StatusServiceUnavailable, "resolver_unavailable", "update check unavailable", fmt.Errorf("artifact resolver does not support version listing"))
 		}
-		resolvedModules := map[string]moduleUpdateCandidates{}
+		resolvedPackages := map[string]moduleUpdateCandidates{}
 		for _, coordinate := range request.Skills {
 			key := coordinate.Key()
 			if !available[key] {
 				continue
 			}
-			if _, done := resolvedModules[coordinate.ModulePath]; done {
+			if _, done := resolvedPackages[coordinate.PackagePath]; done {
 				continue
 			}
-			candidates, resolveErr := resolveModuleUpdateCandidates(c.Context(), resolver, coordinate.ModulePath)
+			candidates, resolveErr := resolvePackageUpdateCandidates(c.Context(), resolver, coordinate.PackagePath)
 			if resolveErr != nil {
 				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusBadGateway, "resolution_failed", "update check failed", resolveErr)
 			}
-			resolvedModules[coordinate.ModulePath] = candidates
+			resolvedPackages[coordinate.PackagePath] = candidates
 		}
 		response := catalogUpdateCheckResponse{Items: make([]catalogUpdateCheckItem, 0, len(request.Skills))}
 		for _, coordinate := range request.Skills {
 			key := coordinate.Key()
 			if !available[key] {
-				response.Items = append(response.Items, catalogUpdateCheckItem{ModulePath: coordinate.ModulePath, Name: coordinate.Name, Status: "unsupported"})
+				response.Items = append(response.Items, catalogUpdateCheckItem{PackagePath: coordinate.PackagePath, Name: coordinate.Name, Status: "unsupported"})
 				continue
 			}
-			candidates := resolvedModules[coordinate.ModulePath]
+			candidates := resolvedPackages[coordinate.PackagePath]
 			latestVersion, latestOK := candidates.latest[coordinate.Name]
 			if !latestOK {
-				response.Items = append(response.Items, catalogUpdateCheckItem{ModulePath: coordinate.ModulePath, Name: coordinate.Name, Status: "unsupported"})
+				response.Items = append(response.Items, catalogUpdateCheckItem{PackagePath: coordinate.PackagePath, Name: coordinate.Name, Status: "unsupported"})
 				continue
 			}
 			response.Items = append(response.Items, catalogUpdateCheckItem{
-				ModulePath: coordinate.ModulePath, Name: coordinate.Name, LatestVersion: latestVersion, Status: "available",
+				PackagePath: coordinate.PackagePath, Name: coordinate.Name, LatestVersion: latestVersion, Status: "available",
 			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)
 	}
 }
 
-func resolveModuleUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, modulePath string) (moduleUpdateCandidates, error) {
+func resolvePackageUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, packagePath string) (moduleUpdateCandidates, error) {
 	result := moduleUpdateCandidates{latest: map[string]string{}}
-	versions, err := artifacts.List(ctx, modulePath)
+	versions, err := artifacts.List(ctx, packagePath)
 	if err != nil {
 		return result, err
 	}
@@ -174,24 +174,24 @@ func resolveModuleUpdateCandidates(ctx context.Context, artifacts updateArtifact
 	if latest == "" {
 		return result, nil
 	}
-	latestInfo, err := artifacts.Info(ctx, modulePath, latest)
+	latestInfo, err := artifacts.Info(ctx, packagePath, latest)
 	if err != nil {
 		return result, err
 	}
-	if err := collectModuleMemberVersions(latestInfo, result.latest); err != nil {
+	if err := collectPackageMemberVersions(latestInfo, result.latest); err != nil {
 		return result, err
 	}
 	return result, nil
 }
 
-func collectModuleMemberVersions(encoded []byte, target map[string]string) error {
-	var module protocolapi.ModuleInfo
-	if err := json.Unmarshal(encoded, &module); err != nil || module.ModulePath == "" || module.Version == "" {
-		return fmt.Errorf("invalid Module Info returned during update resolution")
+func collectPackageMemberVersions(encoded []byte, target map[string]string) error {
+	var module protocolapi.PackageInfo
+	if err := json.Unmarshal(encoded, &module); err != nil || module.PackagePath == "" || module.Version == "" {
+		return fmt.Errorf("invalid Package Info returned during update resolution")
 	}
 	for _, member := range module.Skills {
 		if member.Name == "" || member.Path == "" {
-			return fmt.Errorf("invalid Module Skill returned during update resolution")
+			return fmt.Errorf("invalid Package Skill returned during update resolution")
 		}
 		target[member.Name] = module.Version
 	}
@@ -208,7 +208,7 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if query == "" || len([]rune(query)) > 200 {
 			return writeAPIError(c, fiber.StatusBadRequest, "q must contain 1 to 200 characters")
 		}
-		modulePath := strings.TrimSpace(c.Query("modulePath"))
+		packagePath := strings.TrimSpace(c.Query("packagePath"))
 		exactName := false
 		if raw := c.Query("exactName"); raw != "" {
 			var err error
@@ -217,10 +217,10 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 				return writeAPIError(c, fiber.StatusBadRequest, "exactName must be a boolean")
 			}
 		}
-		if modulePath != "" {
-			coordinate := protocolapi.SkillCoordinate{ModulePath: modulePath, Name: query}
+		if packagePath != "" {
+			coordinate := protocolapi.SkillCoordinate{PackagePath: packagePath, Name: query}
 			if !coordinate.Valid() {
-				return writeAPIError(c, fiber.StatusBadRequest, "modulePath and q must form a canonical Skill coordinate")
+				return writeAPIError(c, fiber.StatusBadRequest, "packagePath and q must form a canonical Skill coordinate")
 			}
 			cards, err := (skillCardProjection{catalog: metadata}).Hydrate(c.Context(), []protocolapi.SkillCoordinate{coordinate})
 			if err != nil {
@@ -229,16 +229,16 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 			if page > 0 {
 				cards = cards[:0]
 			} else {
-				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLocale(c), cards)
+				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLang(c), cards)
 			}
 			return writeJSON(c, fiber.StatusOK, skillsResponse{Skills: cards, Pagination: pagination(page, perPage, false)})
 		}
-		locale := presentationLocale(c)
-		skills, err := metadata.FindLocalized(c.Context(), query, locale, exactName, perPage+1, page*perPage)
+		lang := presentationLang(c)
+		skills, err := metadata.FindLocalized(c.Context(), query, lang, exactName, perPage+1, page*perPage)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), metadata, locale, skills, page, perPage))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), metadata, lang, skills, page, perPage))
 	}
 }
 
@@ -250,18 +250,18 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
 			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find request")
 		}
-		locale, err := presentation.CanonicalLocale(request.Locale)
-		if err != nil || len(locale) > 35 {
-			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find locale")
+		lang, err := presentation.CanonicalLang(request.Lang)
+		if err != nil || len(lang) > 35 {
+			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find lang")
 		}
 		for index, item := range request.Queries {
 			item.Name = strings.TrimSpace(item.Name)
-			item.ModulePath = strings.TrimSpace(item.ModulePath)
+			item.PackagePath = strings.TrimSpace(item.PackagePath)
 			if item.Name == "" || len([]rune(item.Name)) > 200 {
 				return writeAPIError(c, fiber.StatusBadRequest, "Candidate queries require name containing 1 to 200 characters")
 			}
-			if item.ModulePath != "" && !(protocolapi.SkillCoordinate{ModulePath: item.ModulePath, Name: item.Name}).Valid() {
-				return writeAPIError(c, fiber.StatusBadRequest, "Candidate modulePath and name must form a canonical Skill coordinate")
+			if item.PackagePath != "" && !(protocolapi.SkillCoordinate{PackagePath: item.PackagePath, Name: item.Name}).Valid() {
+				return writeAPIError(c, fiber.StatusBadRequest, "Candidate packagePath and name must form a canonical Skill coordinate")
 			}
 			request.Queries[index] = item
 		}
@@ -269,10 +269,10 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		batchQueries := make([]catalog.FindBatchQuery, 0, len(request.Queries))
 		for index, item := range request.Queries {
 			batchQueries = append(batchQueries, catalog.FindBatchQuery{
-				ID: strconv.Itoa(index), Query: item.Name, ModulePath: item.ModulePath, ExactName: true,
+				ID: strconv.Itoa(index), Query: item.Name, PackagePath: item.PackagePath, ExactName: true,
 			})
 		}
-		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, locale, request.Limit)
+		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, lang, request.Limit)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find_batch", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
@@ -281,7 +281,7 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 			matches := make([]protocolapi.SkillCandidate, 0, len(item.Skills))
 			for _, skill := range item.Skills {
 				matches = append(matches, protocolapi.SkillCandidate{
-					ModulePath: skill.ModulePath, Version: skill.LatestVersion, Name: skill.Name,
+					PackagePath: skill.PackagePath, Version: skill.LatestVersion, Name: skill.Name,
 					Path: skill.Path, Description: skill.Description,
 				})
 			}
@@ -308,16 +308,16 @@ func pagination(page, perPage int, hasMore bool) protocolapi.Pagination {
 	return protocolapi.Pagination{Page: page, PerPage: perPage, HasMore: hasMore}
 }
 
-func validSkillCoordinate(modulePath, skillName string) bool {
-	return (protocolapi.SkillCoordinate{ModulePath: modulePath, Name: skillName}).Valid()
+func validSkillCoordinate(packagePath, skillName string) bool {
+	return (protocolapi.SkillCoordinate{PackagePath: packagePath, Name: skillName}).Valid()
 }
 
-func presentationLocale(c fiber.Ctx) string {
-	locale, err := presentation.CanonicalLocale(c.Query("locale"))
-	if err != nil || len(locale) > 35 {
+func presentationLang(c fiber.Ctx) string {
+	lang, err := presentation.CanonicalLang(c.Query("lang"))
+	if err != nil || len(lang) > 35 {
 		return ""
 	}
-	return locale
+	return lang
 }
 
 func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.SearchSkill) {
@@ -325,7 +325,7 @@ func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale
 		return
 	}
 	for index := range skills {
-		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].ModulePath+":"+skills[index].Name, locale)
+		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].PackagePath+":"+skills[index].Name, locale)
 		if err == nil && ok {
 			skills[index].Description = localized
 		}

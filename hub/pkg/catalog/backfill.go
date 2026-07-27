@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Catalog SQL/pgx persistence, UUID run identities, and caller-supplied transactional River enqueueing.
- * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, state transitions, diagnostics, status reads, and exact Module Publication checks.
- * [POS]: Serves as the Catalog business-state boundary for Module History Backfill independently of River transport tables.
+ * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, state transitions, diagnostics, status reads, and exact Package Publication checks.
+ * [POS]: Serves as the Catalog business-state boundary for Package History Backfill independently of River transport tables.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package catalog
@@ -31,7 +31,7 @@ const (
 // intentionally bounded and sanitized by the worker before persistence.
 type BackfillRun struct {
 	ID          string         `json:"runId"`
-	ModulePath  string         `json:"moduleId"`
+	PackagePath string         `json:"moduleId"`
 	Status      BackfillStatus `json:"status"`
 	StartedAt   *time.Time     `json:"startedAt,omitempty"`
 	CompletedAt *time.Time     `json:"completedAt,omitempty"`
@@ -44,18 +44,18 @@ type BackfillRun struct {
 // SubmitBackfillRun atomically creates a queued run and invokes enqueue with
 // the same PostgreSQL transaction. An existing active run is returned without
 // invoking enqueue.
-func (c *Catalog) SubmitBackfillRun(ctx context.Context, modulePath string, enqueue func(context.Context, pgx.Tx, BackfillRun) error) (BackfillRun, bool, error) {
+func (c *Catalog) SubmitBackfillRun(ctx context.Context, packagePath string, enqueue func(context.Context, pgx.Tx, BackfillRun) error) (BackfillRun, bool, error) {
 	if enqueue == nil {
 		return BackfillRun{}, false, errors.New("Backfill enqueue callback is required")
 	}
 	var result BackfillRun
 	created := false
 	err := c.WithPostgresTx(ctx, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, modulePath); err != nil {
-			return fmt.Errorf("lock Module Backfill submission: %w", err)
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, packagePath); err != nil {
+			return fmt.Errorf("lock Package Backfill submission: %w", err)
 		}
 		q := c.queries.WithTx(tx)
-		row, err := q.ActiveBackfillRun(ctx, modulePath)
+		row, err := q.ActiveBackfillRun(ctx, packagePath)
 		if err == nil {
 			result, err = decodeBackfillRun(row)
 			return err
@@ -63,12 +63,12 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, modulePath string, enqu
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-		result = newBackfillRun(modulePath)
+		result = newBackfillRun(packagePath)
 		encoded, err := json.Marshal(result.Diagnostics)
 		if err != nil {
 			return err
 		}
-		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, ModulePath: result.ModulePath, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
+		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, PackagePath: result.PackagePath, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
 			return err
 		}
 		if err := enqueue(ctx, tx, result); err != nil {
@@ -80,8 +80,8 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, modulePath string, enqu
 	return result, created, err
 }
 
-func (c *Catalog) LatestBackfillRun(ctx context.Context, modulePath string) (BackfillRun, error) {
-	row, err := c.queries.LatestBackfillRun(ctx, modulePath)
+func (c *Catalog) LatestBackfillRun(ctx context.Context, packagePath string) (BackfillRun, error) {
+	row, err := c.queries.LatestBackfillRun(ctx, packagePath)
 	if err != nil {
 		return BackfillRun{}, err
 	}
@@ -176,16 +176,16 @@ func (c *Catalog) ExpireQueuedBackfillRun(ctx context.Context, runID string) err
 	return nil
 }
 
-func (c *Catalog) ModulePublicationExists(ctx context.Context, modulePath, version string) (bool, error) {
-	_, err := c.ModulePublicationCommit(ctx, modulePath, version)
+func (c *Catalog) PackagePublicationExists(ctx context.Context, packagePath, version string) (bool, error) {
+	_, err := c.PackagePublicationCommit(ctx, packagePath, version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	return err == nil, err
 }
 
-func (c *Catalog) ModulePublicationCommit(ctx context.Context, modulePath, version string) (string, error) {
-	return c.queries.ModulePublicationCommit(ctx, catalogsqlc.ModulePublicationCommitParams{ModulePath: modulePath, Version: version})
+func (c *Catalog) PackagePublicationCommit(ctx context.Context, packagePath, version string) (string, error) {
+	return c.queries.PackagePublicationCommit(ctx, catalogsqlc.PackagePublicationCommitParams{PackagePath: packagePath, Version: version})
 }
 
 func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRun, error) {
@@ -196,20 +196,20 @@ func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRu
 	return decodeBackfillRun(row)
 }
 
-func decodeBackfillRun(row catalogsqlc.ModuleBackfillRun) (BackfillRun, error) {
+func decodeBackfillRun(row catalogsqlc.PackageBackfillRun) (BackfillRun, error) {
 	diagnostics := make([]string, 0)
 	if len(row.Diagnostics) > 0 {
 		if err := json.Unmarshal(row.Diagnostics, &diagnostics); err != nil {
 			return BackfillRun{}, fmt.Errorf("decode Backfill diagnostics: %w", err)
 		}
 	}
-	return BackfillRun{ID: row.ID, ModulePath: row.ModulePath, Status: BackfillStatus(row.Status),
+	return BackfillRun{ID: row.ID, PackagePath: row.PackagePath, Status: BackfillStatus(row.Status),
 		StartedAt: utcTimePointer(row.StartedAt), CompletedAt: utcTimePointer(row.CompletedAt), ErrorCount: int(row.ErrorCount),
 		Diagnostics: diagnostics, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}, nil
 }
 
-func newBackfillRun(modulePath string) BackfillRun {
+func newBackfillRun(packagePath string) BackfillRun {
 	now := time.Now().UTC()
-	return BackfillRun{ID: uuid.NewString(), ModulePath: modulePath, Status: BackfillQueued,
+	return BackfillRun{ID: uuid.NewString(), PackagePath: packagePath, Status: BackfillQueued,
 		Diagnostics: []string{}, CreatedAt: now, UpdatedAt: now}
 }

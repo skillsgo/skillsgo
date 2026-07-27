@@ -21,7 +21,7 @@ func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repositoryInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/fixtures.test/group/subgroup/collection/versions/v1.0.0")
 	require.Equal(t, 0, repositoryInfo.exitCode, repositoryInfo.output)
-	require.Contains(t, repositoryInfo.output, `"modulePath":"fixtures.test/group/subgroup/collection"`)
+	require.Contains(t, repositoryInfo.output, `"packagePath":"fixtures.test/group/subgroup/collection"`)
 	require.Contains(t, repositoryInfo.output, `"path":"skills/CamelCase"`)
 	require.Contains(t, repositoryInfo.output, `"name":"camel-case"`)
 	result := execCLI(t, ctx, container,
@@ -39,6 +39,6 @@ func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 
 	detail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/fixtures.test/group/subgroup/collection/versions/v1.0.0/skills?path=skills/CamelCase")
 	require.Equal(t, 0, detail.exitCode, detail.output)
-	require.Contains(t, detail.output, `"modulePath":"fixtures.test/group/subgroup/collection"`)
+	require.Contains(t, detail.output, `"packagePath":"fixtures.test/group/subgroup/collection"`)
 	require.Contains(t, detail.output, `"name":"camel-case"`)
 }

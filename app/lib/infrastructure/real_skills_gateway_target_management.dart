@@ -34,13 +34,14 @@ mixin _RealSkillsGatewayTargetManagement
         arguments.addAll(['--project', target.projectRoot]);
       }
     }
-    arguments.addAll(['--preflight', '--output', 'json']);
+    arguments.addAll(['--output', 'json']);
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
       final decoded = _decodeMachineDocument(
         command.output.stdout,
         phase: 'management-preflight',
+        schemaVersion: 2,
       );
       if (decoded['targets'] is! List ||
           decoded['summary'] is! Map<String, dynamic>) {
@@ -131,7 +132,7 @@ mixin _RealSkillsGatewayTargetManagement
     InstalledSkill skill,
     List<SkillInstallationTarget> requested,
   ) {
-    if (skill.modulePath.isEmpty ||
+    if (skill.packagePath.isEmpty ||
         requested.isEmpty ||
         requested.any((target) => target.version.isEmpty)) {
       throw const SkillsException(
@@ -168,12 +169,12 @@ mixin _RealSkillsGatewayTargetManagement
             target: planTargets[index],
             name: skill.name,
             skillId: '',
-            modulePath: skill.modulePath,
+            packagePath: skill.packagePath,
             version: bindings[index].version,
             health: bindings[index].health,
             allowedActions: const [TargetManagementAction.remove],
             stateToken:
-                'module:${skill.modulePath}:${skill.name}:${bindings[index].version}',
+                'module:${skill.packagePath}:${skill.name}:${bindings[index].version}',
             workspaceMetadataChange: true,
             affectedBindings: List.unmodifiable([
               for (
@@ -254,7 +255,7 @@ mixin _RealSkillsGatewayTargetManagement
             target: item.target,
             name: item.name,
             skillId: item.skillId,
-            modulePath: item.modulePath,
+            packagePath: item.packagePath,
             version: item.version,
             action: TargetManagementAction.remove,
             state: InstallationProgressState.started,
@@ -262,7 +263,7 @@ mixin _RealSkillsGatewayTargetManagement
         );
       }
       final arguments = <String>['remove', first.name];
-      if (first.target.scope == InstallationScope.user) {
+      if (first.target.scope == InstallationScope.global) {
         arguments.add('--global');
       } else {
         arguments.addAll(['--project', first.target.projectRoot]);
@@ -272,7 +273,7 @@ mixin _RealSkillsGatewayTargetManagement
       if (!command.succeeded) throw _commandFailure(command);
       final raw = _decodeMachineDocument(
         command.output.stdout,
-        phase: 'module-remove',
+        phase: 'package-remove',
       );
       if (raw['skills'] is! List ||
           !(raw['skills'] as List).contains(first.name)) {
@@ -286,7 +287,7 @@ mixin _RealSkillsGatewayTargetManagement
           target: item.target,
           name: item.name,
           skillId: item.skillId,
-          modulePath: item.modulePath,
+          packagePath: item.packagePath,
           version: item.version,
           action: TargetManagementAction.remove,
           outcome: TargetManagementOutcome.succeeded,
@@ -337,14 +338,12 @@ mixin _RealSkillsGatewayTargetManagement
         item.target.path,
         '--agent',
         item.target.agent,
-        '--expected-state',
-        item.stateToken,
       ]);
       if (item.target.scope == InstallationScope.project) {
         arguments.addAll(['--project', item.target.projectRoot]);
       }
     }
-    arguments.addAll(['--output', 'ndjson']);
+    arguments.addAll(['--yes', '--output', 'ndjson']);
     final expected = {
       for (final item in plan.targets) updateTargetKey(item.target): item,
     };
@@ -356,6 +355,7 @@ mixin _RealSkillsGatewayTargetManagement
         arguments,
         progressPhase: 'management-progress',
         executionPhase: 'management-execution',
+        schemaVersion: 2,
         consumeProgress: (raw) {
           if (raw['sequence'] != sequence++ ||
               raw['name'] is! String ||
@@ -399,7 +399,7 @@ mixin _RealSkillsGatewayTargetManagement
               target: target,
               name: item.name,
               skillId: item.skillId,
-              modulePath: item.modulePath,
+              packagePath: item.packagePath,
               version: item.version,
               action: item.action!,
               state: state,

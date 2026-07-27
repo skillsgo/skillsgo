@@ -234,7 +234,7 @@
   "allAgents": "すべてのエージェント",
   "allProjects": "すべてのプロジェクト",
   "specificProject": "プロジェクト",
-  "userScope": "グローバル",
+  "globalScope": "グローバル",
   "addProject": "プロジェクトの追加",
   "relocateProject": "移転する",
   "removeFromList": "リストから削除",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "チェックに失敗しました",
   "installSkill": "スキルのインストール",
   "installLocationTitle": "設置場所を設定する",
-  "userLevel": "ユーザーレベル",
+  "globalLevel": "Global",
   "projectLevel": "プロジェクトレベル",
   "projects": "プロジェクト",
   "loading": "読み込み中…",
   "repositoryParsing": "リポジトリを解析中…",
-  "userInstallSummary": "ユーザーレベルで {agents} エージェントが利用可能",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

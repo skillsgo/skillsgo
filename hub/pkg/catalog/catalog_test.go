@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with Testcontainers PostgreSQL and deterministic Skill metadata.
- * [OUTPUT]: Specifies migrations, shared native transactions, immutable Module Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,29 +28,29 @@ func openTestCatalog(t *testing.T) *Catalog {
 	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	c, err := Open(ctx, config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	c, err := Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	return c
 }
 
-func publishTestModule(t *testing.T, c *Catalog, modulePath, version, commitSHA, sum string, visibility PublicationVisibility, candidates []Skill) {
+func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSHA, sum string, visibility PublicationVisibility, candidates []Skill) {
 	t.Helper()
-	identity := ModuleVersion{
+	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "module-tree",
 		Sum: sum, ArchiveSize: 1024, CommitTime: time.Now().UTC(),
 	}
-	require.NoError(t, c.PublishModuleVersionWithVisibility(t.Context(), modulePath, identity, candidates, visibility))
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, visibility))
 }
 
 func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 	t.Helper()
-	parsed, err := skillpkg.ParseModulePath(skill.ModulePath)
-	if err != nil || parsed.String() != skill.ModulePath {
+	parsed, err := skillpkg.ParsePackagePath(skill.PackagePath)
+	if err != nil || parsed.String() != skill.PackagePath {
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("Module Path must be canonical")
+		return fmt.Errorf("Package Path must be canonical")
 	}
 	current, err := c.Skills(t.Context(), 100, 0)
 	if err != nil {
@@ -58,7 +58,7 @@ func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 	}
 	byPath := map[string]Skill{skill.Path: *skill}
 	for _, existing := range current {
-		if existing.ModulePath == skill.ModulePath && existing.Path != skill.Path {
+		if existing.PackagePath == skill.PackagePath && existing.Path != skill.Path {
 			byPath[existing.Path] = existing
 		}
 	}
@@ -74,47 +74,47 @@ func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 		item := byPath[path]
 		candidates = append(candidates, item)
 	}
-	identity := ModuleVersion{
+	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version,
 		CommitSHA: "commit-" + fmt.Sprint(now.UnixNano()), TreeSHA: "module-tree-" + fmt.Sprint(now.UnixNano()),
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: now,
 	}
-	return c.PublishModuleVersionWithVisibility(t.Context(), skill.ModulePath, identity, candidates, CurrentPublication)
+	return c.PublishPackageVersionWithVisibility(t.Context(), skill.PackagePath, identity, candidates, CurrentPublication)
 }
 
-func TestValidateModuleVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T) {
-	modulePath := "github.com/acme/skills"
+func TestValidatePackageVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T) {
+	packagePath := "github.com/acme/skills"
 	candidates := []Skill{
-		{ModulePath: modulePath, Name: "shared", Path: "one", Description: "One"},
-		{ModulePath: modulePath, Name: "shared", Path: "two", Description: "Two"},
+		{PackagePath: packagePath, Name: "shared", Path: "one", Description: "One"},
+		{PackagePath: packagePath, Name: "shared", Path: "two", Description: "Two"},
 	}
-	identity := ModuleVersion{
+	identity := PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "module-tree",
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: time.Now().UTC(),
 	}
-	require.NoError(t, ValidateModuleVersion(modulePath, identity, candidates, CurrentPublication))
+	require.NoError(t, ValidatePackageVersion(packagePath, identity, candidates, CurrentPublication))
 }
 
 func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 
-	skill := &Skill{ModulePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Route engineering questions", LatestVersion: "main"}
+	skill := &Skill{PackagePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Route engineering questions", LatestVersion: "main"}
 	require.NoError(t, upsertTestSkill(t, c, skill))
 
-	got, err := c.SkillByCoordinate(ctx, skill.ModulePath, skill.Name)
+	got, err := c.SkillByCoordinate(ctx, skill.PackagePath, skill.Name)
 	require.NoError(t, err)
 	require.Equal(t, "ask-matt", got.Name)
 
 	got.Description = "Updated router"
 	require.NoError(t, upsertTestSkill(t, c, got))
-	require.NoError(t, upsertTestSkill(t, c, &Skill{ModulePath: "github.com/acme/skills", Path: "ask-matt-plus", Name: "ask-matt-plus", Description: "Prefix match"}))
-	require.NoError(t, upsertTestSkill(t, c, &Skill{ModulePath: "github.com/acme/other", Path: "router", Name: "router", Description: "Mentions ask-matt"}))
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/skills", Path: "ask-matt-plus", Name: "ask-matt-plus", Description: "Prefix match"}))
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/other", Path: "router", Name: "router", Description: "Mentions ask-matt"}))
 	for _, query := range []string{"ask-matt", "updated", "mattpocock"} {
 		results, searchErr := c.Search(ctx, query, 10, 0)
 		require.NoError(t, searchErr)
 		require.NotEmpty(t, results, query)
-		require.Equal(t, got.ModulePath, results[0].ModulePath)
+		require.Equal(t, got.PackagePath, results[0].PackagePath)
 		require.Equal(t, got.Name, results[0].Name)
 	}
 	exact, err := c.Find(ctx, "ASK-MATT", true, 10, 0)
@@ -131,26 +131,26 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 	fixtures := []*Skill{
-		{ModulePath: "github.com/zeta/exact", Path: "needle", Name: "needle", Description: "Exact unverified"},
-		{ModulePath: "github.com/yankee/exact", Path: "needle", Name: "needle", Description: "Exact verified"},
-		{ModulePath: "github.com/acme/prefix-close", Path: "needle-kit", Name: "needle-kit", Description: "Close prefix"},
-		{ModulePath: "github.com/acme/prefix-far", Path: "needle-toolkit-extra", Name: "needle-toolkit-extra", Description: "Far prefix"},
-		{ModulePath: "github.com/acme/contains", Path: "super-needle", Name: "super-needle", Description: "Contains name"},
-		{ModulePath: "github.com/acme/needle-source", Path: "module-hit", Name: "module-hit", Description: "Module match"},
-		{ModulePath: "github.com/acme/description", Path: "description-hit", Name: "description-hit", Description: "Mentions needle only here"},
-		{ModulePath: "github.com/acme/module-target", Path: "module-exact", Name: "module-exact", Description: "Exact Module"},
-		{ModulePath: "github.com/acme/module-target-extra", Path: "module-contains", Name: "module-contains", Description: "Contains Module"},
-		{ModulePath: "github.com/acme/module-description", Path: "module-description", Name: "module-description", Description: "Mentions github.com/acme/module-target only here"},
-		{ModulePath: "github.com/acme/stable-a", Path: "z-path", Name: "stable", Description: "Stable Z"},
-		{ModulePath: "github.com/acme/stable-a", Path: "a-path", Name: "stable", Description: "Stable A"},
-		{ModulePath: "github.com/acme/stable-b", Path: "a-path", Name: "stable", Description: "Stable B"},
+		{PackagePath: "github.com/zeta/exact", Path: "needle", Name: "needle", Description: "Exact unverified"},
+		{PackagePath: "github.com/yankee/exact", Path: "needle", Name: "needle", Description: "Exact verified"},
+		{PackagePath: "github.com/acme/prefix-close", Path: "needle-kit", Name: "needle-kit", Description: "Close prefix"},
+		{PackagePath: "github.com/acme/prefix-far", Path: "needle-toolkit-extra", Name: "needle-toolkit-extra", Description: "Far prefix"},
+		{PackagePath: "github.com/acme/contains", Path: "super-needle", Name: "super-needle", Description: "Contains name"},
+		{PackagePath: "github.com/acme/needle-source", Path: "module-hit", Name: "module-hit", Description: "Package match"},
+		{PackagePath: "github.com/acme/description", Path: "description-hit", Name: "description-hit", Description: "Mentions needle only here"},
+		{PackagePath: "github.com/acme/module-target", Path: "module-exact", Name: "module-exact", Description: "Exact Package"},
+		{PackagePath: "github.com/acme/module-target-extra", Path: "module-contains", Name: "module-contains", Description: "Contains Package"},
+		{PackagePath: "github.com/acme/module-description", Path: "module-description", Name: "module-description", Description: "Mentions github.com/acme/module-target only here"},
+		{PackagePath: "github.com/acme/stable-a", Path: "z-path", Name: "stable", Description: "Stable Z"},
+		{PackagePath: "github.com/acme/stable-a", Path: "a-path", Name: "stable", Description: "Stable A"},
+		{PackagePath: "github.com/acme/stable-b", Path: "a-path", Name: "stable", Description: "Stable B"},
 	}
 	for _, fixture := range fixtures {
-		require.NoError(t, upsertTestSkill(t, c, fixture), fixture.ModulePath+":"+fixture.Path)
+		require.NoError(t, upsertTestSkill(t, c, fixture), fixture.PackagePath+":"+fixture.Path)
 	}
 
 	coordinate := func(skill SearchSkill) string {
-		return skill.ModulePath + ":" + skill.Path
+		return skill.PackagePath + ":" + skill.Path
 	}
 	find := func(query, locale string, exactName bool) []string {
 		var (
@@ -191,7 +191,7 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 			},
 		},
 		{
-			name:  "Module exact contains and description tiers",
+			name:  "Package exact contains and description tiers",
 			query: "github.com/acme/module-target",
 			expected: []string{
 				"github.com/acme/module-target:module-exact",
@@ -209,7 +209,7 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 			},
 		},
 		{
-			name:  "Module and path provide deterministic final order",
+			name:  "Package and path provide deterministic final order",
 			query: "stable",
 			expected: []string{
 				"github.com/acme/stable-a:a-path",
@@ -242,37 +242,46 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *testing.T) {
 	c := openTestCatalog(t)
 	for _, skill := range []*Skill{
-		{ModulePath: "github.com/acme/one", Path: "skills/shared", Name: "shared", Description: "Canonical one"},
-		{ModulePath: "github.com/acme/two", Path: "skills/shared", Name: "shared", Description: "Canonical two"},
-		{ModulePath: "github.com/acme/two", Path: "skills/other", Name: "other", Description: "Other"},
+		{PackagePath: "github.com/acme/one", Path: "skills/shared", Name: "shared", Description: "Canonical one"},
+		{PackagePath: "github.com/acme/two", Path: "skills/shared", Name: "shared", Description: "Canonical two"},
+		{PackagePath: "github.com/acme/two", Path: "skills/other", Name: "other", Description: "Other"},
 	} {
 		require.NoError(t, upsertTestSkill(t, c, skill))
 	}
+	candidates, err := c.TranslationCandidates(t.Context(), "zh-Hans", "prompt", 10)
+	require.NoError(t, err)
+	var oneDigest string
+	for _, candidate := range candidates {
+		if candidate.ResourceKind == LocalizedSkill && candidate.Description == "Canonical one" {
+			oneDigest = candidate.ContentDigest
+		}
+	}
+	require.NotEmpty(t, oneDigest)
 	require.NoError(t, c.UpsertLocalizedDescription(t.Context(), LocalizedDescription{
 		ResourceKind:  LocalizedSkill,
-		ResourceID:    "github.com/acme/one:shared",
-		Locale:        "zh-Hans",
+		Lang:          "zh-Hans",
+		ResultKind:    LocalizationTranslated,
 		Description:   "本地化一",
-		SourceDigest:  "digest",
+		SourceDigest:  oneDigest,
 		PromptVersion: "prompt",
 	}))
 
 	results, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{
 		{ID: "all", Query: "shared", ExactName: true},
-		{ID: "module", Query: "shared", ModulePath: "github.com/acme/two", ExactName: true},
+		{ID: "module", Query: "shared", PackagePath: "github.com/acme/two", ExactName: true},
 		{ID: "missing", Query: "missing", ExactName: true},
 	}, "zh-Hans", 10)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
 	require.Equal(t, "all", results[0].ID)
 	require.Equal(t, []string{"github.com/acme/one", "github.com/acme/two"}, []string{
-		results[0].Skills[0].ModulePath,
-		results[0].Skills[1].ModulePath,
+		results[0].Skills[0].PackagePath,
+		results[0].Skills[1].PackagePath,
 	})
 	require.Equal(t, "本地化一", results[0].Skills[0].Description)
 	require.Equal(t, "module", results[1].ID)
 	require.Len(t, results[1].Skills, 1)
-	require.Equal(t, "github.com/acme/two", results[1].Skills[0].ModulePath)
+	require.Equal(t, "github.com/acme/two", results[1].Skills[0].PackagePath)
 	require.Equal(t, "missing", results[2].ID)
 	require.Empty(t, results[2].Skills)
 }
@@ -286,7 +295,8 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 
-	skill := &Skill{ModulePath: "github.com/acme/skills", Path: "review", Name: "review", Description: "Review a change", LatestVersion: "main"}
+	documentDigest := ContentDigest([]byte("---\nname: review\ndescription: Review a change\n---\n\nReview changes.\n"))
+	skill := &Skill{PackagePath: "github.com/acme/skills", Path: "review", Name: "review", Description: "Review a change", DocumentDigest: documentDigest, LatestVersion: "main"}
 	require.NoError(t, upsertTestSkill(t, c, skill))
 	candidates, err := c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
@@ -294,7 +304,7 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.Equal(t, LocalizedSkill, candidates[0].ResourceKind)
 
 	require.NoError(t, c.UpsertLocalizedDescription(ctx, LocalizedDescription{
-		ResourceKind: LocalizedSkill, ResourceID: skillResourceID(skill.ModulePath, skill.Name), Locale: "zh-CN", Description: "审查变更",
+		ResourceKind: LocalizedSkill, Lang: "zh-CN", ResultKind: LocalizationTranslated, Description: "审查变更",
 		SourceDigest: DescriptionDigest(skill.Description), PromptVersion: "description-v1",
 	}))
 	localizedResults, err := c.SearchLocalized(ctx, "审查", "zh-CN", 10, 0)
@@ -305,6 +315,15 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, candidates)
 
+	fork := &Skill{PackagePath: "github.com/acme/forked-skills", Path: "review", Name: "review", Description: skill.Description, DocumentDigest: documentDigest, LatestVersion: "main"}
+	require.NoError(t, upsertTestSkill(t, c, fork))
+	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, candidates, "an identical description in a fork must reuse the global localization")
+	documentCandidates, err := c.DocumentTranslationCandidates(ctx, "zh-CN", 10)
+	require.NoError(t, err)
+	require.Len(t, documentCandidates, 1, "identical forked SKILL.md content must produce one global candidate")
+
 	skill.Description = "Review code changes"
 	require.NoError(t, upsertTestSkill(t, c, skill))
 	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
@@ -312,13 +331,13 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.Len(t, candidates, 1)
 }
 
-func TestModulePublicationRequiresCanonicalModulePath(t *testing.T) {
+func TestPackagePublicationRequiresCanonicalPackagePath(t *testing.T) {
 	c := openTestCatalog(t)
-	err := upsertTestSkill(t, c, &Skill{ModulePath: "github/acme/skills", Name: "acme", LatestVersion: "main"})
+	err := upsertTestSkill(t, c, &Skill{PackagePath: "github/acme/skills", Name: "acme", LatestVersion: "main"})
 	require.ErrorContains(t, err, "full host name")
 }
 
-func TestModuleVersionOwnsVersionAndMemberHistory(t *testing.T) {
+func TestPackageVersionOwnsVersionAndMemberHistory(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 	module := "github.com/acme/history"
@@ -329,16 +348,16 @@ func TestModuleVersionOwnsVersionAndMemberHistory(t *testing.T) {
 			if name == "root" {
 				path = "."
 			}
-			candidates = append(candidates, Skill{ModulePath: module, Path: path, Name: name, Description: "History fixture"})
+			candidates = append(candidates, Skill{PackagePath: module, Path: path, Name: name, Description: "History fixture"})
 		}
-		publishTestModule(t, c, module, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, candidates)
+		publishTestPackage(t, c, module, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, candidates)
 	}
 
 	publish("v1.0.0", "commit-v1", "root", "member")
 	publish("v2.0.0", "commit-v2", "root")
 	_, err := c.SkillByCoordinate(ctx, module, "member")
-	require.ErrorIs(t, err, pgx.ErrNoRows, "a Skill removed from the current Module publication must leave discovery")
-	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, module, "root"), "unchanged members still receive every Module publication version")
+	require.ErrorIs(t, err, pgx.ErrNoRows, "a Skill removed from the current Package publication must leave discovery")
+	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, module, "root"), "unchanged members still receive every Package publication version")
 	_, err = c.CurrentSkill(ctx, module, "member")
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, module, "member"))
@@ -346,7 +365,7 @@ func TestModuleVersionOwnsVersionAndMemberHistory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"root", "member"}, []string{v1Members[0].Name, v1Members[1].Name})
 
-	// A current publication selects one Module Release; members never own
+	// A current publication selects one Package Release; members never own
 	// independent latest-version pointers.
 	publish("v0.9.0", "commit-v0", "root", "member")
 	current, err := c.CurrentSkill(ctx, module, "member")
@@ -358,12 +377,12 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	ctx := t.Context()
 	c := openTestCatalog(t)
 	old := time.Now().UTC().Add(-3 * time.Hour)
-	_, err := c.pool.Exec(ctx, `INSERT INTO module_backfill_runs
-		(id, module_path, status, error_count, diagnostics, created_at, updated_at)
+	_, err := c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
+		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
 		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
 	require.NoError(t, err)
-	_, err = c.pool.Exec(ctx, `INSERT INTO module_backfill_runs
-		(id, module_path, status, error_count, diagnostics, created_at, updated_at)
+	_, err = c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
+		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
 		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
 	require.NoError(t, err)
 	expired, err := c.ExpireStaleBackfillRuns(ctx, time.Now().UTC().Add(-2*time.Hour))
@@ -386,9 +405,9 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
 }
 
-func mustPublishedVersions(t *testing.T, c *Catalog, modulePath, name string) []string {
+func mustPublishedVersions(t *testing.T, c *Catalog, packagePath, name string) []string {
 	t.Helper()
-	versions, err := c.SkillPublishedVersions(t.Context(), modulePath, name)
+	versions, err := c.SkillPublishedVersions(t.Context(), packagePath, name)
 	require.NoError(t, err)
 	return versions
 }

@@ -30,6 +30,9 @@ class RemoteDetailScreen extends ConsumerStatefulWidget {
 class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
   final detailScrollController = ScrollController();
   SkillDetail? detail;
+  SkillDetail? localizedDetail;
+  SkillDetail? sourceDetail;
+  bool showingSource = false;
   Object? error;
   bool loading = true;
   bool loadingCatalog = false;
@@ -78,6 +81,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
     final policyRequest = widget.gateway.loadRiskPolicy();
     try {
       detail = await detailRequest;
+      localizedDetail = detail;
     } catch (caught) {
       error = caught;
       if (mounted) setState(() => loading = false);
@@ -95,7 +99,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
       addedProjects = values[1] as List<AddedProject>;
       riskPolicy = values[2] as PersonalRiskPolicy;
       if (mounted) setState(() {});
-      moduleSkills = await loadModuleSkills(
+      moduleSkills = await loadPackageSkills(
         widget.gateway,
         widget.skill,
         detail!,
@@ -104,6 +108,42 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
       moduleSkills = [widget.skill];
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> showSource(bool source) async {
+    if (showingSource == source) return;
+    final cached = source ? sourceDetail : localizedDetail;
+    if (cached != null) {
+      setState(() {
+        showingSource = source;
+        detail = cached;
+      });
+      return;
+    }
+    setState(() => loading = true);
+    try {
+      final loaded = await widget.gateway.loadRemoteDetail(
+        widget.skill,
+        source: source,
+      );
+      if (!mounted) return;
+      setState(() {
+        showingSource = source;
+        detail = loaded;
+        if (source) {
+          sourceDetail = loaded;
+        } else {
+          localizedDetail = loaded;
+        }
+        loading = false;
+      });
+    } catch (caught) {
+      if (!mounted) return;
+      setState(() {
+        error = caught;
+        loading = false;
+      });
+    }
   }
 
   Future<void> install(InstallLocationMenuPresenter present) async {
@@ -164,7 +204,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
     setState(() => managingTarget = true);
     try {
       final query = LibraryEntryQuery.byCoordinate(
-        modulePath: widget.skill.modulePath,
+        packagePath: widget.skill.packagePath,
         skillName: widget.skill.name,
         targetPath: target.path,
         agent: target.agent,
@@ -186,7 +226,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
           .read(libraryProvider.notifier)
           .refreshEntry(
             LibraryEntryQuery.byCoordinate(
-              modulePath: widget.skill.modulePath,
+              packagePath: widget.skill.packagePath,
               skillName: widget.skill.name,
             ),
           );

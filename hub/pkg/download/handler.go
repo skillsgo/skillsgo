@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, and cache-control middleware.
- * [OUTPUT]: Registers the Module versions collection, revision-resolving metadata route, and immutable ZIP route under the public v1 API.
+ * [OUTPUT]: Registers the Package versions collection, revision-resolving metadata route, and immutable ZIP route under the public v1 API.
  * [POS]: Serves as the HTTP routing boundary for the Hub download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

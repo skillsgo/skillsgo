@@ -45,7 +45,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	require.NoError(t, err)
 	conf, err := config.Load("")
 	require.NoError(t, err)
-	conf.Database = &config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2}
+	conf.Database = &config.DatabaseConfig{DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2}
 	conf.StorageType = "disk"
 	conf.Storage = &config.Storage{Disk: &config.DiskConfig{RootPath: filepath.Join(t.TempDir(), "artifacts")}}
 	conf.SkillCacheDir = filepath.Join(t.TempDir(), "git-cache")
@@ -57,7 +57,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	metadata, err := catalog.Open(ctx, *conf.Database)
 	require.NoError(t, err)
 	require.NoError(t, upsertActionTestSkill(ctx, metadata, &catalog.Skill{
-		ModulePath: "gitlab.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+		PackagePath: "gitlab.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	require.NoError(t, metadata.Close())
 
@@ -73,7 +73,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	t.Cleanup(pool.Close)
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
 	require.NoError(t, err)
-	_, err = riverClient.Insert(ctx, repositorySourceMetadataRefreshArgs{ModulePath: "gitlab.com/acme/skills"}, &river.InsertOpts{MaxAttempts: 3})
+	_, err = riverClient.Insert(ctx, repositorySourceMetadataRefreshArgs{PackagePath: "gitlab.com/acme/skills"}, &river.InsertOpts{MaxAttempts: 3})
 	require.NoError(t, err)
 
 	secondApp, secondCleanup, err := App(log.NoOpLogger(), conf)

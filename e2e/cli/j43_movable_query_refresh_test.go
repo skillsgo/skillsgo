@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a mutable local Git remote, add-time Module Version Query resolution, immutable Module Version reads, released CLI installation, and strict Workspace YAML persistence.
+ * [INPUT]: Depends on a mutable local Git remote, add-time Package Version Query resolution, immutable Package Version reads, released CLI installation, and strict Workspace YAML persistence.
  * [OUTPUT]: Proves repeating a moved main-branch query resolves C2 in a separate Workspace while C1 remains immutable/downloadable, C2 Skill Markdown is directly readable, and the first Workspace stays pinned.
  * [POS]: Serves as the movable-query refresh journey across Git, Hub product resolution, root Repository Proxy, CLI, and Workspace state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

@@ -10,14 +10,18 @@ import 'package:skillsgo/l10n/app_localizations.dart';
 
 void main() {
   test('language registry owns UI and Hub locale mappings', () {
-    expect(AppLanguage.system.contentTag('zh'), 'zh-Hans');
-    expect(AppLanguage.system.contentTag('zh-Hant-TW'), 'zh-Hant');
-    expect(AppLanguage.system.contentTag('zh_HK'), 'zh-Hant');
-    expect(AppLanguage.system.contentTag('de'), 'en');
+    expect(AppLanguage.system.contentTag('zh'), 'zh-Hans-CN');
+    expect(AppLanguage.system.contentTag('zh-Hant-TW'), 'zh-Hant-TW');
+    expect(AppLanguage.system.contentTag('zh_HK'), 'zh-Hant-HK');
+    expect(AppLanguage.system.contentTag('de'), 'de');
     expect(AppLanguage.english.contentTag('zh'), 'en');
-    expect(AppLanguage.simplifiedChinese.contentTag('en'), 'zh-Hans');
-    expect(AppLanguage.traditionalChineseTaiwan.contentTag('en'), 'zh-Hant');
-    expect(AppLanguage.japanese.contentTag('en'), 'en');
+    expect(AppLanguage.simplifiedChinese.contentTag('en'), 'zh-Hans-CN');
+    expect(AppLanguage.traditionalChineseTaiwan.contentTag('en'), 'zh-Hant-TW');
+    expect(
+      AppLanguage.traditionalChineseHongKong.contentTag('en'),
+      'zh-Hant-HK',
+    );
+    expect(AppLanguage.japanese.contentTag('en'), 'ja');
     expect(AppLanguage.simplifiedChinese.nativeName, '简体中文');
     expect(AppLanguage.simplifiedChinese.explicitUiLocale, (
       languageCode: 'zh',

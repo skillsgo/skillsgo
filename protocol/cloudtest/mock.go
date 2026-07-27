@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on net/http and the public Cloud DTOs for deterministic test behavior.
- * [OUTPUT]: Provides an in-memory Cloud HTTP mock with observable/resettable idempotent install events and configurable rankings.
+ * [INPUT]: Depends on net/http, public Cloud DTOs, and the shared presentation-language registry for deterministic test behavior.
+ * [OUTPUT]: Provides an in-memory Cloud HTTP mock with idempotent install events plus configurable, language-validated ranking reads.
  * [POS]: Serves as the public client-test double; it deliberately contains no private Cloud persistence or ranking logic.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,17 +16,18 @@ import (
 
 	"github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/skillsgo/skillsgo/protocol/cloud"
+	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 )
 
 type Mock struct {
 	mu       sync.Mutex
 	events   map[string]cloud.InstallEvent
-	rankings map[cloud.RankingKind][]cloud.RankingItem
+	rankings map[cloud.RankingKind][]cloud.RankingSkill
 	handler  http.Handler
 }
 
 func NewMock() *Mock {
-	mock := &Mock{events: map[string]cloud.InstallEvent{}, rankings: map[cloud.RankingKind][]cloud.RankingItem{}}
+	mock := &Mock{events: map[string]cloud.InstallEvent{}, rankings: map[cloud.RankingKind][]cloud.RankingSkill{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST "+cloud.InstallEventsPath, mock.install)
 	mux.HandleFunc("GET "+cloud.RankingsPath+"{kind}", mock.ranking)
@@ -52,10 +53,10 @@ func (mock *Mock) ResetEvents() {
 	mock.events = map[string]cloud.InstallEvent{}
 }
 
-func (mock *Mock) SetRanking(kind cloud.RankingKind, items []cloud.RankingItem) {
+func (mock *Mock) SetRanking(kind cloud.RankingKind, items []cloud.RankingSkill) {
 	mock.mu.Lock()
 	defer mock.mu.Unlock()
-	mock.rankings[kind] = append([]cloud.RankingItem(nil), items...)
+	mock.rankings[kind] = append([]cloud.RankingSkill(nil), items...)
 }
 
 func (mock *Mock) install(w http.ResponseWriter, request *http.Request) {
@@ -86,12 +87,16 @@ func (mock *Mock) install(w http.ResponseWriter, request *http.Request) {
 func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	kind := cloud.RankingKind(request.PathValue("kind"))
 	page, perPage, ok := pagination(request)
+	if lang := request.URL.Query().Get(cloud.RankingLangQuery); lang != "" {
+		canonical, err := protocollocale.CanonicalSupported(lang)
+		ok = ok && err == nil && canonical == lang
+	}
 	if !kind.Valid() || !ok {
 		writeJSON(w, http.StatusBadRequest, cloud.ErrorResponse{Error: "invalid ranking request"})
 		return
 	}
 	mock.mu.Lock()
-	items := append([]cloud.RankingItem(nil), mock.rankings[kind]...)
+	items := append([]cloud.RankingSkill(nil), mock.rankings[kind]...)
 	mock.mu.Unlock()
 	offset := page * perPage
 	if offset > len(items) {
@@ -101,7 +106,7 @@ func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	if end > len(items) {
 		end = len(items)
 	}
-	writeJSON(w, http.StatusOK, cloud.RankingResponse{Collection: kind, Items: items[offset:end], Pagination: api.Pagination{Page: page, PerPage: perPage, HasMore: end < len(items)}})
+	writeJSON(w, http.StatusOK, cloud.RankingResponse{Skills: items[offset:end], Pagination: api.Pagination{Page: page, PerPage: perPage, HasMore: end < len(items)}})
 }
 
 func pagination(request *http.Request) (int, int, bool) {

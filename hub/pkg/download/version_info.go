@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on parsed artifact coordinates, shared Version Query validation, Protocol Info resolution, and conditional cache policy.
- * [OUTPUT]: Resolves exact or movable revisions and serves their canonical immutable Module Info JSON.
- * [POS]: Serves as the unified revision-to-Module-Info HTTP boundary in the Module distribution protocol.
+ * [OUTPUT]: Resolves exact or movable revisions and serves their canonical immutable Package Info JSON.
+ * [POS]: Serves as the unified revision-to-Package-Info HTTP boundary in the Package distribution protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -16,7 +16,7 @@ import (
 // PathVersionInfo URL.
 const PathVersionInfo = "/{repository:.+}/versions/{version}"
 
-// InfoHandler implements GET baseURL/api/v1/{modulePath}/versions/{version}.
+// InfoHandler implements GET baseURL/api/v1/{packagePath}/versions/{version}.
 func InfoHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.InfoHandler"
 	return func(c fiber.Ctx) error {

@@ -21,7 +21,7 @@ import (
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
-	testConfigFile = filepath.Join("..", "..", "config.dev.toml")
+	testConfigFile = filepath.Join("..", "..", "config.dev.yaml")
 	if err := os.Chmod(testConfigFile, 0o700); err != nil {
 		t.Fatalf("%s\n", err)
 	}

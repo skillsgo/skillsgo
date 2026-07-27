@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends only on a candidate public Skill Name string.
  * [OUTPUT]: Provides the canonical Skill Name grammar shared by manifests and Cloud coordinates.
- * [POS]: Serves as the dependency-light identity contract for Module members.
+ * [POS]: Serves as the dependency-light identity contract for Package members.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skillname
