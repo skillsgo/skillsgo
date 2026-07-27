@@ -38,8 +38,8 @@ var exampleFindCandidatesRequest = protocolapi.FindCandidatesRequest{
 		Name:        "grill-me",
 		PackagePath: examplePackagePath,
 	}},
-	Limit:  10,
-	Lang: "en",
+	Limit: 10,
+	Lang:  "en",
 }
 
 var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
