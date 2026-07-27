@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on raw Hub request paths and module path escaping rules.
- * [OUTPUT]: Extracts decoded Module Path and revision parameters from public v1 distribution paths and provides private-pattern matching.
- * [POS]: Serves as the router-independent request-path parser shared by Fiber and external storage boundaries.
+ * [OUTPUT]: Extracts decoded Package Path and revision parameters from public v1 distribution paths and provides private-pattern matching.
+ * [POS]: Serves as the router-independent request-path parser shared by Hub HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package paths

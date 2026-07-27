@@ -71,7 +71,7 @@ class _SkillCardState extends State<SkillCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           RepositoryAvatar(
-                            source: widget.skill.modulePath,
+                            source: widget.skill.packagePath,
                             imageUrl: widget.skill.imageUrl,
                           ),
                           const SizedBox(width: 10),
@@ -93,9 +93,9 @@ class _SkillCardState extends State<SkillCard> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _repositoryLabel(widget.skill.modulePath),
+                                  _repositoryLabel(widget.skill.packagePath),
                                   textDirection: contentTextDirection(
-                                    widget.skill.modulePath,
+                                    widget.skill.packagePath,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

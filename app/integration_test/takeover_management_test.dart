@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Module Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,7 +29,9 @@ void registerTakeoverManagementJourney() {
       final runtime = await JourneyRuntime.start('takeover_management');
       addTearDown(runtime.close);
       final sandbox = runtime.sandbox.path;
-      final userTarget = Directory('$sandbox/test-agent/skills/user-existing');
+      final globalTarget = Directory(
+        '$sandbox/test-agent/skills/user-existing',
+      );
       final projectRoot = Directory('$sandbox/takeover-project');
       final projectTarget = Directory(
         '${projectRoot.path}/.test-agent/skills/project-existing',
@@ -38,9 +40,9 @@ void registerTakeoverManagementJourney() {
         '---\nname: alpha\ndescription: Stable updated version of the versioned Alpha E2E fixture.\n---\n# Alpha\n\nVersion 1.1.0 fixture content.\n',
       );
       final projectSkillBytes = List<int>.from(userSkillBytes);
-      userTarget.createSync(recursive: true);
+      globalTarget.createSync(recursive: true);
       projectTarget.createSync(recursive: true);
-      File('${userTarget.path}/SKILL.md').writeAsBytesSync(userSkillBytes);
+      File('${globalTarget.path}/SKILL.md').writeAsBytesSync(userSkillBytes);
       File(
         '${projectTarget.path}/SKILL.md',
       ).writeAsBytesSync(projectSkillBytes);
@@ -91,7 +93,7 @@ void registerTakeoverManagementJourney() {
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
         File(
-          '${projectRoot.path}/.skillsgo/modules/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+          '${projectRoot.path}/.skillsgo/packages/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
         ).readAsBytesSync(),
         projectSkillBytes,
       );
@@ -120,7 +122,7 @@ void registerTakeoverManagementJourney() {
         ).readAsBytesSync(),
         userSkillBytes,
       );
-      expect(userTarget.existsSync(), isFalse);
+      expect(globalTarget.existsSync(), isFalse);
 
       await tester.tap(_railButton(_allSkillsRailLabel()));
       await _pumpUntilTakeoverCount(tester, 0);

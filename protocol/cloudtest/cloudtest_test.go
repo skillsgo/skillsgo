@@ -24,9 +24,9 @@ import (
 func TestMockConformance(t *testing.T) {
 	mock := NewMock()
 	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
-		mock.SetRanking(kind, []cloud.RankingItem{
-			{ModulePath: "github.com/acme/skills", SkillName: "demo", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 2}},
-			{ModulePath: "github.com/acme/skills", SkillName: "second", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 1}},
+		mock.SetRanking(kind, []cloud.RankingSkill{
+			{PackagePath: "github.com/acme/skills", Name: "demo", Metric: cloud.Metric{Value: 2}},
+			{PackagePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
 		})
 	}
 	VerifyHandler(t, mock.Handler())
@@ -82,9 +82,9 @@ func TestMockRejectsMalformedAndInvalidRequests(t *testing.T) {
 
 func TestMockRankingPagination(t *testing.T) {
 	mock := NewMock()
-	mock.SetRanking(cloud.RankingAllTime, []cloud.RankingItem{
-		{ModulePath: "github.com/acme/skills", SkillName: "first", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 2}},
-		{ModulePath: "github.com/acme/skills", SkillName: "second", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 1}},
+	mock.SetRanking(cloud.RankingAllTime, []cloud.RankingSkill{
+		{PackagePath: "github.com/acme/skills", Name: "first", Metric: cloud.Metric{Value: 2}},
+		{PackagePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
 	})
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
@@ -106,7 +106,7 @@ func TestMockRankingPagination(t *testing.T) {
 			t.Fatal(err)
 		}
 		response.Body.Close()
-		if len(ranking.Items) != test.want || ranking.Pagination.HasMore != test.next {
+		if len(ranking.Skills) != test.want || ranking.Pagination.HasMore != test.next {
 			t.Fatalf("query %s returned %#v", test.query, ranking)
 		}
 	}
@@ -116,7 +116,7 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", ModulePath: "github.com/acme/skills", SkillName: "skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
 	body, _ := json.Marshal(event)
 	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
 	if err != nil {
@@ -127,9 +127,25 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	if response.StatusCode != http.StatusAccepted || len(mock.Events()) != 1 {
 		t.Fatalf("event was not recorded: status=%d events=%d", response.StatusCode, len(mock.Events()))
 	}
+}
+
+func TestMockResetEventsClearsRecordedEvents(t *testing.T) {
+	mock := NewMock()
+	server := httptest.NewServer(mock.Handler())
+	defer server.Close()
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	body, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
 	mock.ResetEvents()
 	if len(mock.Events()) != 0 {
-		t.Fatalf("events were not reset: %d", len(mock.Events()))
+		t.Fatal("reset retained install events")
 	}
 }
 
@@ -189,7 +205,7 @@ func TestVerifierRejectsRankingEnvelopeMismatch(t *testing.T) {
 		writeJSON(w, http.StatusAccepted, cloud.InstallEventResponse{Accepted: attempts == 1})
 	})
 	mux.HandleFunc("GET "+cloud.RankingsPath+"{kind}", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, cloud.RankingResponse{Collection: cloud.RankingTrending, Pagination: api.Pagination{PerPage: 1}})
+		writeJSON(w, http.StatusOK, cloud.RankingResponse{Pagination: api.Pagination{PerPage: 2}})
 	})
 	defer func() {
 		if recover() == nil {
@@ -200,7 +216,7 @@ func TestVerifierRejectsRankingEnvelopeMismatch(t *testing.T) {
 }
 
 func TestVerifierRejectsExecutorFailures(t *testing.T) {
-	for name, failAt := range map[string]int{"install": 1, "ranking": 3, "invalid ranking": 6} {
+	for name, failAt := range map[string]int{"install": 1, "ranking": 3, "invalid language": 6, "invalid ranking": 7} {
 		t.Run(name, func(t *testing.T) {
 			mock := NewMock()
 			calls := 0
@@ -220,4 +236,17 @@ func TestVerifierRejectsExecutorFailures(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestVerifierRejectsInvalidRankingItem(t *testing.T) {
+	mock := NewMock()
+	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
+		mock.SetRanking(kind, []cloud.RankingSkill{{Metric: cloud.Metric{Value: 1}}})
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("invalid ranking item passed conformance")
+		}
+	}()
+	VerifyHandler(panicTestingT{}, mock.Handler())
 }

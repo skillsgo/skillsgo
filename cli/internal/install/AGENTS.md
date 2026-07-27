@@ -3,11 +3,11 @@
 
 ## Members
 
-- `scope.go`: defines User/Workspace installation scopes and validates path-safe Skill names used by takeover locks.
+- `scope.go`: defines Global/Workspace installation scopes and validates path-safe Skill names used by takeover locks.
 - `state_digest.go`: computes deterministic filesystem state tokens for External takeover/removal review binding.
 
 ## Architectural Boundary
 
-This module owns only minimal vocabulary shared by Repository and External workflows. Repository ordinary-file Module Store/Projection mutation belongs to `modulestore`; this module must not materialize Skills, create links, persist state, fetch Hub artifacts, or infer App policy.
+This module owns only minimal vocabulary shared by Repository and External workflows. Repository ordinary-file Package Store/Projection mutation belongs to `packagestore`; this module must not materialize Skills, create links, persist state, fetch Hub artifacts, or infer App policy.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

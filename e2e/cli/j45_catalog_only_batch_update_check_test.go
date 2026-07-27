@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the public SkillsGo-owned versioned Module, its immutable v1.2.0/v1.3.0 releases, Module-fresh latest resolution, and the released `updates check` CLI command.
+ * [INPUT]: Depends on the public SkillsGo-owned versioned Package, its immutable v1.2.0/v1.3.0 releases, Package-fresh latest resolution, and the released `hub check-update` CLI command.
  * [OUTPUT]: Provides black-box coverage that 80 installed entries receive one latest candidate plus the stable aggregate status through one batch.
  * [POS]: Serves as the Repository-fresh update-availability journey across the released CLI and Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,18 +18,18 @@ import (
 func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
-	const modulePath = "github.com/skillsgo/e2e-versioned-skills"
+	const packagePath = "github.com/skillsgo/e2e-versioned-skills"
 
 	seed := execCLI(t, ctx, container,
-		"info", "https://github.com/skillsgo/e2e-versioned-skills@v1.3.0", "--output", "json",
+		"show", "https://github.com/skillsgo/e2e-versioned-skills@v1.3.0", "--output", "json",
 	)
 	require.Equal(t, 0, seed.exitCode, seed.output)
 
-	arguments := []string{"updates", "check", "--output", "json"}
+	arguments := []string{"hub", "check-update", "--output", "json"}
 	for index := range 80 {
 		candidate, err := json.Marshal(map[string]any{
 			"key":        fmt.Sprintf("installed-%02d", index),
-			"modulePath": modulePath,
+			"packagePath": packagePath,
 			"name":       "alpha",
 			"versions":   []string{"v1.2.0"},
 		})

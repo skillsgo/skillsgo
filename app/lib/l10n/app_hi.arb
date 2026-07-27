@@ -234,7 +234,7 @@
   "allAgents": "सभी Agents",
   "allProjects": "सभी परियोजनाएँ",
   "specificProject": "प्रोजेक्ट",
-  "userScope": "वैश्विक",
+  "globalScope": "वैश्विक",
   "addProject": "प्रोजेक्ट जोड़ें",
   "relocateProject": "स्थानांतरित करें",
   "removeFromList": "सूची से हटाएँ",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "जाँच विफल",
   "installSkill": "Skill स्थापित करें",
   "installLocationTitle": "स्थापना स्थान निर्धारित करें",
-  "userLevel": "उपयोगकर्ता स्तर",
+  "globalLevel": "Global",
   "projectLevel": "परियोजना स्तर",
   "projects": "परियोजनाएं",
   "loading": "लोड हो रहा है...",
   "repositoryParsing": "पार्सिंग रिपॉजिटरी…",
-  "userInstallSummary": "उपयोगकर्ता स्तर पर {agents} Agents के लिए उपलब्ध है",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

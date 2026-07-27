@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway discovery contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable per-route discovery and Module-summary caches plus query-bound, race-safe, lifecycle-safe initial-load, locale reload, refresh, and pagination actions.
+ * [OUTPUT]: Provides immutable per-route discovery and Package-summary caches plus query-bound, race-safe, lifecycle-safe initial-load, locale reload, refresh, and pagination actions.
  * [POS]: Serves as the Discover journey's business-state boundary; scroll, focus, and transitions remain widget-owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,7 +27,7 @@ class DiscoverRouteState {
   });
 
   final List<SkillSummary>? results;
-  final ModuleSummary? module;
+  final PackageSummary? module;
   final Object? error;
   final Object? refreshError;
   final Object? paginationError;
@@ -41,8 +41,8 @@ class DiscoverRouteState {
   DiscoverRouteState copyWith({
     List<SkillSummary>? results,
     bool clearResults = false,
-    ModuleSummary? module,
-    bool clearModule = false,
+    PackageSummary? module,
+    bool clearPackage = false,
     Object? error,
     bool clearError = false,
     Object? refreshError,
@@ -58,7 +58,7 @@ class DiscoverRouteState {
     bool? loadingMore,
   }) => DiscoverRouteState(
     results: clearResults ? null : results ?? this.results,
-    module: clearModule ? null : module ?? this.module,
+    module: clearPackage ? null : module ?? this.module,
     error: clearError ? null : error ?? this.error,
     refreshError: clearRefreshError ? null : refreshError ?? this.refreshError,
     paginationError: clearPaginationError
@@ -147,7 +147,7 @@ class DiscoverController extends Notifier<DiscoverState> {
         clearRefreshError: true,
         clearPaginationError: true,
         clearResults: reset && !preserveResults,
-        clearModule: reset && !preserveResults,
+        clearPackage: reset && !preserveResults,
         clearNextPage: reset,
         query: requestQuery,
         generation: generation,

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers, native Fiber routing, and Huma documentation projection.
- * [OUTPUT]: Assembles health, discovery reads, unified Module Version Queries, version-scoped Skill content, typed OpenAPI documentation, immutable Module routes, and authenticated Backfill administration with shared task infrastructure.
+ * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, version-scoped Skill content, typed OpenAPI documentation, immutable Package routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -74,25 +74,22 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(&download.Opts{Storage: s, Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
-		publisher := newModulePublisher(repositoryFetcher, s, metadata)
-		registerModuleSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
-		if err := registerRepositoryPrewarmJob(taskRuntime, publisher); err != nil {
-			return fmt.Errorf("register repository prewarm task: %w", err)
-		}
-		dp = withModuleInfo(dp, metadata, publisher)
+		publisher := newPackagePublisher(repositoryFetcher, s, metadata)
+		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
+		dp = withPackageInfo(dp, metadata, publisher)
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
 		}
 		if adminEnabled {
 			if metadata.PostgresPool() == nil {
-				return fmt.Errorf("Module Backfill administration requires PostgreSQL")
+				return fmt.Errorf("Package Backfill administration requires PostgreSQL")
 			}
 			backfills := newRepositoryBackfillService(metadata, taskRuntime, lister, publisher, l)
 			if err := backfills.Register(); err != nil {
-				return fmt.Errorf("register Module Backfill task: %w", err)
+				return fmt.Errorf("register Package Backfill task: %w", err)
 			}
-			registerModuleBackfillRoutes(adminRouter, backfills)
+			registerPackageBackfillRoutes(adminRouter, backfills)
 		}
 		registerCatalogAPIRoutes(
 			r,

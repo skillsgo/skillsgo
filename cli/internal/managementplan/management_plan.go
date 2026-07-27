@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on explicit External target paths, read-only inventory, filesystem state digests, and recoverable trash.
- * [OUTPUT]: Provides state-bound External removal preflight and structured progress/results without Store, Receipt, mode, or Repair semantics.
+ * [OUTPUT]: Provides state-bound External removal planning and structured progress/results without Store, Receipt, mode, or Repair semantics.
  * [POS]: Serves as the narrow first-release target-operation domain beneath the App-facing `remove --path` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,7 +17,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/trash"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 type Action string
 type Outcome string
@@ -126,14 +126,14 @@ func DecodeTargets(values []string) ([]TargetRequest, error) {
 }
 
 func validateRequest(request TargetRequest) error {
-	if request.Scope != install.ScopeUser && request.Scope != install.ScopeProject {
+	if request.Scope != install.ScopeGlobal && request.Scope != install.ScopeProject {
 		return fmt.Errorf("unsupported scope %q", request.Scope)
 	}
 	if request.Scope == install.ScopeProject && request.ProjectRoot == "" {
 		return fmt.Errorf("projectRoot is required for project scope")
 	}
-	if request.Scope == install.ScopeUser && request.ProjectRoot != "" {
-		return fmt.Errorf("projectRoot is not valid for user scope")
+	if request.Scope == install.ScopeGlobal && request.ProjectRoot != "" {
+		return fmt.Errorf("projectRoot is not valid for Global Scope")
 	}
 	if request.Agent == "" || request.Path == "" {
 		return fmt.Errorf("agent and path are required")
@@ -163,7 +163,7 @@ func ResolvePaths(catalog *agent.Catalog, paths, agents, projects, states []stri
 	if len(states) != 0 && len(states) != len(paths) {
 		return nil, fmt.Errorf("--expected-state must be omitted or repeated once per --path")
 	}
-	report, err := inventory.Build(inventory.Options{IncludeUser: true, Projects: projects, Catalog: catalog})
+	report, err := inventory.Build(inventory.Options{IncludeGlobal: true, Projects: projects, Catalog: catalog})
 	if err != nil {
 		return nil, err
 	}

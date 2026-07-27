@@ -33,7 +33,7 @@ func TestJ28RepositoryVersionSelection(t *testing.T) {
 		{name: "latest falls back to highest prerelease", source: "https://fixtures.test/group/subgroup/prerelease@latest", wantContains: "v1.2.0-beta.2", wantNotContains: "version: latest"},
 		{name: "major prefix selects highest matching version", source: "https://fixtures.test/group/subgroup/collection@v1", wantContains: "v1.1.0", wantNotContains: "version: v1\n"},
 		{name: "comparison selects nearest matching version", source: "https://fixtures.test/group/subgroup/collection@>=v1.0.0", wantContains: "v1.0.0", wantNotContains: "version: >=v1.0.0"},
-		{name: "omitted query uses latest and falls back for untagged Module", source: "https://fixtures.test/group/subgroup/untagged", wantVersion: regexp.MustCompile(`v0\.0\.0-\d{14}-[0-9a-f]{12}`), wantNotContains: "version: latest"},
+		{name: "omitted query uses latest and falls back for untagged Package", source: "https://fixtures.test/group/subgroup/untagged", wantVersion: regexp.MustCompile(`v0\.0\.0-\d{14}-[0-9a-f]{12}`), wantNotContains: "version: latest"},
 		{name: "main after V1 selects ancestor-based pseudo-version", source: "https://fixtures.test/group/subgroup/tagged-ahead@main", wantVersion: regexp.MustCompile(`v1\.0\.1-0\.\d{14}-[0-9a-f]{12}`), wantNotContains: "version: main"},
 		{name: "slash branch resolves once to pseudo-version", source: "https://fixtures.test/group/subgroup/branchy@feature/deep", wantVersion: regexp.MustCompile(`v0\.0\.0-\d{14}-[0-9a-f]{12}`), wantNotContains: "version: feature/deep"},
 	}
@@ -44,11 +44,11 @@ func TestJ28RepositoryVersionSelection(t *testing.T) {
 			result := execCLI(t, ctx, container, "add", test.source, "--agent", "codex", "--output", "json")
 			require.Equal(t, 0, result.exitCode, result.output)
 			var resolved struct {
-				ModulePath string `json:"modulePath"`
+				PackagePath string `json:"packagePath"`
 				Version    string `json:"version"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(result.output), &resolved), result.output)
-			require.NotEmpty(t, resolved.ModulePath)
+			require.NotEmpty(t, resolved.PackagePath)
 			if test.wantContains != "" {
 				require.Contains(t, resolved.Version, test.wantContains)
 			}
@@ -57,7 +57,7 @@ func TestJ28RepositoryVersionSelection(t *testing.T) {
 			}
 			manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 			require.NoError(t, err)
-			require.Contains(t, string(manifest), resolved.ModulePath+":")
+			require.Contains(t, string(manifest), resolved.PackagePath+":")
 			require.Contains(t, string(manifest), "version: "+resolved.Version)
 			if test.wantNotContains != "" {
 				require.NotContains(t, string(manifest), test.wantNotContains)
@@ -79,7 +79,7 @@ func TestJ28RepositoryVersionSelection(t *testing.T) {
 
 	rangeRejected := execCLI(t, ctx, container, "add", "https://fixtures.test/group/subgroup/collection@^1.0.0", "--agent", "codex", "--output", "json")
 	require.NotEqual(t, 0, rangeRejected.exitCode, rangeRejected.output)
-	require.Contains(t, rangeRejected.output, "invalid Module Version Query")
+	require.Contains(t, rangeRejected.output, "invalid Package Version Query")
 }
 
 func TestJ28SkillsGoOwnedRepositoryCoversGoVersionQueries(t *testing.T) {
@@ -100,21 +100,21 @@ func TestJ28SkillsGoOwnedRepositoryCoversGoVersionQueries(t *testing.T) {
 		{">=v1.1.0", "v1.1.0"},
 	} {
 		t.Run(test.query, func(t *testing.T) {
-			result := execCLI(t, ctx, container, "info", source+"@"+test.query, "--output", "json")
+			result := execCLI(t, ctx, container, "show", source+"@"+test.query, "--output", "json")
 			require.Equal(t, 0, result.exitCode, result.output)
 			var resolved struct {
-				ModulePath string `json:"modulePath"`
+				PackagePath string `json:"packagePath"`
 				Version    string `json:"version"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(result.output), &resolved), result.output)
-			require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", resolved.ModulePath)
+			require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", resolved.PackagePath)
 			require.Equal(t, test.want, resolved.Version)
 		})
 	}
 
 	for _, query := range []string{"main", "5b3da47b37e487519afb84809bbfc3c174cee3f1"} {
 		t.Run(query, func(t *testing.T) {
-			result := execCLI(t, ctx, container, "info", source+"@"+query, "--output", "json")
+			result := execCLI(t, ctx, container, "show", source+"@"+query, "--output", "json")
 			require.Equal(t, 0, result.exitCode, result.output)
 			var resolved struct {
 				Version string `json:"version"`

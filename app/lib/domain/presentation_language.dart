@@ -183,39 +183,69 @@ extension AppLanguageContract on AppLanguage {
   String contentTag(String systemLocaleTag) => switch (this) {
     AppLanguage.system => _systemContentTag(systemLocaleTag),
     AppLanguage.english => 'en',
-    AppLanguage.simplifiedChinese => 'zh-Hans',
-    AppLanguage.traditionalChineseTaiwan ||
-    AppLanguage.traditionalChineseHongKong => 'zh-Hant',
-    AppLanguage.japanese ||
-    AppLanguage.korean ||
-    AppLanguage.french ||
-    AppLanguage.german ||
-    AppLanguage.italian ||
-    AppLanguage.spanish ||
-    AppLanguage.portugueseBrazil ||
-    AppLanguage.russian ||
-    AppLanguage.arabic ||
-    AppLanguage.hindi ||
-    AppLanguage.indonesian ||
-    AppLanguage.turkish ||
-    AppLanguage.dutch ||
-    AppLanguage.polish ||
-    AppLanguage.thai ||
-    AppLanguage.vietnamese ||
-    AppLanguage.malay ||
-    AppLanguage.swedish ||
-    AppLanguage.ukrainian => 'en',
+    AppLanguage.simplifiedChinese => 'zh-Hans-CN',
+    AppLanguage.traditionalChineseTaiwan => 'zh-Hant-TW',
+    AppLanguage.traditionalChineseHongKong => 'zh-Hant-HK',
+    AppLanguage.japanese => 'ja',
+    AppLanguage.korean => 'ko',
+    AppLanguage.french => 'fr',
+    AppLanguage.german => 'de',
+    AppLanguage.italian => 'it',
+    AppLanguage.spanish => 'es',
+    AppLanguage.portugueseBrazil => 'pt-BR',
+    AppLanguage.russian => 'ru',
+    AppLanguage.arabic => 'ar',
+    AppLanguage.hindi => 'hi',
+    AppLanguage.indonesian => 'id',
+    AppLanguage.turkish => 'tr',
+    AppLanguage.dutch => 'nl',
+    AppLanguage.polish => 'pl',
+    AppLanguage.thai => 'th',
+    AppLanguage.vietnamese => 'vi',
+    AppLanguage.malay => 'ms',
+    AppLanguage.swedish => 'sv',
+    AppLanguage.ukrainian => 'uk',
   };
 }
 
 String _systemContentTag(String localeTag) {
   final normalized = localeTag.replaceAll('_', '-').toLowerCase();
-  if (!normalized.startsWith('zh')) return 'en';
-  if (normalized.contains('hant') ||
-      normalized.endsWith('-tw') ||
-      normalized.endsWith('-hk') ||
-      normalized.endsWith('-mo')) {
-    return 'zh-Hant';
+  if (normalized.startsWith('zh')) {
+    if (normalized.contains('hant') ||
+        normalized.endsWith('-tw') ||
+        normalized.endsWith('-hk') ||
+        normalized.endsWith('-mo')) {
+      if (normalized.endsWith('-hk') || normalized.endsWith('-mo')) {
+        return 'zh-Hant-HK';
+      }
+      return 'zh-Hant-TW';
+    }
+    return 'zh-Hans-CN';
   }
-  return 'zh-Hans';
+  final language = normalized.split('-').first;
+  return const {
+        'en',
+        'ja',
+        'ko',
+        'fr',
+        'de',
+        'it',
+        'es',
+        'ru',
+        'ar',
+        'hi',
+        'id',
+        'tr',
+        'nl',
+        'pl',
+        'th',
+        'vi',
+        'ms',
+        'sv',
+        'uk',
+      }.contains(language)
+      ? language
+      : language == 'pt'
+      ? 'pt-BR'
+      : 'en';
 }

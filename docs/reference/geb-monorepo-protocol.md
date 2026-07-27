@@ -26,7 +26,7 @@ The protocol therefore uses five levels.
 | F0 | Repo Constitution | root `AGENTS.md` | Global routing, architecture, tools, language, and workflow | Top-level domain, delivery, or global workflow changes |
 | F1 | Domain Map | Domain `AGENTS.md` files | Domain boundary, workspace index, and cross-context rules | Workspace or domain responsibility changes |
 | F2 | Workspace Map | Every maintained `pubspec.yaml`, `go.mod`, or standalone `package.json` root | Runtime, public entry, commands, dependencies, and top-level structure | Entry, dependency, runtime, script, export, or delivery changes |
-| F3 | Module Map | Stable multi-file module directory | Member inventory, dependency direction, and local invariants | File membership, responsibility, or local interface changes |
+| F3 | Package Map | Stable multi-file module directory | Member inventory, dependency direction, and local invariants | File membership, responsibility, or local interface changes |
 | F4 | File Contract | Semantic file header | INPUT, OUTPUT, and POS | Dependency, surface, role, or consumer changes |
 
 F2 is always selected from the nearest build manifest, never from an assumed directory depth.
@@ -81,7 +81,7 @@ Every maintained manifest root must have a clear F2 map or be explicitly covered
 
 Adding a nested module without an F2 creates a documentation blind spot.
 
-## F3: Module Map
+## F3: Package Map
 
 Create an F3 only when a directory has stable local architecture:
 

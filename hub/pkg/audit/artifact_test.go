@@ -14,8 +14,8 @@ import (
 )
 
 func TestAnalyzeRepositoryMemberProjectsOnlySelectedMember(t *testing.T) {
-	modulePath, version := "github.com/acme/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+	packagePath, version := "github.com/acme/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root Skill.\n---\nRoot instructions."), Mode: 0o644},
 		{Path: "skills/demo/SKILL.md", Contents: []byte("---\nname: demo\ndescription: Demo Skill.\n---\nDemo instructions."), Mode: 0o644},
 		{Path: "skills/demo/scripts/run.sh", Contents: []byte("#!/bin/sh\necho demo\n"), Mode: 0o755},
@@ -23,24 +23,24 @@ func TestAnalyzeRepositoryMemberProjectsOnlySelectedMember(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	result, err := AnalyzeRepositoryMember(archive, modulePath, version, "skills/demo")
+	result, err := AnalyzeRepositoryMember(archive, packagePath, version, "skills/demo")
 	require.NoError(t, err)
 	require.Equal(t, "---\nname: demo\ndescription: Demo Skill.\n---\nDemo instructions.", result.Instructions)
 	require.Equal(t, []string{"scripts/run.sh"}, result.ExecutableFiles)
 	require.True(t, result.HasExecutableContent)
 	require.Len(t, result.Files, 2)
-	wantSum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	wantSum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, wantSum, result.Sum)
 }
 
 func TestAnalyzeRepositoryMemberRejectsMissingMemberManifest(t *testing.T) {
-	modulePath, version := "github.com/acme/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+	packagePath, version := "github.com/acme/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root Skill.\n---\nRoot."), Mode: 0o644},
 	})
 	require.NoError(t, err)
 
-	_, err = AnalyzeRepositoryMember(archive, modulePath, version, "skills/missing")
+	_, err = AnalyzeRepositoryMember(archive, packagePath, version, "skills/missing")
 	require.ErrorContains(t, err, "artifact does not contain SKILL.md")
 }

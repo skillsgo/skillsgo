@@ -1,8 +1,7 @@
 # [INPUT]: Depends on the repository Go workspace, Hub development services, and container build definitions.
-# [OUTPUT]: Provides the local Hub development, unit-test, and integration-test service topology, with PostgreSQL exposed on the SkillsGo-specific host port 55432.
+# [OUTPUT]: Provides the local Hub development, unit-test, and integration-test topology, including PostgreSQL plus S3, Azure Blob, and GCS test services.
 # [POS]: Serves as the Docker Compose entry point for the Hub workspace and its supporting services.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-version: '3'
 services:
   postgres:
     image: postgres:18-alpine
@@ -27,15 +26,12 @@ services:
       args:
         GOLANG_VERSION: "1.26.2"
     environment:
-      - SKILLSGO_HUB_MONGO_STORAGE_URL=mongodb://mongo:27017
-      - TIMEOUT=20 # in case the mongo dependency takes longer to start up
-      - SKILLSGO_HUB_STORAGE_TYPE=mongo
+      - SKILLSGO_HUB_STORAGE_TYPE=disk
       - SKILLSGO_HUB_TRACE_EXPORTER=otlp
       - SKILLSGO_HUB_TRACE_EXPORTER_URL=http://jaeger:4317
     ports:
       - 3000:3000
     depends_on:
-      - mongo
       - jaeger
   testunit:
     build:
@@ -46,13 +42,25 @@ services:
     command: ["./scripts/test_unit.sh"]
     environment:
       - SKILLSGO_HUB_ENVIRONMENT=test
-      - SKILLSGO_HUB_MINIO_ENDPOINT=http://minio:9000
-      - SKILLSGO_HUB_MONGO_STORAGE_URL=mongodb://mongo:27017
-      - TIMEOUT=20 # in case the mongo dependency takes longer to start up
-      - SKILLSGO_HUB_STORAGE_TYPE=mongo
+      - SKILLSGO_TEST_S3_ENDPOINT=http://localstack:4566
+      - SKILLSGO_TEST_S3_ACCESS_KEY_ID=test
+      - SKILLSGO_TEST_S3_SECRET_ACCESS_KEY=test
+      - SKILLSGO_TEST_S3_BUCKET_NAME=skillsgo-storage-compliance
+      - SKILLSGO_TEST_S3_REGION=us-east-1
+      - SKILLSGO_TEST_S3_FORCE_PATH_STYLE=true
+      - SKILLSGO_TEST_S3_CREATE_BUCKET=true
+      - SKILLSGO_TEST_AZURE_BLOB_ENDPOINT=http://azurite:10000/devstoreaccount1
+      - SKILLSGO_TEST_AZURE_ACCOUNT_NAME=devstoreaccount1
+      - SKILLSGO_TEST_AZURE_ACCOUNT_KEY=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+      - STORAGE_EMULATOR_HOST=http://fake-gcs-server:4443
+      - GCS_PROJECT_ID=skillsgo-test
     depends_on:
-      - mongo
-      - minio
+      azurite:
+        condition: service_started
+      fake-gcs-server:
+        condition: service_started
+      localstack:
+        condition: service_healthy
   teste2e:
     build:
       context: .
@@ -61,23 +69,28 @@ services:
         GOLANG_VERSION: "1.26.2"
     command: ["./scripts/test_e2e.sh"]
   azurite:
-    image: arafato/azurite:2.6.5
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--disableProductStyleUrl"]
     ports:
-      - 10000:10000
+      - "10000:10000"
+  fake-gcs-server:
+    image: fsouza/fake-gcs-server:1.54.0
+    command: ["-scheme", "http", "-port", "4443", "-public-host", "fake-gcs-server:4443"]
+    ports:
+      - "4443:4443"
+  # Pinned to the final release of the archived Apache-2.0 repository.
+  # LocalStack is test infrastructure only; production S3 and R2 use real endpoints.
+  localstack:
+    image: localstack/localstack:4.14.0
     environment:
-      executable: blob
-  mongo:
-    image: mongo:3.7.9-jessie
+      SERVICES: s3
     ports:
-      - 27017:27017
-  minio:
-    image: minio/minio:latest
-    command: server /data
-    ports:
-      - "9001:9000"
-    environment:
-      MINIO_ACCESS_KEY: minio
-      MINIO_SECRET_KEY: minio123
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
   jaeger:
     environment:
       - COLLECTOR_ZIPKIN_HTTP_PORT=9441

@@ -35,7 +35,9 @@
 - `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable Target Management execution, progress, result, and error state through an auto-disposed Riverpod family.
 - `update_operation_controller.dart`: owns immutable per-Skill Update execution, progress, result, error, and failed-target retry state through Riverpod.
-- `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.
+- `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, one-WebView-per-Mermaid-block composition with native/source fallback, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.
+- `mermaid_webview_diagram.dart`: owns the self-sizing, theme-aware official Mermaid.js 11.16.0 WebView bridge used once per Mermaid block.
+- `mermaid/`: vendors and evolves the MIT-licensed `flutter_mermaid` 0.1.0 pure-Dart parser, layout, painter, and widget implementation against the pinned Mermaid 11.16.0 compatibility baseline.
 - `stacked_toast.dart`: vendors Portal Labs' stacked spring interaction and adapts it into compact, theme-aware, lightweight transient operation feedback.
 - `subscription_segmented_switch.dart`: vendors the Portal Labs Subscription Pricing Picker period toggle as a controlled, HugeIcons-based two-option Library filter.
 

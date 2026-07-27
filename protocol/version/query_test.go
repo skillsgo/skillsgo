@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Exercises Go-compatible immutable, prefix, comparison, latest, revision, and hostile Module Version Query spellings.
+ * [INPUT]: Exercises Go-compatible immutable, prefix, comparison, latest, revision, and hostile Package Version Query spellings.
  * [OUTPUT]: Specifies the shared Go-aligned add-time Version Query grammar and movable classification.
  * [POS]: Serves as the executable Selector contract shared by CLI parsing and Hub resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -43,11 +43,14 @@ func TestParseQuery(t *testing.T) {
 }
 
 func TestParseQueryRejectsUnsupportedAndHostileRefs(t *testing.T) {
-	for _, value := range []string{"release", "head", "upgrade", "patch", "none", "v1.2.3+meta", "v01", "v1.02", "v1.2.3.4", "v1.x", "^1.2.3", ">=v1.2", "feature//x", "../main", "refs/heads/x.lock", "-main", "main~1", "main@{1}", "main branch", "main\nbranch", "abc123", "abcdef"} {
+	for _, value := range []string{"release", "head", "upgrade", "patch", "none", "v01", "v1.02", "v1.2.3+meta", "v1.2.3.4", "^1.2.3", ">=v1.2", "feature//x", "../main", "refs/heads/x.lock", "-main", "/main", "main/", "main.", "main~1", "main@{1}", "main branch", "abc123", "abcdef", "abcdef1234567890abcdef1234567890abcdef123"} {
 		_, err := ParseQuery(value)
 		require.Error(t, err, value)
 	}
-	if isAllHex("") {
-		t.Fatal("empty revision was classified as hexadecimal")
-	}
+}
+
+func TestQueryGrammarHelperBoundaries(t *testing.T) {
+	require.False(t, isSemanticPrefix("v"))
+	require.False(t, isAllHex(""))
+	require.Error(t, validateGitBranch("main\x00branch"))
 }

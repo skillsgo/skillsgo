@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable revisions.
- * [OUTPUT]: Specifies public Module Version metadata resolution, immutable ZIP enforcement, removal of legacy Proxy paths, HTTP method boundaries, external delivery, redirect behavior, and conditional cache policy.
+ * [OUTPUT]: Specifies public Package Version metadata resolution, immutable ZIP enforcement, removal of legacy Proxy paths, HTTP method boundaries, external delivery, redirect behavior, and conditional cache policy.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -30,11 +30,11 @@ func TestArtifactProtocolIsServedUnderV1API(t *testing.T) {
 		t.Fatal(err)
 	}
 	if response.StatusCode != http.StatusOK {
-		t.Fatalf("v1 Module distribution route returned %d, want 200", response.StatusCode)
+		t.Fatalf("v1 Package distribution route returned %d, want 200", response.StatusCode)
 	}
 }
 
-func TestModuleVersionsAreServedAsJSON(t *testing.T) {
+func TestPackageVersionsAreServedAsJSON(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	request, err := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/versions", nil)
@@ -54,7 +54,7 @@ func TestModuleVersionsAreServedAsJSON(t *testing.T) {
 	}
 }
 
-func TestRemovedModNamespaceIsNotInterpretedAsModulePath(t *testing.T) {
+func TestRemovedModNamespaceIsNotInterpretedAsPackagePath(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	request, err := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)

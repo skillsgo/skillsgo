@@ -8,7 +8,7 @@ part of '../fake_skills_gateway.dart';
 
 mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   @override
-  Future<List<InstallationExecution>> installModuleTargets(
+  Future<List<InstallationExecution>> installPackageTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {
     bool confirmRisk = false,
@@ -59,7 +59,7 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
               scope: selection.scope,
               projectRoot: selection.projectRoot,
               agent: selection.agent,
-              path: selection.scope == InstallationScope.user
+              path: selection.scope == InstallationScope.global
                   ? '/Users/test/.${selection.agent}/skills/${skill.installName}'
                   : '${selection.projectRoot}/.agents/skills/${skill.installName}',
             ),
@@ -90,7 +90,7 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
     if (entries != null && succeeded > 0) {
       final index = entries.indexWhere(
         (entry) =>
-            entry.modulePath == skill.modulePath && entry.name == skill.name,
+            entry.packagePath == skill.packagePath && entry.name == skill.name,
       );
       if (index >= 0) {
         final existing = entries[index];
@@ -120,7 +120,7 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
       }
     }
     return InstallationExecution(
-      modulePath: skill.modulePath,
+      packagePath: skill.packagePath,
       skillName: skill.name,
       version: immutableVersion,
       name: skill.installName,
