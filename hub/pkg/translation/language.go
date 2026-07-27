@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Goldmark paragraph AST nodes, Lingua low-accuracy multilingual detection, and a target BCP 47 locale.
- * [OUTPUT]: Provides one reusable source-language analysis and conservative per-target translation decisions.
+ * [OUTPUT]: Provides one reusable source-language analysis with a dominant source label and conservative per-target translation decisions.
  * [POS]: Serves as the deterministic language gate before description and document LLM translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,9 +22,10 @@ import (
 )
 
 type LanguageAnalysis struct {
-	ParagraphText string
-	Languages     []string
-	HasParagraphs bool
+	ParagraphText   string
+	Languages       []string
+	PrimaryLanguage string
+	HasParagraphs   bool
 }
 
 type LanguageAnalyzer struct {
@@ -98,6 +99,7 @@ func (a *LanguageAnalyzer) analyzeMarkdown(source []byte) LanguageAnalysis {
 		return analysis
 	}
 	seen := map[string]bool{}
+	weights := map[string]int{}
 	for _, result := range a.detector.DetectMultipleLanguagesOf(analysis.ParagraphText) {
 		language := strings.ToLower(result.Language().IsoCode639_1().String())
 		if language == "zh" {
@@ -106,6 +108,12 @@ func (a *LanguageAnalyzer) analyzeMarkdown(source []byte) LanguageAnalysis {
 		if language != "" && !seen[language] {
 			seen[language] = true
 			analysis.Languages = append(analysis.Languages, language)
+		}
+		weights[language] += result.EndIndex() - result.StartIndex()
+	}
+	for language, weight := range weights {
+		if analysis.PrimaryLanguage == "" || weight > weights[analysis.PrimaryLanguage] {
+			analysis.PrimaryLanguage = language
 		}
 	}
 	return analysis

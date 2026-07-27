@@ -1017,6 +1017,50 @@ class AppLocalizationsZh extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => '已翻译';
+
+  @override
+  String translatedFrom(String language) {
+    return '翻译自$language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': '英语',
+      'zhHans': '简体中文',
+      'zhHant': '繁体中文',
+      'ja': '日语',
+      'ko': '韩语',
+      'fr': '法语',
+      'de': '德语',
+      'it': '意大利语',
+      'es': '西班牙语',
+      'pt': '葡萄牙语',
+      'ru': '俄语',
+      'ar': '阿拉伯语',
+      'hi': '印地语',
+      'id': '印度尼西亚语',
+      'tr': '土耳其语',
+      'nl': '荷兰语',
+      'pl': '波兰语',
+      'th': '泰语',
+      'vi': '越南语',
+      'ms': '马来语',
+      'sv': '瑞典语',
+      'uk': '乌克兰语',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => '显示原文';
+
+  @override
+  String get showTranslation => '显示翻译';
+
+  @override
   String get personalizationTheme => '主题';
 
   @override
@@ -2806,6 +2850,50 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get language => '語言';
+
+  @override
+  String get translatedContent => '已翻譯';
+
+  @override
+  String translatedFrom(String language) {
+    return '翻譯自$language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': '英文',
+      'zhHans': '簡體中文',
+      'zhHant': '繁體中文',
+      'ja': '日文',
+      'ko': '韓文',
+      'fr': '法文',
+      'de': '德文',
+      'it': '意大利文',
+      'es': '西班牙文',
+      'pt': '葡萄牙文',
+      'ru': '俄文',
+      'ar': '阿拉伯文',
+      'hi': '印地文',
+      'id': '印尼文',
+      'tr': '土耳其文',
+      'nl': '荷蘭文',
+      'pl': '波蘭文',
+      'th': '泰文',
+      'vi': '越南文',
+      'ms': '馬來文',
+      'sv': '瑞典文',
+      'uk': '烏克蘭文',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => '顯示原文';
+
+  @override
+  String get showTranslation => '顯示翻譯';
 
   @override
   String get personalizationTheme => '主題';
@@ -4598,6 +4686,50 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get language => '語言';
+
+  @override
+  String get translatedContent => '已翻譯';
+
+  @override
+  String translatedFrom(String language) {
+    return '翻譯自$language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': '英文',
+      'zhHans': '簡體中文',
+      'zhHant': '繁體中文',
+      'ja': '日文',
+      'ko': '韓文',
+      'fr': '法文',
+      'de': '德文',
+      'it': '義大利文',
+      'es': '西班牙文',
+      'pt': '葡萄牙文',
+      'ru': '俄文',
+      'ar': '阿拉伯文',
+      'hi': '印地文',
+      'id': '印尼文',
+      'tr': '土耳其文',
+      'nl': '荷蘭文',
+      'pl': '波蘭文',
+      'th': '泰文',
+      'vi': '越南文',
+      'ms': '馬來文',
+      'sv': '瑞典文',
+      'uk': '烏克蘭文',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => '顯示原文';
+
+  @override
+  String get showTranslation => '顯示翻譯';
 
   @override
   String get personalizationTheme => '主題';

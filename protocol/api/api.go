@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Package Info, immutable Package Version Skill content, name-query and exact-path Skill coordinates, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Package Info, immutable Package Version Skill content with translation provenance, name-query and exact-path Skill coordinates, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,14 +40,16 @@ type PackageVersionsResponse struct {
 	Versions []string `json:"versions"`
 }
 type PackageVersionSkill struct {
-	PackagePath string    `json:"packagePath"`
-	Version     string    `json:"version"`
-	Time        time.Time `json:"time"`
-	ArchiveSize int64     `json:"archiveSize"`
-	Name        string    `json:"name"`
-	Path        string    `json:"path"`
-	Description string    `json:"description"`
-	Content     string    `json:"content"`
+	PackagePath    string    `json:"packagePath"`
+	Version        string    `json:"version"`
+	Time           time.Time `json:"time"`
+	ArchiveSize    int64     `json:"archiveSize"`
+	Name           string    `json:"name"`
+	Path           string    `json:"path"`
+	Description    string    `json:"description"`
+	Content        string    `json:"content"`
+	SourceLanguage string    `json:"sourceLanguage"`
+	Translated     bool      `json:"translated"`
 }
 type SkillCoordinate struct {
 	PackagePath string `json:"packagePath"`

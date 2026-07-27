@@ -17,6 +17,7 @@ func TestLanguageAnalyzerUsesOnlyParagraphProse(t *testing.T) {
 	require.True(t, analysis.HasParagraphs)
 	require.Equal(t, "日本語の説明です。", analysis.ParagraphText)
 	require.Contains(t, analysis.Languages, "ja")
+	require.Equal(t, "ja", analysis.PrimaryLanguage)
 	require.False(t, analysis.RequiresTranslation("ja"))
 	require.True(t, analysis.RequiresTranslation("en"))
 }

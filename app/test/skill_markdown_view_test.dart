@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses the SkillsGo seeded Material themes, official Mermaid WebView bridge with native test fallback, vendored native Mermaid widgets, and centralized SkillMarkdownView.
- * [OUTPUT]: Specifies semantic Markdown styling, selectable rendering, Mermaid block rendering, and unsupported-diagram fallback.
+ * [INPUT]: Uses the SkillsGo seeded Material themes, shared official Mermaid WebView bridge, retained native Mermaid widgets, and centralized SkillMarkdownView.
+ * [OUTPUT]: Specifies semantic Markdown styling, selectable rendering, WebView-only Mermaid block composition, and retained native renderer behavior in isolation.
  * [POS]: Serves as the focused contract suite for the App's unified Skill document reader.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/ui/brand.dart';
 import 'package:skillsgo/ui/mermaid/flutter_mermaid.dart';
+import 'package:skillsgo/ui/mermaid_webview_diagram.dart';
 import 'package:skillsgo/ui/skill_markdown_view.dart';
 
 void main() {
@@ -81,7 +82,7 @@ void main() {}
     });
   }
 
-  testWidgets('renders a Mermaid fenced flowchart as a native diagram', (
+  testWidgets('routes a Mermaid fenced flowchart to the WebView renderer', (
     tester,
   ) async {
     // Reduced from the Mermaid flowchart documentation's basic graph example.
@@ -110,13 +111,14 @@ After
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(MermaidDiagram), findsOneWidget);
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
+    expect(find.byType(MermaidDiagram), findsNothing);
     expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
     expect(find.text('Before'), findsOneWidget);
     expect(find.text('After'), findsOneWidget);
   });
 
-  testWidgets('preserves unsupported Mermaid source as selectable code', (
+  testWidgets('routes unsupported Mermaid source to the WebView renderer', (
     tester,
   ) async {
     // Invalid Mermaid remains visible so users never lose authored source.
@@ -135,16 +137,11 @@ not-a-mermaid-diagram
     await tester.pumpAndSettle();
 
     expect(find.byType(MermaidDiagram), findsNothing);
-    expect(find.byKey(const Key('mermaid-source-fallback')), findsOneWidget);
-    expect(
-      find.text('not-a-mermaid-diagram\n  unsupported source'),
-      findsOneWidget,
-    );
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
+    expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
   });
 
-  testWidgets('renders packet fields with the dedicated native painter', (
-    tester,
-  ) async {
+  testWidgets('routes packet diagrams to the WebView renderer', (tester) async {
     const source = '''
 ```mermaid
 packet-beta
@@ -165,16 +162,11 @@ packet-beta
     await tester.pumpAndSettle();
 
     expect(find.byType(PacketPainter), findsNothing);
-    final paint = tester.widget<CustomPaint>(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter is PacketPainter,
-      ),
-    );
-    expect(paint.painter, isA<PacketPainter>());
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
     expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
   });
 
-  testWidgets('renders normalized points with the Quadrant native painter', (
+  testWidgets('routes quadrant diagrams to the WebView renderer', (
     tester,
   ) async {
     const source = '''
@@ -198,17 +190,11 @@ quadrantChart
     );
     await tester.pumpAndSettle();
 
-    final paint = tester.widget<CustomPaint>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is CustomPaint && widget.painter is QuadrantChartPainter,
-      ),
-    );
-    expect(paint.painter, isA<QuadrantChartPainter>());
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
     expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
   });
 
-  testWidgets('renders weighted hierarchy with the Treemap native painter', (
+  testWidgets('routes treemap diagrams to the WebView renderer', (
     tester,
   ) async {
     const source = '''
@@ -231,18 +217,11 @@ treemap-beta
     );
     await tester.pumpAndSettle();
 
-    final paint = tester.widget<CustomPaint>(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter is TreemapPainter,
-      ),
-    );
-    expect(paint.painter, isA<TreemapPainter>());
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
     expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
   });
 
-  testWidgets('renders sets and intersections with the Venn native painter', (
-    tester,
-  ) async {
+  testWidgets('routes venn diagrams to the WebView renderer', (tester) async {
     const source = '''
 ```mermaid
 venn-beta
@@ -263,12 +242,7 @@ venn-beta
     );
     await tester.pumpAndSettle();
 
-    final paint = tester.widget<CustomPaint>(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter is VennPainter,
-      ),
-    );
-    expect(paint.painter, isA<VennPainter>());
+    expect(find.byType(MermaidWebViewDiagram), findsOneWidget);
     expect(find.byKey(const Key('mermaid-source-fallback')), findsNothing);
   });
 

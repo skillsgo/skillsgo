@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses representative complete and optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, Find wire documents, Package-level Sum/archive identity, Skill PackagePath/path membership, field casing, omission behavior, and lossless JSON round trips.
+ * [OUTPUT]: Specifies risk validation, Find wire documents, Package-level Sum/archive identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -63,6 +63,19 @@ func TestPackageVersionsJSONContract(t *testing.T) {
 	}
 	if string(document) != `{"versions":["v1.0.0","v1.1.0"]}` {
 		t.Fatalf("unexpected Package Versions response %s", document)
+	}
+}
+
+func TestPackageVersionSkillTranslationProvenanceJSONContract(t *testing.T) {
+	document, err := json.Marshal(PackageVersionSkill{SourceLanguage: "en", Translated: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(document)
+	for _, field := range []string{`"sourceLanguage":"en"`, `"translated":true`} {
+		if !strings.Contains(text, field) {
+			t.Fatalf("missing translation provenance %s in %s", field, text)
+		}
 	}
 }
 

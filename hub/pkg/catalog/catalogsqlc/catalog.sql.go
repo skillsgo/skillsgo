@@ -86,7 +86,7 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 
 const currentSkill = `-- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -110,6 +110,7 @@ type CurrentSkillRow struct {
 	Description       string    `json:"description"`
 	DescriptionDigest string    `json:"description_digest"`
 	DocumentDigest    string    `json:"document_digest"`
+	SourceLanguage    string    `json:"source_language"`
 }
 
 func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error) {
@@ -125,6 +126,7 @@ func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (Cur
 		&i.Description,
 		&i.DescriptionDigest,
 		&i.DocumentDigest,
+		&i.SourceLanguage,
 	)
 	return i, err
 }
@@ -498,8 +500,8 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 
 const insertSkill = `-- name: InsertSkill :exec
 INSERT INTO skills (
-    version_id, name, path, description, description_digest, document_digest
-) VALUES ($1,$2,$3,$4,$5,$6)
+    version_id, name, path, description, description_digest, document_digest, source_language
+) VALUES ($1,$2,$3,$4,$5,$6,$7)
 `
 
 type InsertSkillParams struct {
@@ -509,6 +511,7 @@ type InsertSkillParams struct {
 	Description       string `json:"description"`
 	DescriptionDigest string `json:"description_digest"`
 	DocumentDigest    string `json:"document_digest"`
+	SourceLanguage    string `json:"source_language"`
 }
 
 func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error {
@@ -519,6 +522,7 @@ func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error 
 		arg.Description,
 		arg.DescriptionDigest,
 		arg.DocumentDigest,
+		arg.SourceLanguage,
 	)
 	return err
 }
@@ -1051,7 +1055,7 @@ func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublished
 
 const skills = `-- name: Skills :many
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -1074,6 +1078,7 @@ type SkillsRow struct {
 	Description       string    `json:"description"`
 	DescriptionDigest string    `json:"description_digest"`
 	DocumentDigest    string    `json:"document_digest"`
+	SourceLanguage    string    `json:"source_language"`
 }
 
 func (q *Queries) Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error) {
@@ -1095,6 +1100,7 @@ func (q *Queries) Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, er
 			&i.Description,
 			&i.DescriptionDigest,
 			&i.DocumentDigest,
+			&i.SourceLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -1121,7 +1127,7 @@ FROM requested input
 JOIN packages m ON m.path=input.package_path
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN LATERAL (
-    SELECT candidate.id, candidate.version_id, candidate.name, candidate.path, candidate.description, candidate.description_digest, candidate.document_digest
+    SELECT candidate.id, candidate.version_id, candidate.name, candidate.path, candidate.description, candidate.description_digest, candidate.document_digest, candidate.source_language
     FROM skills candidate
     WHERE candidate.version_id=mv.id AND candidate.name=input.name
     ORDER BY candidate.path

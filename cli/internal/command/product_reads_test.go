@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses an HTTP test Hub and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
- * [OUTPUT]: Specifies that App-facing single/file-input Find, canonical Package Version Skill detail, and `hub info`/`hub check` translate domain arguments into CLI-owned Hub requests.
+ * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
+ * [OUTPUT]: Specifies App-facing keyword Find fallback, selector-preserving explicit-source Find, canonical Package Version Skill detail, and grouped Hub reads through CLI-owned requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,6 +47,69 @@ func TestFindForwardsExactNameAndPackagePath(t *testing.T) {
 	}
 	if requestURI != "/api/v1/skills/find?exactName=true&packagePath=github.com%2Fexample%2Fskills&page=0&perPage=10&q=ask-matt" {
 		t.Fatalf("unexpected Find request %q", requestURI)
+	}
+}
+
+func TestFindCanonicalizesExplicitPackageVariantsBeforeProductFind(t *testing.T) {
+	version, commit := "v1.2.3", "commit-123"
+	tests := []struct {
+		input       string
+		packagePath string
+		selector    string
+	}{
+		{input: "owner/repo", packagePath: "github.com/owner/repo", selector: "latest"},
+		{input: "github/owner/repo", packagePath: "github.com/owner/repo", selector: "latest"},
+		{input: "github.com/owner/repo", packagePath: "github.com/owner/repo", selector: "latest"},
+		{input: "https://github.com/owner/repo.git", packagePath: "github.com/owner/repo", selector: "latest"},
+		{input: "owner/repo@latest", packagePath: "github.com/owner/repo", selector: "latest"},
+		{input: "owner/repo@main", packagePath: "github.com/owner/repo", selector: "main"},
+		{input: "https://github.com/owner/repo/tree/main", packagePath: "github.com/owner/repo", selector: "main"},
+		{input: "owner/repo@v1.2.3", packagePath: "github.com/owner/repo", selector: "v1.2.3"},
+		{input: "owner/repo@v1.2", packagePath: "github.com/owner/repo", selector: "v1.2"},
+		{input: "owner/repo@>=v1.2.3", packagePath: "github.com/owner/repo", selector: ">=v1.2.3"},
+		{input: "git.example.com/team/skills@main", packagePath: "git.example.com/team/skills", selector: "main"},
+	}
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			info := commandTestPackageInfo(t, test.packagePath, version, commit, infoTestMembers(test.packagePath, version, commit)...)
+			var requestPaths []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestPaths = append(requestPaths, r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				if strings.HasPrefix(r.URL.Path, "/api/v1/"+test.packagePath+"/versions/") {
+					_, _ = w.Write(info)
+					return
+				}
+				fmt.Fprintf(w, `{"skills":[],"package":{"packagePath":%q,"description":"Repository metadata.","stars":7,"latestVersion":"v1.2.3","updatedAt":"2026-07-27T00:00:00Z"},"pagination":{"page":0,"perPage":20,"hasMore":false}}`, test.packagePath)
+			}))
+			defer server.Close()
+			var stdout bytes.Buffer
+			err := Execute([]string{"find", test.input, "--hub", server.URL, "--output", "json"}, &stdout, &bytes.Buffer{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(requestPaths) != 2 || requestPaths[0] != "/api/v1/"+test.packagePath+"/versions/"+test.selector || requestPaths[1] != "/api/v1/skills/find" {
+				t.Fatalf("unexpected request paths: %v", requestPaths)
+			}
+		})
+	}
+}
+
+func TestFindFallsBackToKeywordSearchWhenSourceParsingFails(t *testing.T) {
+	var requestURI string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestURI = r.URL.RequestURI()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}`)
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	if err := Execute([]string{"find", "owner/repo@release", "--hub", server.URL, "--output", "json"}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if requestURI != "/api/v1/skills/find?page=0&perPage=20&q=owner%2Frepo%40release" {
+		t.Fatalf("unexpected keyword fallback request %q", requestURI)
 	}
 }
 

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, and the ordered immutable publication commit boundary.
- * [OUTPUT]: Materializes every accepted Package Skill, computes source digests, prepares byte-stable Package Version Info plus content-addressed Skill objects, and emits a bounded publication lifecycle.
+ * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
+ * [OUTPUT]: Materializes every accepted Package Skill, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, emits a bounded publication lifecycle, and notifies metadata enrichment after current visibility commits.
  * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,8 +19,10 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -33,15 +35,17 @@ type historicalRepositoryMaterializer interface {
 }
 
 type modulePublisher struct {
-	fetcher     skill.RepositoryFetcher
-	publication *modulePublicationCommit
-	work        singleflight.Group
-	commit      singleflight.Group
-	upstream    chan struct{}
-	mu          sync.Mutex
-	negative    map[string]negativePublication
-	now         func() time.Time
-	negativeTTL time.Duration
+	fetcher                 skill.RepositoryFetcher
+	publication             *modulePublicationCommit
+	afterCurrentPublication func(context.Context, string)
+	work                    singleflight.Group
+	commit                  singleflight.Group
+	upstream                chan struct{}
+	mu                      sync.Mutex
+	negative                map[string]negativePublication
+	now                     func() time.Time
+	negativeTTL             time.Duration
+	languageAnalyzer        *translation.LanguageAnalyzer
 }
 
 type negativePublication struct {
@@ -49,8 +53,20 @@ type negativePublication struct {
 	err     error
 }
 
-func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog) *modulePublisher {
-	return &modulePublisher{fetcher: fetcher, publication: newPackagePublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
+type packagePublisherOption func(*modulePublisher)
+
+func withCurrentPublicationObserver(observer func(context.Context, string)) packagePublisherOption {
+	return func(publisher *modulePublisher) {
+		publisher.afterCurrentPublication = observer
+	}
+}
+
+func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog, options ...packagePublisherOption) *modulePublisher {
+	publisher := &modulePublisher{fetcher: fetcher, publication: newPackagePublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second, languageAnalyzer: translation.NewLanguageAnalyzer()}
+	for _, option := range options {
+		option(publisher)
+	}
+	return publisher
 }
 
 func (p *modulePublisher) Materialize(ctx context.Context, packagePath, query string) (string, error) {
@@ -210,9 +226,16 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query)
 		}
 		release.Skills = append(release.Skills, protocolapi.PackageSkill{Name: member.Manifest.Name, Path: member.Path})
+		sourceLanguage := ""
+		_, body, splitErr := protocolmanifest.Split(member.Content)
+		if splitErr != nil {
+			return "", fmt.Errorf("split validated Skill document for %s@%s: %w", packagePath, query, splitErr)
+		}
+		analysis := p.languageAnalyzer.AnalyzeMarkdown(body)
+		sourceLanguage = analysis.PrimaryLanguage
 		published = append(published, catalog.Skill{
 			PackagePath: packagePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
-			DescriptionDigest: catalog.DescriptionDigest(member.Manifest.Description), DocumentDigest: catalog.ContentDigest(member.Content),
+			DescriptionDigest: catalog.DescriptionDigest(member.Manifest.Description), DocumentDigest: catalog.ContentDigest(member.Content), SourceLanguage: sourceLanguage,
 		})
 		skillContents = append(skillContents, moduleSkillContent{digest: catalog.ContentDigest(member.Content), content: member.Content})
 	}
@@ -235,6 +258,9 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 		"package_path":       packagePath,
 		"version":            snapshot.Version,
 	}).Debugf("repository publication committed")
+	if visibility == catalog.CurrentPublication && p.afterCurrentPublication != nil {
+		p.afterCurrentPublication(ctx, packagePath)
+	}
 	return snapshot.Version, nil
 }
 

@@ -216,6 +216,16 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, sourcedResponse.Skills, 1)
 	require.Equal(t, "github.com/mattpocock/skills", sourcedResponse.Skills[0].PackagePath)
 
+	packageFind := httptest.NewRecorder()
+	serveFiber(t, r, packageFind, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=github.com%2Fmattpocock%2Fskills&packagePath=github.com%2Fmattpocock%2Fskills", nil))
+	require.Equal(t, http.StatusOK, packageFind.Code)
+	var packageResponse skillsResponse
+	require.NoError(t, json.NewDecoder(packageFind.Body).Decode(&packageResponse))
+	require.NotNil(t, packageResponse.Package)
+	require.Equal(t, "github.com/mattpocock/skills", packageResponse.Package.PackagePath)
+	require.Equal(t, "v0.0.0-test", packageResponse.Package.LatestVersion)
+	require.Len(t, packageResponse.Skills, 1)
+
 	findBatch := httptest.NewRecorder()
 	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10,"lang":"en"}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")

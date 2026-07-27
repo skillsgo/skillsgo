@@ -1092,6 +1092,50 @@ class AppLocalizationsMs extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'Diterjemahkan';
+
+  @override
+  String translatedFrom(String language) {
+    return 'Diterjemahkan daripada $language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'Inggeris',
+      'zhHans': 'Cina Ringkas',
+      'zhHant': 'Cina Tradisional',
+      'ja': 'Jepun',
+      'ko': 'Korea',
+      'fr': 'Perancis',
+      'de': 'Jerman',
+      'it': 'Itali',
+      'es': 'Sepanyol',
+      'pt': 'Portugis',
+      'ru': 'Rusia',
+      'ar': 'Arab',
+      'hi': 'Hindi',
+      'id': 'Indonesia',
+      'tr': 'Turki',
+      'nl': 'Belanda',
+      'pl': 'Poland',
+      'th': 'Thai',
+      'vi': 'Vietnam',
+      'ms': 'Melayu',
+      'sv': 'Sweden',
+      'uk': 'Ukraine',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'Tunjukkan asal';
+
+  @override
+  String get showTranslation => 'Tunjukkan terjemahan';
+
+  @override
   String get personalizationTheme => 'Tema';
 
   @override

@@ -1977,6 +1977,36 @@ abstract class AppLocalizations {
   /// **'Original'**
   String get originalContent;
 
+  /// No description provided for @translatedContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated'**
+  String get translatedContent;
+
+  /// No description provided for @translatedFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated from {language}'**
+  String translatedFrom(String language);
+
+  /// No description provided for @sourceLanguageName.
+  ///
+  /// In en, this message translates to:
+  /// **'{code, select, en {English} zhHans {Simplified Chinese} zhHant {Traditional Chinese} ja {Japanese} ko {Korean} fr {French} de {German} it {Italian} es {Spanish} pt {Portuguese} ru {Russian} ar {Arabic} hi {Hindi} id {Indonesian} tr {Turkish} nl {Dutch} pl {Polish} th {Thai} vi {Vietnamese} ms {Malay} sv {Swedish} uk {Ukrainian} other {{code}}}'**
+  String sourceLanguageName(String code);
+
+  /// No description provided for @showOriginalContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Show original'**
+  String get showOriginalContent;
+
+  /// No description provided for @showTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Show translation'**
+  String get showTranslation;
+
   /// No description provided for @personalizationTheme.
   ///
   /// In en, this message translates to:

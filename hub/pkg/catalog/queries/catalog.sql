@@ -23,8 +23,8 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;
 
 -- name: InsertSkill :exec
 INSERT INTO skills (
-    version_id, name, path, description, description_digest, document_digest
-) VALUES ($1,$2,$3,$4,$5,$6);
+    version_id, name, path, description, description_digest, document_digest, source_language
+) VALUES ($1,$2,$3,$4,$5,$6,$7);
 
 -- name: SetCurrentVersion :exec
 UPDATE packages SET current_version_id=$2, updated_at=$3 WHERE id=$1;
@@ -52,7 +52,7 @@ WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: Skills :many
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -61,7 +61,7 @@ ORDER BY mvs.path;
 
 -- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id

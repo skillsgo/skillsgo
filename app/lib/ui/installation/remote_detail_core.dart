@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, gateway, operation controller, detail state, and navigation callbacks.
- * [OUTPUT]: Provides the public RemoteDetailScreen plus loading, install, target-management, lifecycle, and root build behavior.
+ * [OUTPUT]: Provides the public RemoteDetailScreen plus loading, inline source switching, install, target-management, lifecycle, and root build behavior.
  * [POS]: Serves as the state-owning core of the remote Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -33,6 +33,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
   SkillDetail? localizedDetail;
   SkillDetail? sourceDetail;
   bool showingSource = false;
+  bool switchingSource = false;
   Object? error;
   bool loading = true;
   bool loadingCatalog = false;
@@ -111,7 +112,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
   }
 
   Future<void> showSource(bool source) async {
-    if (showingSource == source) return;
+    if (showingSource == source || switchingSource) return;
     final cached = source ? sourceDetail : localizedDetail;
     if (cached != null) {
       setState(() {
@@ -120,7 +121,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
       });
       return;
     }
-    setState(() => loading = true);
+    setState(() => switchingSource = true);
     try {
       final loaded = await widget.gateway.loadRemoteDetail(
         widget.skill,
@@ -135,13 +136,13 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
         } else {
           localizedDetail = loaded;
         }
-        loading = false;
+        switchingSource = false;
       });
     } catch (caught) {
       if (!mounted) return;
       setState(() {
         error = caught;
-        loading = false;
+        switchingSource = false;
       });
     }
   }

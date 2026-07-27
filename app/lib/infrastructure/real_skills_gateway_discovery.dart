@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language Hub Find, Cloud Ranking/Trending/Hot, explicit-source `show`, and strict Package Version Skill detail loading with explicit source fallback.
+ * [OUTPUT]: Provides current-language unified CLI Find, Cloud Ranking/Trending/Hot, and strict translation-aware Package Version Skill detail loading through `show --path`.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,10 +26,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    if (collection == DiscoveryCollection.search &&
-        _looksLikeExplicitSkillSource(trimmedQuery)) {
-      return _discoverExplicitSource(trimmedQuery);
-    }
     final expectedCollection = switch (collection) {
       DiscoveryCollection.search => 'find',
       DiscoveryCollection.ranking => 'all_time',
@@ -161,8 +157,31 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             );
           })
           .toList(growable: false);
+      final rawPackage = decoded['package'];
+      if (rawPackage != null &&
+          (rawPackage is! Map<String, dynamic> ||
+              rawPackage['packagePath'] is! String ||
+              rawPackage['description'] is! String ||
+              rawPackage['stars'] is! num ||
+              rawPackage['latestVersion'] is! String ||
+              rawPackage['updatedAt'] is! String)) {
+        throw const SkillsException(
+          'Discovery Package summary is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final package = rawPackage is Map<String, dynamic>
+          ? PackageSummary(
+              id: rawPackage['packagePath'] as String,
+              description: rawPackage['description'] as String,
+              stars: (rawPackage['stars'] as num).toInt(),
+              latestVersion: rawPackage['latestVersion'] as String,
+              updatedAt: DateTime.tryParse(rawPackage['updatedAt'] as String),
+            )
+          : null;
       return DiscoveryPage(
         skills: skills,
+        module: package,
         pagination: Pagination(
           page: (pagination['page'] as num).toInt(),
           perPage: (pagination['perPage'] as num).toInt(),
@@ -397,132 +416,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     }
   }
 
-  static bool _looksLikeExplicitSkillSource(String query) {
-    final value = query.trim();
-    if (value.contains('://') || value.startsWith('git@')) return true;
-    if (value.contains(RegExp(r'\s'))) return false;
-    final coordinate = value.split('@').first;
-    final segments = coordinate
-        .split('/')
-        .where((segment) => segment.isNotEmpty)
-        .toList(growable: false);
-    return segments.length >= 2;
-  }
-
-  Future<DiscoveryPage> _discoverExplicitSource(String source) async {
-    final lang = await _contentLang();
-    final result = await _runCli([
-      'show',
-      source,
-      '--hub',
-      _hubOrigin,
-      '--lang',
-      lang,
-      '--output',
-      'json',
-    ]);
-    if (!result.succeeded) throw _commandFailure(result);
-    try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['kind'] is! String) {
-        throw const FormatException('Invalid SkillsGo Info response.');
-      }
-      final rawSkills = switch (decoded['kind']) {
-        'Skill' => <Object?>[decoded],
-        'Package' when decoded['skills'] is List => decoded['skills'] as List,
-        _ => throw const FormatException('Unknown SkillsGo Info kind.'),
-      };
-      final installedCounts = <String, int>{};
-      try {
-        final installed = await listInstalled(
-          projects: await loadAddedProjects(),
-        );
-        for (final skill in installed) {
-          if (skill.packagePath.isNotEmpty) {
-            installedCounts['${skill.packagePath}\u0000${skill.name}'] =
-                skill.targetCount;
-          }
-        }
-      } on Object {
-        // Explicit-source discovery remains useful without local inventory.
-      }
-      final skills = rawSkills
-          .map((raw) {
-            if (raw is! Map<String, dynamic>) {
-              throw const FormatException('Invalid Skill Info member.');
-            }
-            final packagePath = raw['packagePath'];
-            final name = raw['name'];
-            final description = raw['description'];
-            final version = raw['version'];
-            final path = raw['path'];
-            if (packagePath is! String ||
-                name is! String ||
-                description is! String ||
-                version is! String ||
-                path is! String ||
-                path.isEmpty) {
-              throw const FormatException('Incomplete Skill Info member.');
-            }
-            final imageURL = raw['imageUrl'];
-            if (imageURL != null && imageURL is! String) {
-              throw const FormatException('Invalid Skill Info image URL.');
-            }
-            return SkillSummary(
-              packagePath: packagePath,
-              installName: name,
-              name: name,
-              path: path,
-              imageUrl: imageURL as String?,
-              description: description,
-              latestVersion: version,
-              localTargetCount: installedCounts['$packagePath\u0000$name'] ?? 0,
-            );
-          })
-          .toList(growable: false);
-      final firstSkill = rawSkills.isEmpty ? null : rawSkills.first;
-      final firstSkillMap = firstSkill is Map<String, dynamic>
-          ? firstSkill
-          : null;
-      final packagePath = decoded['kind'] == 'Package'
-          ? decoded['packagePath']
-          : skills.isEmpty
-          ? null
-          : skills.first.packagePath;
-      final repositoryTime = decoded['time'];
-      return DiscoveryPage(
-        skills: skills,
-        module: packagePath is String
-            ? PackageSummary(
-                id: packagePath,
-                imageUrl: firstSkillMap?['imageUrl'] as String?,
-                description: decoded['description'] is String
-                    ? decoded['description'] as String
-                    : '',
-                stars: firstSkillMap?['stars'] is num
-                    ? (firstSkillMap!['stars'] as num).toInt()
-                    : 0,
-                latestVersion: decoded['version'] is String
-                    ? decoded['version'] as String
-                    : skills.isEmpty
-                    ? ''
-                    : skills.first.latestVersion,
-                updatedAt: repositoryTime is String
-                    ? DateTime.tryParse(repositoryTime)
-                    : null,
-              )
-            : null,
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'SkillsGo Info returned invalid JSON.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
-  }
-
   @override
   Future<SkillDetail> loadRemoteDetail(
     SkillSummary skill, {
@@ -557,10 +450,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         'path',
         'description',
         'content',
+        'sourceLanguage',
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           decoded['time'] is! String ||
           decoded['archiveSize'] is! num ||
+          decoded['translated'] is! bool ||
           decoded['packagePath'] != skill.packagePath ||
           decoded['name'] != skill.name ||
           decoded['path'] != skill.path) {
@@ -594,6 +489,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         time: DateTime.parse(decoded['time'] as String).toLocal(),
         archiveSize: (decoded['archiveSize'] as num).toInt(),
         description: decoded['description'] as String,
+        sourceLanguage: decoded['sourceLanguage'] as String,
+        translated: decoded['translated'] as bool,
         installationTargets: installationTargets,
       );
     } on SkillsException {
