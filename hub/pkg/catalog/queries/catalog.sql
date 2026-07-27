@@ -225,13 +225,21 @@ WHERE trim(mvs.description)<>''
 ORDER BY resource_kind, resource_id;
 
 -- name: DocumentTranslationCandidates :many
-SELECT DISTINCT ON (mvs.document_digest) mvs.document_digest,
+WITH documents AS (
+  SELECT mvs.document_digest,
+         bool_or(m.current_version_id=mvs.version_id) AS is_current
+  FROM skills mvs
+  JOIN versions mv ON mv.id=mvs.version_id
+  JOIN packages m ON m.id=mv.package_id
+  WHERE mvs.document_digest<>''
+  GROUP BY mvs.document_digest
+)
+SELECT documents.document_digest,
        COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
-FROM skills mvs
+FROM documents
 LEFT JOIN localizations l
-  ON l.resource_kind='skill_document' AND l.source_digest=mvs.document_digest AND l.lang=$1
-WHERE mvs.document_digest<>''
-ORDER BY mvs.document_digest;
+  ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
+ORDER BY documents.is_current DESC,documents.document_digest;
 
 -- name: SearchLocalizedSkills :many
 SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,

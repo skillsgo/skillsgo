@@ -24,8 +24,8 @@ func (descriptionTranslationBatchArgs) Kind() string { return "description_trans
 
 func (descriptionTranslationBatchArgs) JobTimeout() time.Duration { return -1 }
 
-type documentTranslationBatchArgs struct{}
+type documentTranslationArgs struct{}
 
-func (documentTranslationBatchArgs) Kind() string { return "document_translation_batch" }
+func (documentTranslationArgs) Kind() string { return "document_translation" }
 
-func (documentTranslationBatchArgs) JobTimeout() time.Duration { return -1 }
+func (documentTranslationArgs) JobTimeout() time.Duration { return -1 }

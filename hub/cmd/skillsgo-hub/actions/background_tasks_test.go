@@ -20,14 +20,16 @@ func TestBusinessJobKindsAreStableAndDescriptive(t *testing.T) {
 	}{
 		{"Repository source metadata refresh", repositorySourceMetadataRefreshArgs{}.Kind()},
 		{"description translation batch", descriptionTranslationBatchArgs{}.Kind()},
+		{"document translation", documentTranslationArgs{}.Kind()},
 	}
 	require.Equal(t, []string{
 		"repository_source_metadata_refresh",
 		"description_translation_batch",
-	}, []string{tests[0].kind, tests[1].kind})
+		"document_translation",
+	}, []string{tests[0].kind, tests[1].kind, tests[2].kind})
 }
 
 func TestTranslationBatchesUsePerRequestTimeouts(t *testing.T) {
 	require.Equal(t, time.Duration(-1), descriptionTranslationBatchArgs{}.JobTimeout())
-	require.Equal(t, time.Duration(-1), documentTranslationBatchArgs{}.JobTimeout())
+	require.Equal(t, time.Duration(-1), documentTranslationArgs{}.JobTimeout())
 }

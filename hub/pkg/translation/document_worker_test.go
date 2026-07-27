@@ -8,13 +8,18 @@ package translation
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/stretchr/testify/require"
 )
 
 type documentStoreFake struct {
+	mu         sync.Mutex
 	candidates []catalog.DocumentTranslationCandidate
 	saved      []documentSaved
 }
@@ -28,11 +33,14 @@ func (s *documentStoreFake) DocumentTranslationCandidates(context.Context, strin
 }
 
 func (s *documentStoreFake) UpsertDocumentLocalization(_ context.Context, lang, digest, resultKind, prompt string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.saved = append(s.saved, documentSaved{lang: lang, digest: digest, resultKind: resultKind, prompt: prompt})
 	return nil
 }
 
 type skillContentsFake struct {
+	mu        sync.Mutex
 	source    map[string][]byte
 	localized map[string][]byte
 }
@@ -47,12 +55,47 @@ func (s *skillContentsFake) SkillContent(_ context.Context, digest string) ([]by
 }
 
 func (s *skillContentsFake) PutLocalizedSkillContent(_ context.Context, digest, prompt, lang string, content []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.localized[digest+":"+prompt+":"+lang] = append([]byte(nil), content...)
 	return nil
 }
 
 func (s *skillContentsFake) LocalizedSkillContent(_ context.Context, digest, prompt, lang string) ([]byte, error) {
-	return s.localized[digest+":"+prompt+":"+lang], nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	content, ok := s.localized[digest+":"+prompt+":"+lang]
+	if !ok {
+		return nil, fmt.Errorf("not found")
+	}
+	return content, nil
+}
+
+func TestDocumentWorkerBoundsLanguageConcurrencyAndSkipsCompletedSidecars(t *testing.T) {
+	source := []byte("---\nname: concurrent\ndescription: Concurrent\n---\n# Concurrent\n\nTranslate this paragraph safely.\n")
+	digest := catalog.ContentDigest(source)
+	store := &documentStoreFake{candidates: []catalog.DocumentTranslationCandidate{{DocumentDigest: digest}}}
+	contents := &skillContentsFake{source: map[string][]byte{digest: source}, localized: map[string][]byte{}}
+	var active atomic.Int32
+	var maximum atomic.Int32
+	var calls atomic.Int32
+	translator := documentTranslatorFunc(func(_ context.Context, _ []byte, _, lang string) (Result, error) {
+		calls.Add(1)
+		current := active.Add(1)
+		defer active.Add(-1)
+		for observed := maximum.Load(); current > observed && !maximum.CompareAndSwap(observed, current); observed = maximum.Load() {
+		}
+		time.Sleep(20 * time.Millisecond)
+		return Result{Content: "translated " + lang}, nil
+	})
+	langs := []string{"zh-Hans-CN", "ja", "ko", "ar", "de", "es", "fr", "it"}
+	worker := NewDocumentWorker(store, contents, translator, NewLanguageAnalyzer(), testLogger{}, langs, "document-v1", 10)
+
+	require.NoError(t, worker.RunOnce(t.Context()))
+	require.Equal(t, int32(len(langs)), calls.Load())
+	require.Equal(t, int32(4), maximum.Load())
+	require.NoError(t, worker.RunOnce(t.Context()))
+	require.Equal(t, int32(len(langs)), calls.Load(), "retries must reuse every completed sidecar")
 }
 
 type documentTranslatorFunc func(context.Context, []byte, string, string) (Result, error)
@@ -74,7 +117,9 @@ func TestDocumentWorkerPublishesOnlyTranslatedBodiesAndRecordsSourceResults(t *t
 		firstDigest:  first,
 		secondDigest: second,
 	}, localized: map[string][]byte{}}
+	var translations atomic.Int32
 	worker := NewDocumentWorker(store, contents, documentTranslatorFunc(func(_ context.Context, source []byte, _, _ string) (Result, error) {
+		translations.Add(1)
 		if string(source) == string(first) {
 			return Result{Content: "# 一"}, nil
 		}
@@ -84,7 +129,12 @@ func TestDocumentWorkerPublishesOnlyTranslatedBodiesAndRecordsSourceResults(t *t
 	require.NoError(t, worker.RunOnce(t.Context()))
 	require.Equal(t, []byte("# 一"), contents.localized[firstDigest+":document-v1:zh-Hans-CN"])
 	require.NotContains(t, contents.localized, secondDigest+":document-v1:zh-Hans-CN")
-	require.Equal(t, catalog.LocalizationTranslated, store.saved[0].resultKind)
-	require.Equal(t, catalog.LocalizationSource, store.saved[1].resultKind)
-	require.Equal(t, catalog.ContentDigest(first), store.saved[0].digest)
+	require.ElementsMatch(t, []documentSaved{
+		{lang: "zh-Hans-CN", digest: firstDigest, resultKind: catalog.LocalizationTranslated, prompt: "document-v1"},
+		{lang: "zh-Hans-CN", digest: secondDigest, resultKind: catalog.LocalizationSource, prompt: "document-v1"},
+	}, store.saved)
+	require.Equal(t, int32(1), translations.Load())
+
+	require.NoError(t, worker.RunOnce(t.Context()))
+	require.Equal(t, int32(1), translations.Load(), "an existing sidecar must make retries LLM-idempotent")
 }
