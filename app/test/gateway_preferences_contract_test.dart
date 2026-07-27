@@ -89,8 +89,8 @@ void main() {
           'layout',
           '--hub',
           'https://hub.example.test',
-          '--content-locale',
-          'zh-Hans',
+          '--lang',
+          'zh-Hans-CN',
         ]),
       );
     },

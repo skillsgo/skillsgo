@@ -21,6 +21,7 @@ import (
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -170,30 +171,38 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	}
 	if conf.LLM.Enabled() {
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
-		translationWorkers := make(map[string]*translation.Worker, len(conf.LLM.TranslationLocales))
-		for _, locale := range conf.LLM.TranslationLocales {
-			translationWorkers[locale] = translation.NewWorker(
-				metadata, translator, logger, locale, conf.LLM.PromptVersion,
-				conf.LLM.TranslationBatch,
-			)
+		languageAnalyzer := translation.NewLanguageAnalyzer()
+		contents, ok := storage.WithImmutableWrites(store).(storage.SkillContentStore)
+		if !ok {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("configured storage does not support localized Skill documents")
 		}
+		descriptionWorker := translation.NewWorker(
+			metadata, translator, languageAnalyzer, logger, conf.LLM.TranslationLangs, conf.LLM.DescriptionPromptVersion,
+			conf.LLM.TranslationBatch,
+		)
+		documentWorker := translation.NewDocumentWorker(metadata, contents, translator, languageAnalyzer, logger, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args descriptionTranslationBatchArgs) error {
-			worker, ok := translationWorkers[args.Locale]
-			if !ok {
-				return fmt.Errorf("description translation locale %q is not configured", args.Locale)
-			}
-			return worker.RunOnce(ctx)
+			return descriptionWorker.RunOnce(ctx)
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
-		for _, locale := range conf.LLM.TranslationLocales {
-			if err := taskRuntime.Every(descriptionTranslationBatchArgs{Locale: locale}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
-				cancelWorkers()
-				return nil, cleanup, fmt.Errorf("register description translation job for %s: %w", locale, err)
-			}
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args documentTranslationBatchArgs) error {
+			return documentWorker.RunOnce(ctx)
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
 		}
-		logger.Infof("description translation enabled with model %s for locales %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLocales, ","))
+		if err := taskRuntime.Every(descriptionTranslationBatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
+		}
+		if err := taskRuntime.Every(documentTranslationBatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
+		}
+		logger.Infof("presentation localization enabled with model %s for languages %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLangs, ","))
 	}
 	if err := taskRuntime.Start(workerCtx); err != nil {
 		cancelWorkers()

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the s3 package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the s3 package behavior covered by s3_test.go.
- * [POS]: Serves as test coverage for the s3 package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the shared storage compliance suite and an explicitly configured dedicated S3-compatible test bucket.
+ * [OUTPUT]: Specifies S3 backend compliance, immutable Skill sidecars, object naming, and opt-in real-provider integration behavior.
+ * [POS]: Serves as provider-neutral S3 transport integration coverage for AWS S3, Cloudflare R2, or a chosen compatible endpoint.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package s3
@@ -10,11 +10,13 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -32,40 +34,34 @@ func TestSkillContentStore(t *testing.T) {
 	backend := getStorage(t)
 	t.Cleanup(func() { _ = backend.clear() })
 	content := []byte("---\nname: demo\ndescription: Demo Skill.\n---\n# Demo\n")
+	digest := catalog.ContentDigest(content)
 
-	created, err := backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", content)
+	created, err := backend.PutSkillContentIfAbsent(t.Context(), digest, content)
 	if err != nil || !created {
 		t.Fatalf("first write created=%v err=%v", created, err)
 	}
-	created, err = backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", content)
+	created, err = backend.PutSkillContentIfAbsent(t.Context(), digest, content)
 	if err != nil || created {
 		t.Fatalf("identical retry created=%v err=%v", created, err)
 	}
-	got, err := backend.SkillContent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo")
+	got, err := backend.SkillContent(t.Context(), digest)
 	if err != nil || !bytes.Equal(got, content) {
 		t.Fatalf("read content=%q err=%v", got, err)
 	}
-	_, err = backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", []byte("different"))
-	if !errors.Is(err, errors.KindAlreadyExists) {
-		t.Fatalf("conflict err=%v", err)
-	}
-	_, err = backend.SkillContent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/missing")
+	_, err = backend.SkillContent(t.Context(), "sha256:0000000000000000000000000000000000000000000000000000000000000000")
 	if !errors.Is(err, errors.KindNotFound) {
 		t.Fatalf("missing err=%v", err)
 	}
 }
 
 func TestSkillContentObjectName(t *testing.T) {
-	got, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", "skills/demo")
-	if err != nil || got != "github.com/acme/skills/@v/v1.2.3.skills/skills/demo/SKILL.md" {
+	digest := "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	got, err := skillContentObjectName(digest)
+	if err != nil || got != "skillsmd/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/SKILL.md" {
 		t.Fatalf("object name=%q err=%v", got, err)
 	}
-	root, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", ".")
-	if err != nil || root != "github.com/acme/skills/@v/v1.2.3.skills/SKILL.md" {
-		t.Fatalf("root object name=%q err=%v", root, err)
-	}
-	if _, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", "../escape"); err == nil {
-		t.Fatal("expected traversal path rejection")
+	if _, err := skillContentObjectName("../escape"); err == nil {
+		t.Fatal("expected invalid digest rejection")
 	}
 }
 
@@ -124,32 +120,45 @@ func (s *Storage) createBucket() error {
 }
 
 func getStorage(t testing.TB) *Storage {
-	url := os.Getenv("SKILLSGO_HUB_MINIO_ENDPOINT")
-	if url == "" {
+	endpoint := os.Getenv("SKILLSGO_TEST_S3_ENDPOINT")
+	if endpoint == "" {
 		t.SkipNow()
 	}
-
-	options := func(conf *aws.Config) {
-		conf.BaseEndpoint = aws.String(url)
+	required := func(name string) string {
+		value := os.Getenv(name)
+		if value == "" {
+			t.Fatalf("%s is required when SKILLSGO_TEST_S3_ENDPOINT is set", name)
+		}
+		return value
+	}
+	forcePathStyle, err := strconv.ParseBool(os.Getenv("SKILLSGO_TEST_S3_FORCE_PATH_STYLE"))
+	if err != nil && os.Getenv("SKILLSGO_TEST_S3_FORCE_PATH_STYLE") != "" {
+		t.Fatalf("invalid SKILLSGO_TEST_S3_FORCE_PATH_STYLE: %v", err)
 	}
 
 	backend, err := New(
 		&config.S3Config{
-			Key:            "minio",
-			Secret:         "minio123",
-			Bucket:         "gomodsaws",
-			Region:         "us-west-1",
-			ForcePathStyle: true,
+			Key:            required("SKILLSGO_TEST_S3_ACCESS_KEY_ID"),
+			Secret:         required("SKILLSGO_TEST_S3_SECRET_ACCESS_KEY"),
+			Bucket:         required("SKILLSGO_TEST_S3_BUCKET_NAME"),
+			Region:         required("SKILLSGO_TEST_S3_REGION"),
+			Endpoint:       endpoint,
+			ForcePathStyle: forcePathStyle,
 		},
 		config.GetTimeoutDuration(300),
-		options,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err = backend.createBucket(); err != nil {
-		t.Fatal(err)
+	createBucket, parseErr := strconv.ParseBool(os.Getenv("SKILLSGO_TEST_S3_CREATE_BUCKET"))
+	if parseErr != nil && os.Getenv("SKILLSGO_TEST_S3_CREATE_BUCKET") != "" {
+		t.Fatalf("invalid SKILLSGO_TEST_S3_CREATE_BUCKET: %v", parseErr)
+	}
+	if createBucket {
+		if err = backend.createBucket(); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	return backend

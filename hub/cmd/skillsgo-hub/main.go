@@ -49,12 +49,7 @@ func main() {
 	}
 
 	logger := hublog.New(conf.CloudRuntime, logLvl, conf.LogFormat)
-	databaseType := "unconfigured"
-	if conf.Database != nil {
-		databaseType = conf.Database.Type
-	}
 	logger.WithFields(map[string]any{
-		"database_type":        databaseType,
 		"artifact_origin":      conf.ArtifactOrigin,
 		"environment":          conf.Environment,
 		"github_metadata_auth": len(conf.GitHubTokens()) > 0,
@@ -63,7 +58,7 @@ func main() {
 		"network_mode":         conf.NetworkMode,
 		"stats_exporter":       conf.StatsExporter,
 		"storage_type":         conf.StorageType,
-		"task_queue_backend":   map[bool]string{true: "river", false: "synchronous"}[databaseType == "postgres"],
+		"task_queue_backend":   "river",
 		"task_queue_workers":   conf.TaskQueue.MaxWorkers,
 		"tls_configured":       conf.TLSCertFile != "" && conf.TLSKeyFile != "",
 		"trace_exporter":       conf.TraceExporter,

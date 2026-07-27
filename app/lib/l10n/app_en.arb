@@ -346,6 +346,7 @@
   "privacyProvenance": "Privacy & provenance",
   "privacySummary": "Your searches aren’t saved, and SkillsGo doesn’t keep command logs.",
   "language": "Language",
+  "originalContent": "Original",
   "personalizationTheme": "Theme",
   "folderColorTheme": "Theme color",
   "folderColorThemeDescription": "Pick a color you like. SkillsGo will build a coordinated interface palette around it.",

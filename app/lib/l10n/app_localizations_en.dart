@@ -1085,6 +1085,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get language => 'Language';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Theme';
 
   @override

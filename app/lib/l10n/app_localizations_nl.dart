@@ -1089,6 +1089,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get language => 'Taal';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Thema';
 
   @override

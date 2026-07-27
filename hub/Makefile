@@ -32,7 +32,7 @@ build-image:
 
 .PHONY: run
 run: ## run the SkillsGo Hub with dev configs
-	cd ./cmd/skillsgo-hub && go run . -config_file ../../config.dev.toml
+	cd ./cmd/skillsgo-hub && go run . -config_file ../../config.dev.yaml
 
 .PHONY: run-docker
 run-docker:
@@ -104,16 +104,16 @@ bench:
 
 .PHONY: alldeps
 alldeps:
-	docker-compose -p athensdev up -d mongo
-	docker-compose -p athensdev up -d minio
+	docker-compose -p athensdev up -d localstack
+	docker-compose -p athensdev up -d azurite
+	docker-compose -p athensdev up -d fake-gcs-server
 	docker-compose -p athensdev up -d jaeger
-	echo "sleeping for a bit to wait for the DB to come up"
+	echo "sleeping for a bit to wait for dependencies to come up"
 	sleep 5
 
 .PHONY: dev
 dev:
-	docker-compose -p athensdev up -d mongo
-	docker-compose -p athensdev up -d minio
+	docker-compose -p athensdev up -d localstack
 
 .PHONY: down
 down:

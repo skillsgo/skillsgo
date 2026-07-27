@@ -205,7 +205,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
   }
 
   @override
-  Future<String> _contentLocale() async {
+  Future<String> _contentLang() async {
     final language = await loadLanguage();
     return language.contentTag(
       ui.PlatformDispatcher.instance.locale.toLanguageTag(),

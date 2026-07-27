@@ -102,12 +102,20 @@ func (s *failSecondSaveStorage) Save(ctx context.Context, module, version string
 	return s.Backend.Save(ctx, module, version, archive, archiveMD5, info)
 }
 
-func (s *failSecondSaveStorage) PutSkillContentIfAbsent(ctx context.Context, module, version, skillPath string, content []byte) (bool, error) {
-	return s.Backend.(storage.SkillContentStore).PutSkillContentIfAbsent(ctx, module, version, skillPath, content)
+func (s *failSecondSaveStorage) PutSkillContentIfAbsent(ctx context.Context, digest string, content []byte) (bool, error) {
+	return s.Backend.(storage.SkillContentStore).PutSkillContentIfAbsent(ctx, digest, content)
 }
 
-func (s *failSecondSaveStorage) SkillContent(ctx context.Context, module, version, skillPath string) ([]byte, error) {
-	return s.Backend.(storage.SkillContentStore).SkillContent(ctx, module, version, skillPath)
+func (s *failSecondSaveStorage) SkillContent(ctx context.Context, digest string) ([]byte, error) {
+	return s.Backend.(storage.SkillContentStore).SkillContent(ctx, digest)
+}
+
+func (s *failSecondSaveStorage) PutLocalizedSkillContent(ctx context.Context, digest, promptVersion, lang string, content []byte) error {
+	return s.Backend.(storage.SkillContentStore).PutLocalizedSkillContent(ctx, digest, promptVersion, lang, content)
+}
+
+func (s *failSecondSaveStorage) LocalizedSkillContent(ctx context.Context, digest, promptVersion, lang string) ([]byte, error) {
+	return s.Backend.(storage.SkillContentStore).LocalizedSkillContent(ctx, digest, promptVersion, lang)
 }
 
 func (s *countingSaveStorage) Save(ctx context.Context, module, version string, archive io.Reader, archiveMD5, info []byte) error {
@@ -115,12 +123,20 @@ func (s *countingSaveStorage) Save(ctx context.Context, module, version string, 
 	return s.Backend.Save(ctx, module, version, archive, archiveMD5, info)
 }
 
-func (s *countingSaveStorage) PutSkillContentIfAbsent(ctx context.Context, module, version, skillPath string, content []byte) (bool, error) {
-	return s.Backend.(storage.SkillContentStore).PutSkillContentIfAbsent(ctx, module, version, skillPath, content)
+func (s *countingSaveStorage) PutSkillContentIfAbsent(ctx context.Context, digest string, content []byte) (bool, error) {
+	return s.Backend.(storage.SkillContentStore).PutSkillContentIfAbsent(ctx, digest, content)
 }
 
-func (s *countingSaveStorage) SkillContent(ctx context.Context, module, version, skillPath string) ([]byte, error) {
-	return s.Backend.(storage.SkillContentStore).SkillContent(ctx, module, version, skillPath)
+func (s *countingSaveStorage) SkillContent(ctx context.Context, digest string) ([]byte, error) {
+	return s.Backend.(storage.SkillContentStore).SkillContent(ctx, digest)
+}
+
+func (s *countingSaveStorage) PutLocalizedSkillContent(ctx context.Context, digest, promptVersion, lang string, content []byte) error {
+	return s.Backend.(storage.SkillContentStore).PutLocalizedSkillContent(ctx, digest, promptVersion, lang, content)
+}
+
+func (s *countingSaveStorage) LocalizedSkillContent(ctx context.Context, digest, promptVersion, lang string) ([]byte, error) {
+	return s.Backend.(storage.SkillContentStore).LocalizedSkillContent(ctx, digest, promptVersion, lang)
 }
 
 func TestPackagePublicationFailureExposesNoPartialMemberSet(t *testing.T) {

@@ -17,17 +17,17 @@ import (
 	"testing"
 )
 
-func TestCanonicalContentLocale(t *testing.T) {
+func TestCanonicalLang(t *testing.T) {
 	t.Parallel()
 	for input, expected := range map[string]string{
-		"zh_cn":   "zh-CN",
-		"ZH-hans": "zh-Hans",
-		"ja-jp":   "ja-JP",
-		"en":      "en",
+		"zh_hans_cn": "zh-Hans-CN",
+		"ZH-hans-cn": "zh-Hans-CN",
+		"ja":         "ja",
+		"en":         "en",
 	} {
-		actual, err := canonicalContentLocale(input)
+		actual, err := canonicalLang(input)
 		if err != nil || actual != expected {
-			t.Fatalf("canonicalContentLocale(%q) = %q, %v; want %q", input, actual, err, expected)
+			t.Fatalf("canonicalLang(%q) = %q, %v; want %q", input, actual, err, expected)
 		}
 	}
 }
@@ -66,7 +66,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	defer server.Close()
 	t.Setenv("SKILLSGO_HUB_URL", server.URL)
 	inputPath := filepath.Join(t.TempDir(), "find.json")
-	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10,"contentLocale":"zh_cn"}`), 0o600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh_hans_cn"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,7 +87,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	}
 	if len(requests) != 4 ||
 		requests[0] != "GET /api/v1/skills/find?page=1&perPage=4&q=responsive+layout" ||
-		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10,"locale":"zh-CN"}` ||
+		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh-Hans-CN"}` ||
 		requests[2] != "GET /info" ||
 		!strings.HasPrefix(requests[3], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)

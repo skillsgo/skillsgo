@@ -17,6 +17,9 @@ import (
 )
 
 func TestVocabularyAndPaths(t *testing.T) {
+	if RankingLangQuery != "lang" {
+		t.Fatalf("unexpected ranking language query %q", RankingLangQuery)
+	}
 	for _, kind := range []RankingKind{RankingAllTime, RankingTrending, RankingHot} {
 		if !kind.Valid() || kind.Path() != RankingsPath+string(kind) {
 			t.Fatalf("invalid ranking contract for %q", kind)

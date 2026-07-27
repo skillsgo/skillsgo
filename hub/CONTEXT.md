@@ -81,15 +81,15 @@ The complete safe Git-tracked tree for one immutable Package Version, distribute
 _Avoid_: Skill artifact, live repository directory, mutable cache entry
 
 **Source Presentation**:
-Author-maintained Source Repository or Skill description found in source metadata or a localized source document. It may be displayed and indexed but never replaces the canonical `SKILL.md` member in a Package Artifact.
-_Avoid_: localized README body, translated instructions, generated Skill
+Author-maintained Source Repository description, Skill description, or canonical `SKILL.md` document. It may be displayed and indexed and remains the fallback for every presentation language, but it is never rewritten by Hub enrichment.
+_Avoid_: generated source, localized artifact, inferred canonical language
 
 **Hub Enrichment**:
-Presentation-only Package Description or Skill Description produced by Hub analysis for one immutable source revision and locale. It belongs to the Hub catalog and may improve discovery or detail views without changing Package Info, Sum, installation, or execution semantics.
+Presentation-only Package Description, Skill Description, or Skill document body produced by Hub analysis for one source digest and language. Description text belongs to the Hub catalog; localized document bodies use deterministic `SKILL.{lang}.md` sidecars. Neither changes Package Info, Sum, installation, or execution semantics.
 _Avoid_: artifact translation, localized Skill version, source rewrite
 
 **Localized Search Document**:
-The locale-specific search projection of canonical identity plus localized Package and Skill descriptions for one Skill. It determines retrieval and ranking text but is not an installable resource.
+The language-specific search projection of canonical identity plus localized Package and Skill descriptions for one Skill. It determines retrieval and ranking text but is not an installable resource.
 _Avoid_: localized artifact, translated package, Package Info
 
 **Enrichment Run**:

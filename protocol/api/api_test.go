@@ -14,12 +14,12 @@ import (
 )
 
 func TestFindJSONContract(t *testing.T) {
-	request := FindCandidatesRequest{Queries: []CandidateQuery{{Name: "ask-matt"}, {Name: "demo", PackagePath: "github.com/o/r"}}, Limit: 10, Locale: "zh-CN"}
+	request := FindCandidatesRequest{Queries: []CandidateQuery{{Name: "ask-matt"}, {Name: "demo", PackagePath: "github.com/o/r"}}, Limit: 10, Lang: "zh-CN"}
 	document, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(document) != `{"queries":[{"name":"ask-matt"},{"name":"demo","packagePath":"github.com/o/r"}],"limit":10,"locale":"zh-CN"}` {
+	if string(document) != `{"queries":[{"name":"ask-matt"},{"name":"demo","packagePath":"github.com/o/r"}],"limit":10,"lang":"zh-CN"}` {
 		t.Fatalf("unexpected Find request %s", document)
 	}
 	response := FindCandidatesResponse{Candidates: [][]SkillCandidate{{}}}

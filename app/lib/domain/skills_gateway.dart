@@ -55,7 +55,10 @@ abstract interface class SkillsGateway {
     int page = 0,
     int perPage = 20,
   });
-  Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
+  Future<SkillDetail> loadRemoteDetail(
+    SkillSummary skill, {
+    bool source = false,
+  });
   Future<AgentCatalog> inspectOnboardingAgents();
   Future<AgentCatalog> inspectAgents();
   Future<List<AddedProject>> loadAddedProjects();

@@ -39,7 +39,7 @@ var exampleFindCandidatesRequest = protocolapi.FindCandidatesRequest{
 		PackagePath: examplePackagePath,
 	}},
 	Limit:  10,
-	Locale: "en",
+	Lang: "en",
 }
 
 var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{

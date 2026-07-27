@@ -135,7 +135,10 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
+  Future<SkillDetail> loadRemoteDetail(
+    SkillSummary skill, {
+    bool source = false,
+  }) async {
     detailLoads++;
     if (detailErrors.isNotEmpty) throw detailErrors.removeAt(0);
     return detailCompleter?.future ?? remoteDetail;

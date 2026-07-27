@@ -17,6 +17,7 @@ import (
 const (
 	InstallEventsPath = "/api/v1/events/install"
 	RankingsPath      = "/api/v1/rankings/"
+	RankingLangQuery  = "lang"
 )
 
 type Scope string

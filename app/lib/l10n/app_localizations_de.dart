@@ -1096,6 +1096,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get language => 'Sprache';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Thema';
 
   @override
