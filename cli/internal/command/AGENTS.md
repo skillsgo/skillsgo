@@ -11,9 +11,9 @@
 - `exit_code.go`, `exit_code_test.go`: classify wrapped Hub availability and timeout failures into stable process exit codes consumed by the App without parsing stderr.
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and grouped adaptive Human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
-- `show.go`: implements `show` for direct, read-only Repository summaries, named Skill metadata, and exact-path Skill content with immutable source identity plus provider-neutral Hub product metadata.
+- `show.go`: implements `show` for direct, read-only Package summaries and exact-path Skill content with immutable source identity; discovery and name lookup belong to `find`.
 - `show_test.go`: specifies `show` Go-compatible latest resolution, Package description preservation, exact Package-member selection, stable JSON, missing-member failure, and the no-local-write boundary.
-- `product_reads.go`: exposes top-level single-query or strict file/stdin batch Skill `find` plus `hub info` and `hub check` reads, including optional exact-name/Source restriction and presentation `lang` forwarding, while hiding Hub routes and query parameters behind CLI domain language.
+- `product_reads.go`: exposes top-level single-query or strict file/stdin batch Skill `find` plus `hub info` and `hub check` reads; single Find classifies all explicit Package aliases through the CLI Source parser, cold-publishes the selected Package query, and returns the unified product Find document while keyword and candidate Find remain Catalog-only.
 - `product_reads_test.go`: specifies single and batch Find, ordered batch hydration, and grouped Hub service inspection through Execute.
 - `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify the bounded read-only `hub check-update` App machine command that compares installed Library-entry versions with one Package-fresh latest candidate resolved once per Package.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.

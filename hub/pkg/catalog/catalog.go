@@ -117,6 +117,7 @@ type Skill struct {
 	Description       string    `db:"description" json:"description"`
 	DescriptionDigest string    `db:"description_digest" json:"-"`
 	DocumentDigest    string    `db:"document_digest" json:"-"`
+	SourceLanguage    string    `db:"source_language" json:"sourceLanguage"`
 	SourceHost        string    `db:"source_host" json:"sourceHost"`
 	SourceRepository  string    `db:"source_repository" json:"sourceRepository"`
 	Path              string    `db:"path" json:"path"`
@@ -127,17 +128,18 @@ type Skill struct {
 }
 
 type Package struct {
-	RowID           int64      `db:"id" json:"-"`
-	SourceHost      string     `db:"source_host" json:"sourceHost"`
-	SourcePath      string     `db:"source_path" json:"sourcePath"`
-	Path            string     `db:"path" json:"path"`
-	Description     string     `db:"description" json:"description"`
-	Stars           int64      `db:"stars" json:"stars"`
-	SourceETag      string     `db:"source_etag" json:"-"`
-	SourceCheckedAt *time.Time `db:"source_checked_at" json:"-"`
-	SourceRetryAt   *time.Time `db:"source_retry_at" json:"-"`
-	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
-	UpdatedAt       time.Time  `db:"updated_at" json:"updatedAt"`
+	RowID             int64      `db:"id" json:"-"`
+	SourceHost        string     `db:"source_host" json:"sourceHost"`
+	SourcePath        string     `db:"source_path" json:"sourcePath"`
+	Path              string     `db:"path" json:"path"`
+	Description       string     `db:"description" json:"description"`
+	DescriptionDigest string     `db:"description_digest" json:"-"`
+	Stars             int64      `db:"stars" json:"stars"`
+	SourceETag        string     `db:"source_etag" json:"-"`
+	SourceCheckedAt   *time.Time `db:"source_checked_at" json:"-"`
+	SourceRetryAt     *time.Time `db:"source_retry_at" json:"-"`
+	CreatedAt         time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt         time.Time  `db:"updated_at" json:"updatedAt"`
 }
 
 const (
@@ -278,6 +280,7 @@ type VersionSkill struct {
 	Description       string    `db:"description" json:"description"`
 	DescriptionDigest string    `db:"description_digest" json:"-"`
 	DocumentDigest    string    `db:"document_digest" json:"-"`
+	SourceLanguage    string    `db:"source_language" json:"sourceLanguage"`
 }
 
 // PackageVersion is one immutable source and Artifact identity owned by a Package.
@@ -416,7 +419,7 @@ func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRow
 		}
 		if err := q.InsertSkill(ctx, catalogsqlc.InsertSkillParams{
 			VersionID: versionRowID, Name: candidate.Name, Path: candidate.Path, Description: candidate.Description,
-			DescriptionDigest: descriptionDigest, DocumentDigest: candidate.DocumentDigest,
+			DescriptionDigest: descriptionDigest, DocumentDigest: candidate.DocumentDigest, SourceLanguage: candidate.SourceLanguage,
 		}); err != nil {
 			return err
 		}
@@ -790,7 +793,8 @@ func skillFromSQLC(id, moduleRowID int64, packagePath, name, description, source
 func moduleFromSQLC(entity catalogsqlc.Package) *Package {
 	return &Package{
 		RowID: entity.ID, SourceHost: entity.SourceHost, SourcePath: entity.SourcePath, Path: entity.Path,
-		Description: entity.Description, Stars: entity.Stars, SourceETag: entity.SourceEtag.String,
+		Description: entity.Description, DescriptionDigest: entity.DescriptionDigest,
+		Stars: entity.Stars, SourceETag: entity.SourceEtag.String,
 		SourceCheckedAt: utcTimePointer(entity.SourceCheckedAt), SourceRetryAt: utcTimePointer(entity.SourceRetryAt),
 		CreatedAt: entity.CreatedAt.UTC(), UpdatedAt: entity.UpdatedAt.UTC(),
 	}
@@ -801,7 +805,7 @@ func mapVersionSkills(rows []catalogsqlc.SkillsRow) []VersionSkill {
 	for _, row := range rows {
 		skills = append(skills, versionSkillFromValues(
 			row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
-			row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest,
+			row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest, row.SourceLanguage,
 		))
 	}
 	return skills
@@ -810,7 +814,7 @@ func mapVersionSkills(rows []catalogsqlc.SkillsRow) []VersionSkill {
 func versionSkillFromCurrentRow(row catalogsqlc.CurrentSkillRow) *VersionSkill {
 	skill := versionSkillFromValues(
 		row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
-		row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest,
+		row.CommitTime, row.Description, row.DescriptionDigest, row.DocumentDigest, row.SourceLanguage,
 	)
 	return &skill
 }
@@ -819,12 +823,12 @@ func versionSkillFromValues(
 	versionRowID int64,
 	name, version, commitSHA, path string,
 	commitTime time.Time,
-	description, descriptionDigest, documentDigest string,
+	description, descriptionDigest, documentDigest, sourceLanguage string,
 ) VersionSkill {
 	return VersionSkill{
 		VersionRowID: versionRowID, Name: name, Version: version, CommitSHA: commitSHA,
 		Path: path, CommitTime: commitTime.UTC(), Description: description,
-		DescriptionDigest: descriptionDigest, DocumentDigest: documentDigest,
+		DescriptionDigest: descriptionDigest, DocumentDigest: documentDigest, SourceLanguage: sourceLanguage,
 	}
 }
 

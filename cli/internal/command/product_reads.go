@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Cobra, bounded single/file/stdin Find input, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides single and batch `find`, `hub info`, `hub check`, and `hub check-update` domain commands with Human-default and explicit JSON results.
- * [POS]: Serves as the deep read-only product boundary that hides Hub routes and query parameters behind CLI domain language.
+ * [INPUT]: Depends on Cobra, bounded single/file/stdin Find input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
+ * [OUTPUT]: Provides keyword and explicit-source `find`, including best-effort cold Package publication before Catalog reads, plus grouped Hub service commands with Human-default and explicit JSON results.
+ * [POS]: Serves as the deep read-only product boundary that owns source normalization and hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -159,6 +159,15 @@ func newFindCommand() *cobra.Command {
 				packagePath = strings.TrimSpace(packagePath)
 				if err := source.ValidatePackagePath(packagePath); err != nil {
 					return err
+				}
+			}
+			if packagePath == "" {
+				if reference, parseErr := source.Parse(query); parseErr == nil {
+					if _, err := client.Package(cmd.Context(), reference.PackagePath, reference.Version); err != nil {
+						return err
+					}
+					query = reference.PackagePath
+					packagePath = reference.PackagePath
 				}
 			}
 			document, err := client.FindLocalized(cmd.Context(), query, packagePath, canonical, exactName, page, perPage)

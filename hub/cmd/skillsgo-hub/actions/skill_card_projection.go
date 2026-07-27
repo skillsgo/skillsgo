@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Skill coordinates, Catalog rows, presentation locale, and optional localized descriptions.
- * [OUTPUT]: Provides ordered batch hydration and Find projection into stable public Skill cards.
+ * [INPUT]: Depends on canonical Skill coordinates, Catalog rows, presentation locale, optional localized descriptions, and optional stale-while-revalidate Repository metadata reads.
+ * [OUTPUT]: Provides ordered batch hydration and Find projection into stable public Skill cards while opportunistically scheduling stale Repository metadata refresh.
  * [POS]: Serves as the deep read projection module between Catalog persistence and thin HTTP discovery handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,8 @@ import (
 )
 
 type skillCardProjection struct {
-	catalog *catalog.Catalog
+	catalog      *catalog.Catalog
+	repositories repositoryMetadataReader
 }
 
 func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]protocolapi.FindSkill, error) {
@@ -22,6 +23,7 @@ func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates [
 	if err != nil {
 		return nil, err
 	}
+	projection.refreshRepositoryMetadata(ctx, items)
 	cards := make([]protocolapi.FindSkill, 0, len(items))
 	for _, item := range items {
 		cards = append(cards, storedSkillCard(item))
@@ -34,6 +36,7 @@ func (projection skillCardProjection) HydratePaths(ctx context.Context, coordina
 	if err != nil {
 		return nil, err
 	}
+	projection.refreshRepositoryMetadata(ctx, items)
 	cards := make([]protocolapi.FindSkill, 0, len(items))
 	for _, item := range items {
 		cards = append(cards, storedSkillCard(item))
@@ -42,12 +45,32 @@ func (projection skillCardProjection) HydratePaths(ctx context.Context, coordina
 }
 
 func (projection skillCardProjection) Search(ctx context.Context, locale string, ranked []catalog.SearchSkill) []discoverySkill {
+	items := make([]catalog.Skill, 0, len(ranked))
+	for _, item := range ranked {
+		items = append(items, item.Skill)
+	}
+	projection.refreshRepositoryMetadata(ctx, items)
 	localizeSearchSkills(ctx, projection.catalog, locale, ranked)
 	cards := make([]discoverySkill, 0, len(ranked))
 	for _, item := range ranked {
 		cards = append(cards, searchedSkillCard(item))
 	}
 	return cards
+}
+
+func (projection skillCardProjection) refreshRepositoryMetadata(ctx context.Context, items []catalog.Skill) {
+	if projection.repositories == nil {
+		return
+	}
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		key := item.SourceHost + "/" + item.SourceRepository
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		_, _ = projection.repositories.Read(ctx, item.SourceHost, item.SourceRepository)
+	}
 }
 
 func (projection skillCardProjection) Localize(ctx context.Context, locale string, cards []discoverySkill) {

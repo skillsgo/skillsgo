@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub serving unified latest Package Info plus canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Package and nested Skill Show JSON including latest metadata resolution, version-scoped exact Skill lookup, and structured Hub failure output in machine mode.
- * [POS]: Serves as the public CLI behavior contract for explicit-source discovery consumed by the App.
+ * [OUTPUT]: Specifies direct read-only Package and exact-path Skill Show JSON including latest metadata resolution, version-scoped exact Skill lookup, and structured Hub failure output in machine mode.
+ * [POS]: Serves as the public CLI behavior contract for terminal Package details and App Skill details.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -98,21 +98,6 @@ func TestShowSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	defer server.Close()
 
 	var output bytes.Buffer
-	if err := Execute([]string{"show", packagePath + "@" + version, "--skill", "demo", "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
-		t.Fatalf("show failed: %v\n%s", err, output.String())
-	}
-	var result skillInfoView
-	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
-		t.Fatal(err)
-	}
-	if result.PackagePath != packagePath || result.Name != "demo" || result.Version != version {
-		t.Fatalf("unexpected nested Skill result: %#v", result)
-	}
-	if result.Description != "Demo skill." {
-		t.Fatalf("nested Skill description is missing: %#v", result)
-	}
-
-	output.Reset()
 	if err := Execute([]string{"show", packagePath + "@" + version, "--path", "skills/demo", "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
 		t.Fatalf("show path failed: %v\n%s", err, output.String())
 	}
@@ -124,12 +109,6 @@ func TestShowSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	}
 	if err := json.Unmarshal(output.Bytes(), &detail); err != nil || detail.PackagePath != packagePath || detail.Version != version || detail.Path != "skills/demo" || detail.Content == "" {
 		t.Fatalf("unexpected exact-path Skill detail: %#v: %v", detail, err)
-	}
-
-	output.Reset()
-	err := Execute([]string{"show", packagePath + "@" + version, "--skill", "missing", "--hub", server.URL, "--output=json"}, &output, &output)
-	if err == nil {
-		t.Fatalf("expected missing Skill error, got %v", err)
 	}
 }
 

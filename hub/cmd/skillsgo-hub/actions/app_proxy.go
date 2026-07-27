@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers, native Fiber routing, and Huma documentation projection.
- * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, version-scoped Skill content, typed OpenAPI documentation, immutable Package routes, and authenticated Backfill administration with shared task infrastructure.
+ * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, best-effort initial Repository metadata, version-scoped Skill content, typed OpenAPI documentation, immutable Package routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -74,13 +74,18 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(&download.Opts{Storage: s, Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
-		publisher := newPackagePublisher(repositoryFetcher, s, metadata)
-		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
-		dp = withPackageInfo(dp, metadata, publisher)
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
 		}
+		publisher := newPackagePublisher(
+			repositoryFetcher,
+			s,
+			metadata,
+			withCurrentPublicationObserver(metadataCache.RefreshInitial),
+		)
+		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
+		dp = withPackageInfo(dp, metadata, publisher)
 		if adminEnabled {
 			if metadata.PostgresPool() == nil {
 				return fmt.Errorf("Package Backfill administration requires PostgreSQL")
@@ -95,6 +100,7 @@ func addProxyRoutesWithCatalog(
 			r,
 			metadata,
 			dp,
+			metadataCache,
 		)
 	}
 
