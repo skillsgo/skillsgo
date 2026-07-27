@@ -240,6 +240,10 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, response.Skills, 1)
 	require.NotNil(t, response.Skills[0].ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)
+	require.NoError(t, c.UpsertLocalizedDescription(t.Context(), catalog.LocalizedDescription{
+		ResourceKind: catalog.LocalizedSkill, SourceDigest: catalog.DescriptionDigest(skill.Description),
+		Lang: "zh-Hans-CN", ResultKind: catalog.LocalizationTranslated, Description: "工程技能路由器", PromptVersion: "description-v1",
+	}))
 
 	for _, legacyRequest := range []*http.Request{
 		httptest.NewRequest(http.MethodGet, "/api/v1/find?q=ask-matt", nil),
@@ -252,13 +256,19 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	}
 
 	batch := httptest.NewRecorder()
-	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"packagePath":"github.com/mattpocock/skills","path":"skills/missing"},{"packagePath":"github.com/mattpocock/skills","path":"skills/engineering/ask-matt"}]}`))
+	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch?lang=zh-Hans-CN", strings.NewReader(`{"skills":[{"packagePath":"github.com/mattpocock/skills","path":"skills/missing"},{"packagePath":"github.com/mattpocock/skills","path":"skills/engineering/ask-matt"}]}`))
 	serveFiber(t, r, batch, batchRequest)
 	require.Equal(t, http.StatusOK, batch.Code)
 	var batchBody skillBatchResponse
 	require.NoError(t, json.NewDecoder(batch.Body).Decode(&batchBody))
 	require.Len(t, batchBody.Skills, 1)
 	require.Equal(t, "github.com/mattpocock/skills", batchBody.Skills[0].PackagePath)
+	require.Equal(t, "工程技能路由器", batchBody.Skills[0].Description)
+
+	invalidBatch := httptest.NewRecorder()
+	invalidBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch?lang=zh-cn", strings.NewReader(`{"skills":[{"packagePath":"github.com/mattpocock/skills","path":"skills/engineering/ask-matt"}]}`))
+	serveFiber(t, r, invalidBatch, invalidBatchRequest)
+	require.Equal(t, http.StatusBadRequest, invalidBatch.Code)
 }
 
 func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
