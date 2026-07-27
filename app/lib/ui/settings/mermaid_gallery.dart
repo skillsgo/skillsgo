@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Settings route state, native SkillsGo components, HugeIcons, the pure-Dart Mermaid renderer, rootBundle, full_svg_flutter, webview_flutter, bundled Beautiful Mermaid SVG, and bundled Mermaid.js 11.16.0.
- * [OUTPUT]: Provides switchable 32-type native, Beautiful Mermaid/fallback, and official Mermaid.js WebView galleries with live App theme mapping.
+ * [OUTPUT]: Provides switchable 32-type native, Beautiful Mermaid/fallback, and shared-WebView official Mermaid.js galleries with live App theme mapping.
  * [POS]: Serves as the Advanced Settings child page for visually comparing pure Dart, generated SVG, and official browser-backed Mermaid rendering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -92,7 +92,7 @@ class _MermaidGalleryViewState extends State<_MermaidGalleryView> {
           Expanded(
             child: Text(
               _webView
-                  ? '本地 Mermaid.js 11.16.0 · 每个 block 一个 WebView'
+                  ? '本地 Mermaid.js 11.16.0 · 全局共享一个 WebView'
                   : _beautiful
                   ? 'beautiful-mermaid SVG · 跟随明暗模式与 App 主题色'
                   : '纯 Dart 解析、布局与 Canvas 绘制',
@@ -156,14 +156,6 @@ class _MermaidJsWebViewGallery extends StatelessWidget {
                 child: MermaidWebViewDiagram(
                   key: ValueKey('mermaid-js-diagram-$index-$sourceIndex'),
                   source: sample.sources[sourceIndex],
-                  fallbackBuilder: (context, error) => Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SelectableText(
-                      error == null
-                          ? 'WebView 原生插件尚未注册，请完整重启 App。'
-                          : error.toString(),
-                    ),
-                  ),
                 ),
               ),
             ],

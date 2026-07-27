@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on flutter_markdown_plus, the official Mermaid.js WebView bridge, the vendored native Mermaid fallback, Dart Markdown syntax hooks, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
- * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader with one WebView per Mermaid block and native/source-preserving fallback.
+ * [INPUT]: Depends on flutter_markdown_plus, the shared official Mermaid.js WebView-to-PNG bridge, the retained native Mermaid renderer, Dart Markdown syntax hooks, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
+ * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader whose Mermaid blocks exclusively request PNGs from the shared WebView renderer.
  * [POS]: Serves as the App UI boundary around third-party Markdown parsing and rendering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -133,18 +133,12 @@ class _MermaidElementBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final source = element.textContent.trim();
-    final nativeSupported = const MermaidParser().parse(source) != null;
-    return MermaidWebViewDiagram(
-      source: source,
-      fallbackBuilder: (context, _) => nativeSupported
-          ? _NativeMermaidBlock(source: source)
-          : _MermaidSourceFallback(source: source),
-    );
+    return MermaidWebViewDiagram(source: source);
   }
 }
 
-class _NativeMermaidBlock extends StatelessWidget {
-  const _NativeMermaidBlock({required this.source});
+class NativeMermaidBlock extends StatelessWidget {
+  const NativeMermaidBlock({super.key, required this.source});
 
   final String source;
 
