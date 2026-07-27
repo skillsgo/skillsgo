@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, JourneyRuntime isolation, onboarding preferences, a disposable Hub/schema, the bundled CLI, and the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, YAML/Lock state, Scope Module Store, and ordinary-file Repository Projections.
+ * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, YAML/Lock state, Scope Package Store, and ordinary-file Repository Projections.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,12 +47,12 @@ void registerRepositoryInstallAllJourney() {
 
       await _pumpUntil(
         tester,
-        find.byKey(const Key('module-install-all')),
+        find.byKey(const Key('package-install-all')),
         timeout: const Duration(minutes: 2),
       );
       expect(find.text('skillsgo / e2e-versioned-skills'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('module-install-all')));
+      await tester.tap(find.byKey(const Key('package-install-all')));
       await _pumpUntil(
         tester,
         find.byWidgetPredicate(
@@ -111,7 +111,7 @@ void registerRepositoryInstallAllJourney() {
       );
       expect(
         File(
-          '${home.path}/.skillsgo/modules/$coordinate/skills/resourceful/references/guide.md',
+          '${home.path}/.skillsgo/packages/$coordinate/skills/resourceful/references/guide.md',
         ).existsSync(),
         isTrue,
       );

@@ -21,7 +21,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -36,7 +36,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	manifestPath := filepath.Join(sandboxRoot, "project", "skills.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBefore), installed.ModulePath+":")
+	require.Contains(t, string(manifestBefore), installed.PackagePath+":")
 	require.Contains(t, string(manifestBefore), "version: "+installed.Version)
 	require.Contains(t, string(manifestBefore), "- alpha")
 	require.Contains(t, string(manifestBefore), "- claude-code")
@@ -45,14 +45,14 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	proxyInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.ModulePath+"/versions/"+installed.Version+"")
+	proxyInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.PackagePath+"/versions/"+installed.Version+"")
 	require.Equal(t, 0, proxyInfo.exitCode, proxyInfo.output)
-	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.ModulePath+"/versions/"+installed.Version+"/skills?path=skills/alpha")
+	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.PackagePath+"/versions/"+installed.Version+"/skills?path=skills/alpha")
 	require.Equal(t, 0, apiDetail.exitCode, apiDetail.output)
 	for _, legacyURL := range []string{
-		"http://127.0.0.1:3000/mod/" + installed.ModulePath + "/versions/" + installed.Version + "",
-		"http://127.0.0.1:3000/api/v1/" + installed.ModulePath + "/-/skills/alpha/versions/" + installed.Version + "",
-		"http://127.0.0.1:3000/v1/skills/" + installed.ModulePath + "/-/skills/alpha",
+		"http://127.0.0.1:3000/mod/" + installed.PackagePath + "/versions/" + installed.Version + "",
+		"http://127.0.0.1:3000/api/v1/" + installed.PackagePath + "/-/skills/alpha/versions/" + installed.Version + "",
+		"http://127.0.0.1:3000/v1/skills/" + installed.PackagePath + "/-/skills/alpha",
 	} {
 		legacy := execInContainer(t, ctx, container, "wget", "-S", "-qO-", legacyURL)
 		require.NotEqual(t, 0, legacy.exitCode, legacyURL+" unexpectedly succeeded: "+legacy.output)

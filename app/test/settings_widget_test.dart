@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, and local Library refresh behavior.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, local Library refresh, and native/Beautiful Mermaid gallery behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,11 +9,14 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/ui/agent_logo.dart';
 import 'package:skillsgo/ui/nested_navigation.dart';
+import 'package:skillsgo/ui/mermaid/flutter_mermaid.dart';
+import 'package:skillsgo/ui/settings_screen.dart';
 
 import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
@@ -229,7 +232,7 @@ void main() {
     },
   );
 
-  testWidgets('Advanced Settings ends with the local Library refresh', (
+  testWidgets('Advanced Settings ends with the Mermaid gallery entry', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1200));
@@ -244,10 +247,16 @@ void main() {
 
     final refresh = find.byKey(const Key('refresh-local-library'));
     final restart = find.byKey(const Key('restart-onboarding'));
+    final mermaid = find.byKey(const Key('open-mermaid-gallery'));
     expect(refresh, findsOneWidget);
+    expect(mermaid, findsOneWidget);
     expect(
       tester.getTopLeft(refresh).dy,
       greaterThan(tester.getTopLeft(restart).dy),
+    );
+    expect(
+      tester.getTopLeft(mermaid).dy,
+      greaterThan(tester.getTopLeft(refresh).dy),
     );
     final projectLoads = gateway.projectLoads;
     final agentInspections = gateway.agentInspections;
@@ -296,8 +305,11 @@ void main() {
           id: 'codex',
           displayName: 'Codex',
           installed: true,
-          supportedScopes: [InstallationScope.project, InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.codex/skills',
             exists: true,
           ),
@@ -310,8 +322,11 @@ void main() {
           id: 'cursor',
           displayName: 'Cursor',
           installed: false,
-          supportedScopes: [InstallationScope.project, InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.cursor/skills',
             exists: false,
           ),
@@ -463,4 +478,64 @@ void main() {
       expect(gateway.riskPolicy.allowCriticalOverride, isTrue);
     },
   );
+
+  test('Mermaid gallery samples cover and parse all type families', () {
+    expect(mermaidGallerySamples, hasLength(32));
+    final parser = const MermaidParser();
+    for (final sample in mermaidGallerySamples) {
+      for (final source in sample.sources) {
+        expect(
+          parser.parse(source),
+          isNotNull,
+          reason: '${sample.title} should parse: $source',
+        );
+      }
+    }
+  });
+
+  testWidgets('Advanced Settings opens the native Mermaid gallery', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final entry = find.byKey(const Key('open-mermaid-gallery'));
+    expect(entry, findsOneWidget);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mermaid-gallery-title')), findsOneWidget);
+    expect(find.text('Mermaid · 32'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mermaid-gallery-card-0')),
+      findsOneWidget,
+    );
+    expect(find.byType(MermaidDiagram), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('show-beautiful-mermaid-gallery')));
+    await tester.pumpAndSettle();
+    expect(find.text('Mermaid 对照 · 32'), findsOneWidget);
+    expect(find.text('渲染对照 · 32'), findsOneWidget);
+    expect(
+      find.byKey(const Key('beautiful-mermaid-gallery-list')),
+      findsOneWidget,
+    );
+    expect(find.byType(full_svg.FSvgPicture), findsWidgets);
+
+    expect(
+      find.byKey(const Key('show-mermaid-js-webview-gallery')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('close-mermaid-gallery')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open-mermaid-gallery')), findsOneWidget);
+  });
 }

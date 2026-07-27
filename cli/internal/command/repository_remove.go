@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Module Store, Agent Adapter roots, baseline-aware Repository Projection transactions, and the Repository mutation coordinator.
+ * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Package Store, Agent Adapter roots, baseline-aware Repository Projection transactions, and the Repository mutation coordinator.
  * [OUTPUT]: Removes selected Repository members by persisted name-or-path selector through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
  * [POS]: Serves as the authoritative managed Repository-member selector path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,20 +17,20 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
-	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
+	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/spf13/cobra"
 )
 
-func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, userScope bool, projectRoot string, all bool) (bool, error) {
+func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool) (bool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return true, err
 	}
 	declarationRoot, agentScope := "", agent.ScopeProject
-	if userScope {
-		declarationRoot, agentScope = project.UserDeclarationRoot(home), agent.ScopeUser
+	if globalScope {
+		declarationRoot, agentScope = project.GlobalDeclarationRoot(home), agent.ScopeGlobal
 	} else if projectRoot != "" {
 		declarationRoot = filepath.Clean(projectRoot)
 	} else {
@@ -51,11 +51,11 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	removals := make(map[string]map[string]bool)
 	if all {
 		selectors = nil
-		for modulePath, dependency := range manifest.Dependencies {
-			removals[modulePath] = make(map[string]bool, len(dependency.Skills))
+		for packagePath, dependency := range manifest.Dependencies {
+			removals[packagePath] = make(map[string]bool, len(dependency.Skills))
 			for _, skillName := range dependency.Skills {
 				selectors = append(selectors, skillName)
-				removals[modulePath][skillName] = true
+				removals[packagePath][skillName] = true
 			}
 		}
 	} else {
@@ -70,47 +70,47 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			_ = transactions[index].Rollback()
 		}
 	}
-	modulesRoot := filepath.Join(declarationRoot, ".skillsgo", "modules")
+	packagesRoot := filepath.Join(declarationRoot, ".skillsgo", "packages")
 	infoRoot := filepath.Join(declarationRoot, ".skillsgo", "info")
-	if userScope {
-		stateRoot := project.UserStateRoot(home)
-		modulesRoot = filepath.Join(stateRoot, "modules")
+	if globalScope {
+		stateRoot := project.GlobalStateRoot(home)
+		packagesRoot = filepath.Join(stateRoot, "packages")
 		infoRoot = filepath.Join(stateRoot, "info")
 	}
-	for modulePath, removed := range removals {
-		dependency := manifest.Dependencies[modulePath]
-		locked, ok := lock.Dependencies[modulePath]
+	for packagePath, removed := range removals {
+		dependency := manifest.Dependencies[packagePath]
+		locked, ok := lock.Dependencies[packagePath]
 		if !ok || locked.Version != dependency.Version {
 			rollback()
-			return true, fmt.Errorf("skills-lock.yaml does not match Repository dependency %s", modulePath)
+			return true, fmt.Errorf("skills-lock.yaml does not match Repository dependency %s", packagePath)
 		}
 		desiredSkills, desiredAgents := subtractStrings(dependency.Skills, removed), dependency.Agents
 		if len(selectedAgents) > 0 {
 			if len(removed) != len(dependency.Skills) {
 				rollback()
-				return true, fmt.Errorf("Repository dependencies use Cartesian Skill/Agent selection; removing an Agent requires selecting every Skill in %s", modulePath)
+				return true, fmt.Errorf("Repository dependencies use Cartesian Skill/Agent selection; removing an Agent requires selecting every Skill in %s", packagePath)
 			}
 			for _, agentID := range selectedAgents {
 				if !containsString(dependency.Agents, agentID) {
 					rollback()
-					return true, fmt.Errorf("Repository %s is not selected for Agent %s", modulePath, agentID)
+					return true, fmt.Errorf("Repository %s is not selected for Agent %s", packagePath, agentID)
 				}
 			}
 			desiredSkills = dependency.Skills
 			desiredAgents = subtractStringSlice(dependency.Agents, selectedAgents)
 		}
 		removeDependency := len(desiredSkills) == 0 || len(desiredAgents) == 0
-		archive, err := modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
+		archive, err := packagestore.ReadVerifiedPackage(packagesRoot, packagePath, dependency.Version, locked.Sum)
 		if err != nil {
 			rollback()
 			return true, err
 		}
-		infoBytes, err := (infocache.Cache{Root: infoRoot}).Get(modulePath, dependency.Version, "module.info")
+		infoBytes, err := (infocache.Cache{Root: infoRoot}).Get(packagePath, dependency.Version, "package.info")
 		if err != nil {
 			rollback()
 			return true, err
 		}
-		resource, err := hub.ParseModuleInfo(modulePath, infoBytes)
+		resource, err := hub.ParsePackageInfo(packagePath, infoBytes)
 		if err != nil {
 			rollback()
 			return true, err
@@ -129,7 +129,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			return paths
 		}
 		oldPaths, desiredPaths := toPaths(dependency.Skills), toPaths(desiredSkills)
-		projections := []modulestore.Projection(nil)
+		projections := []packagestore.Projection(nil)
 		if !removeDependency {
 			projections, err = repositoryProjections(catalog, desiredAgents, dependency.Agents, oldPaths, desiredPaths, agentScope, declarationRoot)
 			if err != nil {
@@ -137,7 +137,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 				return true, err
 			}
 		}
-		removedProjections := []modulestore.Projection(nil)
+		removedProjections := []packagestore.Projection(nil)
 		if len(selectedAgents) > 0 || removeDependency {
 			oldProjections, oldErr := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldPaths, oldPaths, agentScope, declarationRoot)
 			if oldErr != nil {
@@ -150,24 +150,24 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			}
 			for _, projection := range oldProjections {
 				if !desiredRoots[filepath.Clean(projection.Root)] {
-					removedProjections = append(removedProjections, modulestore.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: oldPaths})
+					removedProjections = append(removedProjections, packagestore.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: oldPaths})
 				}
 			}
 		}
-		transaction, err := modulestore.Prepare(modulestore.Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: members, Projections: projections, RemovedProjections: removedProjections, RemoveModule: removeDependency})
+		transaction, err := packagestore.Prepare(packagestore.Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: dependency.Version,
+			Archive: archive, Sum: locked.Sum, Members: members, Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err
 		}
 		transactions = append(transactions, transaction)
 		if removeDependency {
-			delete(manifest.Dependencies, modulePath)
-			delete(lock.Dependencies, modulePath)
+			delete(manifest.Dependencies, packagePath)
+			delete(lock.Dependencies, packagePath)
 		} else {
 			dependency.Skills = desiredSkills
 			dependency.Agents = desiredAgents
-			manifest.Dependencies[modulePath] = dependency
+			manifest.Dependencies[packagePath] = dependency
 		}
 	}
 	if err := (repositorymutation.Plan{
@@ -179,15 +179,15 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	}
 	if output, _ := cmd.Flags().GetString("output"); output == "json" {
 		scope := "project"
-		if userScope {
-			scope = "user"
+		if globalScope {
+			scope = "global"
 		}
 		err := json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
 			SchemaVersion int      `json:"schemaVersion"`
 			Phase         string   `json:"phase"`
 			Skills        []string `json:"skills"`
 			Scope         string   `json:"scope"`
-		}{SchemaVersion: 1, Phase: "module-remove", Skills: selectors, Scope: scope})
+		}{SchemaVersion: 1, Phase: "package-remove", Skills: selectors, Scope: scope})
 		return true, err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ removed %d Repository Skill selection(s)\n", len(selectors))
@@ -198,12 +198,12 @@ func resolveVersionSkillRemovals(manifest project.WorkspaceManifest, selectors [
 	removals := make(map[string]map[string]bool)
 	for _, raw := range selectors {
 		raw = strings.TrimSpace(raw)
-		type match struct{ modulePath, skillName string }
+		type match struct{ packagePath, skillName string }
 		matches := make([]match, 0, 1)
-		for modulePath, dependency := range manifest.Dependencies {
+		for packagePath, dependency := range manifest.Dependencies {
 			for _, skillName := range dependency.Skills {
 				if raw == skillName {
-					matches = append(matches, match{modulePath: modulePath, skillName: skillName})
+					matches = append(matches, match{packagePath: packagePath, skillName: skillName})
 				}
 			}
 		}
@@ -214,10 +214,10 @@ func resolveVersionSkillRemovals(manifest project.WorkspaceManifest, selectors [
 			return nil, fmt.Errorf("Repository Skill name %q is ambiguous across dependencies", raw)
 		}
 		matched := matches[0]
-		if removals[matched.modulePath] == nil {
-			removals[matched.modulePath] = make(map[string]bool)
+		if removals[matched.packagePath] == nil {
+			removals[matched.packagePath] = make(map[string]bool)
 		}
-		removals[matched.modulePath][matched.skillName] = true
+		removals[matched.packagePath][matched.skillName] = true
 	}
 	return removals, nil
 }

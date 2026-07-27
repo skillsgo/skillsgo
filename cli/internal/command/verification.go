@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, and the unified read-only inventory reconciliation domain.
  * [OUTPUT]: Provides `skillsgo verify` health verification and `skillsgo why` direct declaration/target explanations in human or JSON form.
- * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Module Stores, declarations, or Projections.
+ * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Package Stores, declarations, or Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -27,10 +27,10 @@ type verificationReport struct {
 }
 
 type verificationRow struct {
-	ModulePath string           `json:"modulePath,omitempty"`
-	Name       string           `json:"name"`
-	Health     inventory.Health `json:"health"`
-	Targets    int              `json:"targets"`
+	PackagePath string           `json:"packagePath,omitempty"`
+	Name        string           `json:"name"`
+	Health      inventory.Health `json:"health"`
+	Targets     int              `json:"targets"`
 }
 
 type whyReport struct {
@@ -39,25 +39,26 @@ type whyReport struct {
 }
 
 func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
-	var includeUser bool
+	var includeGlobal bool
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "verify",
-		Short: appi18n.T("verify.short"),
-		Args:  cobra.NoArgs,
+		Use:     "verify",
+		Short:   appi18n.T("verify.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo verify\n  skillsgo verify --global\n  skillsgo verify --project ./my-project --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			user, roots, err := resolveInspectionLocations(includeUser, projects)
+			user, roots, err := resolveInspectionLocations(includeGlobal, projects)
 			if err != nil {
 				return err
 			}
-			reconciled, err := inventory.Build(inventory.Options{IncludeUser: user, Projects: roots, Catalog: catalog})
+			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog})
 			if err != nil {
 				return err
 			}
 			report := verificationReport{Healthy: true, Entries: make([]verificationRow, 0, len(reconciled.Entries))}
 			for _, entry := range reconciled.Entries {
-				report.Entries = append(report.Entries, verificationRow{ModulePath: entry.ModulePath, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
+				report.Entries = append(report.Entries, verificationRow{PackagePath: entry.PackagePath, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
 				if entry.Health != inventory.HealthHealthy {
 					report.Healthy = false
 				}
@@ -71,24 +72,25 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 			return nil
 		},
 	}
-	addInspectionFlags(cmd, &includeUser, &projects, &output)
+	addInspectionFlags(cmd, &includeGlobal, &projects, &output)
 	return cmd
 }
 
 func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
-	var includeUser bool
+	var includeGlobal bool
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "why <skill-name>",
-		Short: appi18n.T("why.short"),
-		Args:  cobra.ExactArgs(1),
+		Use:     "why <skill-name>",
+		Short:   appi18n.T("why.short"),
+		Args:    cobra.ExactArgs(1),
+		Example: "  skillsgo why setup-matt-pocock-skills\n  skillsgo why setup-matt-pocock-skills --global\n  skillsgo why setup-matt-pocock-skills --project ./my-project --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			user, roots, err := resolveInspectionLocations(includeUser, projects)
+			user, roots, err := resolveInspectionLocations(includeGlobal, projects)
 			if err != nil {
 				return err
 			}
-			reconciled, err := inventory.Build(inventory.Options{IncludeUser: user, Projects: roots, Catalog: catalog})
+			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog})
 			if err != nil {
 				return err
 			}
@@ -113,7 +115,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 						if target.ProjectRoot != "" {
 							scope += ":" + target.ProjectRoot
 						}
-						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.ModulePath, scope, target.Agent, target.Path}})
+						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.PackagePath, scope, target.Agent, target.Path}})
 					}
 				}
 				ui, err := humanUI(cmd)
@@ -122,23 +124,23 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 				}
 				return ui.Render(terminalui.Document{Title: appi18n.F("why.title", query), Sections: []terminalui.Section{{Rows: rows}}})
 			default:
-				return fmt.Errorf(appi18n.T("inventory.error.output"), output)
+				return fmt.Errorf(appi18n.T("list.error.output"), output)
 			}
 		},
 	}
-	addInspectionFlags(cmd, &includeUser, &projects, &output)
+	addInspectionFlags(cmd, &includeGlobal, &projects, &output)
 	return cmd
 }
 
-func addInspectionFlags(cmd *cobra.Command, includeUser *bool, projects *[]string, output *string) {
-	cmd.Flags().BoolVar(includeUser, "user", false, appi18n.T("inventory.flag.user"))
-	cmd.Flags().StringArrayVar(projects, "project", nil, appi18n.T("inventory.flag.project"))
+func addInspectionFlags(cmd *cobra.Command, includeGlobal *bool, projects *[]string, output *string) {
+	cmd.Flags().BoolVarP(includeGlobal, "global", "g", false, appi18n.T("list.flag.global"))
+	cmd.Flags().StringArrayVar(projects, "project", nil, appi18n.T("list.flag.project"))
 	cmd.Flags().StringVar(output, "output", "human", appi18n.T("flag.output"))
 }
 
-func resolveInspectionLocations(includeUser bool, projects []string) (bool, []string, error) {
-	if includeUser || len(projects) > 0 {
-		return includeUser, projects, nil
+func resolveInspectionLocations(includeGlobal bool, projects []string) (bool, []string, error) {
+	if includeGlobal || len(projects) > 0 {
+		return includeGlobal, projects, nil
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -161,7 +163,7 @@ func writeVerificationReport(cmd *cobra.Command, output string, report verificat
 			if entry.Health != inventory.HealthHealthy {
 				state = "!"
 			}
-			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.ModulePath, fmt.Sprintf("%d", entry.Targets)}})
+			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.PackagePath, fmt.Sprintf("%d", entry.Targets)}})
 		}
 		ui, err := humanUI(cmd)
 		if err != nil {
@@ -169,6 +171,6 @@ func writeVerificationReport(cmd *cobra.Command, output string, report verificat
 		}
 		return ui.Render(terminalui.Document{Title: appi18n.T("verify.title"), Sections: []terminalui.Section{{Rows: rows}}})
 	default:
-		return fmt.Errorf(appi18n.T("inventory.error.output"), output)
+		return fmt.Errorf(appi18n.T("list.error.output"), output)
 	}
 }

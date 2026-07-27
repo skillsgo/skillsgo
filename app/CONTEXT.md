@@ -17,8 +17,8 @@ The rule that every Hub and local App operation crosses the bundled CLI machine 
 _Avoid_: direct Hub client, Cloud-persisted Skill metadata
 
 **Presentation Locale**:
-The user's persisted App language choice, resolved from System or any supported UI locale. Hub discovery and detail currently receive the stable content tags `en`, `zh-Hans`, or `zh-Hant`; UI locales without matching Hub content fall back to `en`. Presentation Locale may select author-maintained or Hub-enriched display text but never changes the Skill artifact installed or executed.
-_Avoid_: artifact language, installation locale, translated Skill
+The user's persisted App language choice, resolved from System or any supported UI language. Hub discovery and detail receive the canonical presentation `lang` owned by the shared Protocol language registry. Omitting `lang` requests source content. Presentation Language may select Hub-enriched descriptions and display-only Skill documents but never changes the Skill artifact installed or executed.
+_Avoid_: artifact language, installation language, translated artifact
 
 **Offline Local Management**:
 The capability to inspect and manage Added Projects, Installed Agents, Hub-managed targets, External Installations, and Local Skills from local CLI and filesystem state while the Hub is unavailable. Hub detail, matching, installation, and update actions explain their restriction and can be retried without clearing the selected Library route or local inventory.
@@ -65,7 +65,7 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's reviewed conversion of selected External Installations into ordinary managed Module dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Module and immutable-version choice before one confirmation.
+The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Package and immutable-version choice before one confirmation.
 _Avoid_: automatic identity inference, content-authenticated takeover, implicit import, unmatched Local import
 
 **Adoption Review**:
@@ -85,7 +85,7 @@ A reviewed, state-bound exact-path removal of healthy External Installations. Un
 _Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory that is not derived from a declared Module Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Module dependency.
+A Skill found in an Installed Agent's directory that is not derived from a declared Package Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Package dependency.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:

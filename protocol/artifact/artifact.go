@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on immutable Module file inventories and ZIP bytes, extracted Module directories, and canonical Module Path identity.
- * [OUTPUT]: Provides deterministic Module ZIP construction, shared limits, portable collision-safe paths, Module-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
- * [POS]: Serves as the executable Module Artifact format contract shared by Hub producers and clients.
+ * [INPUT]: Depends on immutable Package file inventories and ZIP bytes, extracted Package directories, and canonical Package Path identity.
+ * [OUTPUT]: Provides deterministic Package ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
+ * [POS]: Serves as the executable Package Artifact format contract shared by Hub producers and clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package artifact
@@ -82,59 +82,59 @@ func ValidSum(value string) bool {
 	return err == nil && len(decoded) == sha256.Size
 }
 
-// BuildModule serializes one complete validated Module file inventory
-// beneath the canonical <modulePath>@<version>/ ZIP prefix.
-func BuildModule(modulePath, version string, files []Entry) ([]byte, error) {
-	if modulePath == "" || version == "" {
-		return nil, errors.New("Module Artifact identity and version are required")
+// BuildPackage serializes one complete validated Package file inventory
+// beneath the canonical <packagePath>@<version>/ ZIP prefix.
+func BuildPackage(packagePath, version string, files []Entry) ([]byte, error) {
+	if packagePath == "" || version == "" {
+		return nil, errors.New("Package Artifact identity and version are required")
 	}
 	if len(files) == 0 || len(files) > MaxFiles {
-		return nil, fmt.Errorf("Module Artifact file count must be between 1 and %d", MaxFiles)
+		return nil, fmt.Errorf("Package Artifact file count must be between 1 and %d", MaxFiles)
 	}
 	files = append([]Entry(nil), files...)
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 	var total uint64
 	for _, file := range files {
 		if file.Directory {
-			return nil, fmt.Errorf("Module Artifact input %q is a directory; only regular files are accepted", file.Path)
+			return nil, fmt.Errorf("Package Artifact input %q is a directory; only regular files are accepted", file.Path)
 		}
 		size := uint64(len(file.Contents))
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
-			return nil, fmt.Errorf("Module Artifact exceeds %d bytes", MaxUncompressedBytes)
+			return nil, fmt.Errorf("Package Artifact exceeds %d bytes", MaxUncompressedBytes)
 		}
 		total += size
 	}
 
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
-	prefix := modulePath + "@" + version + "/"
+	prefix := packagePath + "@" + version + "/"
 	for _, file := range files {
 		header := &zip.FileHeader{Name: prefix + file.Path, Method: zip.Deflate}
 		header.Modified = time.Date(1980, time.January, 1, 0, 0, 0, 0, time.UTC)
 		mode, err := canonicalMode(file.Mode)
 		if err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("Module Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("Package Artifact file %q: %w", file.Path, err)
 		}
 		header.SetMode(mode)
 		entry, err := writer.CreateHeader(header)
 		if err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("create Module Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("create Package Artifact file %q: %w", file.Path, err)
 		}
 		if _, err := entry.Write(file.Contents); err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("write Module Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("write Package Artifact file %q: %w", file.Path, err)
 		}
 	}
 	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("close Module Artifact ZIP: %w", err)
+		return nil, fmt.Errorf("close Package Artifact ZIP: %w", err)
 	}
 	if buffer.Len() > MaxArchiveBytes {
-		return nil, fmt.Errorf("Module Artifact archive exceeds %d bytes", MaxArchiveBytes)
+		return nil, fmt.Errorf("Package Artifact archive exceeds %d bytes", MaxArchiveBytes)
 	}
 	archive := buffer.Bytes()
-	if _, err := ModuleSum(archive, modulePath, version); err != nil {
+	if _, err := PackageSum(archive, packagePath, version); err != nil {
 		return nil, err
 	}
 	return archive, nil
@@ -159,16 +159,16 @@ func canonicalMode(mode os.FileMode) (os.FileMode, error) {
 	return 0o644, nil
 }
 
-// ModuleSum validates an immutable Module ZIP and returns the Go
+// PackageSum validates an immutable Package ZIP and returns the Go
 // HashZip-compatible Sum over every full ZIP file name and its contents.
-func ModuleSum(data []byte, modulePath, version string) (string, error) {
-	return WalkModule(data, modulePath, version, nil)
+func PackageSum(data []byte, packagePath, version string) (string, error) {
+	return WalkPackage(data, packagePath, version, nil)
 }
 
-// WalkModule validates and reads one complete Module Artifact exactly
+// WalkPackage validates and reads one complete Package Artifact exactly
 // once, visits entries in normalized path order, and returns its Sum.
-func WalkModule(data []byte, modulePath, version string, visit VisitFunc) (string, error) {
-	return walkContent(data, modulePath, version, visit)
+func WalkPackage(data []byte, packagePath, version string, visit VisitFunc) (string, error) {
+	return walkContent(data, packagePath, version, visit)
 }
 
 func walkContent(data []byte, artifactID, version string, visit VisitFunc) (string, error) {
@@ -254,7 +254,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 		validated = append(validated, Entry{Path: relative, Contents: contents, Mode: entry.Mode(), Size: int64(entry.UncompressedSize64)})
 	}
 	if !hasSkill {
-		return "", fmt.Errorf("Module Artifact does not contain a SKILL.md member")
+		return "", fmt.Errorf("Package Artifact does not contain a SKILL.md member")
 	}
 	if err := ValidateSymlinks(validated); err != nil {
 		return "", err
@@ -270,7 +270,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 }
 
 // ValidateSymlinks requires every symlink to use a relative target that
-// resolves, possibly through other symlinks, to an entry inside the Module.
+// resolves, possibly through other symlinks, to an entry inside the Package.
 func ValidateSymlinks(entries []Entry) error {
 	byPath := make(map[string]Entry, len(entries))
 	directories := map[string]bool{".": true}
@@ -304,7 +304,7 @@ func ValidateSymlinks(entries []Entry) error {
 			}
 			resolved := path.Clean(path.Join(path.Dir(current), target))
 			if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") {
-				return &UnsafeSymlinkError{Path: entry.Path, Reason: "target escapes the Module"}
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: "target escapes the Package"}
 			}
 			if _, err := PortablePathKey(resolved); err != nil {
 				return &UnsafeSymlinkError{Path: entry.Path, Reason: fmt.Sprintf("invalid resolved target: %v", err)}
@@ -324,13 +324,13 @@ func (err *UnsafeSymlinkError) Error() string {
 	return fmt.Sprintf("artifact symlink %q is unsafe: %s", err.Path, err.Reason)
 }
 
-// ModuleDirectorySum calculates the coordinate-bound Module Sum for
-// an extracted Module Artifact whose Skill members may be rooted or nested.
-func ModuleDirectorySum(root, modulePath, version string) (string, error) {
-	if modulePath == "" || version == "" {
-		return "", errors.New("Module Artifact identity and version are required")
+// PackageDirectorySum calculates the coordinate-bound Package Sum for
+// an extracted Package Artifact whose Skill members may be rooted or nested.
+func PackageDirectorySum(root, packagePath, version string) (string, error) {
+	if packagePath == "" || version == "" {
+		return "", errors.New("Package Artifact identity and version are required")
 	}
-	return directorySum(root, modulePath+"@"+version+"/")
+	return directorySum(root, packagePath+"@"+version+"/")
 }
 
 func directorySum(root, prefix string) (string, error) {
@@ -435,7 +435,7 @@ func directorySum(root, prefix string) (string, error) {
 		}
 	}
 	if !hasSkill {
-		return "", fmt.Errorf("Module Artifact does not contain a SKILL.md member")
+		return "", fmt.Errorf("Package Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on prepared Repository filesystem transactions plus caller-owned immutable-cache and Workspace-state publication operations.
  * [OUTPUT]: Provides one ordered Repository mutation commit state machine with reverse rollback and post-commit cleanup.
- * [POS]: Serves as the deep transaction coordinator between command intent and Scope Module Store/project persistence adapters.
+ * [POS]: Serves as the deep transaction coordinator between command intent and Scope Package Store/project persistence adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package repositorymutation
@@ -28,11 +28,11 @@ type Plan struct {
 }
 
 type ImmutableInfo struct {
-	Cache      infocache.Cache
-	ModulePath string
-	Version    string
-	Kind       string
-	Bytes      []byte
+	Cache       infocache.Cache
+	PackagePath string
+	Version     string
+	Kind        string
+	Bytes       []byte
 }
 
 type WorkspaceState struct {
@@ -57,7 +57,7 @@ func (plan Plan) Commit() error {
 		}
 	}
 	for _, info := range plan.ImmutableInfo {
-		if err := info.Cache.Put(info.ModulePath, info.Version, info.Kind, info.Bytes); err != nil {
+		if err := info.Cache.Put(info.PackagePath, info.Version, info.Kind, info.Bytes); err != nil {
 			return rollback(fmt.Errorf("persist immutable Repository Info: %w", err))
 		}
 	}

@@ -44,7 +44,7 @@ Map<String, dynamic> _decodeMachineDocument(
 );
 
 InstallationScope _installationScope(Object? value) => switch (value) {
-  'user' => InstallationScope.user,
+  'global' => InstallationScope.global,
   'project' => InstallationScope.project,
   _ => throw const FormatException('Unknown installation scope.'),
 };
@@ -79,7 +79,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
   return 1;
 }
 
-const _inventorySchemaVersion = 6;
+const _inventorySchemaVersion = 7;
 
 List<String> _strictStringList(Object? value) {
   if (value is! List || value.any((item) => item is! String || item.isEmpty)) {
@@ -113,7 +113,7 @@ InstallationPlanTarget _installationPlanTarget(Object? raw) {
   }
   final scope = _installationScope(raw['scope']);
   final projectRoot = raw['projectRoot'] as String? ?? '';
-  if ((scope == InstallationScope.user && projectRoot.isNotEmpty) ||
+  if ((scope == InstallationScope.global && projectRoot.isNotEmpty) ||
       (scope == InstallationScope.project && projectRoot.isEmpty)) {
     throw const FormatException();
   }
@@ -140,13 +140,13 @@ List<InstallationTargetResult> _moduleInstallationResults(
   String immutableVersion,
   List<InstallationTargetSelection> selections,
 ) {
-  final raw = _machineDocument(value, phases: const ['module-install']);
-  if (raw['modulePath'] != skill.modulePath ||
+  final raw = _machineDocument(value, phases: const ['package-install']);
+  if (raw['packagePath'] != skill.packagePath ||
       raw['version'] != immutableVersion ||
       raw['sum'] is! String ||
       (raw['sum'] as String).isEmpty ||
-      raw['moduleDir'] is! String ||
-      (raw['moduleDir'] as String).isEmpty ||
+      raw['packageDir'] is! String ||
+      (raw['packageDir'] as String).isEmpty ||
       raw['skills'] is! List ||
       raw['agents'] is! List ||
       raw['projections'] is! List ||

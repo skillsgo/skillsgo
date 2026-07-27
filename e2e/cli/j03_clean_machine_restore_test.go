@@ -21,7 +21,7 @@ func TestJ03RestoreSum(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -38,28 +38,28 @@ func TestJ03RestoreSum(t *testing.T) {
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	removed := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".skillsgo", "modules"), scenarioContainerPath(t, "project", ".agents"))
+	removed := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".skillsgo", "packages"), scenarioContainerPath(t, "project", ".agents"))
 	require.Equal(t, 0, removed.exitCode, removed.output)
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
 
 	var restored []struct {
-		ModulePath string `json:"modulePath"`
+		PackagePath string `json:"packagePath"`
 		Version    string `json:"version"`
 		Status     string `json:"status"`
-		ModuleDir  string `json:"moduleDir"`
+		PackageDir  string `json:"packageDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
-	require.Equal(t, installed.ModulePath, restored[0].ModulePath)
+	require.Equal(t, installed.PackagePath, restored[0].PackagePath)
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir, "skills", "alpha", "SKILL.md"))
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.Equal(t, sumBefore, sumAfter, "checksum-backed restoration must not rewrite skills-lock.yaml")

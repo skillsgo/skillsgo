@@ -19,10 +19,10 @@ import (
 func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	modulePath := "fixtures.test/group/subgroup/collection"
+	packagePath := "fixtures.test/group/subgroup/collection"
 	version := "v1.0.0"
 	add := execCLI(t, ctx, container,
-		"add", modulePath+"@"+version,
+		"add", packagePath+"@"+version,
 		"--skill", "alpha",
 		"--project", scenarioContainerPath(t, "project"),
 		"--agent", "codex",
@@ -35,13 +35,13 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 
 	manifestBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBytes), modulePath+":")
+	require.Contains(t, string(manifestBytes), packagePath+":")
 	require.Contains(t, string(manifestBytes), "version: "+version)
 	require.Contains(t, string(manifestBytes), "- alpha")
 	require.Contains(t, string(manifestBytes), "- codex")
 	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(sumBytes), modulePath+":")
+	require.Contains(t, string(sumBytes), packagePath+":")
 	require.Contains(t, string(sumBytes), "version: "+version)
 	require.Contains(t, string(sumBytes), "sum: h1:")
 

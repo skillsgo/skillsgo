@@ -29,6 +29,18 @@ func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates [
 	return cards, nil
 }
 
+func (projection skillCardProjection) HydratePaths(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]protocolapi.FindSkill, error) {
+	items, err := projection.catalog.SkillsByPathCoordinates(ctx, coordinates)
+	if err != nil {
+		return nil, err
+	}
+	cards := make([]protocolapi.FindSkill, 0, len(items))
+	for _, item := range items {
+		cards = append(cards, storedSkillCard(item))
+	}
+	return cards, nil
+}
+
 func (projection skillCardProjection) Search(ctx context.Context, locale string, ranked []catalog.SearchSkill) []discoverySkill {
 	localizeSearchSkills(ctx, projection.catalog, locale, ranked)
 	cards := make([]discoverySkill, 0, len(ranked))
@@ -43,7 +55,7 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 		return
 	}
 	for index := range cards {
-		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].ModulePath+":"+cards[index].Name, locale)
+		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].PackagePath+":"+cards[index].Name, locale)
 		if err == nil && ok {
 			cards[index].Description = description
 		}
@@ -51,13 +63,13 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {
-	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
 		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
 		LatestVersion: item.LatestVersion}
 }
 
 func searchedSkillCard(item catalog.SearchSkill) discoverySkill {
-	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
 		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
 		LatestVersion: item.LatestVersion}
 }

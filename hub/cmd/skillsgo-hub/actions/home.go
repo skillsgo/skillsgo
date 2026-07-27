@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Hub configuration, request origin data, and an optional operator-provided HTML template.
  * [OUTPUT]: Serves the SkillsGo Hub landing page with Go-compatible Version Query and immutable artifact protocol examples.
- * [POS]: Serves as the human protocol-orientation surface for Module distribution and product API routes.
+ * [POS]: Serves as the human protocol-orientation surface for Package distribution and product API routes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -50,21 +50,21 @@ const homepage = `<!DOCTYPE html>
 	
 	<h1>SkillsGo Hub</h1>
 
-	<h2>Module distribution API</h2>
-	<p>Immutable artifacts are published at the canonical Module Path.</p>
+	<h2>Package distribution API</h2>
+	<p>Immutable artifacts are published at the canonical Package Path.</p>
 
 	<h3>List of versions</h3>
 	<p>This endpoint returns published canonical semantic versions:</p>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions</pre>
 
 	<h3>Version info</h3>
-	<p>This endpoint returns information about a specific immutable Module Version:</p>
+	<p>This endpoint returns information about a specific immutable Package Version:</p>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/v1.0.0</pre>
 
-	<h3>Immutable Module archive</h3>
+	<h3>Immutable Package archive</h3>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/v1.0.0.zip</pre>
 
-	<h3>Module Version Query</h3>
+	<h3>Package Version Query</h3>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/main</pre>
 	<p>Resolve an exact version, semantic-version prefix/comparison, branch, tag, commit, or <code>latest</code> before fetching an immutable artifact.</p>
 
