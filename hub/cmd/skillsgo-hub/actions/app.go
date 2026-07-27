@@ -188,7 +188,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
-		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args documentTranslationBatchArgs) error {
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args documentTranslationArgs) error {
 			return documentWorker.RunOnce(ctx)
 		}); err != nil {
 			cancelWorkers()
@@ -198,7 +198,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
-		if err := taskRuntime.Every(documentTranslationBatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+		if err := taskRuntime.Every(documentTranslationArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
 		}
