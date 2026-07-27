@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub Router with an empty Catalog/storage pair and a counted Repository snapshot source double.
- * [OUTPUT]: Specifies root Repository exact-version publication, complete nested-only Repository ZIPs, one-snapshot membership, immutable cache reuse, invisible retry-safe orphans, concurrency controls, historical member sets, and self-contained Package Info.
+ * [OUTPUT]: Specifies root Repository exact-version publication, first-Find Repository metadata visibility, complete nested-only Repository ZIPs, one-snapshot membership, immutable cache reuse, invisible retry-safe orphans, concurrency controls, historical member sets, and self-contained Package Info.
  * [POS]: Serves as public Router acceptance coverage for demand-driven Repository materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
@@ -146,6 +147,7 @@ func TestPackagePublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 		for index, memberPath := range []string{".", "skills/nested"} {
 			name := fmt.Sprintf("member-%d", index)
 			archive := repositoryTestManifest(t, repository, version, name, "Atomic fixture.", "")
+			archive = append(archive, []byte("This documentation explains how to configure and use the Skill in a software project.\n")...)
 			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": memberPath, "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
 			})
@@ -172,6 +174,47 @@ func TestPackagePublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	members, err = metadata.VersionSkills(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Len(t, members, 2)
+	for _, member := range members {
+		require.Equal(t, "en", member.SourceLanguage, "publication must persist source language once")
+	}
+}
+
+func TestCurrentPublicationPersistsRepositoryMetadataBeforeFirstFind(t *testing.T) {
+	repository, version := "github.com/acme/skills", "v1.0.0"
+	archive := repositoryTestManifest(t, repository, version, "demo", "Demo Skill.", "")
+	info, err := json.Marshal(map[string]any{
+		"Version": version, "Time": "2026-07-15T00:00:00Z", "VCS": "git",
+		"URL": "https://github.com/acme/skills", "Ref": "refs/tags/v1.0.0",
+		"CommitSHA": "commit-metadata", "TreeSHA": "tree-metadata",
+	})
+	require.NoError(t, err)
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		return &skill.RepositorySnapshot{
+			PackagePath: repository, Version: version, CommitSHA: "commit-metadata",
+			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
+			Members:    []skill.RepositoryMember{repositoryTestMember(t, repository, archive, info)},
+		}
+	}}
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	_, metadata := testCatalogAPI(t)
+	source := &recordingMetadataSource{results: []metadataSourceResult{{metadata: repositoryMetadata{
+		Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`,
+	}}}}
+	cache := newRepositoryMetadataCache(metadata, source).(*repositoryMetadataCache)
+	publisher := newPackagePublisher(fetcher, backend, metadata, withCurrentPublicationObserver(cache.RefreshInitial))
+
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.NoError(t, err)
+	stored, err := metadata.Package(t.Context(), repository)
+	require.NoError(t, err)
+	require.Equal(t, "Agent Skills from Acme.", stored.Description)
+	require.Equal(t, catalog.DescriptionDigest("Agent Skills from Acme."), stored.DescriptionDigest)
+	require.Equal(t, int64(42), stored.Stars)
+	firstFind, err := metadata.Find(t.Context(), "demo", false, 20, 0)
+	require.NoError(t, err)
+	require.Len(t, firstFind, 1)
+	require.Equal(t, repository, firstFind[0].PackagePath)
 }
 
 func TestDuplicateNamePublicationPreservesDistinctPathMembers(t *testing.T) {
@@ -271,7 +314,7 @@ func completeRepositoryTestSnapshot(snapshot *skill.RepositorySnapshot) *skill.R
 		if member.Path != "." {
 			manifestPath = member.Path + "/SKILL.md"
 		}
-		contents := []byte(fmt.Sprintf("---\nname: %s\ndescription: %s\n---\n# Test fixture\n", member.Manifest.Name, member.Manifest.Description))
+		contents := []byte(fmt.Sprintf("---\nname: %s\ndescription: %s\n---\n# Test fixture\n\nUse this Skill to configure a reliable software project workflow.\n", member.Manifest.Name, member.Manifest.Description))
 		snapshot.Members[index].Content = contents
 		files = append(files, protocolartifact.Entry{Path: manifestPath, Contents: contents, Mode: 0o644})
 	}
@@ -403,11 +446,12 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	require.Equal(t, http.StatusOK, detailRecorder.Code, detailRecorder.Body.String())
 	var detail map[string]any
 	require.NoError(t, json.NewDecoder(detailRecorder.Body).Decode(&detail))
-	require.Len(t, detail, 8)
+	require.Len(t, detail, 10)
 	require.Equal(t, repository, detail["packagePath"])
 	require.Equal(t, version, detail["version"])
 	require.Equal(t, "skills/find-skills", detail["path"])
 	require.Contains(t, detail["content"], "name: find-skills")
+	require.Equal(t, false, detail["translated"])
 	require.Equal(t, int32(1), fetcher.calls.Load(), "immutable Package Info cache hit must not repeat source discovery")
 	for _, event := range []string{
 		"repository publication requested",

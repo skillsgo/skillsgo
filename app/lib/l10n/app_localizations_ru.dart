@@ -1098,6 +1098,50 @@ class AppLocalizationsRu extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'Переведено';
+
+  @override
+  String translatedFrom(String language) {
+    return 'Переведено с языка: $language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'английский',
+      'zhHans': 'китайский, упрощенное письмо',
+      'zhHant': 'китайский, традиционное письмо',
+      'ja': 'японский',
+      'ko': 'корейский',
+      'fr': 'французский',
+      'de': 'немецкий',
+      'it': 'итальянский',
+      'es': 'испанский',
+      'pt': 'португальский',
+      'ru': 'русский',
+      'ar': 'арабский',
+      'hi': 'хинди',
+      'id': 'индонезийский',
+      'tr': 'турецкий',
+      'nl': 'нидерландский',
+      'pl': 'польский',
+      'th': 'тайский',
+      'vi': 'вьетнамский',
+      'ms': 'малайский',
+      'sv': 'шведский',
+      'uk': 'украинский',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'Показать оригинал';
+
+  @override
+  String get showTranslation => 'Показать перевод';
+
+  @override
   String get personalizationTheme => 'Тема';
 
   @override

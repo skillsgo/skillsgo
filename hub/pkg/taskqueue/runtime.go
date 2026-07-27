@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, durable PostgreSQL enqueue/scheduling, and transactional enqueue.
- * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs.
+ * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, process-local timers, and River's PostgreSQL runtime.
+ * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, burst-mode durable PostgreSQL scheduling, and transactional enqueue.
+ * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs without resident idle polling.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package taskqueue
@@ -39,11 +39,14 @@ type RiverOptions struct {
 	JobTimeout           time.Duration
 	RescueStuckJobsAfter time.Duration
 	QueueWorkers         map[string]int
+	IdleTimeout          time.Duration
 }
 
 const (
-	QueueSource      = "source"
-	QueueMaintenance = "maintenance"
+	QueueSource        = "source"
+	QueueMaintenance   = "maintenance"
+	defaultIdleTimeout = 30 * time.Second
+	stopTimeout        = 30 * time.Second
 )
 
 // BalancedQueueWorkers partitions one total worker budget so network-heavy
@@ -64,15 +67,19 @@ func BalancedQueueWorkers(total int) map[string]int {
 
 // Runtime dispatches typed jobs either synchronously or through River.
 type Runtime struct {
-	handlers map[string]func(context.Context, river.JobArgs) error
-	failures map[string]func(context.Context, river.JobArgs, error) error
-	workers  *river.Workers
-	river    *river.Client[pgx.Tx]
-	mu       sync.Mutex
-	started  bool
-	periodic []periodicJob
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	handlers      map[string]func(context.Context, river.JobArgs) error
+	failures      map[string]func(context.Context, river.JobArgs, error) error
+	workers       *river.Workers
+	river         *river.Client[pgx.Tx]
+	mu            sync.Mutex
+	started       bool
+	periodic      []periodicJob
+	controlCancel context.CancelFunc
+	wake          chan struct{}
+	idleTimeout   time.Duration
+	riverMu       sync.Mutex
+	riverRunning  bool
+	wg            sync.WaitGroup
 }
 
 type periodicJob struct {
@@ -124,7 +131,7 @@ func (w *typedWorker[T]) finalize(ctx context.Context, args T, cause error) {
 
 // NewSynchronous creates the deterministic local/test substitute.
 func NewSynchronous() *Runtime {
-	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: river.NewWorkers()}
+	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: river.NewWorkers(), wake: make(chan struct{}, 1), idleTimeout: defaultIdleTimeout}
 }
 
 // NewRiver migrates River's schema and creates a runtime sharing Catalog's
@@ -169,7 +176,11 @@ func NewRiver(ctx context.Context, pool *pgxpool.Pool, maxWorkers int, options .
 	if err != nil {
 		return nil, fmt.Errorf("create River client: %w", err)
 	}
-	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: workers, river: client}, nil
+	idleTimeout := runtimeOptions.IdleTimeout
+	if idleTimeout <= 0 {
+		idleTimeout = defaultIdleTimeout
+	}
+	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: workers, river: client, wake: make(chan struct{}, 1), idleTimeout: idleTimeout}, nil
 }
 
 // Register installs one typed worker during service assembly.
@@ -238,52 +249,66 @@ func (r *Runtime) finalizeFailure(ctx context.Context, kind string, args river.J
 	return finalizer(ctx, args, cause)
 }
 
-// Start begins durable job processing or the local periodic substitute.
+// Start begins process-local scheduling. Durable River workers start only when
+// queued work is due and stop again after the queue becomes idle.
 func (r *Runtime) Start(ctx context.Context) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.started {
+		r.mu.Unlock()
 		return nil
 	}
-	if r.river != nil {
-		if err := r.river.Start(ctx); err != nil {
-			return fmt.Errorf("start River client: %w", err)
-		}
-	}
-	if r.river == nil && len(r.periodic) > 0 {
-		periodicCtx, cancel := context.WithCancel(ctx)
-		r.cancel = cancel
-		for _, spec := range r.periodic {
-			r.wg.Add(1)
-			go r.runPeriodic(periodicCtx, spec)
-		}
-	}
+	controlCtx, cancel := context.WithCancel(ctx)
+	r.controlCancel = cancel
 	r.started = true
+	periodic := append([]periodicJob(nil), r.periodic...)
+	r.mu.Unlock()
+
+	if r.river != nil {
+		r.wg.Add(1)
+		go r.runBurstController(controlCtx)
+	}
+	for _, spec := range periodic {
+		r.wg.Add(1)
+		go r.runPeriodic(controlCtx, spec)
+	}
+	if r.river != nil {
+		r.Wake()
+	}
 	return nil
 }
 
 // Stop gracefully stops durable job processing and waits for local handlers.
 func (r *Runtime) Stop(ctx context.Context) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if !r.started {
+		r.mu.Unlock()
 		return nil
 	}
 	r.started = false
-	if r.cancel != nil {
-		r.cancel()
-		r.cancel = nil
+	cancel := r.controlCancel
+	r.controlCancel = nil
+	r.mu.Unlock()
+	if cancel != nil {
+		cancel()
 	}
-	if r.river != nil {
-		if err := r.river.Stop(ctx); err != nil {
-			return fmt.Errorf("stop River client: %w", err)
-		}
+	if err := r.stopRiver(ctx); err != nil {
+		return err
 	}
-	r.wg.Wait()
-	return nil
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-// Every registers one typed durable River periodic job or its local substitute.
+// Every registers one process-local timer that submits a durable River job only
+// when its interval elapses. Waiting timers never access PostgreSQL.
 func (r *Runtime) Every(args river.JobArgs, opts InsertOptions, interval time.Duration, runOnStart bool) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -295,15 +320,6 @@ func (r *Runtime) Every(args river.JobArgs, opts InsertOptions, interval time.Du
 	}
 	if err := r.validate(args); err != nil {
 		return err
-	}
-	insertOpts := riverInsertOptions(opts)
-	if r.river != nil {
-		r.river.PeriodicJobs().Add(river.NewPeriodicJob(
-			river.PeriodicInterval(interval),
-			func() (river.JobArgs, *river.InsertOpts) { return args, insertOpts },
-			&river.PeriodicJobOpts{RunOnStart: runOnStart},
-		))
-		return nil
 	}
 	r.periodic = append(r.periodic, periodicJob{args: args, opts: opts, interval: interval, runOnStart: runOnStart})
 	return nil
@@ -335,6 +351,9 @@ func (r *Runtime) Enqueue(ctx context.Context, args river.JobArgs, opts InsertOp
 		return r.handlers[args.Kind()](ctx, args)
 	}
 	_, err := r.river.Insert(ctx, args, riverInsertOptions(opts))
+	if err == nil {
+		r.Wake()
+	}
 	return err
 }
 
@@ -350,7 +369,147 @@ func (r *Runtime) EnqueueTx(ctx context.Context, tx pgx.Tx, args river.JobArgs, 
 		return fmt.Errorf("PostgreSQL transaction is required")
 	}
 	_, err := r.river.InsertTx(ctx, tx, args, riverInsertOptions(opts))
+	if err == nil {
+		// PostgreSQL delivers River's transactional NOTIFY only after commit. An
+		// early wake is safe on rollback and ensures the worker is already ready
+		// when a successful commit becomes visible.
+		r.Wake()
+	}
 	return err
+}
+
+// Wake requests durable work without blocking request or transaction paths.
+func (r *Runtime) Wake() {
+	if r.river == nil {
+		return
+	}
+	select {
+	case r.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (r *Runtime) runBurstController(ctx context.Context) {
+	defer r.wg.Done()
+	var scheduled <-chan time.Time
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-r.wake:
+		case <-scheduled:
+		}
+		scheduled = nil
+		if err := r.startRiver(); err != nil {
+			scheduled = time.After(r.idleTimeout)
+			continue
+		}
+
+		idle := time.NewTimer(r.idleTimeout)
+		for {
+			select {
+			case <-ctx.Done():
+				idle.Stop()
+				return
+			case <-r.wake:
+				resetTimer(idle, r.idleTimeout)
+			case <-idle.C:
+				active, next, err := r.inspectWork(ctx, time.Now())
+				if err != nil || active {
+					resetTimer(idle, r.idleTimeout)
+					continue
+				}
+				stopCtx, cancel := context.WithTimeout(context.Background(), stopTimeout)
+				err = r.stopRiver(stopCtx)
+				cancel()
+				if err != nil {
+					resetTimer(idle, r.idleTimeout)
+					continue
+				}
+				if next != nil {
+					delay := time.Until(*next)
+					if delay < 0 {
+						delay = 0
+					}
+					scheduled = time.After(delay)
+				}
+				idle.Stop()
+				goto waiting
+			}
+		}
+	waiting:
+	}
+}
+
+func (r *Runtime) startRiver() error {
+	r.riverMu.Lock()
+	defer r.riverMu.Unlock()
+	if r.river == nil || r.riverRunning {
+		return nil
+	}
+	if err := r.river.Start(context.Background()); err != nil {
+		return fmt.Errorf("start River client: %w", err)
+	}
+	r.riverRunning = true
+	return nil
+}
+
+func (r *Runtime) stopRiver(ctx context.Context) error {
+	r.riverMu.Lock()
+	defer r.riverMu.Unlock()
+	if r.river == nil || !r.riverRunning {
+		return nil
+	}
+	if err := r.river.Stop(ctx); err != nil {
+		return fmt.Errorf("stop River client: %w", err)
+	}
+	r.riverRunning = false
+	return nil
+}
+
+// inspectWork distinguishes immediately executable work from future retry or
+// scheduled work so the resident River services can stop between due times.
+func (r *Runtime) inspectWork(ctx context.Context, now time.Time) (bool, *time.Time, error) {
+	immediate, err := r.river.JobList(ctx, river.NewJobListParams().States(
+		rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning,
+	).First(1))
+	if err != nil {
+		return false, nil, err
+	}
+	future, err := r.river.JobList(ctx, river.NewJobListParams().States(
+		rivertype.JobStateRetryable, rivertype.JobStateScheduled,
+	).OrderBy(river.JobListOrderByScheduledAt, river.SortOrderAsc).First(1))
+	if err != nil {
+		return false, nil, err
+	}
+	return workSchedule(now, immediate.Jobs, future.Jobs)
+}
+
+func workSchedule(now time.Time, immediate, future []*rivertype.JobRow) (bool, *time.Time, error) {
+	if len(immediate) > 0 {
+		return true, nil, nil
+	}
+	if len(future) == 0 {
+		return false, nil, nil
+	}
+	next := future[0].ScheduledAt
+	return !next.After(now), &next, nil
+}
+
+func (r *Runtime) isRiverRunning() bool {
+	r.riverMu.Lock()
+	defer r.riverMu.Unlock()
+	return r.riverRunning
+}
+
+func resetTimer(timer *time.Timer, delay time.Duration) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	timer.Reset(delay)
 }
 
 func (r *Runtime) validate(args river.JobArgs) error {

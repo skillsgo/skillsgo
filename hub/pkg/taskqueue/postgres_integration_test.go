@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the River runtime against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies durable River migration, registration, periodic scheduling, submission, retry exhaustion, and worker execution through a shared pgx pool.
+ * [OUTPUT]: Specifies durable River migration, burst startup/idle shutdown, periodic submission, transactional submission, scheduled wakeup, retry exhaustion, restart recovery, and worker execution through a shared pgx pool.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub task queue boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -60,16 +60,16 @@ func TestRiverRuntime(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 
-	executed := make(chan string, 1)
+	executed := make(chan string, 3)
 	periodicExecuted := make(chan struct{}, 1)
 	uniqueExecuted := make(chan struct{}, 2)
 	retrySucceeded := make(chan struct{}, 1)
 	var uniqueCalls atomic.Int32
 	var retryCalls atomic.Int32
 	var exhaustedCalls atomic.Int32
-	runtime, err := NewRiver(ctx, pool, 2)
+	runtime, err := NewRiver(ctx, pool, 2, RiverOptions{IdleTimeout: 100 * time.Millisecond})
 	require.NoError(t, err)
-	secondRuntime, err := NewRiver(ctx, pool, 2)
+	secondRuntime, err := NewRiver(ctx, pool, 2, RiverOptions{IdleTimeout: 100 * time.Millisecond})
 	require.NoError(t, err)
 	registerHandlers := func(runtime *Runtime) {
 		require.NoError(t, Register(runtime, func(_ context.Context, args reindexArgs) error {
@@ -141,6 +141,8 @@ func TestRiverRuntime(t *testing.T) {
 	require.Equal(t, 2, exhaustedJob.Attempt)
 	require.Len(t, exhaustedJob.Errors, 2)
 	require.Contains(t, exhaustedJob.Errors[1].Error, "permanent failure")
+	waitForRuntimeState(t, runtime, false, 10*time.Second)
+	waitForRuntimeState(t, secondRuntime, false, 10*time.Second)
 
 	require.NoError(t, runtime.Enqueue(ctx, reindexArgs{ID: "skill-1"}, InsertOptions{}))
 	select {
@@ -149,6 +151,44 @@ func TestRiverRuntime(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("River task was not executed")
 	}
+	waitForRuntimeState(t, runtime, false, 10*time.Second)
+
+	scheduledAt := time.Now().Add(500 * time.Millisecond)
+	_, err = runtime.river.Insert(ctx, reindexArgs{ID: "scheduled"}, &river.InsertOpts{ScheduledAt: scheduledAt})
+	require.NoError(t, err)
+	runtime.Wake()
+	waitForRuntimeState(t, runtime, true, 5*time.Second)
+	waitForRuntimeState(t, runtime, false, 5*time.Second)
+	select {
+	case id := <-executed:
+		require.Equal(t, "scheduled", id)
+	case <-time.After(10 * time.Second):
+		t.Fatal("scheduled River task was not executed after its process-local wake")
+	}
+	waitForRuntimeState(t, runtime, false, 10*time.Second)
+
+	rolledBack, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	require.NoError(t, runtime.EnqueueTx(ctx, rolledBack, reindexArgs{ID: "rolled-back"}, InsertOptions{}))
+	require.NoError(t, rolledBack.Rollback(ctx))
+	waitForRuntimeState(t, runtime, false, 10*time.Second)
+	select {
+	case id := <-executed:
+		t.Fatalf("rolled-back job executed: %s", id)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	committed, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	require.NoError(t, runtime.EnqueueTx(ctx, committed, reindexArgs{ID: "committed"}, InsertOptions{}))
+	require.NoError(t, committed.Commit(ctx))
+	select {
+	case id := <-executed:
+		require.Equal(t, "committed", id)
+	case <-time.After(10 * time.Second):
+		t.Fatal("committed transactional River task was not executed")
+	}
+	waitForRuntimeState(t, runtime, false, 10*time.Second)
 }
 
 func waitForJobState(t *testing.T, client *river.Client[pgx.Tx], kind string, state rivertype.JobState, timeout time.Duration) *rivertype.JobRow {
@@ -164,4 +204,16 @@ func waitForJobState(t *testing.T, client *river.Client[pgx.Tx], kind string, st
 	}
 	t.Fatalf("job %q did not reach state %q", kind, state)
 	return nil
+}
+
+func waitForRuntimeState(t *testing.T, runtime *Runtime, running bool, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if runtime.isRiverRunning() == running {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("River runtime did not reach running=%t", running)
 }

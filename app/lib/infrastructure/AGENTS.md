@@ -8,7 +8,7 @@
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, strict payload decoding, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
 - `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
-- `real_skills_gateway_discovery.dart`: owns current-language single and bounded-chunk batch `find`, Cloud-composed ranking reads, explicit-source `show`, canonical pagination decoding, equivalent GitHub source classification, and localized-or-source remote Skill detail decoding.
+- `real_skills_gateway_discovery.dart`: forwards every search input unchanged through current-language CLI `find`, owns bounded-chunk candidate Find and Cloud-composed ranking reads, decodes optional Package summaries and canonical pagination, and uses exact-path `show` only for remote Skill detail.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
 - `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes single-Skill or atomic multi-Skill exact-path Repository Package Store add through the bundled CLI, and decodes Package Store/Projection results.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.

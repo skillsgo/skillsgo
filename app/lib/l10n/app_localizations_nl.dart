@@ -1092,6 +1092,50 @@ class AppLocalizationsNl extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'Vertaald';
+
+  @override
+  String translatedFrom(String language) {
+    return 'Vertaald vanuit $language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'Engels',
+      'zhHans': 'Chinees (vereenvoudigd)',
+      'zhHant': 'Chinees (traditioneel)',
+      'ja': 'Japans',
+      'ko': 'Koreaans',
+      'fr': 'Frans',
+      'de': 'Duits',
+      'it': 'Italiaans',
+      'es': 'Spaans',
+      'pt': 'Portugees',
+      'ru': 'Russisch',
+      'ar': 'Arabisch',
+      'hi': 'Hindi',
+      'id': 'Indonesisch',
+      'tr': 'Turks',
+      'nl': 'Nederlands',
+      'pl': 'Pools',
+      'th': 'Thai',
+      'vi': 'Vietnamees',
+      'ms': 'Maleis',
+      'sv': 'Zweeds',
+      'uk': 'Oekraïens',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'Origineel tonen';
+
+  @override
+  String get showTranslation => 'Vertaling tonen';
+
+  @override
   String get personalizationTheme => 'Thema';
 
   @override

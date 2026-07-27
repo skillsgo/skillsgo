@@ -1090,6 +1090,50 @@ class AppLocalizationsHi extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'अनुवादित';
+
+  @override
+  String translatedFrom(String language) {
+    return '$language से अनुवादित';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'अंग्रेज़ी',
+      'zhHans': 'सरलीकृत चीनी',
+      'zhHant': 'पारंपरिक चीनी',
+      'ja': 'जापानी',
+      'ko': 'कोरियाई',
+      'fr': 'फ़्रेंच',
+      'de': 'जर्मन',
+      'it': 'इतालवी',
+      'es': 'स्पेनिश',
+      'pt': 'पुर्तगाली',
+      'ru': 'रूसी',
+      'ar': 'अरबी',
+      'hi': 'हिन्दी',
+      'id': 'इंडोनेशियाई',
+      'tr': 'तुर्की',
+      'nl': 'डच',
+      'pl': 'पोलिश',
+      'th': 'थाई',
+      'vi': 'वियतनामी',
+      'ms': 'मलय',
+      'sv': 'स्वीडिश',
+      'uk': 'यूक्रेनियाई',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'मूल लेख दिखाएँ';
+
+  @override
+  String get showTranslation => 'अनुवाद दिखाएँ';
+
+  @override
   String get personalizationTheme => 'थीम';
 
   @override

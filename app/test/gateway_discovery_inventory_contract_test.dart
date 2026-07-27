@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI Find/Show reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies current-language single/bounded-chunk Find, Cloud-composed collection and explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
+ * [INPUT]: Uses controlled CLI Find reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [OUTPUT]: Specifies current-language single/bounded-chunk Find, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -87,7 +87,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":true}',
           stderr: '',
         ),
         ProcessOutput(
@@ -98,7 +98,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":false}',
           stderr: '',
         ),
         ProcessOutput(
@@ -377,56 +377,66 @@ void main() {
     },
   );
 
-  test('explicit Git source discovery goes through CLI show', () async {
-    final runner = FakeProcessRunner()
-      ..responses.addAll([
-        const ProcessOutput(
-          exitCode: 0,
-          stdout:
-              '{"schemaVersion":1,"kind":"Package","packagePath":"github.com/acme/skills","version":"v1.2.3","time":"2026-07-18T12:00:00Z","description":"Skills for product teams.","skills":[{"packagePath":"github.com/acme/skills","path":"skills/demo","version":"v1.2.3","name":"demo","description":"Demo Skill","imageUrl":"https://github.com/acme.png?size=72","stars":7}]}',
-          stderr: '',
-        ),
-        const ProcessOutput(
-          exitCode: 0,
-          stdout: '{"schemaVersion":7,"entries":[]}',
-          stderr: '',
-        ),
+  test(
+    'explicit Git source discovery delegates unchanged input to CLI find',
+    () async {
+      final runner = FakeProcessRunner()
+        ..responses.addAll([
+          const ProcessOutput(
+            exitCode: 0,
+            stdout:
+                '{"skills":[{"packagePath":"github.com/acme/skills","path":"skills/demo","latestVersion":"v1.2.3","name":"demo","description":"Demo Skill","imageUrl":"https://github.com/acme.png?size=72"}],"package":{"packagePath":"github.com/acme/skills","description":"Skills for product teams.","stars":7,"latestVersion":"v1.2.3","updatedAt":"2026-07-18T12:00:00Z"},"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+            stderr: '',
+          ),
+          const ProcessOutput(
+            exitCode: 0,
+            stdout: '{"schemaVersion":7,"entries":[]}',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+        hubBaseUrl: 'https://hub.example.test',
+      );
+
+      final page = await gateway.discover(
+        DiscoveryCollection.search,
+        query: 'https://github.com/acme/skills',
+      );
+
+      expect(page.skills, hasLength(1));
+      expect(page.skills.single.packagePath, 'github.com/acme/skills');
+      expect(
+        page.skills.single.imageUrl,
+        'https://github.com/acme.png?size=72',
+      );
+      expect(page.skills.single.metricKind, isNull);
+      expect(page.module?.id, 'github.com/acme/skills');
+      expect(page.module?.description, 'Skills for product teams.');
+      expect(page.module?.stars, 7);
+      expect(page.module?.latestVersion, 'v1.2.3');
+      expect(page.module?.updatedAt, DateTime.utc(2026, 7, 18, 12));
+      expect(runner.calls.first.arguments, [
+        'find',
+        'https://github.com/acme/skills',
+        '--hub',
+        'https://hub.example.test',
+        '--lang',
+        'en',
+        '--page',
+        '0',
+        '--per-page',
+        '20',
+        '--output',
+        'json',
       ]);
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/usr/local/bin/skillsgo',
-      hubBaseUrl: 'https://hub.example.test',
-    );
+    },
+  );
 
-    final page = await gateway.discover(
-      DiscoveryCollection.search,
-      query: 'https://github.com/acme/skills',
-    );
-
-    expect(page.skills, hasLength(1));
-    expect(page.skills.single.packagePath, 'github.com/acme/skills');
-    expect(page.skills.single.imageUrl, 'https://github.com/acme.png?size=72');
-    expect(page.skills.single.metricKind, isNull);
-    expect(page.module?.id, 'github.com/acme/skills');
-    expect(page.module?.description, 'Skills for product teams.');
-    expect(page.module?.stars, 7);
-    expect(page.module?.latestVersion, 'v1.2.3');
-    expect(page.module?.updatedAt, DateTime.utc(2026, 7, 18, 12));
-    expect(runner.calls.first.arguments, [
-      'show',
-      'https://github.com/acme/skills',
-      '--hub',
-      'https://hub.example.test',
-      '--lang',
-      'en',
-      '--output',
-      'json',
-    ]);
-  });
-
-  test('GitHub aliases all bypass keyword search and use CLI show', () async {
+  test('GitHub aliases are passed unchanged to CLI find', () async {
     const repositoryInfo =
-        '{"schemaVersion":1,"kind":"Package","packagePath":"github.com/owner/repo","version":"v0.0.0-20260720120000-abcdef123456","time":"2026-07-20T12:00:00Z","skills":[{"packagePath":"github.com/owner/repo","path":"skills/demo","version":"v0.0.0-20260720120000-abcdef123456","name":"demo","description":"Demo Skill","stars":0}]}';
+        '{"skills":[{"packagePath":"github.com/owner/repo","path":"skills/demo","latestVersion":"v0.0.0-20260720120000-abcdef123456","name":"demo","description":"Demo Skill"}],"package":{"packagePath":"github.com/owner/repo","description":"","stars":0,"latestVersion":"v0.0.0-20260720120000-abcdef123456","updatedAt":"2026-07-20T12:00:00Z"},"pagination":{"page":0,"perPage":20,"hasMore":false}}';
     for (final source in const [
       'owner/repo@main',
       'github/owner/repo@main',
@@ -456,22 +466,21 @@ void main() {
       expect(page.module?.id, 'github.com/owner/repo', reason: source);
       expect(page.skills.single.packagePath, 'github.com/owner/repo');
       expect(runner.calls.first.arguments, [
-        'show',
+        'find',
         source,
         '--hub',
         'https://hub.example.test',
         '--lang',
         'en',
+        '--page',
+        '0',
+        '--per-page',
+        '20',
         '--output',
         'json',
       ]);
       expect(
         runner.calls.any((call) => call.arguments.contains('discover')),
-        isFalse,
-        reason: source,
-      );
-      expect(
-        runner.calls.any((call) => call.arguments.contains('find')),
         isFalse,
         reason: source,
       );

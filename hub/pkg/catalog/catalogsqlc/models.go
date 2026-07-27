@@ -71,6 +71,8 @@ type Skill struct {
 	Description       string `json:"description"`
 	DescriptionDigest string `json:"description_digest"`
 	DocumentDigest    string `json:"document_digest"`
+	// Detected BCP 47 source language for the immutable SKILL.md document; empty when undetermined or mixed.
+	SourceLanguage string `json:"source_language"`
 }
 
 // Immutable published versions owned by Packages.

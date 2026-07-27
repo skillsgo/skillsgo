@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed synchronous jobs, workload queue options, periodic scheduling, and deterministic handlers.
- * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, dispatch, periodic execution, cancellation, validation, and lifecycle behavior.
+ * [INPUT]: Depends on typed synchronous jobs, workload queue options, sleep-first periodic scheduling, River job-state rows, and deterministic handlers.
+ * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, dispatch, periodic execution, cancellation, validation, and due-versus-future work decisions.
  * [POS]: Serves as unit coverage for the Hub task queue infrastructure boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/stretchr/testify/assert"
@@ -70,6 +71,39 @@ func TestTypedWorkerUsesJobSpecificTimeout(t *testing.T) {
 	require.Zero(t, defaultWorker.Timeout(&river.Job[reindexArgs]{Args: reindexArgs{}}))
 }
 
+func TestWorkScheduleKeepsDueWorkRunningAndArmsFutureWake(t *testing.T) {
+	now := time.Date(2026, time.July, 27, 12, 0, 0, 0, time.UTC)
+	active, next, err := workSchedule(now, []*rivertype.JobRow{{State: rivertype.JobStateRunning}}, nil)
+	require.NoError(t, err)
+	require.True(t, active)
+	require.Nil(t, next)
+
+	due := now.Add(-time.Second)
+	active, next, err = workSchedule(now, nil, []*rivertype.JobRow{{State: rivertype.JobStateRetryable, ScheduledAt: due}})
+	require.NoError(t, err)
+	require.True(t, active)
+	require.Equal(t, due, *next)
+
+	future := now.Add(time.Hour)
+	active, next, err = workSchedule(now, nil, []*rivertype.JobRow{{State: rivertype.JobStateScheduled, ScheduledAt: future}})
+	require.NoError(t, err)
+	require.False(t, active)
+	require.Equal(t, future, *next)
+
+	active, next, err = workSchedule(now, nil, nil)
+	require.NoError(t, err)
+	require.False(t, active)
+	require.Nil(t, next)
+}
+
+func TestWakeIsNonBlockingAndCoalescesBursts(t *testing.T) {
+	runtime := NewSynchronous()
+	runtime.river = &river.Client[pgx.Tx]{}
+	runtime.Wake()
+	runtime.Wake()
+	require.Len(t, runtime.wake, 1)
+}
+
 func TestSynchronousRuntimeDispatchesTypedJob(t *testing.T) {
 	var received reindexArgs
 	runtime := NewSynchronous()
@@ -121,6 +155,23 @@ func TestSynchronousRuntimeRegistersPeriodicJobsBeforeStart(t *testing.T) {
 	}
 	require.EqualError(t, Register(runtime, func(context.Context, missingArgs) error { return nil }), "cannot register job handler after runtime start")
 	require.NoError(t, runtime.Stop(t.Context()))
+}
+
+func TestSynchronousRuntimeRunsPeriodicJobAfterInterval(t *testing.T) {
+	executed := make(chan struct{}, 1)
+	runtime := NewSynchronous()
+	require.NoError(t, Register(runtime, func(context.Context, refreshArgs) error {
+		executed <- struct{}{}
+		return nil
+	}))
+	require.NoError(t, runtime.Every(refreshArgs{}, InsertOptions{}, 10*time.Millisecond, false))
+	require.NoError(t, runtime.Start(t.Context()))
+	t.Cleanup(func() { require.NoError(t, runtime.Stop(context.Background())) })
+	select {
+	case <-executed:
+	case <-time.After(time.Second):
+		t.Fatal("periodic job did not execute after its interval")
+	}
 }
 
 func TestSynchronousRuntimeStopCancelsRunningPeriodicHandler(t *testing.T) {
