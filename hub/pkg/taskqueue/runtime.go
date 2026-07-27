@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides type-safe registration, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, durable PostgreSQL enqueue/scheduling, and transactional enqueue.
+ * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, durable PostgreSQL enqueue/scheduling, and transactional enqueue.
  * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -87,6 +87,17 @@ type typedWorker[T river.JobArgs] struct {
 	handler Handler[T]
 	runtime *Runtime
 	kind    string
+}
+
+type jobArgsWithTimeout interface {
+	JobTimeout() time.Duration
+}
+
+func (w *typedWorker[T]) Timeout(job *river.Job[T]) time.Duration {
+	if args, ok := any(job.Args).(jobArgsWithTimeout); ok {
+		return args.JobTimeout()
+	}
+	return 0
 }
 
 func (w *typedWorker[T]) Work(ctx context.Context, job *river.Job[T]) (err error) {
@@ -381,7 +392,16 @@ func HasActiveJob[T river.JobArgs](ctx context.Context, runtime *Runtime, args T
 func riverInsertOptions(opts InsertOptions) *river.InsertOpts {
 	insertOpts := &river.InsertOpts{MaxAttempts: opts.MaxAttempts, Queue: opts.Queue}
 	if opts.Unique {
-		insertOpts.UniqueOpts = river.UniqueOpts{ByArgs: true}
+		insertOpts.UniqueOpts = river.UniqueOpts{
+			ByArgs: true,
+			ByState: []rivertype.JobState{
+				rivertype.JobStateAvailable,
+				rivertype.JobStatePending,
+				rivertype.JobStateRetryable,
+				rivertype.JobStateRunning,
+				rivertype.JobStateScheduled,
+			},
+		}
 	}
 	return insertOpts
 }

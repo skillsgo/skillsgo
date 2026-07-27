@@ -18,7 +18,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 | `api/` | Public CLI-to-Hub JSON DTOs, including canonical zero-based pagination, Package Version collections, single/batch Find documents, Package-level Sum/archive identity, canonical Package-member coordinates, Skill path metadata, schema constants, and statuses. |
 | `cloud/` | Public Cloud JSON DTOs, endpoint paths, Hub-card-plus-metric ranking vocabulary, and install-event semantics. |
 | `cloudtest/` | Test-only Cloud HTTP mock and executable conformance verifier; never imported by production packages. |
-| `locale/` | Canonical presentation-locale normalization. |
+| `locale/` | Canonical presentation-language normalization and the supported content-language registry. |
 | `packageidentity/` | Canonical public Package identity primitives, including Path parsing, formatting, and initial Source Repository URL derivation. |
 | `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and Cloud coordinates. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |

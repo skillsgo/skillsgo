@@ -20,15 +20,8 @@ const (
 	defaultSkillsGoDirectory = ".skillsgo"
 )
 
-func resolveHubDatabaseDSN(databaseType, configured string) (string, error) {
-	if databaseType != "postgres" {
-		return "", fmt.Errorf("unsupported Hub database type %q; only postgres is supported", databaseType)
-	}
-	return configured, nil
-}
-
 // resolveHubCacheDir applies the Hub directory precedence without
-// creating directories. A configured value comes from TOML.
+// creating directories. A configured value comes from YAML.
 func resolveHubCacheDir(configured string) (string, error) {
 	if value := os.Getenv(hubCacheDirEnv); value != "" {
 		return filepath.Clean(value), nil

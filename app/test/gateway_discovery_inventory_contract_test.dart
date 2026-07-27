@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Find/Show reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies public single/bounded-chunk batch Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [OUTPUT]: Specifies current-language single/bounded-chunk Find, Cloud-composed collection and explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -66,7 +66,7 @@ void main() {
       'responsive',
       '--hub',
       'https://hub.skillsgo.ai',
-      '--content-locale',
+      '--lang',
       'en',
       '--page',
       '0',
@@ -84,6 +84,17 @@ void main() {
   test('remote detail requests the CLI JSON contract explicitly', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":7,"entries":[]}',
+          stderr: '',
+        ),
         ProcessOutput(
           exitCode: 0,
           stdout:
@@ -122,6 +133,33 @@ void main() {
       'https://hub.skillsgo.ai',
       '--output',
       'json',
+      '--lang',
+      'en',
+    ]);
+
+    await gateway.loadRemoteDetail(
+      const SkillSummary(
+        packagePath: 'github.com/example/skills',
+        installName: 'demo',
+        name: 'demo',
+        path: 'skills/demo',
+        description: 'Demo skill.',
+        latestVersion: 'v1.2.3',
+      ),
+      source: true,
+    );
+    final showCalls = runner.calls
+        .where((call) => call.arguments.contains('show'))
+        .toList();
+    expect(showCalls.last.arguments, [
+      'show',
+      'github.com/example/skills@v1.2.3',
+      '--path',
+      'skills/demo',
+      '--hub',
+      'https://hub.skillsgo.ai',
+      '--output',
+      'json',
     ]);
   });
 
@@ -151,7 +189,7 @@ void main() {
         '-',
         '--hub',
         'https://hub.skillsgo.ai',
-        '--content-locale',
+        '--lang',
         'en',
         '--output',
         'json',
@@ -200,7 +238,9 @@ void main() {
 
   test('Cloud ranking returns authoritative composed Skill cards', () async {
     final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final requestedCloudUris = <Uri>[];
     cloud.listen((request) async {
+      requestedCloudUris.add(request.uri);
       request.response.headers.contentType = ContentType.json;
       request.response.write(
         '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
@@ -225,12 +265,14 @@ void main() {
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
     );
+    await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
     final page = await gateway.discover(DiscoveryCollection.hot);
 
     expect(page.skills.single.packagePath, 'github.com/acme/skills');
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
+    expect(requestedCloudUris.single.queryParameters['lang'], 'zh-Hans-CN');
     expect(runner.calls, hasLength(2));
     await cloud.close(force: true);
   });
@@ -328,7 +370,7 @@ void main() {
           'json',
         ]);
         expect(requestedCloudPaths, [
-          '/api/v1/rankings/${tc.wireCollection}?page=0&perPage=20',
+          '/api/v1/rankings/${tc.wireCollection}?page=0&perPage=20&lang=en',
         ]);
         await cloud?.close(force: true);
       }
@@ -375,6 +417,8 @@ void main() {
       'https://github.com/acme/skills',
       '--hub',
       'https://hub.example.test',
+      '--lang',
+      'en',
       '--output',
       'json',
     ]);
@@ -416,6 +460,8 @@ void main() {
         source,
         '--hub',
         'https://hub.example.test',
+        '--lang',
+        'en',
         '--output',
         'json',
       ]);

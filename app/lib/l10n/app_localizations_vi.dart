@@ -1088,6 +1088,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get language => 'Ngôn ngữ';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'chủ đề';
 
   @override

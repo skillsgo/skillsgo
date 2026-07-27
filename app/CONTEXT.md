@@ -17,8 +17,8 @@ The rule that every Hub and local App operation crosses the bundled CLI machine 
 _Avoid_: direct Hub client, Cloud-persisted Skill metadata
 
 **Presentation Locale**:
-The user's persisted App language choice, resolved from System or any supported UI locale. Hub discovery and detail currently receive the stable content tags `en`, `zh-Hans`, or `zh-Hant`; UI locales without matching Hub content fall back to `en`. Presentation Locale may select author-maintained or Hub-enriched display text but never changes the Skill artifact installed or executed.
-_Avoid_: artifact language, installation locale, translated Skill
+The user's persisted App language choice, resolved from System or any supported UI language. Hub discovery and detail receive the canonical presentation `lang` owned by the shared Protocol language registry. Omitting `lang` requests source content. Presentation Language may select Hub-enriched descriptions and display-only Skill documents but never changes the Skill artifact installed or executed.
+_Avoid_: artifact language, installation language, translated artifact
 
 **Offline Local Management**:
 The capability to inspect and manage Added Projects, Installed Agents, Hub-managed targets, External Installations, and Local Skills from local CLI and filesystem state while the Hub is unavailable. Hub detail, matching, installation, and update actions explain their restriction and can be retried without clearing the selected Library route or local inventory.

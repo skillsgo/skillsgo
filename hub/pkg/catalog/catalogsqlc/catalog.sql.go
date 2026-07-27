@@ -86,7 +86,7 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 
 const currentSkill = `-- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -101,13 +101,15 @@ type CurrentSkillParams struct {
 }
 
 type CurrentSkillRow struct {
-	VersionID   int64     `json:"version_id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	CommitSha   string    `json:"commit_sha"`
-	Path        string    `json:"path"`
-	CommitTime  time.Time `json:"commit_time"`
-	Description string    `json:"description"`
+	VersionID         int64     `json:"version_id"`
+	Name              string    `json:"name"`
+	Version           string    `json:"version"`
+	CommitSha         string    `json:"commit_sha"`
+	Path              string    `json:"path"`
+	CommitTime        time.Time `json:"commit_time"`
+	Description       string    `json:"description"`
+	DescriptionDigest string    `json:"description_digest"`
+	DocumentDigest    string    `json:"document_digest"`
 }
 
 func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error) {
@@ -121,8 +123,46 @@ func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (Cur
 		&i.Path,
 		&i.CommitTime,
 		&i.Description,
+		&i.DescriptionDigest,
+		&i.DocumentDigest,
 	)
 	return i, err
+}
+
+const documentTranslationCandidates = `-- name: DocumentTranslationCandidates :many
+SELECT DISTINCT ON (mvs.document_digest) mvs.document_digest,
+       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
+FROM skills mvs
+LEFT JOIN localizations l
+  ON l.resource_kind='skill_document' AND l.source_digest=mvs.document_digest AND l.lang=$1
+WHERE mvs.document_digest<>''
+ORDER BY mvs.document_digest
+`
+
+type DocumentTranslationCandidatesRow struct {
+	DocumentDigest string `json:"document_digest"`
+	SourceDigest   string `json:"source_digest"`
+	PromptVersion  string `json:"prompt_version"`
+}
+
+func (q *Queries) DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, documentTranslationCandidates, lang)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DocumentTranslationCandidatesRow{}
+	for rows.Next() {
+		var i DocumentTranslationCandidatesRow
+		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.PromptVersion); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const expireQueuedBackfillRun = `-- name: ExpireQueuedBackfillRun :execrows
@@ -173,7 +213,7 @@ WITH requested AS (
 ranked AS (
     SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,input.ordinal,
            mvs.version_id AS id,mv.package_id,m.path AS package_path,mvs.name,
-           COALESCE(ls.description,mvs.description) AS description,
+           COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host,m.source_path AS source_repository,mvs.path,
            mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
            row_number() OVER (
@@ -186,8 +226,8 @@ ranked AS (
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
       ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
-    LEFT JOIN localized_descriptions ls
-      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$5
+    LEFT JOIN localizations ls
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$5 AND ls.result_kind='translated'
 )
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
        source_host,source_repository,path,latest_version,stars,created_at,updated_at
@@ -201,7 +241,7 @@ type FindExactLocalizedSkillsBatchParams struct {
 	QueryIds     []string `json:"query_ids"`
 	Queries      []string `json:"queries"`
 	PackagePaths []string `json:"package_paths"`
-	Locale       string   `json:"locale"`
+	Lang         string   `json:"lang"`
 }
 
 type FindExactLocalizedSkillsBatchRow struct {
@@ -228,7 +268,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 		arg.QueryIds,
 		arg.Queries,
 		arg.PackagePaths,
-		arg.Locale,
+		arg.Lang,
 	)
 	if err != nil {
 		return nil, err
@@ -279,7 +319,7 @@ SELECT input.query_id::text AS query_id,input.query::text AS query,input.package
 FROM requested input
 JOIN LATERAL (
     SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
-           mvs.name, COALESCE(ls.description,mvs.description) AS description,
+           mvs.name, COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host, m.source_path AS source_repository, mvs.path,
            mv.version AS latest_version, m.stars,
            mv.created_at, m.updated_at,
@@ -295,10 +335,10 @@ JOIN LATERAL (
     FROM packages m
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs ON mvs.version_id=mv.id
-    LEFT JOIN localized_descriptions ls
-      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$1
-    LEFT JOIN localized_descriptions lm
-      ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=$1
+    LEFT JOIN localizations ls
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$1 AND ls.result_kind='translated'
+    LEFT JOIN localizations lm
+      ON lm.resource_kind='package_description' AND lm.source_digest=m.description_digest AND lm.lang=$1 AND lm.result_kind='translated'
     WHERE (
         input.package_path<>'' AND m.path=input.package_path AND mvs.name=input.query
     ) OR (
@@ -308,8 +348,8 @@ JOIN LATERAL (
                 lower(mvs.name) LIKE '%' || lower(input.query) || '%'
                 OR lower(mvs.description) LIKE '%' || lower(input.query) || '%'
                 OR lower(m.path) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(ls.text_content,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lm.text_content,'')) LIKE '%' || lower(input.query) || '%'
             ))
         )
     )
@@ -321,7 +361,7 @@ ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,
 `
 
 type FindLocalizedSkillsBatchParams struct {
-	Locale       string   `json:"locale"`
+	Lang         string   `json:"lang"`
 	PageLimit    int32    `json:"page_limit"`
 	QueryIds     []string `json:"query_ids"`
 	Queries      []string `json:"queries"`
@@ -349,7 +389,7 @@ type FindLocalizedSkillsBatchRow struct {
 
 func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalizedSkillsBatchParams) ([]FindLocalizedSkillsBatchRow, error) {
 	rows, err := q.db.Query(ctx, findLocalizedSkillsBatch,
-		arg.Locale,
+		arg.Lang,
 		arg.PageLimit,
 		arg.QueryIds,
 		arg.Queries,
@@ -450,15 +490,17 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 
 const insertSkill = `-- name: InsertSkill :exec
 INSERT INTO skills (
-    version_id, name, path, description
-) VALUES ($1,$2,$3,$4)
+    version_id, name, path, description, description_digest, document_digest
+) VALUES ($1,$2,$3,$4,$5,$6)
 `
 
 type InsertSkillParams struct {
-	VersionID   int64  `json:"version_id"`
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Description string `json:"description"`
+	VersionID         int64  `json:"version_id"`
+	Name              string `json:"name"`
+	Path              string `json:"path"`
+	Description       string `json:"description"`
+	DescriptionDigest string `json:"description_digest"`
+	DocumentDigest    string `json:"document_digest"`
 }
 
 func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error {
@@ -467,6 +509,8 @@ func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error 
 		arg.Name,
 		arg.Path,
 		arg.Description,
+		arg.DescriptionDigest,
+		arg.DocumentDigest,
 	)
 	return err
 }
@@ -558,26 +602,8 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 	return items, nil
 }
 
-const localizedDescription = `-- name: LocalizedDescription :one
-SELECT description FROM localized_descriptions
-WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3
-`
-
-type LocalizedDescriptionParams struct {
-	ResourceKind string `json:"resource_kind"`
-	ResourceID   string `json:"resource_id"`
-	Locale       string `json:"locale"`
-}
-
-func (q *Queries) LocalizedDescription(ctx context.Context, arg LocalizedDescriptionParams) (string, error) {
-	row := q.db.QueryRow(ctx, localizedDescription, arg.ResourceKind, arg.ResourceID, arg.Locale)
-	var description string
-	err := row.Scan(&description)
-	return description, err
-}
-
 const packageByPath = `-- name: PackageByPath :one
-SELECT id, source_host, source_path, path, current_version_id, description, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at FROM packages WHERE path = $1
+SELECT id, source_host, source_path, path, current_version_id, description, description_digest, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at FROM packages WHERE path = $1
 `
 
 func (q *Queries) PackageByPath(ctx context.Context, packagePath string) (Package, error) {
@@ -590,6 +616,7 @@ func (q *Queries) PackageByPath(ctx context.Context, packagePath string) (Packag
 		&i.Path,
 		&i.CurrentVersionID,
 		&i.Description,
+		&i.DescriptionDigest,
 		&i.Stars,
 		&i.SourceEtag,
 		&i.SourceCheckedAt,
@@ -598,6 +625,25 @@ func (q *Queries) PackageByPath(ctx context.Context, packagePath string) (Packag
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const packageLocalizedDescription = `-- name: PackageLocalizedDescription :one
+SELECT l.text_content
+FROM packages m JOIN localizations l ON l.source_digest=m.description_digest
+WHERE m.path=$1 AND l.resource_kind='package_description' AND l.lang=$2
+  AND l.result_kind='translated'
+`
+
+type PackageLocalizedDescriptionParams struct {
+	Path string `json:"path"`
+	Lang string `json:"lang"`
+}
+
+func (q *Queries) PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, packageLocalizedDescription, arg.Path, arg.Lang)
+	var text_content pgtype.Text
+	err := row.Scan(&text_content)
+	return text_content, err
 }
 
 const packagePublicationCommit = `-- name: PackagePublicationCommit :one
@@ -671,24 +717,24 @@ func (q *Queries) PackageVersionCount(ctx context.Context, arg PackageVersionCou
 
 const searchLocalizedSkills = `-- name: SearchLocalizedSkills :many
 SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
-       mvs.name, COALESCE(ls.description,mvs.description) AS description,
+       mvs.name, COALESCE(ls.text_content,mvs.description) AS description,
        m.source_host, m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localized_descriptions ls
-  ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$1
-LEFT JOIN localized_descriptions lm
-  ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=$1
+LEFT JOIN localizations ls
+  ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$1 AND ls.result_kind='translated'
+LEFT JOIN localizations lm
+  ON lm.resource_kind='package_description' AND lm.source_digest=m.description_digest AND lm.lang=$1 AND lm.result_kind='translated'
 WHERE ($2::boolean AND lower(mvs.name)=lower($3))
 OR (NOT $2::boolean AND (
     lower(mvs.name) LIKE '%' || lower($3) || '%'
     OR lower(mvs.description) LIKE '%' || lower($3) || '%'
     OR lower(m.path) LIKE '%' || lower($3) || '%'
-    OR lower(COALESCE(ls.description,'')) LIKE '%' || lower($3) || '%'
-    OR lower(COALESCE(lm.description,'')) LIKE '%' || lower($3) || '%'
+    OR lower(COALESCE(ls.text_content,'')) LIKE '%' || lower($3) || '%'
+    OR lower(COALESCE(lm.text_content,'')) LIKE '%' || lower($3) || '%'
 ))
 ORDER BY CASE
     WHEN lower(mvs.name)=lower($3) THEN 0
@@ -703,7 +749,7 @@ LIMIT $5 OFFSET $4
 `
 
 type SearchLocalizedSkillsParams struct {
-	Locale     string `json:"locale"`
+	Lang       string `json:"lang"`
 	ExactName  bool   `json:"exact_name"`
 	Query      string `json:"query"`
 	PageOffset int32  `json:"page_offset"`
@@ -727,7 +773,7 @@ type SearchLocalizedSkillsRow struct {
 
 func (q *Queries) SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error) {
 	rows, err := q.db.Query(ctx, searchLocalizedSkills,
-		arg.Locale,
+		arg.Lang,
 		arg.ExactName,
 		arg.Query,
 		arg.PageOffset,
@@ -937,6 +983,30 @@ func (q *Queries) SkillByCoordinate(ctx context.Context, arg SkillByCoordinatePa
 	return i, err
 }
 
+const skillLocalizedDescription = `-- name: SkillLocalizedDescription :one
+SELECT l.text_content
+FROM packages m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+JOIN localizations l ON l.source_digest=mvs.description_digest
+WHERE m.path=$1 AND mvs.name=$2 AND l.resource_kind='skill_description' AND l.lang=$3
+  AND l.result_kind='translated'
+ORDER BY mvs.path LIMIT 1
+`
+
+type SkillLocalizedDescriptionParams struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+	Lang string `json:"lang"`
+}
+
+func (q *Queries) SkillLocalizedDescription(ctx context.Context, arg SkillLocalizedDescriptionParams) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, skillLocalizedDescription, arg.Path, arg.Name, arg.Lang)
+	var text_content pgtype.Text
+	err := row.Scan(&text_content)
+	return text_content, err
+}
+
 const skillPublishedVersions = `-- name: SkillPublishedVersions :many
 SELECT DISTINCT mv.version
 FROM packages m
@@ -973,7 +1043,7 @@ func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublished
 
 const skills = `-- name: Skills :many
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -987,13 +1057,15 @@ type SkillsParams struct {
 }
 
 type SkillsRow struct {
-	VersionID   int64     `json:"version_id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	CommitSha   string    `json:"commit_sha"`
-	Path        string    `json:"path"`
-	CommitTime  time.Time `json:"commit_time"`
-	Description string    `json:"description"`
+	VersionID         int64     `json:"version_id"`
+	Name              string    `json:"name"`
+	Version           string    `json:"version"`
+	CommitSha         string    `json:"commit_sha"`
+	Path              string    `json:"path"`
+	CommitTime        time.Time `json:"commit_time"`
+	Description       string    `json:"description"`
+	DescriptionDigest string    `json:"description_digest"`
+	DocumentDigest    string    `json:"document_digest"`
 }
 
 func (q *Queries) Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error) {
@@ -1013,6 +1085,8 @@ func (q *Queries) Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, er
 			&i.Path,
 			&i.CommitTime,
 			&i.Description,
+			&i.DescriptionDigest,
+			&i.DocumentDigest,
 		); err != nil {
 			return nil, err
 		}
@@ -1039,7 +1113,7 @@ FROM requested input
 JOIN packages m ON m.path=input.package_path
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN LATERAL (
-    SELECT candidate.id, candidate.version_id, candidate.name, candidate.path, candidate.description
+    SELECT candidate.id, candidate.version_id, candidate.name, candidate.path, candidate.description, candidate.description_digest, candidate.document_digest
     FROM skills candidate
     WHERE candidate.version_id=mv.id AND candidate.name=input.name
     ORDER BY candidate.path
@@ -1247,27 +1321,24 @@ func (q *Queries) TouchBackfillRun(ctx context.Context, arg TouchBackfillRunPara
 }
 
 const translationCandidates = `-- name: TranslationCandidates :many
-SELECT 'module'::text AS resource_kind, m.path AS resource_id, m.description,
+SELECT DISTINCT ON (m.description_digest) 'package_description'::text AS resource_kind,
+       m.path AS resource_id, m.description, m.description_digest AS content_digest,
        COALESCE(ld.source_digest, '') AS source_digest,
        COALESCE(ld.prompt_version, '') AS prompt_version
 FROM packages m
-LEFT JOIN localized_descriptions ld
-  ON ld.resource_kind='module' AND ld.resource_id=m.path AND ld.locale=$1
+LEFT JOIN localizations ld
+  ON ld.resource_kind='package_description' AND ld.source_digest=m.description_digest AND ld.lang=$1
 WHERE trim(m.description)<>''
 UNION ALL
-SELECT 'skill'::text, m.path || ':' || mvs.name, mvs.description,
+SELECT DISTINCT ON (mvs.description_digest) 'skill_description'::text,
+       m.path || '@' || mv.version || ':' || mvs.path, mvs.description, mvs.description_digest,
        COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localized_descriptions ld
-  ON ld.resource_kind='skill' AND ld.resource_id=m.path || ':' || mvs.name AND ld.locale=$1
+LEFT JOIN localizations ld
+  ON ld.resource_kind='skill_description' AND ld.source_digest=mvs.description_digest AND ld.lang=$1
 WHERE trim(mvs.description)<>''
-  AND mvs.path=(
-      SELECT min(candidate.path)
-      FROM skills candidate
-      WHERE candidate.version_id=mv.id AND candidate.name=mvs.name
-  )
 ORDER BY resource_kind, resource_id
 `
 
@@ -1275,12 +1346,13 @@ type TranslationCandidatesRow struct {
 	ResourceKind  string `json:"resource_kind"`
 	ResourceID    string `json:"resource_id"`
 	Description   string `json:"description"`
+	ContentDigest string `json:"content_digest"`
 	SourceDigest  string `json:"source_digest"`
 	PromptVersion string `json:"prompt_version"`
 }
 
-func (q *Queries) TranslationCandidates(ctx context.Context, locale string) ([]TranslationCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, translationCandidates, locale)
+func (q *Queries) TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, translationCandidates, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -1292,6 +1364,7 @@ func (q *Queries) TranslationCandidates(ctx context.Context, locale string) ([]T
 			&i.ResourceKind,
 			&i.ResourceID,
 			&i.Description,
+			&i.ContentDigest,
 			&i.SourceDigest,
 			&i.PromptVersion,
 		); err != nil {
@@ -1306,23 +1379,25 @@ func (q *Queries) TranslationCandidates(ctx context.Context, locale string) ([]T
 }
 
 const updatePackageSourceMetadata = `-- name: UpdatePackageSourceMetadata :execrows
-UPDATE packages SET description = $1, stars = $2, source_etag = $3,
-source_checked_at = COALESCE($4, source_checked_at), source_retry_at = $5,
-updated_at = CURRENT_TIMESTAMP WHERE path = $6
+UPDATE packages SET description = $1, description_digest = $2, stars = $3, source_etag = $4,
+source_checked_at = COALESCE($5, source_checked_at), source_retry_at = $6,
+updated_at = CURRENT_TIMESTAMP WHERE path = $7
 `
 
 type UpdatePackageSourceMetadataParams struct {
-	Description     string      `json:"description"`
-	Stars           int64       `json:"stars"`
-	SourceEtag      pgtype.Text `json:"source_etag"`
-	SourceCheckedAt *time.Time  `json:"source_checked_at"`
-	SourceRetryAt   *time.Time  `json:"source_retry_at"`
-	PackagePath     string      `json:"package_path"`
+	Description       string      `json:"description"`
+	DescriptionDigest string      `json:"description_digest"`
+	Stars             int64       `json:"stars"`
+	SourceEtag        pgtype.Text `json:"source_etag"`
+	SourceCheckedAt   *time.Time  `json:"source_checked_at"`
+	SourceRetryAt     *time.Time  `json:"source_retry_at"`
+	PackagePath       string      `json:"package_path"`
 }
 
 func (q *Queries) UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updatePackageSourceMetadata,
 		arg.Description,
+		arg.DescriptionDigest,
 		arg.Stars,
 		arg.SourceEtag,
 		arg.SourceCheckedAt,
@@ -1335,33 +1410,33 @@ func (q *Queries) UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePac
 	return result.RowsAffected(), nil
 }
 
-const upsertLocalizedDescription = `-- name: UpsertLocalizedDescription :exec
-INSERT INTO localized_descriptions (resource_kind,resource_id,locale,description,source_digest,prompt_version,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$7)
-ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
-description=excluded.description,source_digest=excluded.source_digest,
+const upsertLocalization = `-- name: UpsertLocalization :exec
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_content,prompt_version,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7)
+ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
+result_kind=excluded.result_kind,text_content=excluded.text_content,
 prompt_version=excluded.prompt_version,updated_at=excluded.updated_at
 `
 
-type UpsertLocalizedDescriptionParams struct {
-	ResourceKind  string    `json:"resource_kind"`
-	ResourceID    string    `json:"resource_id"`
-	Locale        string    `json:"locale"`
-	Description   string    `json:"description"`
-	SourceDigest  string    `json:"source_digest"`
-	PromptVersion string    `json:"prompt_version"`
-	CreatedAt     time.Time `json:"created_at"`
+type UpsertLocalizationParams struct {
+	ResourceKind  string      `json:"resource_kind"`
+	SourceDigest  string      `json:"source_digest"`
+	Lang          string      `json:"lang"`
+	ResultKind    string      `json:"result_kind"`
+	TextContent   pgtype.Text `json:"text_content"`
+	PromptVersion string      `json:"prompt_version"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
-func (q *Queries) UpsertLocalizedDescription(ctx context.Context, arg UpsertLocalizedDescriptionParams) error {
-	_, err := q.db.Exec(ctx, upsertLocalizedDescription,
+func (q *Queries) UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error {
+	_, err := q.db.Exec(ctx, upsertLocalization,
 		arg.ResourceKind,
-		arg.ResourceID,
-		arg.Locale,
-		arg.Description,
 		arg.SourceDigest,
+		arg.Lang,
+		arg.ResultKind,
+		arg.TextContent,
 		arg.PromptVersion,
-		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }
@@ -1371,7 +1446,7 @@ const upsertPackage = `-- name: UpsertPackage :one
 INSERT INTO packages (source_host, source_path, path, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
 ON CONFLICT (path) DO UPDATE SET updated_at = excluded.updated_at
-RETURNING id, source_host, source_path, path, current_version_id, description, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at
+RETURNING id, source_host, source_path, path, current_version_id, description, description_digest, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at
 `
 
 type UpsertPackageParams struct {
@@ -1400,12 +1475,60 @@ func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (P
 		&i.Path,
 		&i.CurrentVersionID,
 		&i.Description,
+		&i.DescriptionDigest,
 		&i.Stars,
 		&i.SourceEtag,
 		&i.SourceCheckedAt,
 		&i.SourceRetryAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const versionSkillLocalization = `-- name: VersionSkillLocalization :one
+SELECT l.result_kind,l.text_content,l.source_digest,l.prompt_version,mvs.document_digest,mvs.description_digest
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+JOIN localizations l ON l.source_digest=CASE WHEN $1::text='skill_document' THEN mvs.document_digest ELSE mvs.description_digest END
+WHERE m.path=$2 AND mv.version=$3 AND mvs.path=$4
+  AND l.resource_kind=$1::text AND l.lang=$5
+`
+
+type VersionSkillLocalizationParams struct {
+	ResourceKind string `json:"resource_kind"`
+	PackagePath  string `json:"package_path"`
+	Version      string `json:"version"`
+	SkillPath    string `json:"skill_path"`
+	Lang         string `json:"lang"`
+}
+
+type VersionSkillLocalizationRow struct {
+	ResultKind        string      `json:"result_kind"`
+	TextContent       pgtype.Text `json:"text_content"`
+	SourceDigest      string      `json:"source_digest"`
+	PromptVersion     string      `json:"prompt_version"`
+	DocumentDigest    string      `json:"document_digest"`
+	DescriptionDigest string      `json:"description_digest"`
+}
+
+func (q *Queries) VersionSkillLocalization(ctx context.Context, arg VersionSkillLocalizationParams) (VersionSkillLocalizationRow, error) {
+	row := q.db.QueryRow(ctx, versionSkillLocalization,
+		arg.ResourceKind,
+		arg.PackagePath,
+		arg.Version,
+		arg.SkillPath,
+		arg.Lang,
+	)
+	var i VersionSkillLocalizationRow
+	err := row.Scan(
+		&i.ResultKind,
+		&i.TextContent,
+		&i.SourceDigest,
+		&i.PromptVersion,
+		&i.DocumentDigest,
+		&i.DescriptionDigest,
 	)
 	return i, err
 }

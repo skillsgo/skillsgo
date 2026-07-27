@@ -229,16 +229,16 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 			if page > 0 {
 				cards = cards[:0]
 			} else {
-				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLocale(c), cards)
+				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLang(c), cards)
 			}
 			return writeJSON(c, fiber.StatusOK, skillsResponse{Skills: cards, Pagination: pagination(page, perPage, false)})
 		}
-		locale := presentationLocale(c)
-		skills, err := metadata.FindLocalized(c.Context(), query, locale, exactName, perPage+1, page*perPage)
+		lang := presentationLang(c)
+		skills, err := metadata.FindLocalized(c.Context(), query, lang, exactName, perPage+1, page*perPage)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), metadata, locale, skills, page, perPage))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), metadata, lang, skills, page, perPage))
 	}
 }
 
@@ -250,9 +250,9 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
 			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find request")
 		}
-		locale, err := presentation.CanonicalLocale(request.Locale)
-		if err != nil || len(locale) > 35 {
-			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find locale")
+		lang, err := presentation.CanonicalLang(request.Lang)
+		if err != nil || len(lang) > 35 {
+			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find lang")
 		}
 		for index, item := range request.Queries {
 			item.Name = strings.TrimSpace(item.Name)
@@ -272,7 +272,7 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 				ID: strconv.Itoa(index), Query: item.Name, PackagePath: item.PackagePath, ExactName: true,
 			})
 		}
-		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, locale, request.Limit)
+		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, lang, request.Limit)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find_batch", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
@@ -312,12 +312,12 @@ func validSkillCoordinate(packagePath, skillName string) bool {
 	return (protocolapi.SkillCoordinate{PackagePath: packagePath, Name: skillName}).Valid()
 }
 
-func presentationLocale(c fiber.Ctx) string {
-	locale, err := presentation.CanonicalLocale(c.Query("locale"))
-	if err != nil || len(locale) > 35 {
+func presentationLang(c fiber.Ctx) string {
+	lang, err := presentation.CanonicalLang(c.Query("lang"))
+	if err != nil || len(lang) > 35 {
 		return ""
 	}
-	return locale
+	return lang
 }
 
 func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.SearchSkill) {

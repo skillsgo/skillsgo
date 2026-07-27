@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset and Library refresh state, and shared setting controls.
- * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, and the explicit local Library refresh action.
+ * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset and Library refresh state, Mermaid gallery navigation, and shared setting controls.
+ * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, and the final Mermaid gallery entry.
  * [POS]: Serves as the general section composition of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -122,6 +122,12 @@ extension _SettingsSections on _SettingsScreenState {
       ),
       const SizedBox(height: 24),
       _libraryRefreshSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
+      _mermaidGallerySettings(),
     ],
   );
 
@@ -206,6 +212,29 @@ extension _SettingsSections on _SettingsScreenState {
     updateState(() {
       refreshingLibrary = false;
       libraryRefreshSucceeded = !failed;
+    });
+  }
+
+  Widget _mermaidGallerySettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Mermaid',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 18),
+      SkillsButton.outline(
+        key: const Key('open-mermaid-gallery'),
+        onPressed: _openMermaidGallery,
+        child: const Text('Mermaid'),
+      ),
+    ],
+  );
+
+  void _openMermaidGallery() {
+    updateState(() => showingMermaidGallery = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) scrollController.jumpTo(0);
     });
   }
 }

@@ -1083,6 +1083,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get language => 'ภาษา';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'ธีม';
 
   @override

@@ -9,6 +9,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 )
@@ -28,11 +29,17 @@ type modulePublicationPrewarmArgs struct {
 
 func (modulePublicationPrewarmArgs) Kind() string { return "package_publication_prewarm" }
 
-type descriptionTranslationBatchArgs struct {
-	Locale string `json:"locale" river:"unique"`
-}
+type descriptionTranslationBatchArgs struct{}
 
 func (descriptionTranslationBatchArgs) Kind() string { return "description_translation_batch" }
+
+func (descriptionTranslationBatchArgs) JobTimeout() time.Duration { return -1 }
+
+type documentTranslationBatchArgs struct{}
+
+func (documentTranslationBatchArgs) Kind() string { return "document_translation_batch" }
+
+func (documentTranslationBatchArgs) JobTimeout() time.Duration { return -1 }
 
 func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repositoryMaterializer) error {
 	return taskqueue.Register(runtime, func(ctx context.Context, args modulePublicationPrewarmArgs) error {

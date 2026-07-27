@@ -82,7 +82,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	metadata, err := catalog.Open(ctx, config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2})
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 

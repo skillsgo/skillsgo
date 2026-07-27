@@ -62,7 +62,7 @@ func VerifyExecutor(t testingT, execute func(*http.Request) (*http.Response, err
 		}
 	}
 	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
-		request, err := http.NewRequest(http.MethodGet, "http://cloud.test"+kind.Path()+"?perPage=1&page=0", nil)
+		request, err := http.NewRequest(http.MethodGet, "http://cloud.test"+kind.Path()+"?perPage=1&page=0&"+cloud.RankingLangQuery+"=zh-Hans-CN", nil)
 		if err != nil {
 			t.Fatalf("ranking %s request: %v", kind, err)
 		}
@@ -81,11 +81,21 @@ func VerifyExecutor(t testingT, execute func(*http.Request) (*http.Response, err
 			}
 		}
 	}
-	request, err := http.NewRequest(http.MethodGet, "http://cloud.test"+cloud.RankingsPath+"unknown", nil)
+	request, err := http.NewRequest(http.MethodGet, "http://cloud.test"+cloud.RankingAllTime.Path()+"?"+cloud.RankingLangQuery+"=zh-cn", nil)
+	if err != nil {
+		t.Fatalf("invalid ranking language request: %v", err)
+	}
+	response, err := execute(request)
+	if err != nil {
+		t.Fatalf("invalid ranking language request: %v", err)
+	}
+	var invalidLanguage cloud.ErrorResponse
+	decodeResponse(t, response, http.StatusBadRequest, &invalidLanguage)
+	request, err = http.NewRequest(http.MethodGet, "http://cloud.test"+cloud.RankingsPath+"unknown", nil)
 	if err != nil {
 		t.Fatalf("invalid ranking request: %v", err)
 	}
-	response, err := execute(request)
+	response, err = execute(request)
 	if err != nil {
 		t.Fatalf("invalid ranking request: %v", err)
 	}

@@ -1091,6 +1091,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get language => 'Langue';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Thème';
 
   @override

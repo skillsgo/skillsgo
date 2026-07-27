@@ -11,3 +11,7 @@ import protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 func CanonicalLocale(value string) (string, error) {
 	return protocollocale.Canonical(value)
 }
+
+func CanonicalLang(value string) (string, error) {
+	return protocollocale.CanonicalSupported(value)
+}

@@ -37,7 +37,7 @@ func documentSkillOperations(api huma.API) {
 		queryParameter("exactName", "Match the canonical Skill name exactly.", false, true, &huma.Schema{Type: "boolean", Default: false}),
 		queryParameter("page", "Zero-based result page.", false, 0, integerSchema(0, 0, 0)),
 		queryParameter("perPage", "Number of Skills per page.", false, 10, integerSchema(1, 100, 20)),
-		queryParameter("locale", "Optional BCP 47 presentation locale.", false, "en", stringSchema()),
+		queryParameter("lang", "Optional BCP 47 presentation language.", false, "en", stringSchema()),
 	}
 
 	addJSONOperation(api, http.MethodPost, "/api/v1/skills/find-candidates", "findSkillCandidates", "Find Skill candidates", "skills",

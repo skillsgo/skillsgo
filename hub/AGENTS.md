@@ -22,7 +22,7 @@ go fmt ./...
 go tool sqlc diff
 go test ./...
 make build
-go run ./cmd/skillsgo-hub -config_file=./config.dev.toml
+go run ./cmd/skillsgo-hub -config_file=./config.dev.yaml
 ```
 
 The repository-level `make dev` runs this workspace through Air. Air owns Hub rebuild and restart while Process Compose owns cross-workspace ordering and lifecycle.
@@ -37,9 +37,9 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `bin/skillsgo-hub` | Ignored local development binary produced by `make build`; release artifacts remain under `dist/`. |
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
-| `pkg/translation/` | Optional OpenAI-compatible presentation-description translation worker. |
+| `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
 | `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh/prewarm, and Repository History Backfill, sharing Catalog's pgx pool and transactions. |
-| `pkg/config/`, `config.dev.toml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
+| `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |
 | `charts/` | Kubernetes packaging inherited from the Hub deployment surface. |
