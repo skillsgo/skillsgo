@@ -1,13 +1,9 @@
-# Run the unit tests with the race detector and code coverage enabled
+# [INPUT]: Depends on the Go toolchain and test environment selection.
+# [OUTPUT]: Runs the Hub unit and available integration tests with race detection and coverage.
+# [POS]: Serves as the Windows unit-test entry point for the Hub workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 if (!(Test-Path env:SKILLSGO_HUB_ENVIRONMENT)) {$env:SKILLSGO_HUB_ENVIRONMENT = "test"}
 
-if (!(Test-Path env:SKILLSGO_HUB_MINIO_ENDPOINT)) {
-    $env:SKILLSGO_HUB_MINIO_ENDPOINT = "http://127.0.0.1:9001"
-}
-
-if (!(Test-Path env:SKILLSGO_HUB_MONGO_STORAGE_URL)) {
-    $env:SKILLSGO_HUB_MONGO_STORAGE_URL = "mongodb://127.0.0.1:27017"
-}
 $env:GO111MODULE="on"
 & go test -mod=vendor -race -coverprofile cover.out -covermode atomic ./...

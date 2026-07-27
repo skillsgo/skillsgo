@@ -67,7 +67,7 @@ type CandidateQuery struct {
 type FindCandidatesRequest struct {
 	Queries []CandidateQuery `json:"queries"`
 	Limit   int              `json:"limit"`
-	Locale  string           `json:"locale,omitempty"`
+	Lang    string           `json:"lang,omitempty"`
 }
 
 type FindSkill struct {

@@ -6,6 +6,8 @@ package catalogsqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -13,6 +15,7 @@ type Querier interface {
 	BackfillRunByID(ctx context.Context, id string) (PackageBackfillRun, error)
 	CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error)
 	CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error)
+	DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error)
 	ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error)
 	ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error)
 	FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error)
@@ -22,8 +25,8 @@ type Querier interface {
 	InsertSkill(ctx context.Context, arg InsertSkillParams) error
 	LatestBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error)
 	ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error)
-	LocalizedDescription(ctx context.Context, arg LocalizedDescriptionParams) (string, error)
 	PackageByPath(ctx context.Context, packagePath string) (Package, error)
+	PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error)
 	PackagePublicationCommit(ctx context.Context, arg PackagePublicationCommitParams) (string, error)
 	PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error)
 	PackageVersionCount(ctx context.Context, arg PackageVersionCountParams) (int64, error)
@@ -32,6 +35,7 @@ type Querier interface {
 	SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error
 	SetCurrentVersionByCoordinate(ctx context.Context, arg SetCurrentVersionByCoordinateParams) error
 	SkillByCoordinate(ctx context.Context, arg SkillByCoordinateParams) (SkillByCoordinateRow, error)
+	SkillLocalizedDescription(ctx context.Context, arg SkillLocalizedDescriptionParams) (pgtype.Text, error)
 	SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error)
 	Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error)
 	SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error)
@@ -39,14 +43,15 @@ type Querier interface {
 	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]PackageBackfillRun, error)
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
-	TranslationCandidates(ctx context.Context, locale string) ([]TranslationCandidatesRow, error)
+	TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
-	UpsertLocalizedDescription(ctx context.Context, arg UpsertLocalizedDescriptionParams) error
+	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
 	// [OUTPUT]: Defines typed Package, immutable Package Version Skill, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)
+	VersionSkillLocalization(ctx context.Context, arg VersionSkillLocalizationParams) (VersionSkillLocalizationRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

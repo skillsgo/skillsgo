@@ -1,4 +1,4 @@
-# [INPUT]: Depends on Air, the Hub Makefile build target, config.dev.toml, and maintained Go source files.
+# [INPUT]: Depends on Air, the Hub Makefile build target, config.dev.yaml, and maintained Go source files.
 # [OUTPUT]: Rebuilds and restarts the local Hub when its source or development configuration changes.
 # [POS]: Serves as the Hub-owned hot-reload configuration used by the root development topology.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,8 +9,8 @@ env_files = [".env.local"]
 
 [build]
 cmd = "make build"
-entrypoint = ["./bin/skillsgo-hub", "-config_file=./config.dev.toml"]
-include_ext = ["go", "toml"]
+entrypoint = ["./bin/skillsgo-hub", "-config_file=./config.dev.yaml"]
+include_ext = ["go", "yaml"]
 exclude_dir = ["bin", "dist", "docs", "testdata", "tmp", "vendor"]
 exclude_regex = ["_test.go$"]
 delay = 300

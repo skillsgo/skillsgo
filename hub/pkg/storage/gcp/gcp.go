@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the gcp package imports and contracts declared in this file.
- * [OUTPUT]: Provides the gcp package behavior implemented by gcp.go.
- * [POS]: Serves as maintained source in the gcp package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on GCS configuration, Google credentials, and the conventional STORAGE_EMULATOR_HOST test endpoint.
+ * [OUTPUT]: Provides authenticated production and unauthenticated emulator GCS clients.
+ * [POS]: Serves as the GCS client-construction boundary for the storage adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package gcp
@@ -11,6 +11,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -58,7 +60,13 @@ func New(ctx context.Context, gcpConf *config.GCPConfig, timeout time.Duration) 
 func newClient(ctx context.Context, gcpConf *config.GCPConfig, timeout time.Duration) (*Storage, error) {
 	const op errors.Op = "gcp.newClient"
 	var opts []option.ClientOption
-	if gcpConf.JSONKey != "" {
+	if emulatorHost := os.Getenv("STORAGE_EMULATOR_HOST"); emulatorHost != "" {
+		opts = append(opts,
+			option.WithEndpoint(strings.TrimRight(emulatorHost, "/")+"/storage/v1/"),
+			option.WithoutAuthentication(),
+			storage.WithJSONReads(),
+		)
+	} else if gcpConf.JSONKey != "" {
 		key, err := base64.StdEncoding.DecodeString(gcpConf.JSONKey)
 		if err != nil {
 			return nil, errors.E(op, fmt.Errorf("could not decode base64 json key: %w", err))

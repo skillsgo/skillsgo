@@ -1,3 +1,7 @@
+# [INPUT]: Depends on the installed Hub binary, YAML configuration, Linux service accounts, and writable storage path.
+# [OUTPUT]: Defines the systemd service lifecycle and sandbox for the legacy Athens-named Hub unit.
+# [POS]: Serves as the Linux systemd unit template installed by scripts/systemd.sh.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 [Unit]
 Description=Athens Go module proxy
 Documentation=https://docs.gomods.io/
@@ -15,7 +19,7 @@ User=www-data
 Group=www-data
 
 ; The full path and the arguments of the command to be executed to start the process.
-ExecStart=/usr/local/bin/athens -config_file=/etc/athens/config.toml
+ExecStart=/usr/local/bin/athens -config_file=/etc/athens/config.yaml
 
 ; The command necessary to stop the service.
 ;ExecStop=/bin/kill -INT $MAINPID

@@ -85,7 +85,6 @@ func (m *E2eSuite) getEnv(port int) []string {
 		fmt.Sprintf("SKILLSGO_HUB_CACHE_DIR=%s", filepath.Join(m.goPath, "source-cache")),
 		"SKILLSGO_HUB_STORAGE_TYPE=disk",
 		fmt.Sprintf("SKILLSGO_HUB_DISK_STORAGE_ROOT=%s", filepath.Join(m.goPath, "storage")),
-		"SKILLSGO_HUB_DATABASE_TYPE=postgres",
 		fmt.Sprintf("SKILLSGO_HUB_DATABASE_DSN=%s", m.databaseDSN),
 		fmt.Sprintf("SKILLSGO_HUB_PORT=:%d", port),
 	}

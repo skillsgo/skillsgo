@@ -45,7 +45,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	require.NoError(t, err)
 	conf, err := config.Load("")
 	require.NoError(t, err)
-	conf.Database = &config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2}
+	conf.Database = &config.DatabaseConfig{DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2}
 	conf.StorageType = "disk"
 	conf.Storage = &config.Storage{Disk: &config.DiskConfig{RootPath: filepath.Join(t.TempDir(), "artifacts")}}
 	conf.SkillCacheDir = filepath.Join(t.TempDir(), "git-cache")

@@ -100,7 +100,7 @@ func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
 
 	find := operationDocument(t, paths, "/api/v1/skills/find", "get")
 	parameters := find["parameters"].([]any)
-	require.Equal(t, []string{"q", "packagePath", "exactName", "page", "perPage", "locale"}, parameterNames(parameters))
+	require.Equal(t, []string{"q", "packagePath", "exactName", "page", "perPage", "lang"}, parameterNames(parameters))
 	require.Equal(t, "grill-me", parameterDocument(t, parameters, "q")["example"])
 	require.Equal(t, examplePackagePath, parameterDocument(t, parameters, "packagePath")["example"])
 	require.Equal(t, true, parameterDocument(t, parameters, "q")["required"])
