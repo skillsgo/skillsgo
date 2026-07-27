@@ -4,7 +4,7 @@
 ## Members
 
 - `app.go`, `app_test.go`, `app_postgres_integration_test.go`: assemble and verify the native Fiber application, River or synchronous task runtime, periodic business tasks, PostgreSQL boot/restart with queued-job recovery, middleware lifecycle, and top-level wiring.
-- `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, source/maintenance workload placement, payload validation, uniqueness fields, retry limits, and domain-handler adapters for Source Repository metadata, Package prewarm, and translation.
+- `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, payload validation, timeout behavior, and domain-handler adapters for Source Repository metadata and translation.
 - `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, OpenAPI, and immutable artifact protocol routes through Fiber and cover integration behavior.
 - `basicauth.go`, `basicauth_test.go`, `admin_auth_test.go`: configure global versus administration-scoped HTTP Basic Auth behavior; source publication remains credential-free while GitHub tokens are metadata-API-only.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
@@ -19,7 +19,7 @@
 - `package_publication_commit.go`: owns retry-safe immutable Artifact then content-addressed Skill-source residency followed by atomic Catalog visibility, retaining failed-publication orphans for safe later residency GC instead of racing with concurrent publishers.
 - `module_version_query.go`, `module_version_query_test.go`: resolve typed movable Version Queries once into immutable Package Version Records through the Package-scoped query API.
 - `package_backfill.go`, `package_backfill_test.go`, `package_backfill_postgres_integration_test.go`: validate and expose bounded `/api/v1/admin/package-backfills` batches, persist one independent Run per Package, execute deterministic semantic-version history through River, retain bounded diagnostics, and verify transactional restart/multi-instance behavior.
-- `repository_metadata.go`, `repository_metadata_test.go`: route Repository About descriptions and popularity metadata by source host, serve stale Catalog state while submitting durable refresh and prewarm work, share TTL/ETag/Singleflight/backoff state, and implement sticky GitHub-token failover plus safe diagnostics without making request availability depend on a provider API.
+- `repository_metadata.go`, `repository_metadata_test.go`: route Repository About descriptions and popularity metadata by source host, serve stale Catalog state while submitting durable metadata refresh work, share TTL/ETag/Singleflight/backoff state, and implement sticky GitHub-token failover plus safe diagnostics without making request availability depend on a provider API.
 - `health.go`, `readiness.go`: expose service health and readiness probes.
 - `home.go`, `robots.go`, `version.go`: serve the human landing, crawler policy, and service version surfaces.
 - `storage.go`, `storage_test.go`: wire artifact storage providers into the service, including first-class Cloudflare R2 configuration through the shared S3-compatible backend.
