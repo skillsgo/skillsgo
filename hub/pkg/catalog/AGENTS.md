@@ -3,10 +3,10 @@
 
 ## Members
 
-- `catalog.go`: exposes the Catalog API, reusable Package Version aggregate validation, the shared schema-fixed PostgreSQL pgx pool with public extension fallback, Package-scoped source-metadata cache state, content-addressed global localization identity, name-first language-consistent Find, exact-path ordered batch hydration, immutable Versions, and ordered Skill membership.
+- `catalog.go`: exposes the Catalog API, reusable Package Version aggregate validation, the shared schema-fixed PostgreSQL pgx pool with public extension fallback, Package-scoped source-metadata cache state, content-addressed global localization identity, name-first language-consistent Find, exact-path ordered batch hydration, immutable Versions, and ordered Skill membership with persisted source-language provenance.
 - `backfill.go`: owns durable Package Backfill Run business state, active-work deduplication, heartbeat recovery for running work, River-aware orphan reconciliation candidates for queued work, state transitions, bounded diagnostics, exact-publication commit checks, and atomic PostgreSQL Run-plus-River enqueue scopes.
 - `migrations.go`: installs shared PostgreSQL extension prerequisites in `public`, executes embedded checksummed Atlas SQL migrations in the configured application schema, and serializes migration runs.
-- `migrations/postgres/`: contains the reviewed, checksummed Atlas migration history, including immutable Package Versions, complete Version membership, Backfill Run state, Package metadata, presentation localization outcomes, and PostgreSQL search resources.
+- `migrations/postgres/`: contains the reviewed, checksummed Atlas migration history, including immutable Package Versions, complete Version membership and source-language provenance, Backfill Run state, Package metadata, presentation localization outcomes, and PostgreSQL search resources.
 - `queries/`: contains the maintained sqlc query source; SQL used by Catalog business operations belongs here except connection-scoped PostgreSQL advisory locks.
 - `catalogsqlc/`: contains reproducible sqlc-generated pgx/v5 query code and must not be edited manually.
 - `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including the three-table baseline, Package Path plus Skill Name aggregation coordinates, path-unique same-name snapshots, deterministic name-query defaults, immutable Version ownership, historical membership, current projection, Find ordering/fields, and pagination.

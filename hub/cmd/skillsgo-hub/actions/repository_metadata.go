@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, the Hub task runtime, an optional bearer-token pool, and bounded HTTP requests.
- * [OUTPUT]: Provides stale-while-revalidate Repository descriptions and Stars with durable metadata refresh, TTL, ETag, token failover, and rate-limit backoff.
+ * [OUTPUT]: Provides initial best-effort plus stale-while-revalidate Repository descriptions and Stars with durable retry, TTL, ETag, token failover, and rate-limit backoff.
  * [POS]: Serves as the cached source-metadata adapter and River task handler; request availability never depends on the provider API.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -197,6 +197,35 @@ func (c *repositoryMetadataCache) RegisterTask() error {
 		_, err = c.refreshNow(ctx, parts[0], parts[1], args.PackagePath, stored)
 		return err
 	})
+}
+
+// RefreshInitial performs the first metadata read after a Package becomes
+// discovery-visible. Provider failure never rolls back publication; a durable
+// refresh job retries the same Package when queued execution is available.
+func (c *repositoryMetadataCache) RefreshInitial(ctx context.Context, packagePath string) {
+	parts := strings.SplitN(packagePath, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		log.EntryFromContext(ctx).WithFields(map[string]any{"package_path": packagePath}).Warnf("initial repository metadata refresh skipped for invalid Package Path")
+		return
+	}
+	stored, err := c.catalog.Package(ctx, packagePath)
+	if err == nil {
+		_, err = c.refreshNow(ctx, parts[0], parts[1], packagePath, stored)
+	}
+	if err == nil {
+		return
+	}
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"error": err.Error(), "package_path": packagePath,
+	}).Warnf("initial repository metadata refresh failed")
+	if c.tasks == nil {
+		return
+	}
+	if enqueueErr := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{PackagePath: packagePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}); enqueueErr != nil {
+		log.EntryFromContext(ctx).WithFields(map[string]any{
+			"error": enqueueErr.Error(), "package_path": packagePath,
+		}).Warnf("repository metadata refresh retry submission failed")
+	}
 }
 
 func (c *repositoryMetadataCache) refreshNow(ctx context.Context, normalizedHost, repository, packagePath string, stored *catalog.Package) (repositoryMetadata, error) {

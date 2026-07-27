@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Hub runtime state, localization delegates, the App shell, and brand tokens.
- * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway and eager Hub runtime initialization.
+ * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Hub runtime state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
+ * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, Mermaid renderer, and eager Hub runtime initialization.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import 'ui/app_shell.dart';
 import 'ui/app_providers.dart';
 import 'ui/appearance_controller.dart';
 import 'ui/brand.dart';
+import 'ui/mermaid_webview_diagram.dart';
 
 class SkillsGoApp extends StatelessWidget {
   const SkillsGoApp({super.key, required this.gateway});
@@ -57,6 +58,7 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
         brightness: Brightness.light,
       ),
       darkTheme: buildSkillsTheme(const Color(0xFF514532)),
+      builder: (context, child) => MermaidWebViewRendererScope(child: child!),
       home: AppShell(gateway: gateway),
     );
   }

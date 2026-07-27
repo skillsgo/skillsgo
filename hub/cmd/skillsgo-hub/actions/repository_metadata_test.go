@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Repository metadata cache, GitHub adapter, temporary Catalog, and representative HTTP failure responses.
- * [OUTPUT]: Verifies Repository-scoped stale-while-revalidate submission, About description, Stars, TTL/ETag/rate-limit caching, token failover, and safe diagnostics.
+ * [OUTPUT]: Verifies Repository-scoped initial enrichment, durable retry, stale-while-revalidate submission, About description, Stars, TTL/ETag/rate-limit caching, token failover, and safe diagnostics.
  * [POS]: Serves as the operational diagnostics contract for the best-effort GitHub metadata dependency.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -153,6 +153,50 @@ func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testin
 		require.NoError(t, err)
 	}
 	require.Equal(t, 1, source.calls)
+}
+
+func TestRepositoryMetadataCacheRefreshInitialPersistsDescriptionDigestAndStars(t *testing.T) {
+	_, metadata := testCatalogAPI(t)
+	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
+		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+	}))
+	source := &recordingMetadataSource{results: []metadataSourceResult{{metadata: repositoryMetadata{
+		Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`,
+	}}}}
+	cache := newRepositoryMetadataCache(metadata, source).(*repositoryMetadataCache)
+
+	cache.RefreshInitial(t.Context(), "github.com/acme/skills")
+
+	stored, err := metadata.Package(t.Context(), "github.com/acme/skills")
+	require.NoError(t, err)
+	require.Equal(t, "Agent Skills from Acme.", stored.Description)
+	require.Equal(t, catalog.DescriptionDigest("Agent Skills from Acme."), stored.DescriptionDigest)
+	require.Equal(t, int64(42), stored.Stars)
+	require.Equal(t, `"repo-v1"`, stored.SourceETag)
+	require.NotNil(t, stored.SourceCheckedAt)
+}
+
+func TestRepositoryMetadataCacheRefreshInitialQueuesRetryWithoutBlockingPublication(t *testing.T) {
+	_, metadata := testCatalogAPI(t)
+	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
+		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+	}))
+	runtime := taskqueue.NewSynchronous()
+	source := &recordingMetadataSource{results: []metadataSourceResult{
+		{err: fmt.Errorf("temporary GitHub failure")},
+		{metadata: repositoryMetadata{Description: "Recovered metadata.", Stars: 7, ETag: `"repo-v2"`}},
+	}}
+	cache := newQueuedRepositoryMetadataCache(metadata, runtime, source)
+	require.NoError(t, cache.RegisterTask())
+
+	cache.RefreshInitial(t.Context(), "github.com/acme/skills")
+
+	stored, err := metadata.Package(t.Context(), "github.com/acme/skills")
+	require.NoError(t, err)
+	require.Equal(t, "Recovered metadata.", stored.Description)
+	require.Equal(t, catalog.DescriptionDigest("Recovered metadata."), stored.DescriptionDigest)
+	require.Equal(t, int64(7), stored.Stars)
+	require.Equal(t, 2, source.calls)
 }
 
 func TestRepositoryMetadataCacheQueuesRefresh(t *testing.T) {

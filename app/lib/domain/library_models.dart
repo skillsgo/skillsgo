@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides Agent catalogs, Added Projects, onboarding state, unified Library entries, local/remote Skill detail, and Batch Takeover scope/plan/preview plus named per-item result values.
+ * [OUTPUT]: Provides Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware local/remote Skill detail, and Batch Takeover scope/plan/preview plus named per-item result values.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -190,6 +190,8 @@ class SkillDetail {
     this.time,
     this.archiveSize = 0,
     this.description = '',
+    this.sourceLanguage = '',
+    this.translated = false,
     this.installationTargets = const [],
   });
 
@@ -201,6 +203,8 @@ class SkillDetail {
   final DateTime? time;
   final int archiveSize;
   final String description;
+  final String sourceLanguage;
+  final bool translated;
   final List<SkillInstallationTarget> installationTargets;
 }
 
