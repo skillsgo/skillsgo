@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and a deterministic deeply nested Repository Skill.
- * [OUTPUT]: Provides black-box coverage that deep Skill paths remain resolvable across explicit immutable re-adds without false absence.
+ * [OUTPUT]: Provides black-box coverage that deep Skill paths remain resolvable across confirmed immutable updates without false absence.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,13 +24,7 @@ func TestJ24DeepSkillDiscovery(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "general", "ideation", "naming", "SKILL.md"))
-	preflight := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--preflight", "--output", "json")
-	require.Equal(t, 0, preflight.exitCode, preflight.output)
-	var preview struct {
-		StateToken string `json:"stateToken"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
-	update := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--state-token", preview.StateToken, "--output", "json")
+	update := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--yes", "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
 	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
 	require.FileExists(t, filepath.Join(newProjection, "skills", "general", "ideation", "naming", "SKILL.md"))

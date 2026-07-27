@@ -1,15 +1,18 @@
 /*
- * [INPUT]: Depends on flutter_markdown_plus, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
- * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader used by every Skill document surface.
+ * [INPUT]: Depends on flutter_markdown_plus, the official Mermaid.js WebView bridge, the vendored native Mermaid fallback, Dart Markdown syntax hooks, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
+ * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader with one WebView per Mermaid block and native/source-preserving fallback.
  * [POS]: Serves as the App UI boundary around third-party Markdown parsing and rendering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'brand.dart';
 import 'bidirectional_content.dart';
+import 'mermaid/flutter_mermaid.dart';
+import 'mermaid_webview_diagram.dart';
 
 class SkillMarkdownView extends StatelessWidget {
   const SkillMarkdownView({
@@ -40,6 +43,8 @@ class SkillMarkdownView extends StatelessWidget {
         child: MarkdownBody(
           data: markdown,
           selectable: true,
+          blockSyntaxes: _skillMarkdownBlockSyntaxes,
+          builders: _skillMarkdownBuilders,
           styleSheet: buildSkillMarkdownStyleSheet(
             theme,
             presentation: presentation,
@@ -58,6 +63,8 @@ class SkillMarkdownView extends StatelessWidget {
           child: Markdown(
             data: markdown,
             selectable: true,
+            blockSyntaxes: _skillMarkdownBlockSyntaxes,
+            builders: _skillMarkdownBuilders,
             padding: padding,
             physics: const ClampingScrollPhysics(),
             styleSheet: buildSkillMarkdownStyleSheet(
@@ -75,6 +82,8 @@ class SkillMarkdownView extends StatelessWidget {
       child: Markdown(
         data: markdown,
         selectable: true,
+        blockSyntaxes: _skillMarkdownBlockSyntaxes,
+        builders: _skillMarkdownBuilders,
         padding: padding,
         styleSheet: buildSkillMarkdownStyleSheet(
           theme,
@@ -88,6 +97,129 @@ class SkillMarkdownView extends StatelessWidget {
 }
 
 enum SkillMarkdownPresentation { document, summary }
+
+const _skillMarkdownBlockSyntaxes = <md.BlockSyntax>[
+  _MermaidFencedBlockSyntax(),
+];
+
+final _skillMarkdownBuilders = <String, MarkdownElementBuilder>{
+  'mermaid': _MermaidElementBuilder(),
+};
+
+class _MermaidFencedBlockSyntax extends md.FencedCodeBlockSyntax {
+  const _MermaidFencedBlockSyntax();
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final block = super.parse(parser) as md.Element;
+    final code = block.children?.singleOrNull;
+    if (code is! md.Element ||
+        code.attributes['class']?.toLowerCase() != 'language-mermaid') {
+      return block;
+    }
+    return md.Element.text('mermaid', code.textContent.trimRight());
+  }
+}
+
+class _MermaidElementBuilder extends MarkdownElementBuilder {
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final source = element.textContent.trim();
+    final nativeSupported = const MermaidParser().parse(source) != null;
+    return MermaidWebViewDiagram(
+      source: source,
+      fallbackBuilder: (context, _) => nativeSupported
+          ? _NativeMermaidBlock(source: source)
+          : _MermaidSourceFallback(source: source),
+    );
+  }
+}
+
+class _NativeMermaidBlock extends StatelessWidget {
+  const _NativeMermaidBlock({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Semantics(
+      container: true,
+      label: 'Mermaid',
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: MermaidDiagram(
+          code: source,
+          style: MermaidStyle(
+            backgroundColor: scheme.surfaceContainerLow.toARGB32(),
+            defaultNodeStyle: NodeStyle(
+              fillColor: scheme.surfaceContainerHighest.toARGB32(),
+              strokeColor: scheme.primary.toARGB32(),
+              textColor: scheme.onSurface.toARGB32(),
+              borderRadius: 6,
+            ),
+            defaultEdgeStyle: EdgeStyle(
+              strokeColor: scheme.onSurfaceVariant.toARGB32(),
+              labelColor: scheme.onSurface.toARGB32(),
+              labelBackgroundColor: scheme.surfaceContainerLow.toARGB32(),
+            ),
+            fontFamily: theme.textTheme.bodyMedium?.fontFamily,
+            themeMode: theme.brightness == Brightness.dark
+                ? MermaidThemeMode.dark
+                : MermaidThemeMode.light,
+          ),
+          errorBuilder: (_, _) => _MermaidSourceFallback(source: source),
+        ),
+      ),
+    );
+  }
+}
+
+class _MermaidSourceFallback extends StatelessWidget {
+  const _MermaidSourceFallback({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final typography = theme.extension<SkillsTypography>()!;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: SelectableText(
+        source,
+        key: const Key('mermaid-source-fallback'),
+        style: typography.code.copyWith(
+          color: scheme.onSurface,
+          fontSize: 13,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
 
 String withoutYamlFrontMatter(String markdown) {
   final normalized = markdown.startsWith('\uFEFF')

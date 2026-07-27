@@ -25,7 +25,7 @@ void main() {
       initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
     );
     const summary = SkillSummary(
-      modulePath: r'github.com/a/b',
+      packagePath: r'github.com/a/b',
       installName: r"test name';$(touch nope)",
       name: r'test;$(touch nope)',
       path: r'nested/test;$(touch nope)',
@@ -37,11 +37,11 @@ void main() {
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
-      modulePath: r'github.com/a/b',
+      packagePath: r'github.com/a/b',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           path: r'/tmp/Test ; $(touch nope)',
           version: 'v1',
         ),
@@ -51,13 +51,13 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          r'{"schemaVersion":1,"phase":"module-install","modulePath":"github.com/a/b","version":"v1","sum":"h1:test","skills":["nested/test;$(touch nope)"],"agents":["codex"],"moduleDir":"/tmp/modules","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
+          r'{"schemaVersion":1,"phase":"package-install","packagePath":"github.com/a/b","version":"v1","sum":"h1:test","skills":["nested/test;$(touch nope)"],"agents":["codex"],"packageDir":"/tmp/packages","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
       stderr: '',
     );
     await gateway.installTargets(summary, 'v1', const [
       InstallationTargetSelection(
         agent: 'codex',
-        scope: InstallationScope.user,
+        scope: InstallationScope.global,
       ),
     ]);
     expect(
@@ -78,38 +78,17 @@ void main() {
       '--hub',
       'https://hub.skillsgo.ai',
     ]);
-    runner.result = const ProcessOutput(
-      exitCode: 0,
-      stdout:
-          '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/a/b","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["Test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
-      stderr: '',
-    );
+    final callsBeforeUpdatePlan = runner.calls.length;
     await gateway.preflightUpdate(
       installed,
       installed.targets,
       toVersion: 'v2',
     );
-    expect(runner.lastArguments!.take(3), [
-      'update',
-      'github.com/a/b@v2',
-      '--global',
-    ]);
-    expect(runner.lastArguments, isNot(contains('--target')));
-    expect(runner.lastArguments, isNot(contains('mode')));
-    expect(
-      runner.lastArguments,
-      containsAllInOrder([
-        '--preflight',
-        '--output',
-        'json',
-        '--hub',
-        'https://hub.skillsgo.ai',
-      ]),
-    );
+    expect(runner.calls, hasLength(callsBeforeUpdatePlan));
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
+{"schemaVersion":2,"phase":"management-preflight","targets":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
 ''',
       stderr: '',
     );
@@ -123,7 +102,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           path: r'/tmp/Test ; $(touch nope)',
           version: '',
         ),
@@ -140,10 +119,8 @@ void main() {
         'codex',
       ]),
     );
-    expect(
-      runner.lastArguments,
-      containsAllInOrder(['--preflight', '--output', 'json']),
-    );
+    expect(runner.lastArguments, containsAllInOrder(['--output', 'json']));
+    expect(runner.lastArguments, isNot(contains('--preflight')));
     expect(
       runner.calls.map((call) => call.executable),
       isNot(contains('/bin/sh')),
@@ -151,21 +128,21 @@ void main() {
   });
 
   test(
-    'target installation invokes exact Repository Module Store add without a materialization mode',
+    'target installation invokes exact Repository Package Store add without a materialization mode',
     () async {
-      const modulePath = 'github.com/example/skills';
+      const packagePath = 'github.com/example/skills';
       final runner = FakeProcessRunner()
         ..result = ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
             'schemaVersion': 1,
-            'phase': 'module-install',
-            'modulePath': 'github.com/example/skills',
+            'phase': 'package-install',
+            'packagePath': 'github.com/example/skills',
             'version': 'v1',
             'sum': 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
             'skills': ['nested/demo'],
             'agents': ['codex'],
-            'moduleDir': '/Users/test/.skillsgo/modules/example/v1',
+            'packageDir': '/Users/test/.skillsgo/packages/example/v1',
             'projections': [
               {
                 'agents': ['codex'],
@@ -184,7 +161,7 @@ void main() {
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       );
       const skill = SkillSummary(
-        modulePath: modulePath,
+        packagePath: packagePath,
         installName: 'demo',
         name: 'demo',
         path: 'nested/demo',
@@ -194,7 +171,7 @@ void main() {
 
       final execution = await gateway.installTargets(skill, 'v1', const [
         InstallationTargetSelection(
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           agent: 'codex',
         ),
       ], confirmRisk: true);
@@ -226,7 +203,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"module-install","modulePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"moduleDir":"/tmp/modules","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
+              '{"schemaVersion":1,"phase":"package-install","packagePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"packageDir":"/tmp/packages","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -235,14 +212,14 @@ void main() {
       );
       const skills = [
         SkillSummary(
-          modulePath: 'github.com/example/skills',
+          packagePath: 'github.com/example/skills',
           installName: 'alpha',
           name: 'alpha',
           path: 'skills/alpha',
           latestVersion: 'v1',
         ),
         SkillSummary(
-          modulePath: 'github.com/example/skills',
+          packagePath: 'github.com/example/skills',
           installName: 'beta',
           name: 'beta',
           path: 'nested/beta',
@@ -250,9 +227,9 @@ void main() {
         ),
       ];
 
-      final executions = await gateway.installModuleTargets(skills, const [
+      final executions = await gateway.installPackageTargets(skills, const [
         InstallationTargetSelection(
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           agent: 'codex',
         ),
       ], confirmRisk: true);
@@ -319,7 +296,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: missing.path,
               version: 'v1',
               health: InstallationHealth.missing,
@@ -379,7 +356,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: directory.path,
             version: '',
           ),
@@ -406,7 +383,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"user":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"user"}]}',
+            '{"schemaVersion":4,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"global":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"global"}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -424,14 +401,13 @@ void main() {
 
     expect(result.id, 'plan-123');
     expect(result.allEligibleCount, 4);
-    expect(result.userEligibleCount, 1);
+    expect(result.globalEligibleCount, 1);
     expect(result.previews.single.skillId, 'github.com/acme/skills/-/demo');
     expect(result.eligibleForProject('/tmp/Workspace With Spaces'), 2);
     expect(result.eligibleForProject('/tmp/Second Workspace'), 1);
     expect(runner.lastArguments, [
-      'takeover',
-      '--preflight',
-      '--user',
+      'adopt',
+      '--global',
       '--project',
       '/tmp/Workspace With Spaces',
       '--project',
@@ -448,7 +424,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"user","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
+            '{"schemaVersion":4,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"global","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -461,7 +437,7 @@ void main() {
       const BatchTakeoverPlan(
         id: 'plan-123',
         allEligibleCount: 4,
-        userEligibleCount: 1,
+        globalEligibleCount: 1,
         eligibleCountByProjectRoot: {
           '/tmp/Workspace With Spaces': 2,
           '/tmp/Second Workspace': 1,
@@ -478,10 +454,8 @@ void main() {
       ('missing-demo', BatchTakeoverItemStatus.skipped),
     ]);
     expect(runner.lastArguments, [
-      'takeover',
-      '--plan',
-      'plan-123',
-      '--user',
+      'adopt',
+      '--global',
       '--project',
       '/tmp/Workspace With Spaces',
       '--project',

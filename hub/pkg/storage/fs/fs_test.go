@@ -48,9 +48,9 @@ func TestOperationsRejectCoordinatesOutsideStorageRoot(t *testing.T) {
 	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
 	_, err = backend.List(t.Context(), "../outside")
 	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.PutSkillContentIfAbsent(t.Context(), "../outside", "v1.0.0", "skill", []byte("content"))
+	_, err = backend.PutSkillContentIfAbsent(t.Context(), "invalid", []byte("content"))
 	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.SkillContent(t.Context(), "../outside", "v1.0.0", "skill")
+	_, err = backend.SkillContent(t.Context(), "invalid")
 	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
 
 	require.FileExists(t, sentinel)

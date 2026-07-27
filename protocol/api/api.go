@@ -1,44 +1,46 @@
 /*
- * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Module Path plus Skill Name validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Module Info, immutable Module Version Skill content, canonical Skill coordinates, and update DTOs.
+ * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Package Info, immutable Package Version Skill content, name-query and exact-path Skill coordinates, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package api
 
 import (
+	"path"
+	"strings"
 	"time"
 
-	"github.com/skillsgo/skillsgo/protocol/module"
+	"github.com/skillsgo/skillsgo/protocol/packageidentity"
 	"github.com/skillsgo/skillsgo/protocol/skillmanifest"
 )
 
 const SchemaVersion = 1
 const (
-	KindModule        = "Module"
+	KindPackage       = "Package"
 	UpdateAvailable   = "available"
 	UpdateUnsupported = "unsupported"
 )
 
-type ModuleSkill struct {
+type PackageSkill struct {
 	Name string `json:"name" yaml:"name"`
 	Path string `json:"path" yaml:"path"`
 }
-type ModuleInfo struct {
-	SchemaVersion int           `json:"schemaVersion"`
-	Kind          string        `json:"kind"`
-	ModulePath    string        `json:"modulePath"`
-	Version       string        `json:"version"`
-	Time          time.Time     `json:"time"`
-	Sum           string        `json:"sum"`
-	ArchiveSize   int64         `json:"archiveSize"`
-	Skills        []ModuleSkill `json:"skills"`
+type PackageInfo struct {
+	SchemaVersion int            `json:"schemaVersion"`
+	Kind          string         `json:"kind"`
+	PackagePath   string         `json:"packagePath"`
+	Version       string         `json:"version"`
+	Time          time.Time      `json:"time"`
+	Sum           string         `json:"sum"`
+	ArchiveSize   int64          `json:"archiveSize"`
+	Skills        []PackageSkill `json:"skills"`
 }
-type ModuleVersionsResponse struct {
+type PackageVersionsResponse struct {
 	Versions []string `json:"versions"`
 }
-type ModuleVersionSkill struct {
-	ModulePath  string    `json:"modulePath"`
+type PackageVersionSkill struct {
+	PackagePath string    `json:"packagePath"`
 	Version     string    `json:"version"`
 	Time        time.Time `json:"time"`
 	ArchiveSize int64     `json:"archiveSize"`
@@ -48,23 +50,28 @@ type ModuleVersionSkill struct {
 	Content     string    `json:"content"`
 }
 type SkillCoordinate struct {
-	ModulePath string `json:"modulePath"`
-	Name       string `json:"name"`
+	PackagePath string `json:"packagePath"`
+	Name        string `json:"name"`
+}
+
+type SkillPathCoordinate struct {
+	PackagePath string `json:"packagePath"`
+	Path        string `json:"path"`
 }
 
 type CandidateQuery struct {
-	Name       string `json:"name"`
-	ModulePath string `json:"modulePath,omitempty"`
+	Name        string `json:"name"`
+	PackagePath string `json:"packagePath,omitempty"`
 }
 
 type FindCandidatesRequest struct {
 	Queries []CandidateQuery `json:"queries"`
 	Limit   int              `json:"limit"`
-	Locale  string           `json:"locale,omitempty"`
+	Lang    string           `json:"lang,omitempty"`
 }
 
 type FindSkill struct {
-	ModulePath    string  `json:"modulePath"`
+	PackagePath   string  `json:"packagePath"`
 	Name          string  `json:"name"`
 	Description   string  `json:"description"`
 	ImageURL      *string `json:"imageUrl"`
@@ -73,7 +80,7 @@ type FindSkill struct {
 }
 
 type SkillCandidate struct {
-	ModulePath  string `json:"modulePath"`
+	PackagePath string `json:"packagePath"`
 	Version     string `json:"version"`
 	Name        string `json:"name"`
 	Path        string `json:"path"`
@@ -92,12 +99,24 @@ type Pagination struct {
 }
 
 func (coordinate SkillCoordinate) Valid() bool {
-	parsed, err := module.ParsePath(coordinate.ModulePath)
-	return err == nil && parsed.String() == coordinate.ModulePath && skillmanifest.ValidName(coordinate.Name)
+	parsed, err := packageidentity.ParsePath(coordinate.PackagePath)
+	return err == nil && parsed.String() == coordinate.PackagePath && skillmanifest.ValidName(coordinate.Name)
 }
 
 func (coordinate SkillCoordinate) Key() string {
-	return coordinate.ModulePath + "\x00" + coordinate.Name
+	return coordinate.PackagePath + "\x00" + coordinate.Name
+}
+
+func (coordinate SkillPathCoordinate) Valid() bool {
+	parsed, err := packageidentity.ParsePath(coordinate.PackagePath)
+	cleaned := path.Clean(coordinate.Path)
+	return err == nil && parsed.String() == coordinate.PackagePath && strings.TrimSpace(coordinate.Path) == coordinate.Path && coordinate.Path != "" &&
+		cleaned == coordinate.Path && cleaned != "." && !strings.HasPrefix(cleaned, "../") &&
+		!strings.HasPrefix(cleaned, "/") && !strings.Contains(cleaned, "\\")
+}
+
+func (coordinate SkillPathCoordinate) Key() string {
+	return coordinate.PackagePath + "\x00" + coordinate.Path
 }
 
 type CatalogUpdateCheckRequest struct {
@@ -105,7 +124,7 @@ type CatalogUpdateCheckRequest struct {
 	Skills        []SkillCoordinate `json:"skills"`
 }
 type CatalogUpdateCheckItem struct {
-	ModulePath    string `json:"modulePath"`
+	PackagePath   string `json:"packagePath"`
 	Name          string `json:"name"`
 	LatestVersion string `json:"latestVersion,omitempty"`
 	Status        string `json:"status"`

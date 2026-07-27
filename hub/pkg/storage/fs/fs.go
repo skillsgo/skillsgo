@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the configured artifact root and untrusted Module/version/path coordinate segments.
- * [OUTPUT]: Provides the filesystem backend plus containment-checked artifact and Skill-content locations.
+ * [INPUT]: Depends on the configured artifact root, untrusted Package/version coordinates, canonical content digests, prompt versions, and languages.
+ * [OUTPUT]: Provides the filesystem backend plus containment-checked Package artifact and content-addressed Skill Markdown locations.
  * [POS]: Serves as the filesystem storage root and path-security boundary shared by every fs backend operation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,8 +35,24 @@ func (s *storageImpl) versionLocation(module, version string) (string, error) {
 	return s.containedLocation(module, version)
 }
 
-func (s *storageImpl) skillContentLocation(module, version, skillPath string) (string, error) {
-	return s.containedLocation(module, version, "skills", filepath.FromSlash(skillPath), "SKILL.md")
+func (s *storageImpl) skillContentLocation(sourceDigest string) (string, error) {
+	digest, ok := storage.ContentDigestHex(sourceDigest)
+	if !ok {
+		return "", fmt.Errorf("invalid Skill content digest")
+	}
+	return s.containedLocation("skillsmd", digest, "SKILL.md")
+}
+
+func (s *storageImpl) localizedSkillContentLocation(sourceDigest, promptVersion, lang string) (string, error) {
+	digest, ok := storage.ContentDigestHex(sourceDigest)
+	if !ok || !validPromptVersion(promptVersion) {
+		return "", fmt.Errorf("invalid localized Skill content coordinate")
+	}
+	return s.containedLocation("skillsmd", digest, promptVersion, "SKILL."+lang+".md")
+}
+
+func validPromptVersion(value string) bool {
+	return value != "" && filepath.Base(value) == value && value != "." && value != ".."
 }
 
 // NewStorage returns a new ListerSaver implementation that stores

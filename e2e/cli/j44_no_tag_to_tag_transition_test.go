@@ -25,7 +25,7 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 	}
 	infoFor := func(t *testing.T, source string) repositoryInfoIdentity {
 		t.Helper()
-		result := execCLI(t, ctx, container, "info", source, "--output", "json")
+		result := execCLI(t, ctx, container, "show", source, "--output", "json")
 		require.Equal(t, 0, result.exitCode, result.output)
 		var info repositoryInfoIdentity
 		require.NoError(t, json.Unmarshal([]byte(result.output), &info), result.output)

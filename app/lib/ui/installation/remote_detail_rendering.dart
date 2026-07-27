@@ -108,7 +108,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             RepositoryAvatar(
-                              source: value.modulePath,
+                              source: value.packagePath,
                               imageUrl: widget.skill.imageUrl,
                               size: 26,
                               borderRadius: 7,
@@ -190,7 +190,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               RepositoryAvatar(
-                source: widget.skill.modulePath,
+                source: widget.skill.packagePath,
                 imageUrl: widget.skill.imageUrl,
                 size: 116,
                 borderRadius: 24,
@@ -215,9 +215,9 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        widget.skill.modulePath,
+                        widget.skill.packagePath,
                         textDirection: contentTextDirection(
-                          widget.skill.modulePath,
+                          widget.skill.packagePath,
                         ),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -253,7 +253,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       controller: detailScrollController,
       hero: SkillDetailHero(
         name: value.name,
-        source: value.modulePath,
+        source: value.packagePath,
         description: value.description,
         imageUrl: widget.skill.imageUrl,
         avatarKey: const Key('detail-skill-avatar'),
@@ -276,6 +276,22 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       contextArea: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SegmentedButton<bool>(
+              key: const Key('detail-language-source-switch'),
+              segments: [
+                ButtonSegment(value: false, label: Text(context.l10n.language)),
+                ButtonSegment(
+                  value: true,
+                  label: Text(context.l10n.originalContent),
+                ),
+              ],
+              selected: {showingSource},
+              onSelectionChanged: (selection) => showSource(selection.first),
+            ),
+          ),
+          const SizedBox(height: 14),
           _detailProductMetadata(value),
           if (value.installationTargets.isNotEmpty) ...[
             _skillDetailDivider(context),
@@ -314,7 +330,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     final items = [
       (
         label: context.l10n.detailRepository,
-        value: _repositoryDisplayName(value.modulePath),
+        value: _repositoryDisplayName(value.packagePath),
       ),
       (label: context.l10n.detailUpdated, value: _shortDate(value.time)),
       (

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Git-tracked Module Artifacts with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifacts with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,7 +55,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	fetcher, err := NewRepositoryFetcher(f.cache, afero.NewOsFs())
 	require.NoError(t, err)
 	f.fetcher = fetcher.(*gitFetcher)
-	f.fetcher.cloneURL = func(ModulePath) string { return f.origin }
+	f.fetcher.cloneURL = func(PackagePath) string { return f.origin }
 	return f
 }
 
@@ -433,7 +433,7 @@ func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t
 	require.Len(t, trees, 2, "each Skill directory must retain its own tree identity")
 }
 
-func TestRepositoryDiscoveryPackagesV2WithoutGoModulePathSuffix(t *testing.T) {
+func TestRepositoryDiscoveryPackagesV2WithoutGoPackagePathSuffix(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	runGit(t, f.work, "tag", "v2.2.10")
 	runGit(t, f.work, "push", "origin", "--tags")

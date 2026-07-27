@@ -398,7 +398,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get specificProject => '프로젝트';
 
   @override
-  String get userScope => '글로벌';
+  String get globalScope => '글로벌';
 
   @override
   String get addProject => '프로젝트 추가';
@@ -1043,6 +1043,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get language => '언어';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => '테마';
 
   @override
@@ -1175,7 +1178,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get installLocationTitle => '설치 위치 설정';
 
   @override
-  String get userLevel => '사용자 수준';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => '프로젝트 수준';
@@ -1190,8 +1193,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get repositoryParsing => '파싱 저장소…';
 
   @override
-  String userInstallSummary(int agents) {
-    return '사용자 수준의 $agents 에이전트가 사용할 수 있습니다.';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

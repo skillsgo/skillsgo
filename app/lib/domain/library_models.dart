@@ -35,13 +35,13 @@ class BatchTakeoverItemResult {
   final String reason;
 }
 
-enum BatchTakeoverScopeKind { all, user, project }
+enum BatchTakeoverScopeKind { all, global, project }
 
 class BatchTakeoverScope {
   const BatchTakeoverScope._(this.kind, this.projectRoot);
 
   static const all = BatchTakeoverScope._(BatchTakeoverScopeKind.all, '');
-  static const user = BatchTakeoverScope._(BatchTakeoverScopeKind.user, '');
+  static const global = BatchTakeoverScope._(BatchTakeoverScopeKind.global, '');
 
   factory BatchTakeoverScope.project(String projectRoot) =>
       BatchTakeoverScope._(BatchTakeoverScopeKind.project, projectRoot);
@@ -54,20 +54,20 @@ class BatchTakeoverPlan {
   const BatchTakeoverPlan({
     required this.id,
     required this.allEligibleCount,
-    required this.userEligibleCount,
+    required this.globalEligibleCount,
     this.eligibleCountByProjectRoot = const {},
     this.previews = const [],
   });
 
   final String id;
   final int allEligibleCount;
-  final int userEligibleCount;
+  final int globalEligibleCount;
   final Map<String, int> eligibleCountByProjectRoot;
   final List<BatchTakeoverPreview> previews;
 
   int eligibleCount(BatchTakeoverScope scope) => switch (scope.kind) {
     BatchTakeoverScopeKind.all => allEligibleCount,
-    BatchTakeoverScopeKind.user => userEligibleCount,
+    BatchTakeoverScopeKind.global => globalEligibleCount,
     BatchTakeoverScopeKind.project => eligibleForProject(scope.projectRoot),
   };
 
@@ -89,8 +89,8 @@ class BatchTakeoverPreview {
   final String projectRoot;
 }
 
-class AgentUserTarget {
-  const AgentUserTarget({required this.path, required this.exists});
+class AgentGlobalTarget {
+  const AgentGlobalTarget({required this.path, required this.exists});
 
   final String path;
   final bool exists;
@@ -102,7 +102,7 @@ class AgentStatus {
     required this.displayName,
     required this.installed,
     required this.supportedScopes,
-    this.userTarget,
+    this.globalTarget,
     this.discoveryRoots = const [],
   });
 
@@ -110,7 +110,7 @@ class AgentStatus {
   final String displayName;
   final bool installed;
   final List<InstallationScope> supportedScopes;
-  final AgentUserTarget? userTarget;
+  final AgentGlobalTarget? globalTarget;
   final List<String> discoveryRoots;
 }
 
@@ -185,7 +185,7 @@ class SkillDetail {
     required this.name,
     this.path = '',
     this.content = '',
-    this.modulePath = '',
+    this.packagePath = '',
     this.version = '',
     this.time,
     this.archiveSize = 0,
@@ -196,7 +196,7 @@ class SkillDetail {
   final String name;
   final String path;
   final String content;
-  final String modulePath;
+  final String packagePath;
   final String version;
   final DateTime? time;
   final int archiveSize;
@@ -212,7 +212,7 @@ class InstalledSkill {
     required this.agents,
     required this.targetCount,
     this.inventoryKey = '',
-    this.modulePath = '',
+    this.packagePath = '',
     this.targets = const [],
     this.visibility = const [],
     this.provenance = LibraryProvenance.hub,
@@ -228,7 +228,7 @@ class InstalledSkill {
   final List<String> agents;
   final int targetCount;
   final String inventoryKey;
-  final String modulePath;
+  final String packagePath;
   final List<SkillInstallationTarget> targets;
   final List<SkillVisibility> visibility;
   final LibraryProvenance provenance;
@@ -273,7 +273,7 @@ class InstalledSkill {
       path: selectedTargets.first.path,
       agents: (selectedAgents.toList()..sort()),
       targetCount: selectedTargets.length,
-      modulePath: modulePath,
+      packagePath: packagePath,
       targets: List.unmodifiable(selectedTargets),
       visibility: visibility,
       provenance: provenance,

@@ -68,11 +68,9 @@ func TestNDJSONProgressIsFollowedByFinalFailureDocument(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(externalPath, "SKILL.md"), []byte("---\nname: external-demo\n---\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	preflight := managementPreflight(t, "remove", externalPath, "test-agent", "")
-
 	stdout := &failSecondWrite{}
 	var stderr bytes.Buffer
-	err := Execute([]string{"remove", "--path", externalPath, "--agent", "test-agent", "--expected-state", preflight.StateToken, "--output", "ndjson"}, stdout, &stderr)
+	err := Execute([]string{"remove", "--path", externalPath, "--agent", "test-agent", "--yes", "--output", "ndjson"}, stdout, &stderr)
 	if err == nil {
 		t.Fatal("expected transient output failure")
 	}

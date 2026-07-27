@@ -807,11 +807,11 @@ abstract class AppLocalizations {
   /// **'Project'**
   String get specificProject;
 
-  /// No description provided for @userScope.
+  /// No description provided for @globalScope.
   ///
   /// In en, this message translates to:
   /// **'Global'**
-  String get userScope;
+  String get globalScope;
 
   /// No description provided for @addProject.
   ///
@@ -1971,6 +1971,12 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get language;
 
+  /// No description provided for @originalContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get originalContent;
+
   /// No description provided for @personalizationTheme.
   ///
   /// In en, this message translates to:
@@ -2223,11 +2229,11 @@ abstract class AppLocalizations {
   /// **'Set installation location'**
   String get installLocationTitle;
 
-  /// No description provided for @userLevel.
+  /// No description provided for @globalLevel.
   ///
   /// In en, this message translates to:
-  /// **'User Level'**
-  String get userLevel;
+  /// **'Global'**
+  String get globalLevel;
 
   /// No description provided for @projectLevel.
   ///
@@ -2253,11 +2259,11 @@ abstract class AppLocalizations {
   /// **'Parsing source…'**
   String get repositoryParsing;
 
-  /// No description provided for @userInstallSummary.
+  /// No description provided for @globalInstallSummary.
   ///
   /// In en, this message translates to:
-  /// **'Available to {agents} Agents at user level'**
-  String userInstallSummary(int agents);
+  /// **'Available globally to {agents} Agents'**
+  String globalInstallSummary(int agents);
 
   /// No description provided for @projectInstallSummary.
   ///

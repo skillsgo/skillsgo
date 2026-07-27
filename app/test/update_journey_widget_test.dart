@@ -56,12 +56,12 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/tmp/user/local-skill',
               version: 'v1',
             ),
@@ -131,12 +131,12 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/tmp/user/local-skill',
               version: 'v1',
             ),
@@ -204,12 +204,12 @@ void main() {
           path: '/tmp/local-skill',
           agents: ['codex'],
           targetCount: 1,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/tmp/local-skill',
               version: 'v1',
             ),

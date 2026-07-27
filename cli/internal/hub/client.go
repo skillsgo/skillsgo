@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Module/Skill identities, typed add-time Version Queries through unified Module metadata, exact Module Version resources, typed Module Info, bounded Module ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Module metadata resolution, canonical downloads, direct Module Version Skill content reads, path-unique membership validation and deterministic member selection, discovery/update reads, and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, bounded Package ZIP responses, and optional progress reporting.
+ * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, discovery/update reads, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,11 +27,11 @@ import (
 	modmodule "golang.org/x/mod/module"
 )
 
-type Info = protocolapi.ModuleSkill
-type ModuleInfo = protocolapi.ModuleInfo
+type Info = protocolapi.PackageSkill
+type PackageInfo = protocolapi.PackageInfo
 
-type ModuleResource struct {
-	Info      ModuleInfo
+type PackageResource struct {
+	Info      PackageInfo
 	InfoBytes []byte
 	Members   []VersionSkill
 	ZIP       []byte
@@ -63,7 +63,7 @@ type VersionSkill struct {
 }
 
 type SkillSummary struct {
-	ModulePath    string `json:"modulePath"`
+	PackagePath   string `json:"packagePath"`
 	Name          string `json:"name"`
 	LatestVersion string `json:"latestVersion"`
 }
@@ -113,69 +113,69 @@ func New(baseURL string, client *http.Client) (*Client, error) {
 	return &Client{baseURL: parsed.String(), http: client}, nil
 }
 
-func (c *Client) Module(ctx context.Context, modulePath, query string) (*ModuleResource, error) {
+func (c *Client) Package(ctx context.Context, packagePath, query string) (*PackageResource, error) {
 	parsedQuery, err := protocolversion.ParseQuery(query)
 	if err != nil {
 		return nil, err
 	}
-	infoBytes, err := c.get(ctx, c.versionEndpoint(modulePath, parsedQuery.Value, false))
+	infoBytes, err := c.get(ctx, c.versionEndpoint(packagePath, parsedQuery.Value, false))
 	if err != nil {
 		return nil, err
 	}
-	resource, err := ParseModuleInfo(modulePath, infoBytes)
+	resource, err := ParsePackageInfo(packagePath, infoBytes)
 	if err != nil {
 		return nil, err
 	}
 	if !protocolversion.IsImmutable(resource.Info.Version) || (!parsedQuery.Movable() && resource.Info.Version != parsedQuery.Value) {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Module Info for unexpected immutable version %s", resource.Info.Version)}
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Package Info for unexpected immutable version %s", resource.Info.Version)}
 	}
 	return resource, nil
 }
 
-func (c *Client) FetchModuleWithProgress(ctx context.Context, modulePath, query string, progress func(current, total int64)) (*ModuleResource, error) {
-	resource, err := c.Module(ctx, modulePath, query)
+func (c *Client) FetchPackageWithProgress(ctx context.Context, packagePath, query string, progress func(current, total int64)) (*PackageResource, error) {
+	resource, err := c.Package(ctx, packagePath, query)
 	if err != nil {
 		return nil, err
 	}
-	archive, err := c.getWithProgress(ctx, c.versionEndpoint(modulePath, resource.Info.Version, true), progress)
+	archive, err := c.getWithProgress(ctx, c.versionEndpoint(packagePath, resource.Info.Version, true), progress)
 	if err != nil {
 		return nil, err
 	}
 	if resource.Info.ArchiveSize != int64(len(archive)) {
-		return nil, fmt.Errorf("Hub returned an unexpected Module Archive Size for %s@%s", modulePath, resource.Info.Version)
+		return nil, fmt.Errorf("Hub returned an unexpected Package Archive Size for %s@%s", packagePath, resource.Info.Version)
 	}
-	if err := VerifyModuleSum(archive, modulePath, resource.Info.Version, resource.Info.Sum); err != nil {
+	if err := VerifyPackageSum(archive, packagePath, resource.Info.Version, resource.Info.Sum); err != nil {
 		return nil, err
 	}
 	resource.ZIP = archive
 	return resource, nil
 }
 
-func ParseModuleInfo(modulePath string, infoBytes []byte) (*ModuleResource, error) {
-	if err := source.ValidateModulePath(modulePath); err != nil {
+func ParsePackageInfo(packagePath string, infoBytes []byte) (*PackageResource, error) {
+	if err := source.ValidatePackagePath(packagePath); err != nil {
 		return nil, err
 	}
-	var info ModuleInfo
+	var info PackageInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
-		return nil, &ProtocolError{Err: fmt.Errorf("decode Module Info: %w", err)}
+		return nil, &ProtocolError{Err: fmt.Errorf("decode Package Info: %w", err)}
 	}
 	if info.SchemaVersion != 1 {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Module Info schema %d for %s", info.SchemaVersion, modulePath), Incompatible: true}
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Package Info schema %d for %s", info.SchemaVersion, packagePath), Incompatible: true}
 	}
-	if info.Kind != protocolapi.KindModule || info.ModulePath != modulePath ||
+	if info.Kind != protocolapi.KindPackage || info.PackagePath != packagePath ||
 		info.Version == "" || info.Time.IsZero() ||
 		!protocolartifact.ValidSum(info.Sum) || info.ArchiveSize <= 0 || len(info.Skills) == 0 {
-		return nil, fmt.Errorf("Hub returned incomplete Module Info for %s", modulePath)
+		return nil, fmt.Errorf("Hub returned incomplete Package Info for %s", packagePath)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
-		return nil, fmt.Errorf("Hub returned invalid Module Version for %s: %w", modulePath, err)
+		return nil, fmt.Errorf("Hub returned invalid Package Version for %s: %w", packagePath, err)
 	}
-	resource := &ModuleResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]VersionSkill, 0, len(info.Skills))}
+	resource := &PackageResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]VersionSkill, 0, len(info.Skills))}
 	seenPaths := map[string]bool{}
 	for _, member := range info.Skills {
 		validPath := member.Path == "." || protocolartifact.ValidRelativePath(member.Path)
 		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenPaths[member.Path] {
-			return nil, fmt.Errorf("Module Info contains inconsistent Skill %q", member.Name)
+			return nil, fmt.Errorf("Package Info contains inconsistent Skill %q", member.Name)
 		}
 		seenPaths[member.Path] = true
 		resource.Members = append(resource.Members, VersionSkill{Info: member})
@@ -183,14 +183,18 @@ func ParseModuleInfo(modulePath string, infoBytes []byte) (*ModuleResource, erro
 	return resource, nil
 }
 
-func (c *Client) ModuleVersionSkill(ctx context.Context, modulePath, version, skillPath string) (protocolapi.ModuleVersionSkill, error) {
-	var result protocolapi.ModuleVersionSkill
-	endpoint := c.versionEndpoint(modulePath, version, false) + "/skills?" + url.Values{"path": []string{skillPath}}.Encode()
+func (c *Client) PackageVersionSkill(ctx context.Context, packagePath, version, skillPath, lang string) (protocolapi.PackageVersionSkill, error) {
+	var result protocolapi.PackageVersionSkill
+	query := url.Values{"path": []string{skillPath}}
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
+	}
+	endpoint := c.versionEndpoint(packagePath, version, false) + "/skills?" + query.Encode()
 	if err := c.getJSON(ctx, endpoint, &result); err != nil {
 		return result, err
 	}
-	if result.ModulePath != modulePath || !protocolversion.IsImmutable(result.Version) || result.Name == "" || result.Path != skillPath || result.Time.IsZero() || result.ArchiveSize <= 0 {
-		return result, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Module Version Skill for %s@%s:%s", modulePath, version, skillPath)}
+	if result.PackagePath != packagePath || !protocolversion.IsImmutable(result.Version) || result.Name == "" || result.Path != skillPath || result.Time.IsZero() || result.ArchiveSize <= 0 {
+		return result, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Package Version Skill for %s@%s:%s", packagePath, version, skillPath)}
 	}
 	return result, nil
 }
@@ -217,10 +221,10 @@ func (c *Client) Discover(ctx context.Context, collection, search string, page, 
 	return c.DiscoverLocalized(ctx, collection, search, "", page, perPage)
 }
 
-func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, locale string, page, perPage int) (json.RawMessage, error) {
+func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, lang string, page, perPage int) (json.RawMessage, error) {
 	query := url.Values{"page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
-	if strings.TrimSpace(locale) != "" {
-		query.Set("locale", strings.TrimSpace(locale))
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
 	}
 	path := "/api/v1/skills"
 	if collection == "search" {
@@ -232,13 +236,13 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	return c.readProductJSON(ctx, path, query)
 }
 
-func (c *Client) FindLocalized(ctx context.Context, search, modulePath, locale string, exactName bool, page, perPage int) (json.RawMessage, error) {
+func (c *Client) FindLocalized(ctx context.Context, search, packagePath, lang string, exactName bool, page, perPage int) (json.RawMessage, error) {
 	query := url.Values{"q": {search}, "page": {fmt.Sprint(page)}, "perPage": {fmt.Sprint(perPage)}}
-	if strings.TrimSpace(modulePath) != "" {
-		query.Set("modulePath", strings.TrimSpace(modulePath))
+	if strings.TrimSpace(packagePath) != "" {
+		query.Set("packagePath", strings.TrimSpace(packagePath))
 	}
-	if strings.TrimSpace(locale) != "" {
-		query.Set("locale", strings.TrimSpace(locale))
+	if strings.TrimSpace(lang) != "" {
+		query.Set("lang", strings.TrimSpace(lang))
 	}
 	if exactName {
 		query.Set("exactName", "true")
@@ -274,25 +278,13 @@ func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindCandidat
 	return json.RawMessage(encoded), nil
 }
 
-func (c *Client) Detail(ctx context.Context, modulePath, version, skillPath string) (json.RawMessage, error) {
-	return c.DetailLocalized(ctx, modulePath, version, skillPath, "")
-}
-
-func (c *Client) DetailLocalized(ctx context.Context, modulePath, version, skillPath, _ string) (json.RawMessage, error) {
-	result, err := c.ModuleVersionSkill(ctx, modulePath, version, skillPath)
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(result)
-}
-
 func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (json.RawMessage, error) {
 	if len(skills) == 0 || len(skills) > 100 {
 		return nil, fmt.Errorf("Skill batch must contain 1 to 100 coordinates")
 	}
 	for _, coordinate := range skills {
-		if err := source.ValidateModulePath(coordinate.ModulePath); err != nil || !protocolskillmanifest.ValidName(coordinate.Name) {
-			return nil, fmt.Errorf("invalid Skill coordinate %q:%q", coordinate.ModulePath, coordinate.Name)
+		if err := source.ValidatePackagePath(coordinate.PackagePath); err != nil || !protocolskillmanifest.ValidName(coordinate.Name) {
+			return nil, fmt.Errorf("invalid Skill coordinate %q:%q", coordinate.PackagePath, coordinate.Name)
 		}
 	}
 	body, err := json.Marshal(struct {
@@ -370,7 +362,7 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
 	}
 	for index, item := range decoded.Items {
-		if item.ModulePath != skills[index].ModulePath || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
+		if item.PackagePath != skills[index].PackagePath || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
 			(item.Status == "available" && item.LatestVersion == "") ||
 			(item.LatestVersion != "" && !protocolversion.IsImmutable(item.LatestVersion)) {
 			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update item")}
@@ -379,12 +371,12 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 	return decoded.Items, nil
 }
 
-func (c *Client) versionEndpoint(modulePath, revision string, archive bool) string {
-	escapedID, err := modmodule.EscapePath(strings.Trim(modulePath, "/"))
+func (c *Client) versionEndpoint(packagePath, revision string, archive bool) string {
+	escapedID, err := modmodule.EscapePath(strings.Trim(packagePath, "/"))
 	if err != nil {
 		// Canonical IDs have already crossed the source parser boundary. Keep
 		// this helper total while allowing the Router to reject impossible IDs.
-		escapedID = strings.Trim(modulePath, "/")
+		escapedID = strings.Trim(packagePath, "/")
 	}
 	escapedVersion, escapeErr := modmodule.EscapeVersion(revision)
 	if escapeErr == nil {

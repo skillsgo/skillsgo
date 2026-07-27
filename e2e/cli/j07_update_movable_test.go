@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the deterministic movable Repository and the released CLI, Hub, JSON, Git, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage that an explicit head re-add advances from C1 to C2 while persisted state remains pinned to immutable versions.
+ * [OUTPUT]: Provides black-box coverage that a confirmed head update advances from C1 to C2 while persisted state remains pinned to immutable versions.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,18 +50,11 @@ func TestJ07UpdateMovable(t *testing.T) {
 
 	fixtureRepository(container, "movable").ReplaceAndPublish(t, ctx, "skills/head/SKILL.md", "Movable C1\\.", "Movable C2.", "movable C2")
 
-	preflight := execCLI(t, ctx, container, "update", repository+"@main", "--preflight", "--output", "json")
-	require.Equal(t, 0, preflight.exitCode, preflight.output)
-	var preview struct {
-		ToVersion  string `json:"toVersion"`
-		StateToken string `json:"stateToken"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
-	update := execCLI(t, ctx, container, "update", repository+"@"+preview.ToVersion, "--state-token", preview.StateToken, "--output", "json")
+	update := execCLI(t, ctx, container, "update", repository+"@main", "--yes", "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
 	var refreshed struct {
 		ToVersion string `json:"toVersion"`
-		ModuleDir string `json:"moduleDir"`
+		PackageDir string `json:"packageDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(update.output), &refreshed), update.output)
 	require.NotEqual(t, oldInstalled.Version, refreshed.ToVersion)

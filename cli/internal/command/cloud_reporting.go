@@ -22,15 +22,16 @@ import (
 )
 
 type cloudInstallFact struct {
-	ModulePath string
-	SkillName  string
-	Version    string
-	Agents     []string
-	Scope      install.Scope
+	PackagePath string
+	SkillName   string
+	SkillPath   string
+	Version     string
+	Agents      []string
+	Scope       install.Scope
 }
 
 func reportCloudInstall(ctx context.Context, hubURL string, fact cloudInstallFact) {
-	if strings.TrimSpace(fact.ModulePath) == "" || strings.TrimSpace(fact.SkillName) == "" || strings.TrimSpace(fact.Version) == "" || len(fact.Agents) == 0 {
+	if strings.TrimSpace(fact.PackagePath) == "" || strings.TrimSpace(fact.SkillName) == "" || strings.TrimSpace(fact.SkillPath) == "" || strings.TrimSpace(fact.Version) == "" || len(fact.Agents) == 0 {
 		return
 	}
 	reportCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
@@ -59,15 +60,16 @@ func reportCloudInstall(ctx context.Context, hubURL string, fact cloudInstallFac
 		return
 	}
 	body, err := json.Marshal(struct {
-		EventID    string    `json:"eventId"`
-		ModulePath string    `json:"modulePath"`
-		SkillName  string    `json:"skillName"`
-		Version    string    `json:"version"`
-		Agents     []string  `json:"agents"`
-		Scope      string    `json:"scope"`
-		CLIVersion string    `json:"cliVersion"`
-		OccurredAt time.Time `json:"occurredAt"`
-	}{hex.EncodeToString(eventID), fact.ModulePath, fact.SkillName, fact.Version, fact.Agents, string(fact.Scope), version, time.Now().UTC()})
+		EventID     string    `json:"eventId"`
+		PackagePath string    `json:"packagePath"`
+		SkillName   string    `json:"skillName"`
+		SkillPath   string    `json:"skillPath"`
+		Version     string    `json:"version"`
+		Agents      []string  `json:"agents"`
+		Scope       string    `json:"scope"`
+		CLIVersion  string    `json:"cliVersion"`
+		OccurredAt  time.Time `json:"occurredAt"`
+	}{hex.EncodeToString(eventID), fact.PackagePath, fact.SkillName, fact.SkillPath, fact.Version, fact.Agents, string(fact.Scope), version, time.Now().UTC()})
 	if err != nil {
 		return
 	}

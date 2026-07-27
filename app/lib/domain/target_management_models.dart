@@ -20,13 +20,13 @@ class TargetManagementPlanItem {
     this.action,
     this.diagnostic = '',
     this.affectedBindings = const [],
-    this.modulePath = '',
+    this.packagePath = '',
   });
 
   final InstallationPlanTarget target;
   final String name;
   final String skillId;
-  final String modulePath;
+  final String packagePath;
   final String version;
   final InstallationHealth health;
   final List<TargetManagementAction> allowedActions;
@@ -41,7 +41,7 @@ class TargetManagementPlanItem {
         target: target,
         name: name,
         skillId: skillId,
-        modulePath: modulePath,
+        packagePath: packagePath,
         version: version,
         health: health,
         allowedActions: allowedActions,
@@ -93,13 +93,13 @@ class TargetManagementResult {
     required this.action,
     required this.outcome,
     this.error,
-    this.modulePath = '',
+    this.packagePath = '',
   });
 
   final InstallationPlanTarget target;
   final String name;
   final String skillId;
-  final String modulePath;
+  final String packagePath;
   final String version;
   final TargetManagementAction action;
   final TargetManagementOutcome outcome;
@@ -136,14 +136,14 @@ class TargetManagementProgress {
     required this.action,
     required this.state,
     this.result,
-    this.modulePath = '',
+    this.packagePath = '',
   });
 
   final int sequence;
   final InstallationPlanTarget target;
   final String name;
   final String skillId;
-  final String modulePath;
+  final String packagePath;
   final String version;
   final TargetManagementAction action;
   final InstallationProgressState state;
