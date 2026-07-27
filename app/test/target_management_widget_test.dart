@@ -21,7 +21,7 @@ void main() {
     InstalledSkill entry(String name) => InstalledSkill(
       inventoryKey: 'hub:github.com/example/skills:$name',
       name: name,
-      modulePath: 'github.com/example/skills',
+      packagePath: 'github.com/example/skills',
       path: '/Users/test/.codex/skills/$name',
       agents: const ['codex'],
       targetCount: 1,
@@ -29,7 +29,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           path: '/Users/test/.codex/skills/$name',
           version: 'v1',
         ),
@@ -121,7 +121,7 @@ void main() {
         InstalledSkill(
           inventoryKey: 'external:/Users/test/.codex/skills/demo',
           name: 'demo',
-          modulePath: 'github.com/example/skills',
+          packagePath: 'github.com/example/skills',
           path: '/Users/test/.codex/skills/demo',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
@@ -130,7 +130,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/Users/test/.codex/skills/demo',
               version: '',
             ),
@@ -195,7 +195,7 @@ void main() {
         InstalledSkill(
           inventoryKey: 'hub:github.com/example/skills:demo',
           name: 'demo',
-          modulePath: 'github.com/example/skills',
+          packagePath: 'github.com/example/skills',
           path: '/Users/test/.codex/skills/demo',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
@@ -204,7 +204,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/Users/test/.codex/skills/demo',
               version: 'v1',
             ),
@@ -246,7 +246,7 @@ void main() {
         InstalledSkill(
           inventoryKey: 'hub:github.com/example/skills:demo',
           name: 'demo',
-          modulePath: 'github.com/example/skills',
+          packagePath: 'github.com/example/skills',
           path: '/Users/test/.codex/skills/demo',
           agents: ['codex'],
           targetCount: 1,
@@ -255,7 +255,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
               path: '/Users/test/.codex/skills/demo',
               version: 'v1',
               health: InstallationHealth.localModification,

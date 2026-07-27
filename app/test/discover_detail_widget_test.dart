@@ -29,7 +29,7 @@ void main() {
           const DiscoveryPage(
             skills: [
               SkillSummary(
-                modulePath: 'github.com/acme/original',
+                packagePath: 'github.com/acme/original',
                 installName: 'original',
                 name: 'Original',
                 installs: 2,
@@ -67,7 +67,7 @@ void main() {
         const DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/refreshed',
+              packagePath: 'github.com/acme/refreshed',
               installName: 'refreshed',
               name: 'Refreshed',
               installs: 3,
@@ -112,7 +112,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const installedSkill = SkillSummary(
-      modulePath: 'github.com/acme/skills',
+      packagePath: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       installs: 10,
@@ -166,7 +166,7 @@ void main() {
       expect(find.text('Selected projects'), findsOneWidget);
       expect(find.text('Codex'), findsOneWidget);
       expect(find.text('Claude Code'), findsOneWidget);
-      expect(find.text('Available to 2 Agents at user level'), findsOneWidget);
+      expect(find.text('Available globally to 2 Agents'), findsOneWidget);
       await tester.tap(find.byType(Radio<InstallationScope>).at(1));
       await tester.pumpAndSettle();
       expect(find.text('Project A'), findsOneWidget);
@@ -179,7 +179,7 @@ void main() {
       await tester.tap(find.byKey(const Key('detail-hero-install')));
       await tester.pumpAndSettle();
       expect(find.text('Set installation location'), findsNothing);
-      expect(find.text('Available to 2 Agents at user level'), findsOneWidget);
+      expect(find.text('Available globally to 2 Agents'), findsOneWidget);
     },
   );
 
@@ -286,7 +286,7 @@ void main() {
     },
   );
 
-  testWidgets('detail exposes canonical Module Version Skill metadata', (
+  testWidgets('detail exposes canonical Package Version Skill metadata', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));

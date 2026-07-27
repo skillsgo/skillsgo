@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the shared gateway state, Module-level CLI update preflight/execution, reviewed Update Plans, and progress callbacks.
- * [OUTPUT]: Provides Module-coordinate update preflight and execution projected onto selected Library targets, plus one latest-only Catalog batch update check.
- * [POS]: Serves as the Module Update capability inside the RealSkillsGateway adapter.
+ * [INPUT]: Depends on the shared gateway state, locally reviewed Update Plans, confirmed Package-level CLI update execution, and progress callbacks.
+ * [OUTPUT]: Provides local Package-coordinate update planning and confirmed execution projected onto selected Library targets, plus one latest-only Catalog batch update check.
+ * [POS]: Serves as the Package Update capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
@@ -11,7 +11,7 @@ mixin _RealSkillsGatewayUpdates
   List<String> _repositoryUpdateScopeArguments(
     InstallationScope scope,
     String projectRoot,
-  ) => scope == InstallationScope.user
+  ) => scope == InstallationScope.global
       ? const ['--global']
       : ['--project', projectRoot];
 
@@ -22,7 +22,7 @@ mixin _RealSkillsGatewayUpdates
     String? toVersion,
   }) async {
     if (skill.provenance != LibraryProvenance.hub ||
-        skill.modulePath.isEmpty ||
+        skill.packagePath.isEmpty ||
         targets.isEmpty ||
         toVersion == null ||
         toVersion.isEmpty ||
@@ -37,8 +37,7 @@ mixin _RealSkillsGatewayUpdates
         kind: SkillsFailureKind.validation,
       );
     }
-    await _ensureHubOrigin();
-    final repository = skill.modulePath;
+    final repository = skill.packagePath;
     try {
       final items = <UpdatePlanItem>[];
       final changes = <WorkspaceManifestChange>[];
@@ -52,35 +51,6 @@ mixin _RealSkillsGatewayUpdates
         if (group.any((target) => target.version != representative.version)) {
           throw const FormatException();
         }
-        final command = await _runCli([
-          'update',
-          '$repository@$toVersion',
-          ..._repositoryUpdateScopeArguments(
-            representative.scope,
-            representative.projectRoot,
-          ),
-          '--preflight',
-          '--output',
-          'json',
-          '--hub',
-          _hubOrigin,
-        ]);
-        if (!command.succeeded) throw _commandFailure(command);
-        final raw = _decodeMachineDocument(
-          command.output.stdout,
-          phase: 'module-update-preflight',
-        );
-        if (raw['modulePath'] != repository ||
-            raw['fromVersion'] != representative.version ||
-            raw['toVersion'] != toVersion ||
-            raw['stateToken'] is! String ||
-            (raw['stateToken'] as String).isEmpty ||
-            raw['scope'] != representative.scope.name ||
-            (representative.scope == InstallationScope.project &&
-                raw['projectRoot'] != representative.projectRoot)) {
-          throw const FormatException();
-        }
-        final stateToken = raw['stateToken'] as String;
         for (final installed in group) {
           items.add(
             UpdatePlanItem(
@@ -91,12 +61,11 @@ mixin _RealSkillsGatewayUpdates
                 path: installed.path,
               ),
               name: skill.name,
-              modulePath: skill.modulePath,
+              packagePath: skill.packagePath,
               sourceRef: repository,
               fromVersion: installed.version,
               toVersion: toVersion,
               action: UpdatePlanAction.update,
-              stateToken: stateToken,
               workspaceManifestChange:
                   installed.scope == InstallationScope.project,
             ),
@@ -126,8 +95,8 @@ mixin _RealSkillsGatewayUpdates
       );
     } on FormatException {
       throw const SkillsException(
-        'The SkillsGo CLI returned invalid Update Plan JSON.',
-        kind: SkillsFailureKind.invalidResponse,
+        'Installed targets disagree on their current Package version.',
+        kind: SkillsFailureKind.validation,
       );
     }
   }
@@ -148,7 +117,7 @@ mixin _RealSkillsGatewayUpdates
     final grouped = <String, List<UpdatePlanItem>>{};
     for (final item in plan.targets) {
       final key =
-          '${item.modulePath}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
+          '${item.packagePath}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
       grouped.putIfAbsent(key, () => []).add(item);
     }
     final results = <UpdateTargetResult>[];
@@ -162,7 +131,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              modulePath: item.modulePath,
+              packagePath: item.packagePath,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.started,
@@ -171,15 +140,14 @@ mixin _RealSkillsGatewayUpdates
         }
         if (group.any(
           (item) =>
-              item.modulePath != representative.modulePath ||
+              item.packagePath != representative.packagePath ||
               item.name != representative.name ||
               item.fromVersion != representative.fromVersion ||
-              item.toVersion != representative.toVersion ||
-              item.stateToken != representative.stateToken,
+              item.toVersion != representative.toVersion,
         )) {
           throw const FormatException();
         }
-        final repository = representative.modulePath;
+        final repository = representative.packagePath;
         final command = await _runCli([
           'update',
           '$repository@${representative.toVersion}',
@@ -187,8 +155,7 @@ mixin _RealSkillsGatewayUpdates
             representative.target.scope,
             representative.target.projectRoot,
           ),
-          '--state-token',
-          representative.stateToken,
+          '--yes',
           '--output',
           'json',
           '--hub',
@@ -197,9 +164,9 @@ mixin _RealSkillsGatewayUpdates
         if (!command.succeeded) throw _commandFailure(command);
         final raw = _decodeMachineDocument(
           command.output.stdout,
-          phase: 'module-update',
+          phase: 'package-update',
         );
-        if (raw['modulePath'] != repository ||
+        if (raw['packagePath'] != repository ||
             raw['fromVersion'] != representative.fromVersion ||
             raw['toVersion'] != representative.toVersion) {
           throw const FormatException();
@@ -208,7 +175,7 @@ mixin _RealSkillsGatewayUpdates
           final result = UpdateTargetResult(
             target: item.target,
             name: item.name,
-            modulePath: item.modulePath,
+            packagePath: item.packagePath,
             fromVersion: item.fromVersion,
             toVersion: item.toVersion,
             outcome: UpdateTargetOutcome.succeeded,
@@ -219,7 +186,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              modulePath: item.modulePath,
+              packagePath: item.packagePath,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.finished,
@@ -256,11 +223,11 @@ mixin _RealSkillsGatewayUpdates
     };
     final candidates =
         <
-          ({String key, String modulePath, String name, List<String> versions})
+          ({String key, String packagePath, String name, List<String> versions})
         >[];
     for (final skill in skills) {
       if (skill.provenance != LibraryProvenance.hub ||
-          skill.modulePath.isEmpty) {
+          skill.packagePath.isEmpty) {
         continue;
       }
       final versions =
@@ -273,7 +240,7 @@ mixin _RealSkillsGatewayUpdates
       if (versions.isEmpty) continue;
       candidates.add((
         key: _installedSkillUpdateKey(skill),
-        modulePath: skill.modulePath,
+        packagePath: skill.packagePath,
         name: skill.name,
         versions: versions,
       ));
@@ -282,8 +249,8 @@ mixin _RealSkillsGatewayUpdates
 
     await _ensureHubOrigin();
     final arguments = <String>[
-      'updates',
-      'check',
+      'hub',
+      'check-update',
       '--output',
       'json',
       '--hub',
@@ -292,7 +259,7 @@ mixin _RealSkillsGatewayUpdates
         '--installed',
         jsonEncode({
           'key': candidate.key,
-          'modulePath': candidate.modulePath,
+          'packagePath': candidate.packagePath,
           'name': candidate.name,
           'versions': candidate.versions,
         }),
@@ -313,7 +280,7 @@ mixin _RealSkillsGatewayUpdates
       for (final raw in decoded['items'] as List) {
         if (raw is! Map<String, dynamic> ||
             raw['key'] is! String ||
-            raw['modulePath'] is! String ||
+            raw['packagePath'] is! String ||
             raw['name'] is! String ||
             raw['versions'] is! List ||
             raw['status'] is! String ||

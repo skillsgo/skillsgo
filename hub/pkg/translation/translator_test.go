@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an HTTP test server implementing the configured OpenAI-compatible chat-completions contract.
- * [OUTPUT]: Specifies translation request authentication, model/locale input, fenced JSON decoding, and upstream failure propagation.
+ * [OUTPUT]: Specifies pure translation requests, disabled thinking, fixed temperature, strict result parsing, and upstream failures.
  * [POS]: Serves as network-adapter contract coverage for description translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,58 +15,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOpenAITranslatorSendsConstrainedRequestAndDecodesFencedJSON(t *testing.T) {
+func TestOpenAITranslatorSendsPureTranslationRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		require.Equal(t, "/chat/completions", request.URL.Path)
-		require.Equal(t, "Bearer secret", request.Header.Get("Authorization"))
 		var body struct {
-			Model    string `json:"model"`
-			Messages []struct {
-				Role    string `json:"role"`
+			Temperature float64        `json:"temperature"`
+			Thinking    map[string]any `json:"thinking"`
+			Messages    []struct {
 				Content string `json:"content"`
 			} `json:"messages"`
 		}
 		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
-		require.Equal(t, "test-model", body.Model)
-		require.Contains(t, body.Messages[1].Content, "Target locale: zh-CN")
-		require.Contains(t, body.Messages[1].Content, "Description: Review changes")
+		require.Zero(t, body.Temperature)
+		require.Equal(t, "disabled", body.Thinking["type"])
+		require.Contains(t, body.Messages[0].Content, "<skillsgo-translation-result>")
+		require.Contains(t, body.Messages[1].Content, "Review changes")
+		require.Less(t, indexOf(t, body.Messages[1].Content, "Review changes"), indexOf(t, body.Messages[1].Content, "Target locale: zh-Hans-CN"))
 		response.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(response).Encode(map[string]any{
-			"id": "chatcmpl-1", "object": "chat.completion", "created": 1, "model": "test-model",
-			"choices": []any{map[string]any{"index": 0, "message": map[string]any{
-				"role": "assistant", "content": "```json\n{\"description\":\"审查变更\"}\n```",
-			}, "finish_reason": "stop"}},
-		})
+		_ = json.NewEncoder(response).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": "<skillsgo-translation-result>审查变更</skillsgo-translation-result>"}}}})
 	}))
 	defer server.Close()
 
-	translated, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), " Review changes ", "zh-CN")
+	result, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review changes", "en", "zh-Hans-CN")
 	require.NoError(t, err)
-	require.Equal(t, "审查变更", translated)
+	require.Equal(t, Result{Content: "审查变更"}, result)
 }
 
-func TestOpenAITranslatorPropagatesUpstreamAndInvalidResponseFailures(t *testing.T) {
-	t.Run("upstream", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-			http.Error(response, `{"error":{"message":"rate limited"}}`, http.StatusTooManyRequests)
-		}))
-		defer server.Close()
-		_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "zh-CN")
-		require.ErrorContains(t, err, "429")
-	})
+func TestParseTranslationResultRejectsTextOutsideEnvelope(t *testing.T) {
+	for _, raw := range []string{"", "prefix <skillsgo-translation-result>x</skillsgo-translation-result>", "<skillsgo-translation-result></skillsgo-translation-result>", "<skillsgo-translation-result>x</skillsgo-translation-result> suffix"} {
+		_, err := parseTranslationResult(raw)
+		require.Error(t, err)
+	}
+}
 
-	t.Run("empty description", func(t *testing.T) {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-			response.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(response).Encode(map[string]any{
-				"id": "chatcmpl-1", "object": "chat.completion", "created": 1, "model": "test-model",
-				"choices": []any{map[string]any{"index": 0, "message": map[string]any{
-					"role": "assistant", "content": "{\"description\":\"\"}",
-				}, "finish_reason": "stop"}},
-			})
-		}))
-		defer server.Close()
-		_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "zh-CN")
-		require.EqualError(t, err, "translation response contained an empty description")
-	})
+func TestOpenAITranslatorPropagatesUpstreamFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		http.Error(response, `{}`, http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "en", "zh-Hans-CN")
+	require.ErrorContains(t, err, "429")
+}
+
+func indexOf(t *testing.T, value, part string) int {
+	t.Helper()
+	for index := 0; index+len(part) <= len(value); index++ {
+		if value[index:index+len(part)] == part {
+			return index
+		}
+	}
+	t.Fatalf("%q not found", part)
+	return -1
 }

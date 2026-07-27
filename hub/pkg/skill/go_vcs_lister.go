@@ -55,17 +55,17 @@ func NewVCSLister(fetcher RepositoryFetcher, timeout time.Duration) (RepositoryV
 	return &vcsLister{repositories: repositories, timeout: timeout, ttl: ttl, now: time.Now, catalogs: map[string]tagCatalog{}}, nil
 }
 
-func (l *vcsLister) ListRepositoryTags(ctx context.Context, modulePath string) ([]RepositoryTag, error) {
-	parsed, err := ParseModulePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return nil, fmt.Errorf("invalid canonical Repository ID %q", modulePath)
+func (l *vcsLister) ListRepositoryTags(ctx context.Context, packagePath string) ([]RepositoryTag, error) {
+	parsed, err := ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, fmt.Errorf("invalid canonical Repository ID %q", packagePath)
 	}
 	release, err := l.repositories.acquireRepository(parsed.String())
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	if _, _, err := l.List(ctx, modulePath); err != nil {
+	if _, _, err := l.List(ctx, packagePath); err != nil {
 		return nil, err
 	}
 	repoDir, err := l.repositories.repositoryDir(parsed.String())
@@ -85,7 +85,7 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	skillID, err := ParseModulePath(skillPath)
+	skillID, err := ParsePackagePath(skillPath)
 	if err != nil {
 		return nil, nil, errors.E(op, err, errors.KindNotFound)
 	}

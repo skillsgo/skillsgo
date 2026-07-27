@@ -25,9 +25,9 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetPath, 0o700))
 	require.NoError(t, os.WriteFile(skillPath, []byte("---\nname: ask-matt\n---\n"), 0o600))
 
-	managedModulePath := "fixtures.test/group/subgroup/collection"
+	managedPackagePath := "fixtures.test/group/subgroup/collection"
 	managedAdd := execCLI(t, ctx, container,
-		"add", managedModulePath+"@v1.0.0", "--skill", "alpha",
+		"add", managedPackagePath+"@v1.0.0", "--skill", "alpha",
 		"--agent", "codex",
 
 		"--yes",
@@ -38,14 +38,14 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "home", ".codex"), 0o755))
 
 	inventory := execCLI(t, ctx, container,
-		"inventory", "--project", scenarioContainerPath(t, "project"), "--output", "json",
+		"list", "--project", scenarioContainerPath(t, "project"), "--output", "json",
 	)
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
 	var report struct {
 		SchemaVersion int `json:"schemaVersion"`
 		Entries       []struct {
 			Name       string `json:"name"`
-			ModulePath string `json:"modulePath"`
+			PackagePath string `json:"packagePath"`
 			Provenance string `json:"provenance"`
 			Health     string `json:"health"`
 			Targets    []struct {
@@ -54,9 +54,9 @@ func TestJ15Inventory(t *testing.T) {
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
-	require.Equal(t, 6, report.SchemaVersion)
+	require.Equal(t, 7, report.SchemaVersion)
 	entries := make(map[string]struct {
-		ModulePath string
+		PackagePath string
 		Provenance string
 		Health     string
 		Path       string
@@ -66,16 +66,16 @@ func TestJ15Inventory(t *testing.T) {
 			continue
 		}
 		entries[entry.Name] = struct {
-			ModulePath string
+			PackagePath string
 			Provenance string
 			Health     string
 			Path       string
-		}{entry.ModulePath, entry.Provenance, entry.Health, entry.Targets[0].Path}
+		}{entry.PackagePath, entry.Provenance, entry.Health, entry.Targets[0].Path}
 	}
 	require.Equal(t, "external", entries["ask-matt"].Provenance)
-	require.Empty(t, entries["ask-matt"].ModulePath)
+	require.Empty(t, entries["ask-matt"].PackagePath)
 	require.Equal(t, scenarioContainerPath(t, "project", ".agents", "skills", "ask-matt"), entries["ask-matt"].Path)
 	require.Equal(t, "hub", entries["alpha"].Provenance)
-	require.Equal(t, managedModulePath, entries["alpha"].ModulePath)
+	require.Equal(t, managedPackagePath, entries["alpha"].PackagePath)
 	require.Equal(t, "healthy", entries["alpha"].Health)
 }

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Catalog Module Version publication and Protocol artifact identity contracts.
+ * [INPUT]: Depends on Catalog Package Version publication and Protocol artifact identity contracts.
  * [OUTPUT]: Provides test-only fixtures that publish one immutable Skill snapshot through the production aggregate.
- * [POS]: Serves as the shared Actions test seam for seeding the three-table Module catalog.
+ * [POS]: Serves as the shared Actions test seam for seeding the three-table Package catalog.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -35,9 +35,9 @@ func publishActionTestSkills(ctx context.Context, metadata *catalog.Catalog, ite
 			candidates[index].Path = candidates[index].Name
 		}
 	}
-	identity := catalog.ModuleVersion{
+	identity := catalog.PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "test-module-tree",
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: time.Unix(1, 0).UTC(),
 	}
-	return metadata.PublishModuleVersionWithVisibility(ctx, item.ModulePath, identity, candidates, catalog.CurrentPublication)
+	return metadata.PublishPackageVersionWithVisibility(ctx, item.PackagePath, identity, candidates, catalog.CurrentPublication)
 }

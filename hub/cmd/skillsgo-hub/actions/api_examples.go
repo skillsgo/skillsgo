@@ -9,14 +9,14 @@ package actions
 import protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 
 const (
-	exampleModulePath = "github.com/mattpocock/skills"
-	exampleVersion    = "v1.1.0"
-	exampleCommitSHA  = "d574778f94cf620fcc8ce741584093bc650a61d3"
-	exampleModuleSum  = "h1:3bTsbMd1GYQaTuGrUhRiaH/Htdt/f7qo+Myy4BB8QaU="
+	examplePackagePath = "github.com/mattpocock/skills"
+	exampleVersion     = "v1.1.0"
+	exampleCommitSHA   = "d574778f94cf620fcc8ce741584093bc650a61d3"
+	examplePackageSum  = "h1:3bTsbMd1GYQaTuGrUhRiaH/Htdt/f7qo+Myy4BB8QaU="
 )
 
 var exampleSkill = protocolapi.FindSkill{
-	ModulePath:    exampleModulePath,
+	PackagePath:   examplePackagePath,
 	Name:          "grill-me",
 	Description:   "A relentless interview to sharpen a plan or design.",
 	ImageURL:      stringPointer("https://github.com/mattpocock.png?size=256"),
@@ -35,16 +35,16 @@ var exampleFindResponse = map[string]any{
 
 var exampleFindCandidatesRequest = protocolapi.FindCandidatesRequest{
 	Queries: []protocolapi.CandidateQuery{{
-		Name:       "grill-me",
-		ModulePath: exampleModulePath,
+		Name:        "grill-me",
+		PackagePath: examplePackagePath,
 	}},
-	Limit:  10,
-	Locale: "en",
+	Limit: 10,
+	Lang:  "en",
 }
 
 var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
 	Candidates: [][]protocolapi.SkillCandidate{{{
-		ModulePath:  exampleModulePath,
+		PackagePath: examplePackagePath,
 		Version:     exampleVersion,
 		Name:        "grill-me",
 		Path:        "skills/productivity/grill-me",
@@ -53,7 +53,7 @@ var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
 }
 
 var exampleBatchRequest = map[string]any{
-	"skills": []any{map[string]any{"modulePath": exampleModulePath, "name": "grill-me"}},
+	"skills": []any{map[string]any{"packagePath": examplePackagePath, "path": "skills/productivity/grill-me"}},
 }
 
 var exampleBatchResponse = map[string]any{"skills": []any{exampleSkill}}
@@ -61,8 +61,8 @@ var exampleBatchResponse = map[string]any{"skills": []any{exampleSkill}}
 var exampleUpdateRequest = protocolapi.CatalogUpdateCheckRequest{
 	SchemaVersion: 1,
 	Skills: []protocolapi.SkillCoordinate{{
-		ModulePath: exampleModulePath,
-		Name:       "grill-me",
+		PackagePath: examplePackagePath,
+		Name:        "grill-me",
 	}},
 }
 
@@ -71,17 +71,17 @@ var exampleUpdateFailure = map[string]any{
 	"code":  "resolution_failed",
 }
 
-var exampleModuleVersions = protocolapi.ModuleVersionsResponse{
+var examplePackageVersions = protocolapi.PackageVersionsResponse{
 	Versions: []string{"v1.0.0", exampleVersion},
 }
 
-var exampleModuleInfo = map[string]any{
+var examplePackageInfo = map[string]any{
 	"schemaVersion": 1,
-	"kind":          "Module",
-	"modulePath":    exampleModulePath,
+	"kind":          "Package",
+	"packagePath":   examplePackagePath,
 	"version":       exampleVersion,
 	"time":          "2026-07-08T21:20:40+08:00",
-	"sum":           exampleModuleSum,
+	"sum":           examplePackageSum,
 	"archiveSize":   207631,
 	"skills": []any{
 		moduleSkill("design-an-interface", "skills/deprecated/design-an-interface"),
@@ -127,8 +127,8 @@ var exampleModuleInfo = map[string]any{
 
 const exampleGrillMeInstructions = "---\nname: grill-me\ndescription: A relentless interview to sharpen a plan or design.\ndisable-model-invocation: true\n---\n\nRun a `/grilling` session.\n"
 
-var exampleModuleVersionSkill = map[string]any{
-	"modulePath":  exampleModulePath,
+var examplePackageVersionSkill = map[string]any{
+	"packagePath": examplePackagePath,
 	"version":     exampleVersion,
 	"time":        "2026-07-08T13:20:40Z",
 	"archiveSize": 207631,

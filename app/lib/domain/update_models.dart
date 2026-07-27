@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation target identity and shared update enums.
- * [OUTPUT]: Provides reviewed Update Plans, immutable target results, execution summaries, progress, and compatibility target-key helpers.
+ * [OUTPUT]: Provides locally reviewed Update Plans, immutable target results, execution summaries, progress, and compatibility target-key helpers.
  * [POS]: Serves as the focused Update Plan model module used by Library journeys and CLI adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,12 +11,11 @@ class UpdatePlanItem {
   const UpdatePlanItem({
     required this.target,
     required this.name,
-    required this.modulePath,
+    required this.packagePath,
     required this.sourceRef,
     required this.fromVersion,
     required this.toVersion,
     required this.action,
-    required this.stateToken,
     required this.workspaceManifestChange,
     this.reasonCode = '',
     this.diagnostic = '',
@@ -25,14 +24,13 @@ class UpdatePlanItem {
 
   final InstallationPlanTarget target;
   final String name;
-  final String modulePath;
+  final String packagePath;
   final String sourceRef;
   final String fromVersion;
   final String toVersion;
   final UpdatePlanAction action;
   final String reasonCode;
   final String diagnostic;
-  final String stateToken;
   final bool workspaceManifestChange;
   final List<InstallationPlanTarget> affectedBindings;
 }
@@ -105,7 +103,7 @@ class UpdateTargetResult {
   const UpdateTargetResult({
     required this.target,
     required this.name,
-    required this.modulePath,
+    required this.packagePath,
     required this.fromVersion,
     required this.toVersion,
     required this.outcome,
@@ -114,7 +112,7 @@ class UpdateTargetResult {
 
   final InstallationPlanTarget target;
   final String name;
-  final String modulePath;
+  final String packagePath;
   final String fromVersion;
   final String toVersion;
   final UpdateTargetOutcome outcome;
@@ -145,7 +143,7 @@ class UpdateTargetProgress {
     required this.sequence,
     required this.target,
     required this.name,
-    required this.modulePath,
+    required this.packagePath,
     required this.fromVersion,
     required this.toVersion,
     required this.state,
@@ -155,7 +153,7 @@ class UpdateTargetProgress {
   final int sequence;
   final InstallationPlanTarget target;
   final String name;
-  final String modulePath;
+  final String packagePath;
   final String fromVersion;
   final String toVersion;
   final InstallationProgressState state;

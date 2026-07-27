@@ -11,31 +11,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type LocalizedDescription struct {
-	ID            int64     `json:"id"`
-	ResourceKind  string    `json:"resource_kind"`
-	ResourceID    string    `json:"resource_id"`
-	Locale        string    `json:"locale"`
-	Description   string    `json:"description"`
-	SourceDigest  string    `json:"source_digest"`
-	PromptVersion string    `json:"prompt_version"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+type Localization struct {
+	ResourceKind  string      `json:"resource_kind"`
+	SourceDigest  string      `json:"source_digest"`
+	Lang          string      `json:"lang"`
+	ResultKind    string      `json:"result_kind"`
+	TextContent   pgtype.Text `json:"text_content"`
+	PromptVersion string      `json:"prompt_version"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
-// Canonical Skill Modules and mutable source/discovery state.
-type Module struct {
+// Canonical Skill Packages and mutable source/discovery state.
+type Package struct {
 	ID int64 `json:"id"`
-	// Source host derived from Module Path, for example github.com.
+	// Source host derived from Package Path, for example github.com.
 	SourceHost string `json:"source_host"`
-	// Host-relative source path derived from Module Path, for example acme/skills.
+	// Host-relative source path derived from Package Path, for example acme/skills.
 	SourcePath string `json:"source_path"`
-	// Canonical globally unique Module Path.
+	// Canonical globally unique Package Path.
 	Path string `json:"path"`
-	// Current discovery-visible Version; constrained to belong to this Module.
+	// Current discovery-visible Version; constrained to belong to this Package.
 	CurrentVersionID pgtype.Int8 `json:"current_version_id"`
 	// Mutable source description used by discovery.
-	Description string `json:"description"`
+	Description       string `json:"description"`
+	DescriptionDigest string `json:"description_digest"`
 	// Mutable source popularity count used by discovery.
 	Stars int64 `json:"stars"`
 	// Conditional-request token for source enrichment.
@@ -48,9 +47,9 @@ type Module struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-type ModuleBackfillRun struct {
+type PackageBackfillRun struct {
 	ID          string          `json:"id"`
-	ModulePath  string          `json:"module_path"`
+	PackagePath string          `json:"package_path"`
 	Status      string          `json:"status"`
 	StartedAt   *time.Time      `json:"started_at"`
 	CompletedAt *time.Time      `json:"completed_at"`
@@ -60,35 +59,37 @@ type ModuleBackfillRun struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
-// Skill members contained by one immutable Module Version.
+// Skill members contained by one immutable Package Version.
 type Skill struct {
 	ID        int64 `json:"id"`
 	VersionID int64 `json:"version_id"`
 	// Canonical Skill name read from SKILL.md.
 	Name string `json:"name"`
-	// Module-relative directory containing SKILL.md; unique within the Version.
+	// Package-relative directory containing SKILL.md; unique within the Version.
 	Path string `json:"path"`
 	// Searchable Skill description read from SKILL.md.
-	Description string `json:"description"`
+	Description       string `json:"description"`
+	DescriptionDigest string `json:"description_digest"`
+	DocumentDigest    string `json:"document_digest"`
 }
 
-// Immutable published versions owned by Modules.
+// Immutable published versions owned by Packages.
 type Version struct {
-	ID       int64 `json:"id"`
-	ModuleID int64 `json:"module_id"`
-	// Canonical immutable Module Version.
+	ID        int64 `json:"id"`
+	PackageID int64 `json:"package_id"`
+	// Canonical immutable Package Version.
 	Version string `json:"version"`
 	// Source ref resolved when the Version was published.
 	Ref string `json:"ref"`
 	// Source commit captured by this Version.
 	CommitSha string `json:"commit_sha"`
-	// Module root tree captured by this Version.
+	// Package root tree captured by this Version.
 	TreeSha string `json:"tree_sha"`
-	// Canonical h1 checksum of the Module ZIP.
+	// Canonical h1 checksum of the Package ZIP.
 	Sum string `json:"sum"`
-	// Exact Module ZIP size in bytes.
+	// Exact Package ZIP size in bytes.
 	ArchiveSize int64 `json:"archive_size"`
-	// Source commit time exposed as Module Info time.
+	// Source commit time exposed as Package Info time.
 	CommitTime time.Time `json:"commit_time"`
 	CreatedAt  time.Time `json:"created_at"`
 }

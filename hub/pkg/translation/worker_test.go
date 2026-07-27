@@ -33,40 +33,40 @@ func (s *workerStore) UpsertLocalizedDescription(_ context.Context, item catalog
 func TestWorkerReturnsFailuresSoRiverCanRetryOnlyRemainingCandidates(t *testing.T) {
 	translateErr := errors.New("translator unavailable")
 	store := &workerStore{candidates: []catalog.TranslationCandidate{
-		{ResourceKind: catalog.LocalizedSkill, ResourceID: "good", Description: "Good"},
-		{ResourceKind: catalog.LocalizedSkill, ResourceID: "retry", Description: "Retry"},
+		{ResourceKind: catalog.LocalizedSkill, ResourceID: "good", Description: "Good", ContentDigest: catalog.DescriptionDigest("Good")},
+		{ResourceKind: catalog.LocalizedSkill, ResourceID: "retry", Description: "Retry", ContentDigest: catalog.DescriptionDigest("Retry")},
 	}}
-	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, _ string) (string, error) {
+	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, _, _ string) (Result, error) {
 		if source == "Retry" {
-			return "", translateErr
+			return Result{}, translateErr
 		}
-		return "成功", nil
-	}), testLogger{}, "zh-CN", "description-v1", 100)
+		return Result{Content: "成功"}, nil
+	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100)
 
 	err := worker.RunOnce(t.Context())
 	require.ErrorIs(t, err, translateErr)
 	require.Len(t, store.saved, 1)
-	require.Equal(t, "good", store.saved[0].ResourceID)
+	require.Equal(t, catalog.DescriptionDigest("Good"), store.saved[0].SourceDigest)
 
 	scanErr := errors.New("catalog unavailable")
-	require.ErrorIs(t, NewWorker(&workerStore{scanErr: scanErr}, translatorFunc(nil), testLogger{}, "zh-CN", "description-v1", 100).RunOnce(t.Context()), scanErr)
+	require.ErrorIs(t, NewWorker(&workerStore{scanErr: scanErr}, translatorFunc(nil), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100).RunOnce(t.Context()), scanErr)
 }
 
 func TestWorkerReturnsPersistenceFailureForRiverRetry(t *testing.T) {
 	saveErr := errors.New("catalog write failed")
 	store := &workerStore{saveErr: saveErr, candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedModule, ResourceID: "github.com/acme/skills", Description: "Acme Skills",
+		ResourceKind: catalog.LocalizedPackage, ResourceID: "github.com/acme/skills", Description: "Acme Skills", ContentDigest: catalog.DescriptionDigest("Acme Skills"),
 	}}}
-	worker := NewWorker(store, translatorFunc(func(context.Context, string, string) (string, error) {
-		return "Acme 技能", nil
-	}), testLogger{}, "zh-CN", "description-v1", 100)
+	worker := NewWorker(store, translatorFunc(func(context.Context, string, string, string) (Result, error) {
+		return Result{Content: "Acme 技能"}, nil
+	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100)
 	require.ErrorIs(t, worker.RunOnce(t.Context()), saveErr)
 }
 
-type translatorFunc func(context.Context, string, string) (string, error)
+type translatorFunc func(context.Context, string, string, string) (Result, error)
 
-func (f translatorFunc) Translate(ctx context.Context, source, locale string) (string, error) {
-	return f(ctx, source, locale)
+func (f translatorFunc) Translate(ctx context.Context, source, sourceLang, locale string) (Result, error) {
+	return f(ctx, source, sourceLang, locale)
 }
 
 type testLogger struct{}
@@ -76,18 +76,18 @@ func (testLogger) Warnf(string, ...any) {}
 
 func TestWorkerPersistsPresentationOnlyDescription(t *testing.T) {
 	store := &workerStore{candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review", Description: "Review changes",
+		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review", Description: "Review changes", ContentDigest: catalog.DescriptionDigest("Review changes"),
 	}}}
-	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, locale string) (string, error) {
+	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, _, locale string) (Result, error) {
 		require.Equal(t, "Review changes", source)
 		require.Equal(t, "zh-CN", locale)
-		return "审查变更", nil
-	}), testLogger{}, "zh-CN", "description-v1", 100)
+		return Result{Content: "审查变更"}, nil
+	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-CN"}, "description-v1", 100)
 
 	require.NoError(t, worker.RunOnce(t.Context()))
 	require.Equal(t, []catalog.LocalizedDescription{{
-		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review",
-		Locale: "zh-CN", Description: "审查变更",
+		ResourceKind: catalog.LocalizedSkill,
+		Lang:         "zh-CN", ResultKind: catalog.LocalizationTranslated, Description: "审查变更",
 		SourceDigest: catalog.DescriptionDigest("Review changes"), PromptVersion: "description-v1",
 	}}, store.saved)
 }

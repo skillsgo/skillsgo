@@ -19,6 +19,45 @@ import 'support/widget_test_helpers.dart';
 
 void main() {
   testWidgets(
+    'Find ignores blank and duplicate normalized intent but accepts one CJK character',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway();
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      gateway.collections.clear();
+      gateway.queries.clear();
+
+      await tester.enterText(searchInput(), '   ');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(gateway.collections, isEmpty);
+      expect(gateway.queries, isEmpty);
+
+      await tester.enterText(searchInput(), '  flutter  ');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(gateway.collections, [DiscoveryCollection.search]);
+      expect(gateway.queries, ['flutter']);
+
+      await tester.enterText(searchInput(), 'flutter');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(gateway.collections, [DiscoveryCollection.search]);
+      expect(gateway.queries, ['flutter']);
+
+      await tester.enterText(searchInput(), '图');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(gateway.collections, [
+        DiscoveryCollection.search,
+        DiscoveryCollection.search,
+      ]);
+      expect(gateway.queries, ['flutter', '图']);
+    },
+  );
+
+  testWidgets(
     'a completed request never writes through a disposed Discover provider',
     (tester) async {
       final pending = Completer<DiscoveryPage>();
@@ -64,7 +103,7 @@ void main() {
         'search:0': DiscoveryPage(
           skills: const [
             SkillSummary(
-              modulePath: 'github.com/example/skills',
+              packagePath: 'github.com/example/skills',
               installName: 'flutter-pro',
               name: 'Flutter Pro',
               latestVersion: 'v1.2.3',
@@ -72,7 +111,7 @@ void main() {
                   'Build Flutter products with reliable engineering flows.',
             ),
           ],
-          module: ModuleSummary(
+          module: PackageSummary(
             id: 'github.com/example/skills',
             description: 'A focused collection of Flutter engineering skills.',
             stars: 12800,
@@ -100,14 +139,13 @@ void main() {
     expect(find.text('1 skill'), findsOneWidget);
     expect(find.text('Install all skills'), findsOneWidget);
     final installAll = tester.widget<PrimaryCapsuleButton>(
-      find.byKey(const Key('module-install-all')),
+      find.byKey(const Key('package-install-all')),
     );
     expect(installAll.height, 40);
     expect(installAll.horizontalPadding, 18);
     expect(installAll.labelStyle?.fontSize, 15);
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.byType(SkillCard), findsWidgets);
-
   });
 
   testWidgets('a Git Repository cold load uses themed Portal Loading Shapes', (
@@ -275,7 +313,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const base = SkillSummary(
-      modulePath: 'github.com/acme/skills',
+      packagePath: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       description: 'Turn product goals into a concrete execution plan.',
@@ -290,7 +328,7 @@ void main() {
         'trending:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/skills',
+              packagePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -303,7 +341,7 @@ void main() {
         'hot:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/skills',
+              packagePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -355,7 +393,7 @@ void main() {
           skills: List.generate(
             24,
             (index) => SkillSummary(
-              modulePath: 'example/skills/ranked-$index',
+              packagePath: 'example/skills/ranked-$index',
               installName: 'ranked-$index',
               name: 'Ranked $index',
               installs: 24 - index,
@@ -410,7 +448,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/a',
+              packagePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               installs: 2,
@@ -421,7 +459,7 @@ void main() {
         'ranking:1': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/b',
+              packagePath: 'github.com/acme/b',
               installName: 'b',
               name: 'Bravo',
               installs: 1,
@@ -450,7 +488,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/a',
+              packagePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               installs: 2,

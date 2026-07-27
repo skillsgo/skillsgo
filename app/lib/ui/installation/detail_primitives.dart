@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, domain detail models, InstallOperationController, localized status copy, and SkillsGo presentation primitives.
- * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Module enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
+ * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Package enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
  * [POS]: Serves as the reusable detail and Installation Request presentation primitives.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -91,25 +91,25 @@ class SkillCardSkeleton extends StatelessWidget {
   );
 }
 
-Future<List<SkillSummary>> loadModuleSkills(
+Future<List<SkillSummary>> loadPackageSkills(
   SkillsGateway gateway,
   SkillSummary current,
   SkillDetail detail,
 ) async {
-  final modulePath = detail.modulePath.trim();
-  if (modulePath.isEmpty) return [current];
+  final packagePath = detail.packagePath.trim();
+  if (packagePath.isEmpty) return [current];
   try {
     final skills = <String, SkillSummary>{};
     var pageNumber = 0;
     while (true) {
       final page = await gateway.discover(
         DiscoveryCollection.search,
-        query: '$modulePath@${current.latestVersion}',
+        query: '$packagePath@${current.latestVersion}',
         page: pageNumber,
         perPage: 100,
       );
       for (final skill in page.skills) {
-        if (skill.modulePath == modulePath) {
+        if (skill.packagePath == packagePath) {
           skills[skill.coordinateKey] = skill;
         }
       }
@@ -222,8 +222,8 @@ class _InstallationCompletionBanner extends StatelessWidget {
 }
 
 String _targetLabel(BuildContext context, InstallationPlanTarget target) {
-  final location = target.scope == InstallationScope.user
-      ? context.l10n.userScope
+  final location = target.scope == InstallationScope.global
+      ? context.l10n.globalScope
       : p.basename(target.projectRoot);
   return '$location / ${target.agent}';
 }

@@ -81,7 +81,7 @@ func fetchModsAndVersions(objects []types.Object, elementsNum int) ([]paths.AllP
 
 func parseS3Key(o types.Object) (paths.AllPathParams, error) {
 	const op errors.Op = "s3.parseS3Key"
-	m, v := config.ModuleVersionFromPath(*o.Key)
+	m, v := config.PackageVersionFromPath(*o.Key)
 
 	if m == "" || v == "" {
 		return paths.AllPathParams{}, errors.E(op, fmt.Errorf("invalid object key format %s", *o.Key))

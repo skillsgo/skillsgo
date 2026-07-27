@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const agentsSchemaVersion = 1
+const agentsSchemaVersion = 2
 
 type agentsReport struct {
 	SchemaVersion      int            `json:"schemaVersion"`
@@ -32,9 +32,10 @@ type agentsReport struct {
 func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
-		Use:   "agents",
-		Short: appi18n.T("agents.short"),
-		Args:  cobra.NoArgs,
+		Use:     "agents",
+		Short:   appi18n.T("agents.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo agents\n  skillsgo agents --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			report := agentsReport{
 				SchemaVersion:      agentsSchemaVersion,
@@ -64,8 +65,8 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 					}
 					secondary := status.ID
 					meta := []string{state}
-					if status.UserTarget != nil {
-						meta = append(meta, status.UserTarget.Path)
+					if status.GlobalTarget != nil {
+						meta = append(meta, status.GlobalTarget.Path)
 					}
 					sections[section].Rows = append(sections[section].Rows, terminalui.Row{
 						State: marker, Primary: status.DisplayName, Secondary: secondary, Meta: meta,

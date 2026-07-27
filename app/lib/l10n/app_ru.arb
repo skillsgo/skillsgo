@@ -234,7 +234,7 @@
   "allAgents": "Все Agents",
   "allProjects": "Все проекты",
   "specificProject": "Проект",
-  "userScope": "Глобальный",
+  "globalScope": "Глобальный",
   "addProject": "Добавить проект",
   "relocateProject": "Переместить",
   "removeFromList": "Удалить из списка",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "ПРОВЕРКА НЕ удалась",
   "installSkill": "Установить Skill",
   "installLocationTitle": "Установить место установки",
-  "userLevel": "Уровень пользователя",
+  "globalLevel": "Global",
   "projectLevel": "Уровень проекта",
   "projects": "Проекты",
   "loading": "Загрузка…",
   "repositoryParsing": "Разбор репозитория…",
-  "userInstallSummary": "Доступно для {agents} Agents на уровне пользователя.",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

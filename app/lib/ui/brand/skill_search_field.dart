@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on text/focus controllers, search appearance, keyboard/focus semantics, HugeIcons, and SkillsGo component tokens.
- * [OUTPUT]: Provides the reusable capsule and leaderboard SkillSearchField with focus, hover, clear, submit, and reduced-motion behavior.
+ * [INPUT]: Depends on text/focus controllers, optional product input bounds, search appearance, keyboard/focus semantics, HugeIcons, and SkillsGo component tokens.
+ * [OUTPUT]: Provides the reusable capsule and leaderboard SkillSearchField with bounded input, focus, hover, clear, submit, and reduced-motion behavior.
  * [POS]: Serves as the search-input segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,6 +22,7 @@ class SkillSearchField extends StatelessWidget {
     this.appearance = SkillSearchAppearance.capsule,
     this.showShortcutHint = false,
     this.hintText,
+    this.maxLength,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -36,6 +37,14 @@ class SkillSearchField extends StatelessWidget {
   final SkillSearchAppearance appearance;
   final bool showShortcutHint;
   final String? hintText;
+  final int? maxLength;
+
+  List<TextInputFormatter>? get _inputFormatters => maxLength == null
+      ? null
+      : [
+          FilteringTextInputFormatter.deny(RegExp(r'[\u0000-\u001F\u007F]')),
+          LengthLimitingTextInputFormatter(maxLength),
+        ];
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +87,7 @@ class SkillSearchField extends StatelessWidget {
                   focusNode: focusNode,
                   onChanged: onChanged,
                   onSubmitted: onSubmitted,
+                  inputFormatters: _inputFormatters,
                   textInputAction: TextInputAction.search,
                   textAlignVertical: const TextAlignVertical(
                     y: contentAlignment,
@@ -267,6 +277,7 @@ class SkillSearchField extends StatelessWidget {
                 focusNode: focusNode,
                 onChanged: onChanged,
                 onSubmitted: onSubmitted,
+                inputFormatters: _inputFormatters,
                 textInputAction: TextInputAction.search,
                 cursorColor: foreground,
                 style: context.skillsTypography.body.copyWith(

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the resolved Agent Catalog and read-only filesystem/package signals.
- * [OUTPUT]: Provides installed-Agent detection plus stable status records with supported scopes, user-target diagnostics, and user-level Skill loading paths.
+ * [OUTPUT]: Provides installed-Agent detection plus stable status records with supported scopes, Global-target diagnostics, and Global Skill loading paths.
  * [POS]: Serves as the read-only Agent environment inspection boundary consumed by CLI machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,22 +17,22 @@ import (
 type Scope string
 
 const (
-	ScopeUser    Scope = "user"
+	ScopeGlobal  Scope = "global"
 	ScopeProject Scope = "project"
 )
 
-type UserTarget struct {
+type GlobalTarget struct {
 	Path   string `json:"path"`
 	Exists bool   `json:"exists"`
 }
 
 type Status struct {
-	ID              string      `json:"id"`
-	DisplayName     string      `json:"displayName"`
-	Installed       bool        `json:"installed"`
-	SupportedScopes []Scope     `json:"supportedScopes"`
-	UserTarget      *UserTarget `json:"userTarget"`
-	DiscoveryRoots  []string    `json:"discoveryRoots"`
+	ID              string        `json:"id"`
+	DisplayName     string        `json:"displayName"`
+	Installed       bool          `json:"installed"`
+	SupportedScopes []Scope       `json:"supportedScopes"`
+	GlobalTarget    *GlobalTarget `json:"globalTarget"`
+	DiscoveryRoots  []string      `json:"discoveryRoots"`
 }
 
 func exists(path string) bool {
@@ -63,7 +63,7 @@ func (c *Catalog) DetectInstalled(id string) bool {
 	case "openclaw":
 		return exists(filepath.Join(home, ".openclaw")) || exists(filepath.Join(home, ".clawdbot")) || exists(filepath.Join(home, ".moltbot"))
 	case "codex":
-		return exists(strings.TrimSuffix(d.UserDir, string(filepath.Separator)+"skills")) || exists("/etc/codex")
+		return exists(strings.TrimSuffix(d.GlobalDir, string(filepath.Separator)+"skills")) || exists("/etc/codex")
 	case "amp":
 		return exists(filepath.Join(config, "amp"))
 	case "astrbot":
@@ -97,10 +97,10 @@ func (c *Catalog) DetectInstalled(id string) bool {
 	case "tabnine-cli":
 		return exists(filepath.Join(home, ".tabnine"))
 	default:
-		if d.UserDir == "" {
+		if d.GlobalDir == "" {
 			return false
 		}
-		return exists(strings.TrimSuffix(d.UserDir, string(filepath.Separator)+"skills"))
+		return exists(strings.TrimSuffix(d.GlobalDir, string(filepath.Separator)+"skills"))
 	}
 }
 
@@ -136,19 +136,19 @@ func (c *Catalog) Statuses() []Status {
 		if definition.ProjectDir != "" {
 			scopes = append(scopes, ScopeProject)
 		}
-		var target *UserTarget
-		if definition.UserDir != "" {
-			scopes = append(scopes, ScopeUser)
-			target = &UserTarget{Path: definition.UserDir, Exists: exists(definition.UserDir)}
+		var target *GlobalTarget
+		if definition.GlobalDir != "" {
+			scopes = append(scopes, ScopeGlobal)
+			target = &GlobalTarget{Path: definition.GlobalDir, Exists: exists(definition.GlobalDir)}
 		}
 		discoveryRoots := make([]string, 0)
-		if roots, ok := c.SkillRoots(definition.ID, ScopeUser, ""); ok {
+		if roots, ok := c.SkillRoots(definition.ID, ScopeGlobal, ""); ok {
 			discoveryRoots = append(discoveryRoots, roots.DiscoveryRoots...)
 		}
 		statuses = append(statuses, Status{
 			ID: definition.ID, DisplayName: definition.Display,
 			Installed: c.DetectInstalled(definition.ID), SupportedScopes: scopes,
-			UserTarget: target, DiscoveryRoots: discoveryRoots,
+			GlobalTarget: target, DiscoveryRoots: discoveryRoots,
 		})
 	}
 	return statuses

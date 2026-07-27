@@ -11,7 +11,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 - Entry point: `cmd/skillsgo-hub/main.go`
 - Service assembly: `cmd/skillsgo-hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
-- Product responsibility: resolve add-time Module Version Queries through Source Repositories, validate Skill manifests, publish immutable Module artifacts/releases, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
+- Product responsibility: resolve add-time Package Version Queries through Source Repositories, validate Skill manifests, publish immutable Package artifacts/releases, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
 
 ## Commands
 
@@ -22,7 +22,7 @@ go fmt ./...
 go tool sqlc diff
 go test ./...
 make build
-go run ./cmd/skillsgo-hub -config_file=./config.dev.toml
+go run ./cmd/skillsgo-hub -config_file=./config.dev.yaml
 ```
 
 The repository-level `make dev` runs this workspace through Air. Air owns Hub rebuild and restart while Process Compose owns cross-workspace ordering and lifecycle.
@@ -37,18 +37,18 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `bin/skillsgo-hub` | Ignored local development binary produced by `make build`; release artifacts remain under `dist/`. |
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
-| `pkg/translation/` | Optional OpenAI-compatible presentation-description translation worker. |
-| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh/prewarm, and Repository History Backfill, sharing Catalog's pgx pool and transactions. |
-| `pkg/config/`, `config.dev.toml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
+| `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
+| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh, and Package History Backfill, sharing Catalog's pgx pool and transactions. |
+| `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |
 | `charts/` | Kubernetes packaging inherited from the Hub deployment surface. |
 
 ## Boundaries
 
-- The Hub owns public Module Path plus Skill Name identity, Source Repository resolution and metadata, immutable Module Artifacts, search, batch Skill-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
+- The Hub owns public Package Path plus Skill Name ranking/search identity, Source Repository resolution and metadata, immutable Package Artifacts, exact Package Path plus Skill Path batch-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
 - The Hub does not install skills into local Agent directories and does not own App navigation or local library state.
-- Public endpoints must carry Module Path and canonical Skill Name as separate fields with stable response contracts.
+- Public ranking/search coordinates carry Package Path and canonical Skill Name; exact member resources and batch-card hydration carry Package Path plus Skill Path.
 - Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.

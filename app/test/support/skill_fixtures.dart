@@ -10,7 +10,7 @@ SkillDetail withoutInstallationTargets(SkillDetail detail) => SkillDetail(
   name: detail.name,
   path: detail.path,
   content: detail.content,
-  modulePath: detail.modulePath,
+  packagePath: detail.packagePath,
   version: detail.version,
   time: detail.time,
   archiveSize: detail.archiveSize,

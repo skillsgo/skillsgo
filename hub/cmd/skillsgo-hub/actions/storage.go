@@ -18,11 +18,9 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/azureblob"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage/external"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/fs"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/gcp"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage/mongo"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/s3"
 	"github.com/spf13/afero"
 )
@@ -33,11 +31,6 @@ func GetStorage(storageType string, storageConfig *config.Storage, timeout time.
 	switch storageType {
 	case "memory":
 		return mem.NewStorage()
-	case "mongo":
-		if storageConfig.Mongo == nil {
-			return nil, errors.E(op, "Invalid Mongo Storage Configuration")
-		}
-		return mongo.NewStorage(storageConfig.Mongo, timeout)
 	case "disk":
 		if storageConfig.Disk == nil {
 			return nil, errors.E(op, "Invalid Disk Storage Configuration")
@@ -64,18 +57,18 @@ func GetStorage(storageType string, storageConfig *config.Storage, timeout time.
 		return s3.New(storageConfig.S3, timeout, func(config *aws.Config) {
 			config.HTTPClient = client
 		})
+	case "r2":
+		if storageConfig.R2 == nil {
+			return nil, errors.E(op, "Invalid R2 Storage Configuration")
+		}
+		return s3.New(storageConfig.R2.S3Config(), timeout, func(config *aws.Config) {
+			config.HTTPClient = client
+		})
 	case "azureblob":
 		if storageConfig.AzureBlob == nil {
 			return nil, errors.E(op, "Invalid AzureBlob Storage Configuration")
 		}
 		return azureblob.New(storageConfig.AzureBlob, timeout)
-	case "external":
-		if storageConfig.External == nil {
-			return nil, errors.E(op, "Invalid External Storage Configuration")
-		}
-		return external.NewClient(storageConfig.External.URL, client), nil
-	case "minio":
-		return nil, errors.E(op, "MinIO storage is not supported by Hub v1 because the legacy client cannot provide conditional create semantics")
 	default:
 		return nil, fmt.Errorf("storage type %s is unknown", storageType)
 	}

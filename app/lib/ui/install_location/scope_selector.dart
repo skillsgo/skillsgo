@@ -49,7 +49,7 @@ class _InstallScopeSelector extends StatelessWidget {
           children: [
             _ScopeRadioRow(
               label: allProjectsLabel,
-              value: InstallationScope.user,
+              value: InstallationScope.global,
               onChanged: onChanged,
             ),
             _ScopeRadioRow(
