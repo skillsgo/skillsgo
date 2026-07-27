@@ -410,7 +410,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get specificProject => 'مشروع';
 
   @override
-  String get userScope => 'عام';
+  String get globalScope => 'عام';
 
   @override
   String get addProject => 'أضف المشروع';
@@ -1086,6 +1086,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get language => 'اللغة';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'السمة';
 
   @override
@@ -1220,7 +1223,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get installLocationTitle => 'اختيار موقع التثبيت';
 
   @override
-  String get userLevel => 'نطاق المستخدم';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'نطاق المشروع';
@@ -1235,8 +1238,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get repositoryParsing => 'جارٍ تحليل المستودع...';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'متاح لـ ⁨$agents⁩ Agents في نطاق المستخدم';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

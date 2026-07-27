@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the released CLI and Hub, one exact Repository member, Workspace declarations, Module Store, and coordinate Projection.
+ * [INPUT]: Depends on the released CLI and Hub, one exact Repository member, Workspace declarations, Package Store, and coordinate Projection.
  * [OUTPUT]: Provides black-box coverage for `why` evidence plus healthy and locally modified `verify` results.
  * [POS]: Serves as the Repository dependency explanation and local integrity-inspection journey across Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -21,7 +21,7 @@ func TestJ47WhyAndVerifyRepositoryInstallation(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
@@ -32,14 +32,14 @@ func TestJ47WhyAndVerifyRepositoryInstallation(t *testing.T) {
 	require.Equal(t, 0, why.exitCode, why.output)
 	var explanation struct {
 		Entries []struct {
-			ModulePath string `json:"modulePath"`
+			PackagePath string `json:"packagePath"`
 			Name       string `json:"name"`
 			Targets    []any  `json:"targets"`
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(why.output), &explanation), why.output)
 	require.Len(t, explanation.Entries, 1)
-	require.Equal(t, testModulePath, explanation.Entries[0].ModulePath)
+	require.Equal(t, testPackagePath, explanation.Entries[0].PackagePath)
 	require.Equal(t, testSkillName, explanation.Entries[0].Name)
 	require.Len(t, explanation.Entries[0].Targets, 1)
 

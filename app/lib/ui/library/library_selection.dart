@@ -13,7 +13,7 @@ class _InstallationScopeGroup {
   final List<String> agents;
 
   String semanticLabel(String Function(String) agentLabel) =>
-      '${project?.name ?? 'User scope'}: ${agents.map(agentLabel).join(', ')}';
+      '${project?.name ?? 'Global'}: ${agents.map(agentLabel).join(', ')}';
 }
 
 List<_InstallationScopeGroup> _installationScopeGroups(
@@ -23,7 +23,7 @@ List<_InstallationScopeGroup> _installationScopeGroups(
   final userAgents = <String>{};
   final projectAgents = <String, Set<String>>{};
   for (final target in skill.targets) {
-    if (target.scope == InstallationScope.user) {
+    if (target.scope == InstallationScope.global) {
       userAgents.add(target.agent);
     } else {
       projectAgents
@@ -295,7 +295,7 @@ String _installationCoverageLabel(
   InstalledSkill skill,
   List<AddedProject> projects,
 ) {
-  if (skill.targets.any((target) => target.scope == InstallationScope.user)) {
+  if (skill.targets.any((target) => target.scope == InstallationScope.global)) {
     return context.l10n.allProjects;
   }
   if (skill.projects.length == 1) {
@@ -309,8 +309,8 @@ String _installationCoverageLabel(
 }
 
 String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
-  if (skill.modulePath.isEmpty) return context.l10n.localSource;
-  return skill.modulePath;
+  if (skill.packagePath.isEmpty) return context.l10n.localSource;
+  return skill.packagePath;
 }
 
 class _LibraryScopeToggle extends StatelessWidget {

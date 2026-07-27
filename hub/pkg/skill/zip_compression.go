@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Git revisions, canonical Repository coordinates, the shared Repository Artifact contract, and Go ZIP primitives.
- * [OUTPUT]: Adapts a full Git-tracked tree into one deterministic Module Artifact, preserving Module-contained symlinks while skipping unsafe links and bounding source reads.
+ * [OUTPUT]: Adapts a full Git-tracked tree into one deterministic Package Artifact, preserving Package-contained symlinks while skipping unsafe links and bounding source reads.
  * [POS]: Serves as the safe archive boundary between Git source resolution and immutable Repository publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,7 +22,7 @@ import (
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
-func createRepositoryArtifact(ctx context.Context, modulePath, version, repoDir, revision string) ([]byte, []byte, string, error) {
+func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir, revision string) ([]byte, []byte, string, error) {
 	args := []string{"-c", "core.autocrlf=input", "-c", "core.eol=lf", "archive", "--format=zip", revision}
 	raw := &boundedArchiveBuffer{}
 	stderr := &bytes.Buffer{}
@@ -71,11 +71,11 @@ func createRepositoryArtifact(ctx context.Context, modulePath, version, repoDir,
 			return nil, nil, "", err
 		}
 		log.EntryFromContext(ctx).WithFields(map[string]any{
-			"module_path": modulePath,
-			"path":        unsafe.Path,
-			"reason":      unsafe.Reason,
-			"revision":    revision,
-		}).Warnf("unsafe Module symlink omitted from artifact")
+			"package_path": packagePath,
+			"path":         unsafe.Path,
+			"reason":       unsafe.Reason,
+			"revision":     revision,
+		}).Warnf("unsafe Package symlink omitted from artifact")
 		filtered := files[:0]
 		for _, file := range files {
 			if file.Path != unsafe.Path {
@@ -84,11 +84,11 @@ func createRepositoryArtifact(ctx context.Context, modulePath, version, repoDir,
 		}
 		files = filtered
 	}
-	archive, err := protocolartifact.BuildModule(modulePath, version, files)
+	archive, err := protocolartifact.BuildPackage(packagePath, version, files)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("build Repository Artifact: %w", err)
 	}
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("verify Repository Artifact: %w", err)
 	}

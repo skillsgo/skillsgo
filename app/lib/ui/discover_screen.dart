@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the app_shell library for Flutter UI primitives, Riverpod Discover state, installation flows, localization, and shared components.
- * [OUTPUT]: Provides the Discover destination, route-local desktop pull-to-refresh and automatic pagination behavior, catalog search, Repository source headers, detail transitions, and installation entry points.
+ * [OUTPUT]: Provides the Discover destination, route-local desktop pull-to-refresh and automatic pagination behavior, catalog search, Package source headers, detail transitions, and installation entry points.
  * [POS]: Serves as the Discover feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,6 +27,6 @@ import 'ui_support.dart';
 
 part 'discover/discover_screen_core.dart';
 part 'discover/discover_rendering.dart';
-part 'discover/module_source_header.dart';
+part 'discover/package_source_header.dart';
 part 'discover/discover_navigation.dart';
 part 'discover/desktop_discover_scroller.dart';

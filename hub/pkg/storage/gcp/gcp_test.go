@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the gcp package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the gcp package behavior covered by gcp_test.go.
- * [POS]: Serves as test coverage for the gcp package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the shared storage compliance suite and either fake-gcs-server through STORAGE_EMULATOR_HOST or real GCS credentials.
+ * [OUTPUT]: Specifies GCS backend compliance plus credential parsing behavior.
+ * [POS]: Serves as emulator-friendly integration coverage for the GCS storage adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package gcp
@@ -81,13 +81,20 @@ func getStorage(t testing.TB) *Storage {
 
 func getTestConfig(bucket string) *config.GCPConfig {
 	creds := os.Getenv("GCS_SERVICE_ACCOUNT")
+	projectID := os.Getenv("GCS_PROJECT_ID")
+	if os.Getenv("STORAGE_EMULATOR_HOST") != "" {
+		if projectID == "" {
+			projectID = "skillsgo-test"
+		}
+		return &config.GCPConfig{Bucket: bucket, ProjectID: projectID}
+	}
 	if creds == "" {
 		return nil
 	}
 	return &config.GCPConfig{
 		Bucket:    bucket,
 		JSONKey:   creds,
-		ProjectID: os.Getenv("GCS_PROJECT_ID"),
+		ProjectID: projectID,
 	}
 }
 
@@ -103,6 +110,7 @@ func randomBucketName(prefix string) string {
 
 // TestNewClientWithDifferentJSONKeys tests the newClient function with various JSON key types and error scenarios
 func TestNewClientWithDifferentJSONKeys(t *testing.T) {
+	t.Setenv("STORAGE_EMULATOR_HOST", "")
 	tests := []struct {
 		name        string
 		jsonKey     string
@@ -184,6 +192,7 @@ func TestNewClientWithDifferentJSONKeys(t *testing.T) {
 
 // TestNewClientServiceAccount tests newClient with a service account JSON key
 func TestNewClientServiceAccount(t *testing.T) {
+	t.Setenv("STORAGE_EMULATOR_HOST", "")
 	// Create a minimal service account JSON structure
 	// Note: This will fail at credential creation without a real private key,
 	// but it should pass validation up to that point
@@ -225,6 +234,7 @@ func TestNewClientServiceAccount(t *testing.T) {
 
 // TestNewClientExternalAccount tests newClient with an external account JSON key
 func TestNewClientExternalAccount(t *testing.T) {
+	t.Setenv("STORAGE_EMULATOR_HOST", "")
 	// Create a minimal external account JSON structure
 	// Note: This will fail at credential creation without proper setup,
 	// but it should pass validation up to that point

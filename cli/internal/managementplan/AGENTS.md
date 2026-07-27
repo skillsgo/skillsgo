@@ -15,6 +15,6 @@ This package owns exact External target removal semantics. It delegates recovera
 - Only External Installations may enter this flow; Repository-managed coordinates use Repository remove transactions.
 - Execution is bound to the reviewed filesystem state.
 - Removal is recoverable through the platform Trash or Recycle Bin.
-- This flow never creates declarations, locks, Module Stores, Projections, Receipts, or Store objects.
+- This flow never creates declarations, locks, Package Stores, Projections, Receipts, or Store objects.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

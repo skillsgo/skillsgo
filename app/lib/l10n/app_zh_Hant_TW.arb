@@ -189,7 +189,7 @@
   "allAgents": "所有智慧體",
   "allProjects": "所有專案",
   "specificProject": "指定專案",
-  "userScope": "全域性安裝",
+  "globalScope": "全域性安裝",
   "addProject": "新增專案",
   "relocateProject": "重新定位",
   "removeFromList": "從列表移除",
@@ -595,13 +595,13 @@
   "updateCheckFailed": "檢查失敗",
   "installSkill": "安裝技能",
   "installLocationTitle": "設定技能安裝位置",
-  "userLevel": "使用者級別",
+  "globalLevel": "全域",
   "projectLevel": "專案級別",
   "projects": "專案",
   "loading": "正在載入…",
   "repositoryParsing": "正在解析來源…",
-  "userInstallSummary": "將在使用者級別供 {agents} 個智慧體使用",
-  "@userInstallSummary": {
+  "globalInstallSummary": "將在全域範圍供 {agents} 個智體使用",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

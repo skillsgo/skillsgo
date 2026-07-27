@@ -406,7 +406,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get specificProject => 'Proje';
 
   @override
-  String get userScope => 'Küresel';
+  String get globalScope => 'Küresel';
 
   @override
   String get addProject => 'Proje Ekle';
@@ -1087,6 +1087,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get language => 'Dil';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Tema';
 
   @override
@@ -1221,7 +1224,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get installLocationTitle => 'Kurulum konumunu ayarlayın';
 
   @override
-  String get userLevel => 'Kullanıcı Seviyesi';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'Proje Düzeyi';
@@ -1236,8 +1239,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get repositoryParsing => 'Depo ayrıştırılıyor…';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'Kullanıcı düzeyinde $agents Agents için kullanılabilir';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

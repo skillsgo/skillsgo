@@ -1,6 +1,6 @@
 # SkillsGo User Journeys and Information Architecture
 
-This document defines navigation, core journeys, page states, and interaction boundaries for the Personal desktop App. Users should be able to discover, inspect, and manage every local Agent Skill without understanding CLI arguments, Module Store layout, or Agent directories.
+This document defines navigation, core journeys, page states, and interaction boundaries for the Personal desktop App. Users should be able to discover, inspect, and manage every local Agent Skill without understanding CLI arguments, Package Store layout, or Agent directories.
 
 ## Product Principles
 
@@ -47,7 +47,7 @@ Project B
 ```
 
 - All Skills aggregates every known location and Agent.
-- Global is the user-facing label for User Scope and shows only user-level targets.
+- Global shows only Global Scope targets.
 - Projects include only directories explicitly added by the user.
 - The content toolbar keeps search, update status, and an Agent multi-select separate from location navigation. Every Installed Agent remains available even when it has zero Skills.
 - One location route and any Agent subset may be combined. The project dropdown is removed so the rail is the only location-navigation control.
@@ -154,8 +154,8 @@ The user can Retry Failed Targets, View in Library, or remain on the current det
 The Library merges facts from:
 
 - user and project `skills.yaml` declarations plus `skills-lock.yaml` integrity state;
-- authoritative Scope Module Store trees and derived Repository Projections;
-- user-level Skill directories for Installed Agents;
+- authoritative Scope Package Store trees and derived Repository Projections;
+- Global Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.
 
@@ -171,7 +171,7 @@ row keeps the Skill identity primary and shows:
 
 Each row has a selection checkbox. Selecting one or more rows opens a floating
 selection bar for the existing Update and Manage Targets journeys. These
-journeys retain their per-entry preflight, exact-target review, confirmation,
+journeys retain their per-entry planning, exact-target review, confirmation,
 progress, and result behavior. Health, provenance, target count, versions, risk,
 and update details remain available in Skill detail rather than as row status or
 row actions.
@@ -179,11 +179,11 @@ row actions.
 ### View Semantics
 
 - **All Skills**: every Library Entry.
-- **Global**: entries with at least one user-level target; detail opens with user-level targets as the current context.
+- **Global**: entries with at least one Global target; detail opens with Global targets as the current context.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
+Batch Takeover uses the selected location as its complete scope boundary. All Skills scans Global Scope and every accessible Added Project, Global scans only Global Scope, and a Project route scans only that Project. Independent planning displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -223,22 +223,22 @@ Primary actions include:
 - Show only targets belonging to the current Skill.
 - Require explicit target selection instead of an ambiguous Delete Skill action.
 - Removing one target never affects other targets for the same Skill.
-- Removing the final selected member atomically removes the Repository dependency, Lock entry, Module Store, and affected Projections in that declaration scope.
+- Removing the final selected member atomically removes the Repository dependency, Lock entry, Package Store, and affected Projections in that declaration scope.
 - Allow exact-path External Installation removal after reviewed confirmation; do not require or perform adoption.
 
 ## Journey 4: Take Over External Installations
 
 An item found in an Agent directory without a SkillsGo receipt appears as an External Installation. Users may inspect it and may remove its exact path after reviewed confirmation. It cannot be updated or repaired while External.
 
-The first time an active Library view finishes preflight with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage, and reduced-motion users receive the same deterministic layout without physics. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
+The first time an active Library view finishes planning with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage, and reduced-motion users receive the same deterministic layout without physics. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
 
 Batch Takeover performs the following journey within the currently selected Library location:
 
-1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
+1. Preflight External copies reported by the CLI across Global Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
 2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
 3. Confirm only the currently selected location and execute that subset of the same plan.
-4. Revalidate each authorized candidate against the immutable Repository Artifact, install through the ordinary Dependency/Lock/Module Store/Projection transaction, and move the superseded External directory to recoverable trash.
-5. Skip unmatched, invalid, unsupported-lock, missing, or post-preflight-changed copies independently and report their target-specific reasons; never include newly appeared copies without another preflight.
+4. Revalidate each authorized candidate against the immutable Repository Artifact, install through the ordinary Dependency/Lock/Package Store/Projection transaction, and move the superseded External directory to recoverable trash.
+5. Skip unmatched, invalid, unsupported-lock, missing, or post-planning-changed copies independently and report their target-specific reasons; never include newly appeared copies without another planning pass.
 
 Local import remains a separate explicit journey and never happens as an implicit Batch Takeover fallback.
 

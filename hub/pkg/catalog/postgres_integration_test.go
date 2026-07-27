@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search, Module-owned immutable Releases, and same-name path identity/default selection.
+ * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search, Package-owned immutable Releases, and same-name path identity/default selection.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -38,22 +38,22 @@ func TestPostgresCatalog(t *testing.T) {
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	c, err := Open(ctx, config.DatabaseConfig{
-		Type: "postgres", DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2,
+		DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NotNil(t, c.PostgresPool())
 
-	skill := &Skill{ModulePath: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Path: ".", Description: "Create presentation slides", LatestVersion: "main"}
+	skill := &Skill{PackagePath: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Path: ".", Description: "Create presentation slides", LatestVersion: "main"}
 	for _, item := range []*Skill{
 		skill,
-		{ModulePath: "github.com/acme/presentation-a", Name: "presentation-a", Path: ".", Description: "Presentation capability", LatestVersion: "main"},
-		{ModulePath: "github.com/acme/presentation-b", Name: "presentation-b", Path: ".", Description: "Presentation capability", LatestVersion: "main"},
+		{PackagePath: "github.com/acme/presentation-a", Name: "presentation-a", Path: ".", Description: "Presentation capability", LatestVersion: "main"},
+		{PackagePath: "github.com/acme/presentation-b", Name: "presentation-b", Path: ".", Description: "Presentation capability", LatestVersion: "main"},
 	} {
 		require.NoError(t, upsertTestSkill(t, c, item))
 	}
-	publishTestModule(t, c, skill.ModulePath, "v1.0.0", "commit-a", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, []Skill{*skill})
-	member, err := c.CurrentSkill(ctx, skill.ModulePath, skill.Name)
+	publishTestPackage(t, c, skill.PackagePath, "v1.0.0", "commit-a", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, []Skill{*skill})
+	member, err := c.CurrentSkill(ctx, skill.PackagePath, skill.Name)
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", member.Version)
 	results, err := c.Search(ctx, "presentation", 2, 0)
@@ -63,23 +63,23 @@ func TestPostgresCatalog(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, next, 1)
 
-	duplicateModule := "github.com/acme/duplicate-skills"
+	duplicatePackage := "github.com/acme/duplicate-skills"
 	duplicateCandidates := []Skill{
-		{ModulePath: duplicateModule, Name: "shared", Path: "two", Description: "Second"},
-		{ModulePath: duplicateModule, Name: "shared", Path: "one", Description: "First"},
+		{PackagePath: duplicatePackage, Name: "shared", Path: "two", Description: "Second"},
+		{PackagePath: duplicatePackage, Name: "shared", Path: "one", Description: "First"},
 	}
-	publishTestModule(t, c, duplicateModule, "v1.0.0", "commit-duplicate", "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CurrentPublication, duplicateCandidates)
-	members, err := c.VersionSkills(ctx, duplicateModule, "v1.0.0")
+	publishTestPackage(t, c, duplicatePackage, "v1.0.0", "commit-duplicate", "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CurrentPublication, duplicateCandidates)
+	members, err := c.VersionSkills(ctx, duplicatePackage, "v1.0.0")
 	require.NoError(t, err)
 	require.Equal(t, []string{"one", "two"}, []string{members[0].Path, members[1].Path})
-	defaultSkill, err := c.SkillByCoordinate(ctx, duplicateModule, "shared")
+	defaultSkill, err := c.SkillByCoordinate(ctx, duplicatePackage, "shared")
 	require.NoError(t, err)
 	require.Equal(t, "one", defaultSkill.Path)
-	coordinates, err := c.SkillsByCoordinates(ctx, []protocolapi.SkillCoordinate{{ModulePath: duplicateModule, Name: "shared"}})
+	coordinates, err := c.SkillsByCoordinates(ctx, []protocolapi.SkillCoordinate{{PackagePath: duplicatePackage, Name: "shared"}})
 	require.NoError(t, err)
 	require.Len(t, coordinates, 1)
 	require.Equal(t, "one", coordinates[0].Path)
-	versions, err := c.SkillPublishedVersions(ctx, duplicateModule, "shared")
+	versions, err := c.SkillPublishedVersions(ctx, duplicatePackage, "shared")
 	require.NoError(t, err)
 	require.Equal(t, []string{"v1.0.0"}, versions)
 }

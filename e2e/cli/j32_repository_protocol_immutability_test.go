@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on deterministic Repository tags and public Module JSON list, revision-resolving Info, and immutable ZIP routes.
+ * [INPUT]: Depends on deterministic Repository tags and public Package JSON list, revision-resolving Info, and immutable ZIP routes.
  * [OUTPUT]: Provides black-box coverage for JSON version listing, revision-resolving metadata, query/distribution separation, legacy-route rejection, and immutable responses after a source tag moves.
  * [POS]: Serves as the Repository wire-protocol immutability journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -40,7 +40,7 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 
 	exact := execInContainer(t, ctx, container, "wget", "-qO-", base+"/versions/v1.0.0")
 	require.Equal(t, 0, exact.exitCode, exact.output)
-	require.Contains(t, exact.output, `"kind":"Module"`)
+	require.Contains(t, exact.output, `"kind":"Package"`)
 	require.Contains(t, exact.output, `"version":"v1.0.0"`)
 	commit := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/collection", "rev-parse", "v1.0.0^{commit}")
 	require.Equal(t, 0, commit.exitCode, commit.output)

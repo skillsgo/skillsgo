@@ -1,4 +1,8 @@
 #!/bin/bash -e
+# [INPUT]: Depends on a built Hub binary, config.yaml, systemd or SysV, and privileged installation commands.
+# [OUTPUT]: Installs, removes, inspects, and logs the Hub system service.
+# [POS]: Serves as the legacy Linux service-management entry point for the Hub workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 # This script manages installation using SystemD, if available, or SysV as a fall-back.
 #
 # Usage:
@@ -34,13 +38,13 @@ function ensureSystemdIsPresent
 # doInstallConfig installs the config file
 function doInstallConfig
 {
-  if [ ! -r config.toml ]; then
-    echo "Missing: config.toml"
-    echo "Copy & modify config.dev.toml as needed."
+  if [ ! -r config.yaml ]; then
+    echo "Missing: config.yaml"
+    echo "Copy & modify config.dev.yaml as needed."
     exit 1
   fi
   sudo mkdir -p /etc/athens
-  sudo install -v -o root -g root -m 644 config.toml /etc/athens
+  sudo install -v -o root -g root -m 644 config.yaml /etc/athens
 }
 
 # doInstallBinary copies the Athens binary to /usr/local/bin with the necessary settings.
@@ -63,7 +67,7 @@ function doInstallBinary
 # doInstallSystemd sets up the SystemD service unit.
 function doInstallSystemd
 {
-  local rootPath=$(sed -nr 's/(RootPath) = (".*")/\2/p' /etc/athens/config.toml | xargs)
+  local rootPath=$(sed -nr 's/^\s*RootPath:\s*"(.*)"/\1/p' /etc/athens/config.yaml | xargs)
   sed -i "/ReadWritePaths/ s|=.*|=$rootPath|" scripts/service/athens.service
 
   sudo install -v -o root -g root -m 644 scripts/service/athens.service /etc/systemd/system

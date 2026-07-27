@@ -128,7 +128,7 @@ class InstallationExecutionSummary {
 
 class InstallationExecution {
   const InstallationExecution({
-    required this.modulePath,
+    required this.packagePath,
     required this.skillName,
     required this.version,
     required this.name,
@@ -136,7 +136,7 @@ class InstallationExecution {
     required this.summary,
   });
 
-  final String modulePath;
+  final String packagePath;
   final String skillName;
   final String version;
   final String name;

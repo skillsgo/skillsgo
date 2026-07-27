@@ -48,7 +48,7 @@ func openActionTestCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()
 	ctx := t.Context()
 	dsn := actionTestPostgresDSN(t)
-	metadata, err := catalog.Open(ctx, config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 	return metadata
@@ -131,19 +131,19 @@ func (s *catalogArtifactStub) Info(_ context.Context, skillID, version string) (
 			return info, nil
 		}
 	}
-	modulePath, immutableVersion := "github.com/mattpocock/skills", "v0.0.0-test"
+	packagePath, immutableVersion := "github.com/mattpocock/skills", "v0.0.0-test"
 	archive := defaultCatalogRepositoryArchive()
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, immutableVersion)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, immutableVersion)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(protocolapi.ModuleInfo{SchemaVersion: 1, Kind: protocolapi.KindModule, ModulePath: modulePath, Version: immutableVersion,
+	return json.Marshal(protocolapi.PackageInfo{SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: immutableVersion,
 		Time: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Sum: sum, ArchiveSize: int64(len(archive)),
-		Skills: []protocolapi.ModuleSkill{{Name: "ask-matt", Path: "skills/engineering/ask-matt"}}})
+		Skills: []protocolapi.PackageSkill{{Name: "ask-matt", Path: "skills/engineering/ask-matt"}}})
 }
 
-func (s *catalogArtifactStub) List(_ context.Context, modulePath string) ([]string, error) {
-	return append([]string(nil), s.lists[modulePath]...), nil
+func (s *catalogArtifactStub) List(_ context.Context, packagePath string) ([]string, error) {
+	return append([]string(nil), s.lists[packagePath]...), nil
 }
 
 func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {
@@ -184,8 +184,8 @@ func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
 
 func TestCatalogAPIListAndFind(t *testing.T) {
 	r, c := testCatalogAPI(t)
-	skill := &catalog.Skill{ModulePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", SourceRepository: "mattpocock/skills", LatestVersion: "main"}
-	require.NoError(t, c.PublishModuleVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.ModuleVersion{
+	skill := &catalog.Skill{PackagePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", SourceRepository: "mattpocock/skills", LatestVersion: "main"}
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: "v0.0.0-test", Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree",
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: int64(len(defaultCatalogRepositoryArchive())), CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{*skill}, catalog.CurrentPublication))
@@ -197,7 +197,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		require.Equal(t, http.StatusOK, recorder.Code, path)
 		require.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
-		require.Contains(t, recorder.Body.String(), `"modulePath":"github.com/mattpocock/skills"`)
+		require.Contains(t, recorder.Body.String(), `"packagePath":"github.com/mattpocock/skills"`)
 	}
 
 	recorder := httptest.NewRecorder()
@@ -209,15 +209,15 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.False(t, response.Pagination.HasMore)
 
 	sourced := httptest.NewRecorder()
-	serveFiber(t, r, sourced, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=ask-matt&modulePath=github.com%2Fmattpocock%2Fskills&perPage=10", nil))
+	serveFiber(t, r, sourced, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=ask-matt&packagePath=github.com%2Fmattpocock%2Fskills&perPage=10", nil))
 	require.Equal(t, http.StatusOK, sourced.Code)
 	var sourcedResponse skillsResponse
 	require.NoError(t, json.NewDecoder(sourced.Body).Decode(&sourcedResponse))
 	require.Len(t, sourcedResponse.Skills, 1)
-	require.Equal(t, "github.com/mattpocock/skills", sourcedResponse.Skills[0].ModulePath)
+	require.Equal(t, "github.com/mattpocock/skills", sourcedResponse.Skills[0].PackagePath)
 
 	findBatch := httptest.NewRecorder()
-	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","modulePath":"github.com/mattpocock/skills"}],"limit":10,"locale":"en"}`))
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10,"lang":"en"}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")
 	serveFiber(t, r, findBatch, findBatchRequest)
 	require.Equal(t, http.StatusOK, findBatch.Code)
@@ -242,27 +242,27 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	}
 
 	batch := httptest.NewRecorder()
-	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"modulePath":"github.com/mattpocock/skills","name":"missing"},{"modulePath":"github.com/mattpocock/skills","name":"ask-matt"}]}`))
+	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"packagePath":"github.com/mattpocock/skills","path":"skills/missing"},{"packagePath":"github.com/mattpocock/skills","path":"skills/engineering/ask-matt"}]}`))
 	serveFiber(t, r, batch, batchRequest)
 	require.Equal(t, http.StatusOK, batch.Code)
 	var batchBody skillBatchResponse
 	require.NoError(t, json.NewDecoder(batch.Body).Decode(&batchBody))
 	require.Len(t, batchBody.Skills, 1)
-	require.Equal(t, "github.com/mattpocock/skills", batchBody.Skills[0].ModulePath)
+	require.Equal(t, "github.com/mattpocock/skills", batchBody.Skills[0].PackagePath)
 }
 
 func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	router, metadata := testCatalogAPI(t)
-	modulePath := "github.com/example/history"
+	packagePath := "github.com/example/history"
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	candidates := []catalog.Skill{{
-		ModulePath: modulePath, Path: "skills/retired", Name: "retired", Description: "Historical only capability",
+		PackagePath: packagePath, Path: "skills/retired", Name: "retired", Description: "Historical only capability",
 	}}
-	identity := catalog.ModuleVersion{
+	identity := catalog.PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree",
 		Sum: digest, ArchiveSize: 10, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	require.NoError(t, metadata.PublishModuleVersionWithVisibility(t.Context(), modulePath, identity, candidates, catalog.HistoricalPublication))
+	require.NoError(t, metadata.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, catalog.HistoricalPublication))
 
 	search := httptest.NewRecorder()
 	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired", nil))
@@ -276,31 +276,31 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t *testing.T) {
 	c := openActionTestCatalog(t)
 	known := &catalog.Skill{
-		ModulePath: "github.com/example/skills", Path: "review", Name: "review",
+		PackagePath: "github.com/example/skills", Path: "review", Name: "review",
 		SourceHost: "github.com", SourceRepository: "example/skills", LatestVersion: "v1.3.0",
 	}
 	require.NoError(t, upsertActionTestSkill(context.Background(), c, known))
-	modulePath := "github.com/example/skills"
+	packagePath := "github.com/example/skills"
 	repositoryInfo := func(version string) []byte {
-		return []byte(fmt.Sprintf(`{"schemaVersion":1,"kind":"Module","modulePath":%q,"version":%q,"skills":[{"name":"review","path":"review"}]}`, modulePath, version))
+		return []byte(fmt.Sprintf(`{"schemaVersion":1,"kind":"Package","packagePath":%q,"version":%q,"skills":[{"name":"review","path":"review"}]}`, packagePath, version))
 	}
 	artifacts := &catalogArtifactStub{
-		lists: map[string][]string{modulePath: {"v1.3.0"}},
+		lists: map[string][]string{packagePath: {"v1.3.0"}},
 		infos: map[string][]byte{
-			modulePath + "@v1.3.0": repositoryInfo("v1.3.0"),
+			packagePath + "@v1.3.0": repositoryInfo("v1.3.0"),
 		},
 	}
 	r := newFiberApp()
 	registerCatalogAPIRoutes(r, c, artifacts)
-	body := `{"schemaVersion":1,"skills":[{"modulePath":"github.com/example/skills","name":"missing"},{"modulePath":"github.com/example/skills","name":"review"}]}`
+	body := `{"schemaVersion":1,"skills":[{"packagePath":"github.com/example/skills","name":"missing"},{"packagePath":"github.com/example/skills","name":"review"}]}`
 	recorder := httptest.NewRecorder()
 	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/skills/check-update", strings.NewReader(body)))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	var response catalogUpdateCheckResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
 	require.Equal(t, []catalogUpdateCheckItem{
-		{ModulePath: modulePath, Name: "missing", Status: "unsupported"},
-		{ModulePath: modulePath, Name: "review", LatestVersion: "v1.3.0", Status: "available"},
+		{PackagePath: packagePath, Name: "missing", Status: "unsupported"},
+		{PackagePath: packagePath, Name: "review", LatestVersion: "v1.3.0", Status: "available"},
 	}, response.Items)
 }
 
@@ -325,7 +325,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	items := make([]*catalog.Skill, 0, 3)
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		items = append(items, &catalog.Skill{
-			ModulePath: "github.com/acme/skills", Path: name,
+			PackagePath: "github.com/acme/skills", Path: name,
 			Name: name, Description: "Agent capability", LatestVersion: "v1.0.0",
 		})
 	}

@@ -115,7 +115,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   BatchTakeoverScope? get _currentTakeoverScope =>
       switch (selectedLocation.kind) {
         _LibraryLocationKind.all => BatchTakeoverScope.all,
-        _LibraryLocationKind.global => BatchTakeoverScope.user,
+        _LibraryLocationKind.global => BatchTakeoverScope.global,
         _LibraryLocationKind.project =>
           _selectedProject == null
               ? null
@@ -228,7 +228,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           ),
           SkillsRailItem(
             value: _LibraryLocationRoute.global,
-            label: context.l10n.userScope,
+            label: context.l10n.globalScope,
             icon: HugeIcons.strokeRoundedUser,
           ),
         ],

@@ -71,7 +71,7 @@ func testListSuffix(t *testing.T, b storage.Backend) {
 	}
 	for modname, versions := range modVers {
 		for _, version := range versions {
-			mock := getMockModule()
+			mock := getMockPackage()
 			err := b.Save(
 				ctx,
 				modname,
@@ -109,7 +109,7 @@ func testList(t *testing.T, b storage.Backend) {
 	modname := "github.com/skillsgo/skillsgo/hub"
 	versions := []string{"v1.1.0", "v1.2.0", "v1.3.0"}
 	for _, version := range versions {
-		mock := getMockModule()
+		mock := getMockPackage()
 		err := b.Save(
 			ctx,
 			modname,
@@ -135,7 +135,7 @@ func testGet(t *testing.T, b storage.Backend) {
 	ctx := t.Context()
 	modname := "github.com/skillsgo/skillsgo/hub"
 	ver := "v1.2.3"
-	mock := getMockModule()
+	mock := getMockPackage()
 	zipBts, _ := io.ReadAll(mock.Zip)
 	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	defer b.Delete(ctx, modname, ver)
@@ -156,7 +156,7 @@ func testExists(t *testing.T, b storage.Backend) {
 	ctx := t.Context()
 	modname := "github.com/skillsgo/skillsgo/hub"
 	ver := "v1.2.3"
-	mock := getMockModule()
+	mock := getMockPackage()
 	zipBts, _ := io.ReadAll(mock.Zip)
 	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	defer b.Delete(ctx, modname, ver)
@@ -170,7 +170,7 @@ func testShouldNotExist(t *testing.T, b storage.Backend) {
 	ctx := t.Context()
 	mod := "github.com/gomods/shouldNotExist"
 	ver := "v1.2.3-pre.1"
-	mock := getMockModule()
+	mock := getMockPackage()
 	zipBts, _ := io.ReadAll(mock.Zip)
 	err := b.Save(ctx, mod, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	require.NoError(t, err, "should successfully safe a mock module")
@@ -193,7 +193,7 @@ func testDelete(t *testing.T, b storage.Backend) {
 	modname := "github.com/skillsgo/skillsgo/hub"
 	version := fmt.Sprintf("%s%d", "delete", rand.Int())
 
-	mock := getMockModule()
+	mock := getMockPackage()
 	err := b.Save(ctx, modname, version, mock.Zip, mock.ZipMD5, mock.Info)
 	require.NoError(t, err)
 
@@ -211,7 +211,7 @@ type artifactFixture struct {
 	Info   []byte
 }
 
-func getMockModule() *artifactFixture {
+func getMockPackage() *artifactFixture {
 	return &artifactFixture{
 		Info:   []byte("123"),
 		Zip:    io.NopCloser(bytes.NewReader([]byte("789"))),

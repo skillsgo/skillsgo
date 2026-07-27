@@ -4,7 +4,7 @@
 
 ## Members
 
-- `cloud.go`: public endpoint paths, install-event DTOs, ranking DTOs, enums, and deterministic wire-level validation.
+- `cloud.go`: public endpoint paths and query names, install-event DTOs, ranking DTOs, enums, and deterministic wire-level validation.
 - `cloud_test.go`: specifies JSON field names, enum vocabulary, validation boundaries, and metadata-free ranking responses.
 - `testdata/`: stable valid JSON examples consumed by producers, clients, documentation, and compatibility tests.
 

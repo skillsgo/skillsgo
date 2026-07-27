@@ -4,7 +4,8 @@
 ## Members
 
 - `settings_screen_core.dart`: owns settings-route state, lifecycle, local Library refresh feedback, and secondary-body composition.
-- `settings_sections.dart`: renders the General, Reminders, Agents, and Advanced route structure, including Onboarding re-entry and the final local Library refresh action.
+- `settings_sections.dart`: renders the General, Reminders, Agents, and Advanced route structure, including Onboarding re-entry, local Library refresh, and the final Mermaid gallery entry.
+- `mermaid_gallery.dart`: renders 32-type native and Beautiful Mermaid/fallback comparisons plus an official Mermaid.js 11.16.0 gallery with one WebView per source block.
 - `appearance_settings.dart`: renders folder theme, appearance mode, wallpaper, and related controls.
 - `integration_settings.dart`: renders CLI, Hub Origin, storage, reminders, and recovery controls.
 - `language_selector.dart`: renders and persists Presentation Locale selection.
