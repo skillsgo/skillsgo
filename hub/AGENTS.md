@@ -38,7 +38,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
 | `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
-| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh/prewarm, and Repository History Backfill, sharing Catalog's pgx pool and transactions. |
+| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh, and Package History Backfill, sharing Catalog's pgx pool and transactions. |
 | `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |

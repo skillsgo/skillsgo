@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, the Hub task runtime, an optional bearer-token pool, and bounded HTTP requests.
- * [OUTPUT]: Provides stale-while-revalidate Repository descriptions and Stars with durable refresh, TTL, ETag, token failover, and rate-limit backoff.
+ * [OUTPUT]: Provides stale-while-revalidate Repository descriptions and Stars with durable metadata refresh, TTL, ETag, token failover, and rate-limit backoff.
  * [POS]: Serves as the cached source-metadata adapter and River task handler; request availability never depends on the provider API.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -174,11 +174,6 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 			log.EntryFromContext(ctx).WithFields(map[string]any{
 				"error": err.Error(), "package_path": packagePath,
 			}).Warnf("repository metadata refresh submission failed")
-		}
-		if err := enqueueRepositoryPrewarm(ctx, c.tasks, packagePath, "latest"); err != nil {
-			log.EntryFromContext(ctx).WithFields(map[string]any{
-				"error": err.Error(), "package_path": packagePath,
-			}).Warnf("module prewarm submission failed")
 		}
 		logSourceMetadataCache(ctx, packagePath, "stale_queued")
 		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
