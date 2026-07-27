@@ -406,7 +406,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get specificProject => 'dự án';
 
   @override
-  String get userScope => 'Toàn cầu';
+  String get globalScope => 'Toàn cầu';
 
   @override
   String get addProject => 'Thêm dự án';
@@ -1088,6 +1088,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get language => 'Ngôn ngữ';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'chủ đề';
 
   @override
@@ -1223,7 +1226,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get installLocationTitle => 'Đặt vị trí cài đặt';
 
   @override
-  String get userLevel => 'Cấp độ người dùng';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'Cấp độ dự án';
@@ -1238,8 +1241,8 @@ class AppLocalizationsVi extends AppLocalizations {
   String get repositoryParsing => 'Đang phân tích kho lưu trữ…';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'Có sẵn cho Agent $agents ở cấp độ người dùng';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

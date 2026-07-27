@@ -36,12 +36,38 @@ type missingArgs struct{}
 
 func (missingArgs) Kind() string { return "missing" }
 
+type unlimitedArgs struct{}
+
+func (unlimitedArgs) Kind() string              { return "unlimited" }
+func (unlimitedArgs) JobTimeout() time.Duration { return -1 }
+
 func TestBalancedQueueWorkersPreservesTotalBudget(t *testing.T) {
 	queues := BalancedQueueWorkers(10)
 	require.Equal(t, 2, queues[river.QueueDefault])
 	require.Equal(t, 6, queues[QueueSource])
 	require.Equal(t, 2, queues[QueueMaintenance])
 	require.Equal(t, QueueSource, riverInsertOptions(InsertOptions{Queue: QueueSource}).Queue)
+}
+
+func TestUniqueInsertOptionsDeduplicateOnlyActiveJobs(t *testing.T) {
+	opts := riverInsertOptions(InsertOptions{Unique: true})
+	require.True(t, opts.UniqueOpts.ByArgs)
+	require.ElementsMatch(t, []rivertype.JobState{
+		rivertype.JobStateAvailable,
+		rivertype.JobStatePending,
+		rivertype.JobStateRetryable,
+		rivertype.JobStateRunning,
+		rivertype.JobStateScheduled,
+	}, opts.UniqueOpts.ByState)
+	require.NotContains(t, opts.UniqueOpts.ByState, rivertype.JobStateCompleted)
+}
+
+func TestTypedWorkerUsesJobSpecificTimeout(t *testing.T) {
+	unlimitedWorker := &typedWorker[unlimitedArgs]{}
+	require.Equal(t, time.Duration(-1), unlimitedWorker.Timeout(&river.Job[unlimitedArgs]{Args: unlimitedArgs{}}))
+
+	defaultWorker := &typedWorker[reindexArgs]{}
+	require.Zero(t, defaultWorker.Timeout(&river.Job[reindexArgs]{Args: reindexArgs{}}))
 }
 
 func TestSynchronousRuntimeDispatchesTypedJob(t *testing.T) {

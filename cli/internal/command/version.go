@@ -17,7 +17,7 @@ import (
 
 const (
 	startupHandshakeSchemaVersion = 1
-	appProtocolVersion            = 10
+	appProtocolVersion            = 15
 )
 
 type startupHandshake struct {
@@ -32,9 +32,10 @@ type startupHandshake struct {
 func newVersionCommand() *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: appi18n.T("version.short"),
-		Args:  cobra.NoArgs,
+		Use:     "version",
+		Short:   appi18n.T("version.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo version\n  skillsgo version --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if output == "json" {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(startupHandshake{

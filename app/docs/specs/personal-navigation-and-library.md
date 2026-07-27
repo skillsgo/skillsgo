@@ -17,7 +17,7 @@ documents listed in `superseded_by`.
 
 SkillsGo currently proves a narrow search-to-install loop, but it does not yet behave like a complete desktop manager for Agent Skills. Users see three top-level pages without the deeper navigation needed to browse rankings, manage multiple projects, understand which Agents use a Skill, or distinguish SkillsGo-managed targets from Skills already present on disk.
 
-The current App assumes a user-level Codex installation, requires an externally installed CLI during development, and represents installed Skills as a mostly flat list. That model breaks down as soon as one Skill is installed for several Agents, different projects intentionally use different versions, or a user already has Skills installed by another tool. Users need one trustworthy Library that reflects the machine, preserves project intent, and makes every mutation explicit.
+The current App assumes a Global Codex installation, requires an externally installed CLI during development, and represents installed Skills as a mostly flat list. That model breaks down as soon as one Skill is installed for several Agents, different projects intentionally use different versions, or a user already has Skills installed by another tool. Users need one trustworthy Library that reflects the machine, preserves project intent, and makes every mutation explicit.
 
 ## Solution
 
@@ -78,7 +78,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 45. As a user after partial failure, I want to retry only failed targets, so that recovery is efficient and predictable.
 46. As a user after installation, I want an explicit View in Library action without forced navigation, so that I control the next step.
 47. As a Personal User, I want one All view of every known Skill, so that I can understand my complete local inventory.
-48. As a Personal User, I want a Global view, so that user-level Agent capabilities are easy to isolate without exposing scope terminology in navigation.
+48. As a Personal User, I want a Global view, so that Global Agent capabilities are easy to isolate without exposing scope terminology in navigation.
 49. As a project user, I want one rail entry per Added Project, so that project-specific inventories are one click away.
 50. As a multi-Agent user, I want every Installed Agent available in a multi-select filter, so that I can inspect Agent coverage within All Skills, Global, or one project.
 51. As a user of an Agent with zero Skills, I want it to remain available in the Agent filter, so that the App can guide me to install its first Skill.
@@ -94,7 +94,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 61. As a project user, I want an updated target to update its Workspace Manifest after confirmation, so that the project remains reproducible.
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
-64. As a user removing the last selected member, I want the Repository dependency, Module Store, and Projections updated atomically, so that no partial managed state remains.
+64. As a user removing the last selected member, I want the Repository dependency, Package Store, and Projections updated atomically, so that no partial managed state remains.
 65. As a user with an unhealthy target, I want SkillsGo to report the conflict without repair or destructive removal, so that it never overwrites or deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
@@ -126,7 +126,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 90. As a maintainer, I want App-to-CLI communication to use stable structured contracts, so that localized human output never breaks the GUI.
 91. As a maintainer, I want every operation result associated with an explicit Installation Target, so that partial failure and retry are deterministic.
 92. As an international contributor, I want repository documentation, specifications, ADRs, and issue content in English, so that collaboration is not language-gated.
-93. As a user with manageable existing Skills, I want one localized and truthful Before/After introduction only after Library preflight succeeds, so that I understand the value before choosing once and can still use the counted manual action after skipping.
+93. As a user with manageable existing Skills, I want one localized and truthful Before/After introduction only after Library planning succeeds, so that I understand the value before choosing once and can still use the counted manual action after skipping.
 
 ## Implementation Decisions
 
@@ -140,16 +140,16 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
 - Keep the App's highest test and orchestration seam as `SkillsGateway`. UI code receives domain objects and operations rather than directly invoking HTTP, processes, or the filesystem.
 - Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Hub collection pages.
-- Treat the SkillsGo CLI as the only owner of local Skill mutations, Agent Adapter behavior, Repository Dependencies, Workspace Locks, Scope Module Store, and Repository Projections.
-- Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved user-level target information. Human CLI output is not part of the App contract.
-- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns Repository ID plus canonical Skill Name when known, an inventory key, provenance, versions, and every target with scope, project, Agent, path, and health.
+- Treat the SkillsGo CLI as the only owner of local Skill mutations, Agent Adapter behavior, Repository Dependencies, Workspace Locks, Scope Package Store, and Repository Projections.
+- Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved Global target information. Human CLI output is not part of the App contract.
+- Add a stable CLI inventory contract that accepts Global Scope plus an explicit list of Added Project roots. It returns Repository ID plus canonical Skill Name when known, an inventory key, provenance, versions, and every target with scope, project, Agent, path, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
 - Aggregate Hub Skills by Repository ID plus canonical Skill Name, Local Skills by inventory key, and leave External Installations without managed Repository-member identity distinct even when names match.
 - The Add Project journey uses the operating system's multi-directory picker. Files are not selectable; canonical duplicate directories are retained only once, and one batch persists all newly selected project references together.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
 - Model installation as one immutable Repository transaction plus selected member paths and explicit Agents within one declaration scope.
-- The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
-- A Repository transaction atomically commits its Dependency, Lock, Module Store, and Projections. Independent declaration scopes remain independent retry units.
+- The CLI plans and revalidates every target before a `--yes`-confirmed mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
+- A Repository transaction atomically commits its Dependency, Lock, Package Store, and Projections. Independent declaration scopes remain independent retry units.
 - Structured operation progress must remain machine-readable. The final result is stable JSON; if streaming progress is introduced, it uses a versioned structured event protocol rather than localized text parsing.
 - Existing identical targets are skipped. Same-name different-source collisions, Version Divergence, and Local Modifications require explicit resolutions.
 - Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Manifest only after confirmation. Fixed commits without a movable reference do not report an available update.
@@ -171,7 +171,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Gateway contract tests use controlled process runners to verify CLI schemas, non-success exit handling, malformed responses, timeout behavior, and error translation; Hub HTTP behavior is tested behind the CLI Hub adapter rather than through an App HTTP client.
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
-- Lower-level Agent Adapter, Repository artifact, Module Store, Projection, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
+- Lower-level Agent Adapter, Repository artifact, Package Store, Projection, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
 - The Hub HTTP Router tests Search, detail, immutable metadata, pagination, empty arrays, and validation. The independent Cloud service tests Ranking, Trending, Hot, pagination, and idempotent install events through the shared public Protocol conformance suite.
 - Hub HTTP tests verify catalog behavior across SQLite and PostgreSQL. Private Cloud tests verify its independent SQLite statistics database and ranking projections.
 - Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
@@ -204,7 +204,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 ## Further Notes
 
 - The Hub exposes Search and Skill hydration. In Cloud mode the App reads ordered ranking IDs and metrics directly from Cloud, then hydrates their authoritative Skill cards through the CLI-mediated Hub boundary.
-- The CLI owns Agent Adapters, User Scope, Workspace Scope, Repository Dependencies, Workspace Locks, Scope Module Store, and Repository Projections; the App integrates only through stable machine contracts.
+- The CLI owns Agent Adapters, Global Scope, Workspace Scope, Repository Dependencies, Workspace Locks, Scope Package Store, and Repository Projections; the App integrates only through stable machine contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.
 - The Burrow reference supplies visual language and motion quality, not its exact icon-only navigation. SkillsGo requires text because Added Projects and Installed Agents are dynamic user-owned entities.

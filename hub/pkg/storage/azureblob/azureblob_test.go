@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the azureblob package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the azureblob package behavior covered by azureblob_test.go.
- * [POS]: Serves as test coverage for the azureblob package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the shared storage compliance suite and either Azurite test settings or real Azure Blob credentials.
+ * [OUTPUT]: Specifies Azure Blob backend compliance against an explicitly configured test service.
+ * [POS]: Serves as emulator-friendly integration coverage for the Azure Blob storage adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package azureblob
@@ -9,8 +9,10 @@ package azureblob
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
@@ -62,7 +64,21 @@ func getStorage(t testing.TB) *Storage {
 		t.SkipNow()
 	}
 
-	s, err := New(cfg, config.GetTimeoutDuration(30))
+	var s *Storage
+	var err error
+	if endpoint := os.Getenv("SKILLSGO_TEST_AZURE_BLOB_ENDPOINT"); endpoint != "" {
+		accountURL, parseErr := url.Parse(endpoint)
+		if parseErr != nil {
+			t.Fatal(parseErr)
+		}
+		client, clientErr := newBlobStoreClient(accountURL, cfg.AccountName, cfg.AccountKey, "", "", containerName)
+		if clientErr != nil {
+			t.Fatal(clientErr)
+		}
+		s = &Storage{client: client, timeout: 30 * time.Second}
+	} else {
+		s, err = New(cfg, config.GetTimeoutDuration(30))
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,13 +91,19 @@ func getStorage(t testing.TB) *Storage {
 }
 
 func getTestConfig(containerName string) *config.AzureBlobConfig {
-	key := os.Getenv("SKILLSGO_HUB_AZURE_ACCOUNT_KEY")
+	key := os.Getenv("SKILLSGO_TEST_AZURE_ACCOUNT_KEY")
+	name := os.Getenv("SKILLSGO_TEST_AZURE_ACCOUNT_NAME")
+	if key != "" && name != "" {
+		return &config.AzureBlobConfig{AccountName: name, AccountKey: key, ContainerName: containerName}
+	}
+
+	key = os.Getenv("SKILLSGO_HUB_AZURE_ACCOUNT_KEY")
 	resourceId := os.Getenv("SKILLSGO_HUB_AZURE_MANAGED_IDENTITY_RESOURCE_ID")
 	credentialScope := os.Getenv("SKILLSGO_HUB_AZURE_CREDENTIAL_SCOPE")
 	if key == "" && (resourceId == "" || credentialScope == "") {
 		return nil
 	}
-	name := os.Getenv("SKILLSGO_HUB_AZURE_ACCOUNT_NAME")
+	name = os.Getenv("SKILLSGO_HUB_AZURE_ACCOUNT_NAME")
 	if name == "" {
 		return nil
 	}

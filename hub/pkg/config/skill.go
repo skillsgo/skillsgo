@@ -18,10 +18,10 @@ func FmtSkillVersion(skill, version string) string {
 	return fmt.Sprintf("%s@%s", skill, version)
 }
 
-// ModuleVersionFromPath returns module and version from a
+// PackageVersionFromPath returns module and version from a
 // storage path.
 // E.g athens/@v/v1.0.info -> athens and v.1.0.
-func ModuleVersionFromPath(path string) (string, string) {
+func PackageVersionFromPath(path string) (string, string) {
 	segments := strings.Split(path, "/@v/")
 	if len(segments) != 2 {
 		return "", ""

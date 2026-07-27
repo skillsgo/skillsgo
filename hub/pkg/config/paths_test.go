@@ -45,14 +45,6 @@ func TestResolveHubCacheDir(t *testing.T) {
 	}
 }
 
-func TestResolveHubDatabaseDSN(t *testing.T) {
-	got, err := resolveHubDatabaseDSN("postgres", "postgres://hub")
-	require.NoError(t, err)
-	require.Equal(t, "postgres://hub", got)
-	_, err = resolveHubDatabaseDSN("sqlite", "ignored")
-	require.ErrorContains(t, err, "only postgres")
-}
-
 func TestResolveHubArtifactDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

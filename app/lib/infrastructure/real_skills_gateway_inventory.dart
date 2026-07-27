@@ -29,7 +29,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final decoded = _decodeVersionedDocument(
         result.output.stdout,
-        schemaVersion: 1,
+        schemaVersion: 2,
       );
       if (decoded['agents'] is! List) {
         throw const FormatException();
@@ -63,8 +63,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
             if (scopes.isEmpty || scopes.toSet().length != scopes.length) {
               throw const FormatException();
             }
-            final rawTarget = raw['userTarget'];
-            AgentUserTarget? target;
+            final rawTarget = raw['globalTarget'];
+            AgentGlobalTarget? target;
             if (rawTarget != null) {
               if (rawTarget is! Map<String, dynamic> ||
                   rawTarget['path'] is! String ||
@@ -72,12 +72,12 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                   rawTarget['exists'] is! bool) {
                 throw const FormatException();
               }
-              target = AgentUserTarget(
+              target = AgentGlobalTarget(
                 path: rawTarget['path'] as String,
                 exists: rawTarget['exists'] as bool,
               );
             }
-            if (scopes.contains(InstallationScope.user) != (target != null)) {
+            if (scopes.contains(InstallationScope.global) != (target != null)) {
               throw const FormatException();
             }
             final rawDiscoveryRoots = raw['discoveryRoots'];
@@ -96,12 +96,12 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               displayName: raw['displayName'] as String,
               installed: raw['installed'] as bool,
               supportedScopes: scopes,
-              userTarget: target,
+              globalTarget: target,
               discoveryRoots: discoveryRoots,
             );
           })
           .toList(growable: false);
-      return AgentCatalog(schemaVersion: 1, agents: agents);
+      return AgentCatalog(schemaVersion: 2, agents: agents);
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Agent JSON.',
@@ -114,7 +114,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
   }) async {
-    final arguments = <String>['inventory', '--user'];
+    final arguments = <String>['list', '--global'];
     for (final project in projects.where(
       (project) => project.accessState == ProjectAccessState.accessible,
     )) {
@@ -139,7 +139,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                 raw['name'] is! String ||
                 (raw['name'] as String).isEmpty ||
                 (raw['description'] != null && raw['description'] is! String) ||
-                (raw['modulePath'] != null && raw['modulePath'] is! String) ||
+                (raw['packagePath'] != null && raw['packagePath'] is! String) ||
                 raw['versionDivergence'] is! bool ||
                 raw['targets'] is! List ||
                 raw['visibility'] is! List) {
@@ -164,7 +164,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                   final version = target['version'] as String;
                   if ((scope == InstallationScope.project &&
                           projectRoot.isEmpty) ||
-                      (scope == InstallationScope.user &&
+                      (scope == InstallationScope.global &&
                           projectRoot.isNotEmpty) ||
                       (provenance == LibraryProvenance.external &&
                           version.isNotEmpty) ||
@@ -208,7 +208,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                   if (paths.isEmpty ||
                       (scope == InstallationScope.project &&
                           projectRoot.isEmpty) ||
-                      (scope == InstallationScope.user &&
+                      (scope == InstallationScope.global &&
                           projectRoot.isNotEmpty) ||
                       !visibilityKeys.add(key)) {
                     throw const FormatException();
@@ -244,13 +244,13 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.hub &&
-                ((raw['modulePath'] as String? ?? '').isEmpty ||
+                ((raw['packagePath'] as String? ?? '').isEmpty ||
                     raw['inventoryKey'] !=
-                        'hub:${raw['modulePath']}:${raw['name']}')) {
+                        'hub:${raw['packagePath']}:${raw['name']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
-                ((raw['modulePath'] as String? ?? '').isNotEmpty ||
+                ((raw['packagePath'] as String? ?? '').isNotEmpty ||
                     versions.isNotEmpty ||
                     !(raw['inventoryKey'] as String).startsWith('external:'))) {
               throw const FormatException();
@@ -262,7 +262,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               path: targets.first.path,
               agents: agents,
               targetCount: targets.length,
-              modulePath: raw['modulePath'] as String? ?? '',
+              packagePath: raw['packagePath'] as String? ?? '',
               targets: targets,
               visibility: visibility,
               provenance: provenance,
@@ -288,9 +288,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     await _ensureHubOrigin();
     final normalizedProjects = _normalizeTakeoverProjectRoots(projectRoots);
     final arguments = <String>[
-      'takeover',
-      '--preflight',
-      '--user',
+      'adopt',
+      '--global',
       for (final projectRoot in normalizedProjects) ...[
         '--project',
         projectRoot,
@@ -305,7 +304,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = _decodeVersionedDocument(
         command.output.stdout,
-        schemaVersion: 3,
+        schemaVersion: 4,
       );
       if (raw['planId'] is! String ||
           (raw['planId'] as String).isEmpty ||
@@ -318,15 +317,15 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       final skipped = summary['skipped'];
       final scopes = raw['scopes'] as Map<String, dynamic>;
       final previewItems = raw['previews'];
-      final user = scopes['user'];
+      final global = scopes['global'];
       final projects = scopes['projects'];
       if (eligible is! int ||
           eligible < 0 ||
           skipped is! int ||
           skipped < 0 ||
-          user is! Map<String, dynamic> ||
-          user['eligible'] is! int ||
-          (user['eligible'] as int) < 0 ||
+          global is! Map<String, dynamic> ||
+          global['eligible'] is! int ||
+          (global['eligible'] as int) < 0 ||
           projects is! List ||
           previewItems is! List) {
         throw const FormatException();
@@ -372,7 +371,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       return BatchTakeoverPlan(
         id: raw['planId'] as String,
         allEligibleCount: eligible,
-        userEligibleCount: user['eligible'] as int,
+        globalEligibleCount: global['eligible'] as int,
         eligibleCountByProjectRoot: Map.unmodifiable(
           eligibleCountByProjectRoot,
         ),
@@ -398,12 +397,12 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
         kind: SkillsFailureKind.validation,
       );
     }
-    final includeUser = scope.kind != BatchTakeoverScopeKind.project;
+    final includeGlobal = scope.kind != BatchTakeoverScopeKind.project;
     final projectRoots = switch (scope.kind) {
       BatchTakeoverScopeKind.all => plan.eligibleCountByProjectRoot.keys.toList(
         growable: false,
       ),
-      BatchTakeoverScopeKind.user => const <String>[],
+      BatchTakeoverScopeKind.global => const <String>[],
       BatchTakeoverScopeKind.project => [scope.projectRoot],
     };
     final normalizedProjects = _normalizeTakeoverProjectRoots(projectRoots);
@@ -417,10 +416,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       );
     }
     final arguments = <String>[
-      'takeover',
-      '--plan',
-      plan.id,
-      if (includeUser) '--user',
+      'adopt',
+      if (includeGlobal) '--global',
       for (final projectRoot in normalizedProjects) ...[
         '--project',
         projectRoot,
@@ -436,7 +433,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = _decodeVersionedDocument(
         command.output.stdout,
-        schemaVersion: 3,
+        schemaVersion: 4,
       );
       if (raw['summary'] is! Map<String, dynamic> || raw['results'] is! List) {
         throw const FormatException();
@@ -463,7 +460,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           throw const FormatException();
         }
         final target = item['target'] as Map<String, dynamic>;
-        if (target['scope'] != 'user' && target['scope'] != 'project' ||
+        if (target['scope'] != 'global' && target['scope'] != 'project' ||
             target['path'] is! String ||
             (target['projectRoot'] != null &&
                 target['projectRoot'] is! String)) {
@@ -564,7 +561,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           name: skill.name,
           path: targetPath,
           content: markdown,
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           version: immutableVersions.length == 1
               ? immutableVersions.single
               : '',

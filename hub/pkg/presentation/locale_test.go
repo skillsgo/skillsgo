@@ -17,3 +17,18 @@ func TestCanonicalLocale(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalLangRejectsUnconfiguredRegions(t *testing.T) {
+	actual, err := CanonicalLang("PT_br")
+	if err != nil || actual != "pt-BR" {
+		t.Fatalf("CanonicalLang returned %q, %v", actual, err)
+	}
+	if _, err := CanonicalLang("zh-CN"); err == nil {
+		t.Fatal("expected zh-CN to be rejected in favor of zh-Hans-CN")
+	}
+	for _, lang := range []string{"zh-Hans-CN", "zh-Hant-TW", "zh-Hant-HK"} {
+		if _, err := CanonicalLang(lang); err != nil {
+			t.Fatalf("expected %s to be supported: %v", lang, err)
+		}
+	}
+}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub and the public Execute seam with multiple installed Library-entry versions.
- * [OUTPUT]: Specifies one Module-fresh batch request and ordered latest/unsupported results.
+ * [OUTPUT]: Specifies one Package-fresh batch request and ordered latest/unsupported results.
  * [POS]: Serves as the acceptance contract for App-triggered update availability checks.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,16 +29,16 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 		if json.NewDecoder(request.Body).Decode(&body) != nil || body.SchemaVersion != 1 || len(body.Skills) != 3 {
 			t.Fatalf("unexpected request body %+v", body)
 		}
-		_, _ = w.Write([]byte(`{"items":[{"modulePath":"github.com/acme/skills","name":"current","latestVersion":"v1.0.0","status":"available"},{"modulePath":"github.com/acme/skills","name":"review","latestVersion":"v2.0.0","status":"available"},{"modulePath":"github.com/acme/skills","name":"local","status":"unsupported"}]}`))
+		_, _ = w.Write([]byte(`{"items":[{"packagePath":"github.com/acme/skills","name":"current","latestVersion":"v1.0.0","status":"available"},{"packagePath":"github.com/acme/skills","name":"review","latestVersion":"v2.0.0","status":"available"},{"packagePath":"github.com/acme/skills","name":"local","status":"unsupported"}]}`))
 	}))
 	defer server.Close()
 
 	var stdout bytes.Buffer
 	err := Execute([]string{
-		"updates", "check", "--hub", server.URL,
-		"--installed", `{"key":"current","modulePath":"github.com/acme/skills","name":"current","versions":["v1.0.0"]}`,
-		"--installed", `{"key":"review","modulePath":"github.com/acme/skills","name":"review","versions":["v1.0.0","v2.0.0"]}`,
-		"--installed", `{"key":"local","modulePath":"github.com/acme/skills","name":"local","versions":["captured-1"]}`,
+		"hub", "check-update", "--hub", server.URL, "--output", "json",
+		"--installed", `{"key":"current","packagePath":"github.com/acme/skills","name":"current","versions":["v1.0.0"]}`,
+		"--installed", `{"key":"review","packagePath":"github.com/acme/skills","name":"review","versions":["v1.0.0","v2.0.0"]}`,
+		"--installed", `{"key":"local","packagePath":"github.com/acme/skills","name":"local","versions":["captured-1"]}`,
 	}, &stdout, &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 
 func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	type responseItem struct {
-		ModulePath    string `json:"modulePath"`
+		PackagePath   string `json:"packagePath"`
 		Name          string `json:"name"`
 		LatestVersion string `json:"latestVersion"`
 		Status        string `json:"status"`
@@ -75,7 +75,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 		}
 		items := make([]responseItem, 0, len(body.Skills))
 		for _, coordinate := range body.Skills {
-			items = append(items, responseItem{ModulePath: coordinate["modulePath"], Name: coordinate["name"], LatestVersion: "v2.0.0", Status: "available"})
+			items = append(items, responseItem{PackagePath: coordinate["packagePath"], Name: coordinate["name"], LatestVersion: "v2.0.0", Status: "available"})
 		}
 		_ = json.NewEncoder(w).Encode(struct {
 			Items interface{} `json:"items"`
@@ -83,9 +83,9 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	}))
 	defer server.Close()
 
-	arguments := []string{"updates", "check", "--hub", server.URL}
+	arguments := []string{"hub", "check-update", "--hub", server.URL, "--output", "json"}
 	for index := range 80 {
-		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","modulePath":"github.com/acme/skills","name":"skill-%d","versions":["v1.0.0"]}`, index, index))
+		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","packagePath":"github.com/acme/skills","name":"skill-%d","versions":["v1.0.0"]}`, index, index))
 	}
 	var stdout bytes.Buffer
 	if err := Execute(arguments, &stdout, &bytes.Buffer{}); err != nil {

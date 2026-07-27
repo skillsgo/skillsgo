@@ -21,7 +21,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -40,21 +40,21 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(suite.sandboxRoot, "hub", "storage"), installed.ModulePath, ".zip")
+	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(suite.sandboxRoot, "hub", "storage"), installed.PackagePath, ".zip")
 	originalZIP, err := os.ReadFile(hubZIP)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, os.WriteFile(hubZIP, originalZIP, 0o600))
 	})
 	require.NoError(t, os.WriteFile(hubZIP, []byte("corrupted e2e artifact"), 0o600))
-	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.ModuleDir)))
+	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.PackageDir)))
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.NotEqual(t, 0, restore.exitCode, "corrupted Hub artifact unexpectedly restored: %s", restore.output)
 
 	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path))
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir))
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(sumPath)

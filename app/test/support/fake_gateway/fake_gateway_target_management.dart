@@ -29,7 +29,7 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
           ),
           name: skill.name,
           skillId: '',
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           version: target.version,
           health: target.health,
           allowedActions: const [TargetManagementAction.remove],

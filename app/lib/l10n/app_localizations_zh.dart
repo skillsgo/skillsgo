@@ -377,7 +377,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get specificProject => '指定项目';
 
   @override
-  String get userScope => '全局安装';
+  String get globalScope => '全局安装';
 
   @override
   String get addProject => '添加项目';
@@ -1014,6 +1014,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => '主题';
 
   @override
@@ -1145,7 +1148,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installLocationTitle => '设置技能安装位置';
 
   @override
-  String get userLevel => '用户级别';
+  String get globalLevel => '全局';
 
   @override
   String get projectLevel => '项目级别';
@@ -1160,8 +1163,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repositoryParsing => '正在解析来源…';
 
   @override
-  String userInstallSummary(int agents) {
-    return '将在用户级别供 $agents 个智能体使用';
+  String globalInstallSummary(int agents) {
+    return '将在全局范围供 $agents 个智能体使用';
   }
 
   @override
@@ -2168,7 +2171,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get specificProject => '指定項目';
 
   @override
-  String get userScope => '全局安裝';
+  String get globalScope => '全局安裝';
 
   @override
   String get addProject => '添加項目';
@@ -2936,7 +2939,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get installLocationTitle => '設置技能安裝位置';
 
   @override
-  String get userLevel => '用户級別';
+  String get globalLevel => '全局';
 
   @override
   String get projectLevel => '項目級別';
@@ -2951,8 +2954,8 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get repositoryParsing => '正在解析來源…';
 
   @override
-  String userInstallSummary(int agents) {
-    return '將在用户級別供 $agents 個智能體使用';
+  String globalInstallSummary(int agents) {
+    return '將在全局範圍供 $agents 個智能體使用';
   }
 
   @override
@@ -3960,7 +3963,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get specificProject => '指定專案';
 
   @override
-  String get userScope => '全域性安裝';
+  String get globalScope => '全域性安裝';
 
   @override
   String get addProject => '新增專案';
@@ -4728,7 +4731,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get installLocationTitle => '設定技能安裝位置';
 
   @override
-  String get userLevel => '使用者級別';
+  String get globalLevel => '全域';
 
   @override
   String get projectLevel => '專案級別';
@@ -4743,8 +4746,8 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get repositoryParsing => '正在解析來源…';
 
   @override
-  String userInstallSummary(int agents) {
-    return '將在使用者級別供 $agents 個智慧體使用';
+  String globalInstallSummary(int agents) {
+    return '將在全域範圍供 $agents 個智體使用';
   }
 
   @override

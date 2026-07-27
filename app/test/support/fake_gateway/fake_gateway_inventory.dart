@@ -22,13 +22,13 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                       path: '/tmp/local-skill',
                       agents: agentNames,
                       targetCount: agentNames.length,
-                      modulePath: 'github.com/test/skills',
+                      packagePath: 'github.com/test/skills',
                       versions: const ['v1'],
                       targets: [
                         for (final agent in agentNames)
                           SkillInstallationTarget(
                             agent: agent,
-                            scope: InstallationScope.user,
+                            scope: InstallationScope.global,
                             path: '/tmp/local-skill',
                             version: 'v1',
                           ),
@@ -64,9 +64,9 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                   installed: true,
                   supportedScopes: const [
                     InstallationScope.project,
-                    InstallationScope.user,
+                    InstallationScope.global,
                   ],
-                  userTarget: AgentUserTarget(
+                  globalTarget: AgentGlobalTarget(
                     path: '/Users/test/.$agent/skills',
                     exists: true,
                   ),
@@ -117,7 +117,7 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
           name: 'local-skill',
           path: skill.path,
           content: '# Local',
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           version: skill.versions.length == 1 ? skill.versions.single : '',
           installationTargets: skill.targets,
         );

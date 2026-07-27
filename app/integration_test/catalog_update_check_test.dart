@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Module Store state, and observes no update on the next check.
+ * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Package Store state, and observes no update on the next check.
  * [POS]: Serves as the black-box macOS App update lifecycle journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,10 +48,10 @@ void registerCatalogUpdateCheckJourney() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await _pumpUntil(
         tester,
-        find.byKey(const Key('module-install-all')),
+        find.byKey(const Key('package-install-all')),
         timeout: const Duration(minutes: 2),
       );
-      await tester.tap(find.byKey(const Key('module-install-all')));
+      await tester.tap(find.byKey(const Key('package-install-all')));
       await _pumpUntil(
         tester,
         _textEither('Install all skills to', '安装所有技能到'),
@@ -174,7 +174,7 @@ void registerCatalogUpdateCheckJourney() {
       );
       expect(
         File(
-          '$sandbox/home/.skillsgo/modules/$newCoordinate/skills/alpha/SKILL.md',
+          '$sandbox/home/.skillsgo/packages/$newCoordinate/skills/alpha/SKILL.md',
         ).existsSync(),
         isTrue,
       );
