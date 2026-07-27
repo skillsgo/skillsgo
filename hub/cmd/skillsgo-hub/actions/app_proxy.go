@@ -76,9 +76,6 @@ func addProxyRoutesWithCatalog(
 	if metadata != nil {
 		publisher := newPackagePublisher(repositoryFetcher, s, metadata)
 		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
-		if err := registerRepositoryPrewarmJob(taskRuntime, publisher); err != nil {
-			return fmt.Errorf("register repository prewarm task: %w", err)
-		}
 		dp = withPackageInfo(dp, metadata, publisher)
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
