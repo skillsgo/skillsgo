@@ -40,8 +40,8 @@ type moduleInfoView struct {
 	Skills        []skillInfoView `json:"skills"`
 }
 
-func productSkillInfo(ctx context.Context, client *hub.Client, packagePath, version string, info hub.Info) (skillInfoView, string, error) {
-	metadata, err := client.PackageVersionSkill(ctx, packagePath, version, info.Path)
+func productSkillInfo(ctx context.Context, client *hub.Client, packagePath, version, lang string, info hub.Info) (skillInfoView, string, error) {
+	metadata, err := client.PackageVersionSkill(ctx, packagePath, version, info.Path, lang)
 	if err != nil {
 		return skillInfoView{}, "", err
 	}
@@ -51,7 +51,7 @@ func productSkillInfo(ctx context.Context, client *hub.Client, packagePath, vers
 }
 
 func newShowCommand() *cobra.Command {
-	var hubURL, output, skillName, skillPath string
+	var hubURL, output, skillName, skillPath, lang string
 	cmd := &cobra.Command{
 		Use:   "show <module>",
 		Short: appi18n.T("show.short"),
@@ -77,6 +77,10 @@ func newShowCommand() *cobra.Command {
 			if skillName != "" && skillPath != "" {
 				return fmt.Errorf("--skill and --path are mutually exclusive")
 			}
+			canonical, langErr := canonicalLang(lang)
+			if langErr != nil {
+				return langErr
+			}
 			reference, err := source.Parse(args[0])
 			if err != nil {
 				return err
@@ -91,7 +95,7 @@ func newShowCommand() *cobra.Command {
 				if resolveErr != nil {
 					return resolveErr
 				}
-				detail, detailErr := client.PackageVersionSkill(cmd.Context(), packagePath, resource.Info.Version, skillPath)
+				detail, detailErr := client.PackageVersionSkill(cmd.Context(), packagePath, resource.Info.Version, skillPath, canonical)
 				if detailErr != nil {
 					return detailErr
 				}
@@ -118,7 +122,7 @@ func newShowCommand() *cobra.Command {
 				if info.Name == "" {
 					return fmt.Errorf("Repository %s@%s does not contain Skill named %s", packagePath, resource.Info.Version, skillName)
 				}
-				view, _, productErr := productSkillInfo(cmd.Context(), client, packagePath, resource.Info.Version, info)
+				view, _, productErr := productSkillInfo(cmd.Context(), client, packagePath, resource.Info.Version, canonical, info)
 				if productErr != nil {
 					return productErr
 				}
@@ -140,7 +144,7 @@ func newShowCommand() *cobra.Command {
 					Version: resource.Info.Version, Time: resource.Info.Time, Skills: make([]skillInfoView, 0, len(resource.Members)),
 				}
 				for _, member := range resource.Members {
-					skillView, description, productErr := productSkillInfo(cmd.Context(), client, packagePath, resource.Info.Version, member.Info)
+					skillView, description, productErr := productSkillInfo(cmd.Context(), client, packagePath, resource.Info.Version, canonical, member.Info)
 					if productErr != nil {
 						return productErr
 					}
@@ -169,5 +173,6 @@ func newShowCommand() *cobra.Command {
 	flags.StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	flags.StringVar(&skillName, "skill", "", "canonical Skill name within the Repository")
 	flags.StringVar(&skillPath, "path", "", "exact Skill path within the Repository")
+	flags.StringVar(&lang, "lang", "", "preferred presentation language")
 	return cmd
 }

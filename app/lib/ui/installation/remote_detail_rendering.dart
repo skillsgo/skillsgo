@@ -276,6 +276,22 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       contextArea: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SegmentedButton<bool>(
+              key: const Key('detail-language-source-switch'),
+              segments: [
+                ButtonSegment(value: false, label: Text(context.l10n.language)),
+                ButtonSegment(
+                  value: true,
+                  label: Text(context.l10n.originalContent),
+                ),
+              ],
+              selected: {showingSource},
+              onSelectionChanged: (selection) => showSource(selection.first),
+            ),
+          ),
+          const SizedBox(height: 14),
           _detailProductMetadata(value),
           if (value.installationTargets.isNotEmpty) ...[
             _skillDetailDivider(context),

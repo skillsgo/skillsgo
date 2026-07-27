@@ -1091,6 +1091,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get language => 'Мова';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Тема';
 
   @override

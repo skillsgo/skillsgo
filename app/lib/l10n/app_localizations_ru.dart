@@ -1095,6 +1095,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get language => 'Язык';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Тема';
 
   @override

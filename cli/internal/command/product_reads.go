@@ -21,11 +21,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func canonicalContentLocale(value string) (string, error) {
+func canonicalLang(value string) (string, error) {
 	if value == "" {
 		return "", nil
 	}
-	return protocollocale.Canonical(value)
+	return protocollocale.CanonicalSupported(value)
 }
 
 func writeProductDocument(cmd *cobra.Command, document []byte) error {
@@ -89,7 +89,7 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 }
 
 func newFindCommand() *cobra.Command {
-	var hubURL, contentLocale, packagePath, input, output string
+	var hubURL, lang, packagePath, input, output string
 	var exactName bool
 	var page, perPage int
 	cmd := &cobra.Command{
@@ -119,9 +119,9 @@ func newFindCommand() *cobra.Command {
 			if err := validateProductOutput(output); err != nil {
 				return err
 			}
-			canonicalLocale, localeErr := canonicalContentLocale(contentLocale)
-			if localeErr != nil {
-				return localeErr
+			canonical, langErr := canonicalLang(lang)
+			if langErr != nil {
+				return langErr
 			}
 			if page < 0 || perPage < 1 || perPage > 100 {
 				return fmt.Errorf("invalid search page")
@@ -138,7 +138,7 @@ func newFindCommand() *cobra.Command {
 				if cmd.Flags().Changed("per-page") {
 					batchLimit = perPage
 				}
-				request, err := readFindInput(cmd, input, batchLimit, canonicalLocale)
+				request, err := readFindInput(cmd, input, batchLimit, canonical)
 				if err != nil {
 					return err
 				}
@@ -161,7 +161,7 @@ func newFindCommand() *cobra.Command {
 					return err
 				}
 			}
-			document, err := client.FindLocalized(cmd.Context(), query, packagePath, canonicalLocale, exactName, page, perPage)
+			document, err := client.FindLocalized(cmd.Context(), query, packagePath, canonical, exactName, page, perPage)
 			if err != nil {
 				return err
 			}
@@ -174,7 +174,7 @@ func newFindCommand() *cobra.Command {
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
 	cmd.Flags().IntVar(&page, "page", 0, "zero-based result page")
 	cmd.Flags().IntVar(&perPage, "per-page", 20, "results per page")
-	cmd.Flags().StringVar(&contentLocale, "content-locale", "", "preferred locale for descriptions")
+	cmd.Flags().StringVar(&lang, "lang", "", "preferred presentation language")
 	cmd.Flags().StringVar(&packagePath, "module", "", "canonical Package Path")
 	cmd.Flags().StringVar(&input, "input", "", "batch Find JSON file or - for stdin")
 	cmd.Flags().BoolVar(&exactName, "exact-name", false, "return only exact Skill names")
@@ -183,9 +183,9 @@ func newFindCommand() *cobra.Command {
 }
 
 type findInput struct {
-	Queries       []protocolapi.CandidateQuery `json:"queries"`
-	Limit         int                          `json:"limit"`
-	ContentLocale string                       `json:"contentLocale,omitempty"`
+	Queries []protocolapi.CandidateQuery `json:"queries"`
+	Limit   int                          `json:"limit"`
+	Lang    string                       `json:"lang,omitempty"`
 }
 
 func readFindInput(cmd *cobra.Command, path string, flagLimit int, flagLocale string) (protocolapi.FindCandidatesRequest, error) {
@@ -220,12 +220,12 @@ func readFindInput(cmd *cobra.Command, path string, flagLimit int, flagLocale st
 	}
 	locale := flagLocale
 	if locale == "" {
-		locale, err = canonicalContentLocale(input.ContentLocale)
+		locale, err = canonicalLang(input.Lang)
 		if err != nil {
 			return protocolapi.FindCandidatesRequest{}, err
 		}
 	}
-	return protocolapi.FindCandidatesRequest{Queries: input.Queries, Limit: input.Limit, Locale: locale}, nil
+	return protocolapi.FindCandidatesRequest{Queries: input.Queries, Limit: input.Limit, Lang: locale}, nil
 }
 
 func newHubCommand() *cobra.Command {

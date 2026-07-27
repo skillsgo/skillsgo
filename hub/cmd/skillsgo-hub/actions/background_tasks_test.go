@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,11 @@ func TestBusinessJobKindsAreStableAndDescriptive(t *testing.T) {
 		"package_publication_prewarm",
 		"description_translation_batch",
 	}, []string{tests[0].kind, tests[1].kind, tests[2].kind})
+}
+
+func TestTranslationBatchesUsePerRequestTimeouts(t *testing.T) {
+	require.Equal(t, time.Duration(-1), descriptionTranslationBatchArgs{}.JobTimeout())
+	require.Equal(t, time.Duration(-1), documentTranslationBatchArgs{}.JobTimeout())
 }
 
 type recordingMaterializer struct {

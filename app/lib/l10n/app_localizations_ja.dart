@@ -1046,6 +1046,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get language => '言語';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'テーマ';
 
   @override

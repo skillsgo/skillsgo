@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, and the ordered immutable publication commit boundary.
- * [OUTPUT]: Materializes every accepted Package Skill, prepares byte-stable Package Version Info plus direct Skill content objects, and emits a correlated bounded publication lifecycle without logging credentials or artifact content.
+ * [OUTPUT]: Materializes every accepted Package Skill, computes source digests, prepares byte-stable Package Version Info plus content-addressed Skill objects, and emits a bounded publication lifecycle.
  * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -212,8 +212,9 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 		release.Skills = append(release.Skills, protocolapi.PackageSkill{Name: member.Manifest.Name, Path: member.Path})
 		published = append(published, catalog.Skill{
 			PackagePath: packagePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
+			DescriptionDigest: catalog.DescriptionDigest(member.Manifest.Description), DocumentDigest: catalog.ContentDigest(member.Content),
 		})
-		skillContents = append(skillContents, moduleSkillContent{path: member.Path, content: member.Content})
+		skillContents = append(skillContents, moduleSkillContent{digest: catalog.ContentDigest(member.Content), content: member.Content})
 	}
 	releaseInfo, err := json.Marshal(release)
 	if err != nil {

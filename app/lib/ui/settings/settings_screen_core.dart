@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding operations, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh feedback state, route state, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding operations, Mermaid child-page state, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,6 +48,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Offset? _wallpaperIndicatorFrom;
   Offset? _wallpaperIndicatorTo;
   _SettingsRoute selectedRoute = _SettingsRoute.general;
+  bool showingMermaidGallery = false;
   CliStatus? status;
   HubStatus? hubStatus;
   PersonalRiskPolicy? riskPolicy;
@@ -249,7 +250,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   void _selectRoute(_SettingsRoute route) {
-    setState(() => selectedRoute = route);
+    setState(() {
+      selectedRoute = route;
+      showingMermaidGallery = false;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scrollController.hasClients) scrollController.jumpTo(0);
     });
@@ -268,7 +272,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   @override
   Widget build(BuildContext context) => SkillsDestinationLayout(
-    bodyTransitionKey: selectedRoute,
+    bodyTransitionKey: (selectedRoute, showingMermaidGallery),
     rail: SkillsSideRail<_SettingsRoute>(
       semanticLabel: context.l10n.settingsNavigation,
       selected: selectedRoute,
@@ -298,6 +302,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     ),
     child: loadingSettings
         ? const Center(child: CircularProgressIndicator())
+        : showingMermaidGallery
+        ? _mermaidGallery()
         : _settingsPage(),
   );
 }

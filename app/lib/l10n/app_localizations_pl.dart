@@ -1090,6 +1090,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get language => 'Język';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Temat';
 
   @override

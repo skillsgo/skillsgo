@@ -1087,6 +1087,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get language => 'Språk';
 
   @override
+  String get originalContent => 'Original';
+
+  @override
   String get personalizationTheme => 'Tema';
 
   @override

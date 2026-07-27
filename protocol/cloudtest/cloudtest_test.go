@@ -216,7 +216,7 @@ func TestVerifierRejectsRankingEnvelopeMismatch(t *testing.T) {
 }
 
 func TestVerifierRejectsExecutorFailures(t *testing.T) {
-	for name, failAt := range map[string]int{"install": 1, "ranking": 3, "invalid ranking": 6} {
+	for name, failAt := range map[string]int{"install": 1, "ranking": 3, "invalid language": 6, "invalid ranking": 7} {
 		t.Run(name, func(t *testing.T) {
 			mock := NewMock()
 			calls := 0
@@ -236,4 +236,17 @@ func TestVerifierRejectsExecutorFailures(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestVerifierRejectsInvalidRankingItem(t *testing.T) {
+	mock := NewMock()
+	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
+		mock.SetRanking(kind, []cloud.RankingSkill{{Metric: cloud.Metric{Value: 1}}})
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("invalid ranking item passed conformance")
+		}
+	}()
+	VerifyHandler(panicTestingT{}, mock.Handler())
 }

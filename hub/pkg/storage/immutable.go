@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one storage Backend plus bounded immutable Info, ZIP, and SKILL.md byte streams.
- * [OUTPUT]: Provides backend-native or process-safe fallback PutIfAbsent semantics, immutable Skill-content delegation, and shared bounded byte-comparison primitives for native conditional writers.
+ * [INPUT]: Depends on one storage Backend plus bounded immutable Info/ZIP streams and digest-addressed Skill Markdown bytes.
+ * [OUTPUT]: Provides backend-native or process-safe fallback Package PutIfAbsent semantics, content-addressed Skill delegation, and shared bounded byte comparison.
  * [POS]: Serves as the immutable write membrane for Repository Publication across storage backends.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,20 +39,36 @@ func (backend *immutableBackend) Save(ctx context.Context, module, version strin
 	return err
 }
 
-func (backend *immutableBackend) PutSkillContentIfAbsent(ctx context.Context, module, version, skillPath string, content []byte) (bool, error) {
+func (backend *immutableBackend) PutSkillContentIfAbsent(ctx context.Context, sourceDigest string, content []byte) (bool, error) {
 	store, ok := backend.Backend.(SkillContentStore)
 	if !ok {
 		return false, errors.E("storage.PutSkillContentIfAbsent", "storage backend does not support Skill content", errors.KindUnexpected)
 	}
-	return store.PutSkillContentIfAbsent(ctx, module, version, skillPath, content)
+	return store.PutSkillContentIfAbsent(ctx, sourceDigest, content)
 }
 
-func (backend *immutableBackend) SkillContent(ctx context.Context, module, version, skillPath string) ([]byte, error) {
+func (backend *immutableBackend) SkillContent(ctx context.Context, sourceDigest string) ([]byte, error) {
 	store, ok := backend.Backend.(SkillContentStore)
 	if !ok {
 		return nil, errors.E("storage.SkillContent", "storage backend does not support Skill content", errors.KindUnexpected)
 	}
-	return store.SkillContent(ctx, module, version, skillPath)
+	return store.SkillContent(ctx, sourceDigest)
+}
+
+func (backend *immutableBackend) PutLocalizedSkillContent(ctx context.Context, sourceDigest, promptVersion, lang string, content []byte) error {
+	store, ok := backend.Backend.(SkillContentStore)
+	if !ok {
+		return errors.E("storage.PutLocalizedSkillContent", "storage backend does not support Skill content", errors.KindUnexpected)
+	}
+	return store.PutLocalizedSkillContent(ctx, sourceDigest, promptVersion, lang, content)
+}
+
+func (backend *immutableBackend) LocalizedSkillContent(ctx context.Context, sourceDigest, promptVersion, lang string) ([]byte, error) {
+	store, ok := backend.Backend.(SkillContentStore)
+	if !ok {
+		return nil, errors.E("storage.LocalizedSkillContent", "storage backend does not support Skill content", errors.KindUnexpected)
+	}
+	return store.LocalizedSkillContent(ctx, sourceDigest, promptVersion, lang)
 }
 
 func (backend *immutableBackend) PutIfAbsent(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) (bool, error) {

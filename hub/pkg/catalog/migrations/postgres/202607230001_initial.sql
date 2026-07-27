@@ -11,6 +11,7 @@ CREATE TABLE packages (
   path TEXT NOT NULL UNIQUE,
   current_version_id BIGINT,
   description TEXT NOT NULL DEFAULT '',
+  description_digest TEXT NOT NULL DEFAULT '',
   stars BIGINT NOT NULL DEFAULT 0,
   source_etag TEXT,
   source_checked_at TIMESTAMPTZ,
@@ -44,6 +45,8 @@ CREATE TABLE skills (
   name TEXT NOT NULL,
   path TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  description_digest TEXT NOT NULL,
+  document_digest TEXT NOT NULL,
   UNIQUE(version_id, path)
 );
 
@@ -76,17 +79,22 @@ CREATE INDEX skills_version_id ON skills(version_id);
 CREATE INDEX skills_name_lower ON skills(lower(name));
 CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description) gin_trgm_ops);
 
-CREATE TABLE localized_descriptions (
-  id BIGSERIAL PRIMARY KEY,
-  resource_kind TEXT NOT NULL,
-  resource_id TEXT NOT NULL,
-  locale TEXT NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
+CREATE TABLE localizations (
+  resource_kind TEXT NOT NULL CHECK (resource_kind IN ('package_description','skill_description','skill_document')),
   source_digest TEXT NOT NULL,
+  lang TEXT NOT NULL,
+  result_kind TEXT NOT NULL CHECK (result_kind IN ('translated','source')),
+  text_content TEXT,
   prompt_version TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(resource_kind, resource_id, locale)
+  PRIMARY KEY(resource_kind, source_digest, lang),
+  CHECK (
+    (result_kind='source' AND text_content IS NULL)
+    OR
+    (result_kind='translated' AND resource_kind IN ('package_description','skill_description') AND text_content IS NOT NULL)
+    OR
+    (result_kind='translated' AND resource_kind='skill_document' AND text_content IS NULL)
+  )
 );
 
 CREATE TABLE package_backfill_runs (

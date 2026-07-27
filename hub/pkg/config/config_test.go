@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including deployment discovery, process-fixed database schema, multi-token GitHub authentication, and task execution behavior.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, and task execution behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kelseyhightower/envconfig"
@@ -21,7 +20,7 @@ import (
 )
 
 func testConfigFile(t *testing.T) (testConfigFile string) {
-	testConfigFile = filepath.Join("testdata", "config.dev.toml")
+	testConfigFile = filepath.Join("testdata", "config.dev.yaml")
 	if err := os.Chmod(testConfigFile, 0o700); err != nil {
 		t.Fatalf("%s\n", err)
 	}
@@ -47,15 +46,7 @@ func compareConfigs(parsedConf *Config, expConf *Config, t *testing.T, ignoreTyp
 }
 
 func compareStorageConfigs(parsedStorage *Storage, expStorage *Storage, t *testing.T) {
-	eq := cmp.Equal(parsedStorage.Mongo, expStorage.Mongo)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Mongo, parsedStorage.Mongo)
-	}
-	eq = cmp.Equal(parsedStorage.Minio, expStorage.Minio)
-	if !eq {
-		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Minio, parsedStorage.Minio)
-	}
-	eq = cmp.Equal(parsedStorage.Disk, expStorage.Disk)
+	eq := cmp.Equal(parsedStorage.Disk, expStorage.Disk)
 	if !eq {
 		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.Disk, parsedStorage.Disk)
 	}
@@ -66,6 +57,10 @@ func compareStorageConfigs(parsedStorage *Storage, expStorage *Storage, t *testi
 	eq = cmp.Equal(parsedStorage.S3, expStorage.S3)
 	if !eq {
 		t.Errorf("Parsed Example Storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.S3, parsedStorage.S3)
+	}
+	eq = cmp.Equal(parsedStorage.R2, expStorage.R2)
+	if !eq {
+		t.Errorf("Parsed Example R2 storage configuration did not match expected values. Expected: %+v. Actual: %+v", expStorage.R2, parsedStorage.R2)
 	}
 }
 
@@ -98,13 +93,13 @@ func TestLLMEnvironmentOverrides(t *testing.T) {
 	t.Setenv("SKILLSGO_HUB_LLM_BASE_URL", "https://llm.example/v1")
 	t.Setenv("SKILLSGO_HUB_LLM_API_KEY", "test-key")
 	t.Setenv("SKILLSGO_HUB_LLM_MODEL", "test-model")
-	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_LOCALES", "ja-JP,fr-FR")
+	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_LANGS", "ja,fr")
 	config := defaultConfig()
 	require.NoError(t, envOverride(config))
 	require.True(t, config.LLM.Enabled())
 	require.Equal(t, "https://llm.example/v1", config.LLM.BaseURL)
 	require.Equal(t, "test-model", config.LLM.Model)
-	require.Equal(t, []string{"ja-JP", "fr-FR"}, config.LLM.TranslationLocales)
+	require.Equal(t, []string{"ja", "fr"}, config.LLM.TranslationLangs)
 }
 
 func TestGitHubTokenConfigurationCompatibility(t *testing.T) {
@@ -133,11 +128,11 @@ func TestGitHubTokensEnvironmentDecode(t *testing.T) {
 	require.Equal(t, TokenList{"token-a", "token-b", "token-c", "token-d"}, tokens)
 }
 
-func TestGitHubTokensTOMLDecode(t *testing.T) {
+func TestGitHubTokensYAMLDecode(t *testing.T) {
 	var decoded struct {
 		GithubTokens TokenList
 	}
-	_, err := toml.Decode(`GithubTokens = ["token-a", "token-b"]`, &decoded)
+	err := decodeYAML([]byte("GithubTokens: [token-a, token-b]"), &decoded)
 	require.NoError(t, err)
 	require.Equal(t, TokenList{"token-a", "token-b"}, decoded.GithubTokens)
 }
@@ -167,12 +162,6 @@ func TestValidateConfigRejectsPartialBasicAuthCredentials(t *testing.T) {
 			require.Error(t, validateConfig(*conf))
 		})
 	}
-}
-
-func TestValidateConfigRejectsLegacyMinIOStorage(t *testing.T) {
-	conf := defaultConfig()
-	conf.StorageType = "minio"
-	require.ErrorContains(t, validateConfig(*conf), "conditional create semantics")
 }
 
 func TestDeploymentConfiguration(t *testing.T) {
@@ -205,7 +194,7 @@ func TestEnvOverrides(t *testing.T) {
 		TimeoutConf: TimeoutConf{
 			Timeout: 30,
 		},
-		StorageType:      "minio",
+		StorageType:      "memory",
 		HomeTemplatePath: "/tmp/skillsgo/home.html",
 		Port:             ":7000",
 		EnablePprof:      false,
@@ -296,26 +285,18 @@ func TestStorageEnvOverrides(t *testing.T) {
 			ProjectID: "gcpproject",
 			Bucket:    "gcpbucket",
 		},
-		Minio: &MinioConfig{
-			Endpoint:  "minioEndpoint",
-			Key:       "minioKey",
-			Secret:    "minioSecret",
-			EnableSSL: false,
-			Bucket:    "minioBucket",
-			Region:    "us-west-1",
-		},
-		Mongo: &MongoConfig{
-			URL:                   "mongoURL",
-			CertPath:              "/test/path",
-			DefaultDBName:         "test",
-			DefaultCollectionName: "testPackages",
-		},
 		S3: &S3Config{
 			Region: "s3Region",
 			Key:    "s3Key",
 			Secret: "s3Secret",
 			Token:  "s3Token",
 			Bucket: "s3Bucket",
+		},
+		R2: &R2Config{
+			AccountID:       "0123456789abcdef0123456789abcdef",
+			AccessKeyID:     "MY_R2_ACCESS_KEY_ID",
+			SecretAccessKey: "MY_R2_SECRET_ACCESS_KEY",
+			Bucket:          "MY_R2_BUCKET",
 		},
 	}
 	envVars := getEnvMap(&Config{Storage: expStorage})
@@ -344,26 +325,18 @@ func TestParseExampleConfig(t *testing.T) {
 			ProjectID: "MY_GCP_PROJECT_ID",
 			Bucket:    "MY_GCP_BUCKET",
 		},
-		Minio: &MinioConfig{
-			Endpoint:  "127.0.0.1:9001",
-			Key:       "minio",
-			Secret:    "minio123",
-			EnableSSL: false,
-			Bucket:    "gomods",
-		},
-		Mongo: &MongoConfig{
-			URL:                   "mongodb://127.0.0.1:27017",
-			CertPath:              "",
-			InsecureConn:          false,
-			DefaultDBName:         "athens",
-			DefaultCollectionName: "skills",
-		},
 		S3: &S3Config{
 			Region: "MY_AWS_REGION",
 			Key:    "MY_AWS_ACCESS_KEY_ID",
 			Secret: "MY_AWS_SECRET_ACCESS_KEY",
 			Token:  "",
 			Bucket: "MY_S3_BUCKET_NAME",
+		},
+		R2: &R2Config{
+			AccountID:       "0123456789abcdef0123456789abcdef",
+			AccessKeyID:     "MY_R2_ACCESS_KEY_ID",
+			SecretAccessKey: "MY_R2_SECRET_ACCESS_KEY",
+			Bucket:          "MY_R2_BUCKET",
 		},
 		AzureBlob: &AzureBlobConfig{
 			AccountName:               "MY_AZURE_BLOB_ACCOUNT_NAME",
@@ -372,7 +345,6 @@ func TestParseExampleConfig(t *testing.T) {
 			CredentialScope:           "",
 			ContainerName:             "MY_AZURE_BLOB_CONTAINER_NAME",
 		},
-		External: &External{URL: ""},
 	}
 
 	expConf := &Config{
@@ -453,22 +425,6 @@ func getEnvMap(config *Config) map[string]string {
 			envVars["GOOGLE_CLOUD_PROJECT"] = storage.GCP.ProjectID
 			envVars["SKILLSGO_HUB_STORAGE_GCP_BUCKET"] = storage.GCP.Bucket
 		}
-		if storage.Minio != nil {
-			envVars["SKILLSGO_HUB_MINIO_ENDPOINT"] = storage.Minio.Endpoint
-			envVars["SKILLSGO_HUB_MINIO_ACCESS_KEY_ID"] = storage.Minio.Key
-			envVars["SKILLSGO_HUB_MINIO_SECRET_ACCESS_KEY"] = storage.Minio.Secret
-			envVars["SKILLSGO_HUB_MINIO_USE_SSL"] = strconv.FormatBool(storage.Minio.EnableSSL)
-			envVars["SKILLSGO_HUB_MINIO_REGION"] = storage.Minio.Region
-			envVars["SKILLSGO_HUB_MINIO_BUCKET_NAME"] = storage.Minio.Bucket
-		}
-		if storage.Mongo != nil {
-			envVars["SKILLSGO_HUB_MONGO_STORAGE_URL"] = storage.Mongo.URL
-			envVars["SKILLSGO_HUB_MONGO_CERT_PATH"] = storage.Mongo.CertPath
-			envVars["SKILLSGO_HUB_MONGO_INSECURE"] = strconv.FormatBool(storage.Mongo.InsecureConn)
-			envVars["SKILLSGO_HUB_MONGO_DEFAULT_DATABASE"] = storage.Mongo.DefaultDBName
-			envVars["SKILLSGO_HUB_MONGO_DEFAULT_COLLECTION"] = storage.Mongo.DefaultCollectionName
-
-		}
 		if storage.S3 != nil {
 			envVars["AWS_REGION"] = storage.S3.Region
 			envVars["AWS_ACCESS_KEY_ID"] = storage.S3.Key
@@ -476,6 +432,13 @@ func getEnvMap(config *Config) map[string]string {
 			envVars["AWS_SESSION_TOKEN"] = storage.S3.Token
 			envVars["AWS_FORCE_PATH_STYLE"] = strconv.FormatBool(storage.S3.ForcePathStyle)
 			envVars["SKILLSGO_HUB_S3_BUCKET_NAME"] = storage.S3.Bucket
+		}
+		if storage.R2 != nil {
+			envVars["SKILLSGO_HUB_R2_ACCOUNT_ID"] = storage.R2.AccountID
+			envVars["SKILLSGO_HUB_R2_ACCESS_KEY_ID"] = storage.R2.AccessKeyID
+			envVars["SKILLSGO_HUB_R2_SECRET_ACCESS_KEY"] = storage.R2.SecretAccessKey
+			envVars["SKILLSGO_HUB_R2_BUCKET_NAME"] = storage.R2.Bucket
+			envVars["SKILLSGO_HUB_R2_JURISDICTION"] = storage.R2.Jurisdiction
 		}
 	}
 

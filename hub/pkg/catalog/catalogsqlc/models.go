@@ -11,16 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type LocalizedDescription struct {
-	ID            int64     `json:"id"`
-	ResourceKind  string    `json:"resource_kind"`
-	ResourceID    string    `json:"resource_id"`
-	Locale        string    `json:"locale"`
-	Description   string    `json:"description"`
-	SourceDigest  string    `json:"source_digest"`
-	PromptVersion string    `json:"prompt_version"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+type Localization struct {
+	ResourceKind  string      `json:"resource_kind"`
+	SourceDigest  string      `json:"source_digest"`
+	Lang          string      `json:"lang"`
+	ResultKind    string      `json:"result_kind"`
+	TextContent   pgtype.Text `json:"text_content"`
+	PromptVersion string      `json:"prompt_version"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 // Canonical Skill Packages and mutable source/discovery state.
@@ -35,7 +33,8 @@ type Package struct {
 	// Current discovery-visible Version; constrained to belong to this Package.
 	CurrentVersionID pgtype.Int8 `json:"current_version_id"`
 	// Mutable source description used by discovery.
-	Description string `json:"description"`
+	Description       string `json:"description"`
+	DescriptionDigest string `json:"description_digest"`
 	// Mutable source popularity count used by discovery.
 	Stars int64 `json:"stars"`
 	// Conditional-request token for source enrichment.
@@ -69,7 +68,9 @@ type Skill struct {
 	// Package-relative directory containing SKILL.md; unique within the Version.
 	Path string `json:"path"`
 	// Searchable Skill description read from SKILL.md.
-	Description string `json:"description"`
+	Description       string `json:"description"`
+	DescriptionDigest string `json:"description_digest"`
+	DocumentDigest    string `json:"document_digest"`
 }
 
 // Immutable published versions owned by Packages.

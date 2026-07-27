@@ -1971,6 +1971,12 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get language;
 
+  /// No description provided for @originalContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Original'**
+  String get originalContent;
+
   /// No description provided for @personalizationTheme.
   ///
   /// In en, this message translates to:

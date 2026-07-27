@@ -13,7 +13,7 @@ RETURNING *;
 SELECT * FROM packages WHERE path = sqlc.arg(package_path);
 
 -- name: UpdatePackageSourceMetadata :execrows
-UPDATE packages SET description = sqlc.arg(description), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
+UPDATE packages SET description = sqlc.arg(description), description_digest = sqlc.arg(description_digest), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
 source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), source_retry_at = sqlc.narg(source_retry_at),
 updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(package_path);
 
@@ -23,8 +23,8 @@ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;
 
 -- name: InsertSkill :exec
 INSERT INTO skills (
-    version_id, name, path, description
-) VALUES ($1,$2,$3,$4);
+    version_id, name, path, description, description_digest, document_digest
+) VALUES ($1,$2,$3,$4,$5,$6);
 
 -- name: SetCurrentVersion :exec
 UPDATE packages SET current_version_id=$2, updated_at=$3 WHERE id=$1;
@@ -52,7 +52,7 @@ WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: Skills :many
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -61,7 +61,7 @@ ORDER BY mvs.path;
 
 -- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
-       mvs.path, mv.commit_time, mvs.description
+       mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
@@ -83,16 +83,37 @@ FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
--- name: UpsertLocalizedDescription :exec
-INSERT INTO localized_descriptions (resource_kind,resource_id,locale,description,source_digest,prompt_version,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$7)
-ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
-description=excluded.description,source_digest=excluded.source_digest,
+-- name: UpsertLocalization :exec
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_content,prompt_version,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7)
+ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
+result_kind=excluded.result_kind,text_content=excluded.text_content,
 prompt_version=excluded.prompt_version,updated_at=excluded.updated_at;
 
--- name: LocalizedDescription :one
-SELECT description FROM localized_descriptions
-WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3;
+-- name: PackageLocalizedDescription :one
+SELECT l.text_content
+FROM packages m JOIN localizations l ON l.source_digest=m.description_digest
+WHERE m.path=$1 AND l.resource_kind='package_description' AND l.lang=$2
+  AND l.result_kind='translated';
+
+-- name: SkillLocalizedDescription :one
+SELECT l.text_content
+FROM packages m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+JOIN localizations l ON l.source_digest=mvs.description_digest
+WHERE m.path=$1 AND mvs.name=$2 AND l.resource_kind='skill_description' AND l.lang=$3
+  AND l.result_kind='translated'
+ORDER BY mvs.path LIMIT 1;
+
+-- name: VersionSkillLocalization :one
+SELECT l.result_kind,l.text_content,l.source_digest,l.prompt_version,mvs.document_digest,mvs.description_digest
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+JOIN localizations l ON l.source_digest=CASE WHEN sqlc.arg(resource_kind)::text='skill_document' THEN mvs.document_digest ELSE mvs.description_digest END
+WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version) AND mvs.path=sqlc.arg(skill_path)
+  AND l.resource_kind=sqlc.arg(resource_kind)::text AND l.lang=sqlc.arg(lang);
 
 -- name: SkillByCoordinate :one
 SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
@@ -183,49 +204,55 @@ similarity(mvs.name,sqlc.arg(query)) DESC,m.path,mvs.path
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: TranslationCandidates :many
-SELECT 'module'::text AS resource_kind, m.path AS resource_id, m.description,
+SELECT DISTINCT ON (m.description_digest) 'package_description'::text AS resource_kind,
+       m.path AS resource_id, m.description, m.description_digest AS content_digest,
        COALESCE(ld.source_digest, '') AS source_digest,
        COALESCE(ld.prompt_version, '') AS prompt_version
 FROM packages m
-LEFT JOIN localized_descriptions ld
-  ON ld.resource_kind='module' AND ld.resource_id=m.path AND ld.locale=$1
+LEFT JOIN localizations ld
+  ON ld.resource_kind='package_description' AND ld.source_digest=m.description_digest AND ld.lang=$1
 WHERE trim(m.description)<>''
 UNION ALL
-SELECT 'skill'::text, m.path || ':' || mvs.name, mvs.description,
+SELECT DISTINCT ON (mvs.description_digest) 'skill_description'::text,
+       m.path || '@' || mv.version || ':' || mvs.path, mvs.description, mvs.description_digest,
        COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localized_descriptions ld
-  ON ld.resource_kind='skill' AND ld.resource_id=m.path || ':' || mvs.name AND ld.locale=$1
+LEFT JOIN localizations ld
+  ON ld.resource_kind='skill_description' AND ld.source_digest=mvs.description_digest AND ld.lang=$1
 WHERE trim(mvs.description)<>''
-  AND mvs.path=(
-      SELECT min(candidate.path)
-      FROM skills candidate
-      WHERE candidate.version_id=mv.id AND candidate.name=mvs.name
-  )
 ORDER BY resource_kind, resource_id;
+
+-- name: DocumentTranslationCandidates :many
+SELECT DISTINCT ON (mvs.document_digest) mvs.document_digest,
+       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
+FROM skills mvs
+LEFT JOIN localizations l
+  ON l.resource_kind='skill_document' AND l.source_digest=mvs.document_digest AND l.lang=$1
+WHERE mvs.document_digest<>''
+ORDER BY mvs.document_digest;
 
 -- name: SearchLocalizedSkills :many
 SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
-       mvs.name, COALESCE(ls.description,mvs.description) AS description,
+       mvs.name, COALESCE(ls.text_content,mvs.description) AS description,
        m.source_host, m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localized_descriptions ls
-  ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
-LEFT JOIN localized_descriptions lm
-  ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=sqlc.arg(locale)
+LEFT JOIN localizations ls
+  ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=sqlc.arg(lang) AND ls.result_kind='translated'
+LEFT JOIN localizations lm
+  ON lm.resource_kind='package_description' AND lm.source_digest=m.description_digest AND lm.lang=sqlc.arg(lang) AND lm.result_kind='translated'
 WHERE (sqlc.arg(exact_name)::boolean AND lower(mvs.name)=lower(sqlc.arg(query)))
 OR (NOT sqlc.arg(exact_name)::boolean AND (
     lower(mvs.name) LIKE '%' || lower(sqlc.arg(query)) || '%'
     OR lower(mvs.description) LIKE '%' || lower(sqlc.arg(query)) || '%'
     OR lower(m.path) LIKE '%' || lower(sqlc.arg(query)) || '%'
-    OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
-    OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(COALESCE(ls.text_content,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(COALESCE(lm.text_content,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
 ))
 ORDER BY CASE
     WHEN lower(mvs.name)=lower(sqlc.arg(query)) THEN 0
@@ -253,7 +280,7 @@ SELECT input.query_id::text AS query_id,input.query::text AS query,input.package
 FROM requested input
 JOIN LATERAL (
     SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
-           mvs.name, COALESCE(ls.description,mvs.description) AS description,
+           mvs.name, COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host, m.source_path AS source_repository, mvs.path,
            mv.version AS latest_version, m.stars,
            mv.created_at, m.updated_at,
@@ -269,10 +296,10 @@ JOIN LATERAL (
     FROM packages m
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs ON mvs.version_id=mv.id
-    LEFT JOIN localized_descriptions ls
-      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
-    LEFT JOIN localized_descriptions lm
-      ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=sqlc.arg(locale)
+    LEFT JOIN localizations ls
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=sqlc.arg(lang) AND ls.result_kind='translated'
+    LEFT JOIN localizations lm
+      ON lm.resource_kind='package_description' AND lm.source_digest=m.description_digest AND lm.lang=sqlc.arg(lang) AND lm.result_kind='translated'
     WHERE (
         input.package_path<>'' AND m.path=input.package_path AND mvs.name=input.query
     ) OR (
@@ -282,8 +309,8 @@ JOIN LATERAL (
                 lower(mvs.name) LIKE '%' || lower(input.query) || '%'
                 OR lower(mvs.description) LIKE '%' || lower(input.query) || '%'
                 OR lower(m.path) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(ls.text_content,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lm.text_content,'')) LIKE '%' || lower(input.query) || '%'
             ))
         )
     )
@@ -303,7 +330,7 @@ WITH requested AS (
 ranked AS (
     SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,input.ordinal,
            mvs.version_id AS id,mv.package_id,m.path AS package_path,mvs.name,
-           COALESCE(ls.description,mvs.description) AS description,
+           COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host,m.source_path AS source_repository,mvs.path,
            mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
            row_number() OVER (
@@ -316,8 +343,8 @@ ranked AS (
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
       ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
-    LEFT JOIN localized_descriptions ls
-      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
+    LEFT JOIN localizations ls
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=sqlc.arg(lang) AND ls.result_kind='translated'
 )
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
        source_host,source_repository,path,latest_version,stars,created_at,updated_at

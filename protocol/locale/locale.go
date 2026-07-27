@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an operator, CLI, or HTTP-supplied language/script/region tag.
- * [OUTPUT]: Provides canonical BCP 47 casing and separators for presentation locale identity.
+ * [OUTPUT]: Provides canonical BCP 47 casing plus the closed SkillsGo presentation-language set.
  * [POS]: Serves as the shared locale-format contract for CLI requests and Hub lookups.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,11 @@ import (
 	"fmt"
 	"strings"
 )
+
+var supported = map[string]struct{}{
+	"en": {}, "zh-Hans-CN": {}, "zh-Hant-TW": {}, "zh-Hant-HK": {}, "ja": {}, "ko": {}, "fr": {}, "de": {}, "it": {}, "es": {}, "pt-BR": {},
+	"ru": {}, "ar": {}, "hi": {}, "id": {}, "tr": {}, "nl": {}, "pl": {}, "th": {}, "vi": {}, "ms": {}, "sv": {}, "uk": {},
+}
 
 func Canonical(value string) (string, error) {
 	value = strings.ReplaceAll(strings.TrimSpace(value), "_", "-")
@@ -30,4 +35,20 @@ func Canonical(value string) (string, error) {
 		}
 	}
 	return strings.Join(parts, "-"), nil
+}
+
+func Supported(value string) bool {
+	_, ok := supported[value]
+	return ok
+}
+
+func CanonicalSupported(value string) (string, error) {
+	canonical, err := Canonical(value)
+	if err != nil {
+		return "", err
+	}
+	if !Supported(canonical) {
+		return "", fmt.Errorf("unsupported presentation language %q", canonical)
+	}
+	return canonical, nil
 }

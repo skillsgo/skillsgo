@@ -168,7 +168,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     final value => value,
   };
 
-  Future<String> _contentLocale();
+  Future<String> _contentLang();
 
   Future<CommandResult> _runCli(
     List<String> arguments, {
