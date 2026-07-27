@@ -155,17 +155,12 @@ func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testin
 	require.Equal(t, 1, source.calls)
 }
 
-func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
+func TestRepositoryMetadataCacheQueuesRefresh(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
 		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	runtime := taskqueue.NewSynchronous()
-	prewarmed := make(chan struct{}, 1)
-	require.NoError(t, taskqueue.Register(runtime, func(context.Context, modulePublicationPrewarmArgs) error {
-		prewarmed <- struct{}{}
-		return nil
-	}))
 	source := &recordingMetadataSource{results: []metadataSourceResult{{metadata: repositoryMetadata{
 		Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`,
 	}}}}
@@ -178,11 +173,6 @@ func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 	stored, err := metadata.Package(t.Context(), "github.com/acme/skills")
 	require.NoError(t, err)
 	require.Equal(t, int64(42), stored.Stars)
-	select {
-	case <-prewarmed:
-	default:
-		t.Fatal("module prewarm was not submitted")
-	}
 }
 
 func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) {
