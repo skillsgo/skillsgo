@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Discover card installation entry points, remote detail evidence, motion, and theme behavior.
+ * [OUTPUT]: Specifies Discover card installation entry points, remote detail evidence, inline translation switching, motion, and theme behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -423,4 +423,51 @@ void main() {
     expect(detailTheme.colorScheme.primary, expected.colorScheme.primary);
     expect(detailTheme.colorScheme.surface, expected.colorScheme.surface);
   });
+
+  testWidgets('detail translation control follows the X-style two states', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 850));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(searchInput(), 'translation');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+
+    final control = find.byKey(const Key('detail-language-source-switch'));
+    expect(control, findsOneWidget);
+    expect(
+      find.descendant(
+        of: control,
+        matching: find.text('Translated from English'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: control, matching: find.text('Show original')),
+      findsOneWidget,
+    );
+
+    await tester.tap(control);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: control,
+        matching: find.text('Translated from English'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: control, matching: find.text('Show translation')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('detail-skeleton')), findsNothing);
+    expect(gateway.detailLoads, 2);
+  });
+
 }

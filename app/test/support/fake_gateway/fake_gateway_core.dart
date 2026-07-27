@@ -24,6 +24,8 @@ final defaultRemoteDetail = SkillDetail(
   time: DateTime.utc(2026, 7, 15),
   archiveSize: 24576,
   description: 'Build reliable Flutter products.',
+  sourceLanguage: 'en',
+  translated: true,
   content: '# Real instructions',
   installationTargets: [
     SkillInstallationTarget(

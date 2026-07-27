@@ -1046,6 +1046,50 @@ class AppLocalizationsKo extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => '번역됨';
+
+  @override
+  String translatedFrom(String language) {
+    return '$language에서 번역됨';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': '영어',
+      'zhHans': '중국어(간체)',
+      'zhHant': '중국어(번체)',
+      'ja': '일본어',
+      'ko': '한국어',
+      'fr': '프랑스어',
+      'de': '독일어',
+      'it': '이탈리아어',
+      'es': '스페인어',
+      'pt': '포르투갈어',
+      'ru': '러시아어',
+      'ar': '아랍어',
+      'hi': '힌디어',
+      'id': '인도네시아어',
+      'tr': '튀르키예어',
+      'nl': '네덜란드어',
+      'pl': '폴란드어',
+      'th': '태국어',
+      'vi': '베트남어',
+      'ms': '말레이어',
+      'sv': '스웨덴어',
+      'uk': '우크라이나어',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => '원문 보기';
+
+  @override
+  String get showTranslation => '번역 보기';
+
+  @override
   String get personalizationTheme => '테마';
 
   @override

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on RemoteDetailScreen state, localized copy, audit models, installation scope widgets, and Markdown presentation.
- * [OUTPUT]: Provides remote detail toolbar, loading/error/content regions, artifact metadata, and document rendering methods.
+ * [OUTPUT]: Provides remote detail toolbar, loading/error/content regions, X-inspired inline translation state, artifact metadata, and document rendering methods.
  * [POS]: Serves as the private rendering implementation of the remote Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -258,6 +258,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
         imageUrl: widget.skill.imageUrl,
         avatarKey: const Key('detail-skill-avatar'),
         descriptionKey: const Key('detail-description-markdown'),
+        titleContext: _translationState(),
         actions: InstallLocationMenuAnchor(
           builder: (context, present) => PrimaryCapsuleButton(
             key: const Key('detail-hero-install'),
@@ -276,22 +277,6 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       contextArea: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: SegmentedButton<bool>(
-              key: const Key('detail-language-source-switch'),
-              segments: [
-                ButtonSegment(value: false, label: Text(context.l10n.language)),
-                ButtonSegment(
-                  value: true,
-                  label: Text(context.l10n.originalContent),
-                ),
-              ],
-              selected: {showingSource},
-              onSelectionChanged: (selection) => showSource(selection.first),
-            ),
-          ),
-          const SizedBox(height: 14),
           _detailProductMetadata(value),
           if (value.installationTargets.isNotEmpty) ...[
             _skillDetailDivider(context),
@@ -324,6 +309,88 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       value.installationTargets.isNotEmpty || execution?.hasSuccess == true
       ? context.l10n.installMoreTargets
       : context.l10n.install;
+
+  Widget _translationState() {
+    final scheme = Theme.of(context).colorScheme;
+    final translationAvailable =
+        showingSource ||
+        detail?.translated == true ||
+        localizedDetail?.translated == true;
+    if (!translationAvailable) return const SizedBox.shrink();
+    return Semantics(
+      key: const Key('detail-language-source-switch'),
+      button: true,
+      label: showingSource
+          ? context.l10n.showTranslation
+          : context.l10n.showOriginalContent,
+      child: InkWell(
+        onTap: switchingSource ? null : () => showSource(!showingSource),
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedTranslation,
+                size: 17,
+                strokeWidth: 1.7,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              if (!showingSource) ...[
+                Text(
+                  _translatedStatusLabel(detail?.sourceLanguage ?? ''),
+                  style: context.skillsTypography.metadata.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                child: switchingSource
+                    ? SizedBox.square(
+                        key: const ValueKey('translation-switch-progress'),
+                        dimension: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.6,
+                          color: scheme.primary,
+                        ),
+                      )
+                    : Text(
+                        showingSource
+                            ? context.l10n.showTranslation
+                            : context.l10n.showOriginalContent,
+                        key: ValueKey(showingSource),
+                        style: context.skillsTypography.metadata.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _sourceLanguageLabel(String tag) {
+    final normalized = tag.trim().replaceAll('_', '-').toLowerCase();
+    final code = switch (normalized) {
+      _ when normalized.startsWith('zh-hans') => 'zhHans',
+      _ when normalized.startsWith('zh-hant') => 'zhHant',
+      _ => normalized.split('-').first,
+    };
+    return context.l10n.sourceLanguageName(code);
+  }
+
+  String _translatedStatusLabel(String tag) {
+    if (tag.trim().isEmpty) return context.l10n.translatedContent;
+    return context.l10n.translatedFrom(_sourceLanguageLabel(tag));
+  }
 
   Widget _detailProductMetadata(SkillDetail value) {
     final scheme = Theme.of(context).colorScheme;

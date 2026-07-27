@@ -1093,6 +1093,50 @@ class AppLocalizationsPl extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'Przetłumaczono';
+
+  @override
+  String translatedFrom(String language) {
+    return 'Przetłumaczono z: $language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'angielski',
+      'zhHans': 'chiński uproszczony',
+      'zhHant': 'chiński tradycyjny',
+      'ja': 'japoński',
+      'ko': 'koreański',
+      'fr': 'francuski',
+      'de': 'niemiecki',
+      'it': 'włoski',
+      'es': 'hiszpański',
+      'pt': 'portugalski',
+      'ru': 'rosyjski',
+      'ar': 'arabski',
+      'hi': 'hindi',
+      'id': 'indonezyjski',
+      'tr': 'turecki',
+      'nl': 'niderlandzki',
+      'pl': 'polski',
+      'th': 'tajski',
+      'vi': 'wietnamski',
+      'ms': 'malajski',
+      'sv': 'szwedzki',
+      'uk': 'ukraiński',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'Pokaż oryginał';
+
+  @override
+  String get showTranslation => 'Pokaż tłumaczenie';
+
+  @override
   String get personalizationTheme => 'Temat';
 
   @override

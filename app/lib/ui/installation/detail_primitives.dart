@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, domain detail models, InstallOperationController, localized status copy, and SkillsGo presentation primitives.
- * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Package enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
+ * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Package enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero with inline context actions, and detail-page layout.
  * [POS]: Serves as the reusable detail and Installation Request presentation primitives.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -242,6 +242,7 @@ class SkillDetailHero extends StatelessWidget {
     required this.source,
     required this.description,
     required this.actions,
+    this.titleContext,
     this.imageUrl,
     this.avatarKey,
     this.descriptionKey,
@@ -254,6 +255,7 @@ class SkillDetailHero extends StatelessWidget {
   final Key? avatarKey;
   final Key? descriptionKey;
   final Widget actions;
+  final Widget? titleContext;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -279,12 +281,22 @@ class SkillDetailHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Text(
-                        name,
-                        textDirection: contentTextDirection(name),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.skillsTypography.display,
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              name,
+                              textDirection: contentTextDirection(name),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.skillsTypography.display,
+                            ),
+                          ),
+                          if (titleContext != null) ...[
+                            const SizedBox(width: 12),
+                            titleContext!,
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 24),

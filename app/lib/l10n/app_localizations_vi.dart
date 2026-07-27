@@ -1091,6 +1091,50 @@ class AppLocalizationsVi extends AppLocalizations {
   String get originalContent => 'Original';
 
   @override
+  String get translatedContent => 'Đã dịch';
+
+  @override
+  String translatedFrom(String language) {
+    return 'Được dịch từ $language';
+  }
+
+  @override
+  String sourceLanguageName(String code) {
+    String _temp0 = intl.Intl.selectLogic(code, {
+      'en': 'Tiếng Anh',
+      'zhHans': 'Tiếng Trung (Giản thể)',
+      'zhHant': 'Tiếng Trung (Phồn thể)',
+      'ja': 'Tiếng Nhật',
+      'ko': 'Tiếng Hàn',
+      'fr': 'Tiếng Pháp',
+      'de': 'Tiếng Đức',
+      'it': 'Tiếng Italy',
+      'es': 'Tiếng Tây Ban Nha',
+      'pt': 'Tiếng Bồ Đào Nha',
+      'ru': 'Tiếng Nga',
+      'ar': 'Tiếng Ả Rập',
+      'hi': 'Tiếng Hindi',
+      'id': 'Tiếng Indonesia',
+      'tr': 'Tiếng Thổ Nhĩ Kỳ',
+      'nl': 'Tiếng Hà Lan',
+      'pl': 'Tiếng Ba Lan',
+      'th': 'Tiếng Thái',
+      'vi': 'Tiếng Việt',
+      'ms': 'Tiếng Mã Lai',
+      'sv': 'Tiếng Thụy Điển',
+      'uk': 'Tiếng Ukraina',
+      'other': '$code',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get showOriginalContent => 'Hiện bản gốc';
+
+  @override
+  String get showTranslation => 'Hiện bản dịch';
+
+  @override
   String get personalizationTheme => 'chủ đề';
 
   @override
