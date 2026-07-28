@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
- * [OUTPUT]: Specifies App-facing keyword Find fallback, selector-preserving explicit-source Find, canonical Package Version Skill detail, and grouped Hub reads through CLI-owned requests.
+ * [OUTPUT]: Specifies App-facing keyword Find fallback, selector-preserving explicit-source Find, canonical Package Version Skill detail, and grouped source-language Hub candidate reads through CLI-owned requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -129,13 +129,13 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	defer server.Close()
 	t.Setenv("SKILLSGO_HUB_URL", server.URL)
 	inputPath := filepath.Join(t.TempDir(), "find.json")
-	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh_hans_cn"}`), 0o600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, args := range [][]string{
 		{"find", "responsive layout", "--page", "1", "--per-page", "4", "--output", "json"},
-		{"find", "--input", inputPath, "--output", "json"},
+		{"hub", "find-candidates", "--input", inputPath, "--output", "json"},
 		{"hub", "info", "--output", "json"},
 		{"hub", "check", "--output", "json"},
 	} {
@@ -150,7 +150,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	}
 	if len(requests) != 4 ||
 		requests[0] != "GET /api/v1/skills/find?page=1&perPage=4&q=responsive+layout" ||
-		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh-Hans-CN"}` ||
+		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10}` ||
 		requests[2] != "GET /info" ||
 		!strings.HasPrefix(requests[3], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)

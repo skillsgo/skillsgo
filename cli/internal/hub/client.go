@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, bounded Package ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, discovery/update reads, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, discovery/source-language candidate/update reads, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -250,7 +250,7 @@ func (c *Client) FindLocalized(ctx context.Context, search, packagePath, lang st
 	return c.readProductJSON(ctx, "/api/v1/skills/find", query)
 }
 
-func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindCandidatesRequest) (json.RawMessage, error) {
+func (c *Client) FindCandidates(ctx context.Context, request protocolapi.FindCandidatesRequest) (json.RawMessage, error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, err

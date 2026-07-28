@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Package Store, Agent Adapter roots, baseline-aware Repository Projection transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Removes selected Repository members by persisted name-or-path selector through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
- * [POS]: Serves as the authoritative managed Repository-member selector path behind `skillsgo remove`, alongside exact External removal.
+ * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Package Store, Agent Adapter roots, baseline-aware Package Projection transactions, and the Package mutation coordinator.
+ * [OUTPUT]: Removes selected Package members by persisted name-or-path selector through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
+ * [POS]: Serves as the authoritative managed Package-member selector path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -17,9 +17,9 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
+	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/spf13/cobra"
 )
 
@@ -64,36 +64,35 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			return true, err
 		}
 	}
-	transactions := make([]repositorymutation.Transaction, 0, len(removals))
+	transactions := make([]packagemutation.Transaction, 0, len(removals))
 	rollback := func() {
 		for index := len(transactions) - 1; index >= 0; index-- {
 			_ = transactions[index].Rollback()
 		}
 	}
 	packagesRoot := filepath.Join(declarationRoot, ".skillsgo", "packages")
-	infoRoot := filepath.Join(declarationRoot, ".skillsgo", "info")
+	infoRoot := infocache.DefaultRoot(home)
 	if globalScope {
 		stateRoot := project.GlobalStateRoot(home)
 		packagesRoot = filepath.Join(stateRoot, "packages")
-		infoRoot = filepath.Join(stateRoot, "info")
 	}
 	for packagePath, removed := range removals {
 		dependency := manifest.Dependencies[packagePath]
 		locked, ok := lock.Dependencies[packagePath]
 		if !ok || locked.Version != dependency.Version {
 			rollback()
-			return true, fmt.Errorf("skills-lock.yaml does not match Repository dependency %s", packagePath)
+			return true, fmt.Errorf("skills-lock.yaml does not match Package dependency %s", packagePath)
 		}
 		desiredSkills, desiredAgents := subtractStrings(dependency.Skills, removed), dependency.Agents
 		if len(selectedAgents) > 0 {
 			if len(removed) != len(dependency.Skills) {
 				rollback()
-				return true, fmt.Errorf("Repository dependencies use Cartesian Skill/Agent selection; removing an Agent requires selecting every Skill in %s", packagePath)
+				return true, fmt.Errorf("Package dependencies use Cartesian Skill/Agent selection; removing an Agent requires selecting every Skill in %s", packagePath)
 			}
 			for _, agentID := range selectedAgents {
 				if !containsString(dependency.Agents, agentID) {
 					rollback()
-					return true, fmt.Errorf("Repository %s is not selected for Agent %s", packagePath, agentID)
+					return true, fmt.Errorf("Package %s is not selected for Agent %s", packagePath, agentID)
 				}
 			}
 			desiredSkills = dependency.Skills
@@ -131,7 +130,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 		oldPaths, desiredPaths := toPaths(dependency.Skills), toPaths(desiredSkills)
 		projections := []packagestore.Projection(nil)
 		if !removeDependency {
-			projections, err = repositoryProjections(catalog, desiredAgents, dependency.Agents, oldPaths, desiredPaths, agentScope, declarationRoot)
+			projections, err = packageProjections(catalog, desiredAgents, dependency.Agents, oldPaths, desiredPaths, agentScope, declarationRoot)
 			if err != nil {
 				rollback()
 				return true, err
@@ -139,7 +138,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 		}
 		removedProjections := []packagestore.Projection(nil)
 		if len(selectedAgents) > 0 || removeDependency {
-			oldProjections, oldErr := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldPaths, oldPaths, agentScope, declarationRoot)
+			oldProjections, oldErr := packageProjections(catalog, dependency.Agents, dependency.Agents, oldPaths, oldPaths, agentScope, declarationRoot)
 			if oldErr != nil {
 				rollback()
 				return true, oldErr
@@ -155,7 +154,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			}
 		}
 		transaction, err := packagestore.Prepare(packagestore.Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: members, Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
+			Archive: archive, Sum: locked.Sum, Members: members, SkillNames: packageSkillNames(resource.Members), Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err
@@ -170,10 +169,10 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			manifest.Dependencies[packagePath] = dependency
 		}
 	}
-	if err := (repositorymutation.Plan{
+	if err := (packagemutation.Plan{
 		Transactions: transactions,
-		Workspace:    &repositorymutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
-		Operation:    "Repository member removal",
+		Workspace:    &packagemutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
+		Operation:    "Package member removal",
 	}).Commit(); err != nil {
 		return true, err
 	}
@@ -190,7 +189,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 		}{SchemaVersion: 1, Phase: "package-remove", Skills: selectors, Scope: scope})
 		return true, err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ removed %d Repository Skill selection(s)\n", len(selectors))
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ removed %d Package Skill selection(s)\n", len(selectors))
 	return true, nil
 }
 
@@ -208,10 +207,10 @@ func resolveVersionSkillRemovals(manifest project.WorkspaceManifest, selectors [
 			}
 		}
 		if len(matches) == 0 {
-			return nil, fmt.Errorf("no selected Repository Skill matches %q", raw)
+			return nil, fmt.Errorf("no selected Package Skill matches %q", raw)
 		}
 		if len(matches) > 1 {
-			return nil, fmt.Errorf("Repository Skill name %q is ambiguous across dependencies", raw)
+			return nil, fmt.Errorf("Package Skill name %q is ambiguous across dependencies", raw)
 		}
 		matched := matches[0]
 		if removals[matched.packagePath] == nil {

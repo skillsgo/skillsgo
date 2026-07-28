@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, and destination roots supplied by Agent Adapters.
- * [OUTPUT]: Prepares, commits, finalizes, compares, and rolls back complete Scope Package Stores plus deterministic Package Projections, safely restoring Package-contained symlinks and replacing only content proven equal to the prior declared baseline.
- * [POS]: Serves as the filesystem transaction membrane between Repository downloads and portable dependency-state persistence.
+ * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, destination roots supplied by Agent Adapters, and an optional caller-owned authorization to replace conflicting Package paths.
+ * [OUTPUT]: Prepares, commits, finalizes, and rolls back complete Scope Package Stores plus direct canonical-name Agent Skill links, safely restoring Package-contained symlinks, migrating baseline-proven legacy coordinate projections, transactionally replacing authorized conflicts, and allowing callers to choose post-commit disposal for exact replaced targets.
+ * [POS]: Serves as the filesystem transaction membrane between Package downloads and portable dependency-state persistence.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package packagestore
@@ -26,6 +26,8 @@ type Projection struct {
 	Root             string
 	Selected         []string
 	PreviousSelected []string
+	PreviousVersion  string
+	LegacyOnly       bool
 }
 
 type Options struct {
@@ -35,9 +37,12 @@ type Options struct {
 	Archive            []byte
 	Sum                string
 	Members            []string
+	SkillNames         map[string]string
+	PreviousSkillNames map[string]string
 	Projections        []Projection
 	RemovedProjections []Projection
 	RemovePackage      bool
+	ReplaceConflicts   bool
 }
 
 type preparedPath struct {
@@ -46,6 +51,7 @@ type preparedPath struct {
 	backup    string
 	action    pathAction
 	applied   bool
+	dispose   func(string) error
 }
 
 type pathAction uint8
@@ -69,22 +75,26 @@ func CoordinatePath(root, packagePath, version string) string {
 
 func Prepare(options Options) (*Transaction, error) {
 	if options.PackagesRoot == "" || (len(options.Projections)+len(options.RemovedProjections) == 0 && !options.RemovePackage) {
-		return nil, fmt.Errorf("Package Store root and at least one desired or removed Repository Projection are required")
+		return nil, fmt.Errorf("Package Store root and at least one desired or removed Package Projection are required")
 	}
 	parsed, err := protocolpackage.ParsePath(options.PackagePath)
 	if err != nil || parsed.String() != options.PackagePath || !protocolversion.IsImmutable(options.Version) {
-		return nil, fmt.Errorf("invalid immutable Repository coordinate %s@%s", options.PackagePath, options.Version)
+		return nil, fmt.Errorf("invalid immutable Package coordinate %s@%s", options.PackagePath, options.Version)
 	}
 	actual, err := protocolartifact.PackageSum(options.Archive, options.PackagePath, options.Version)
 	if err != nil {
 		return nil, err
 	}
 	if actual != options.Sum {
-		return nil, fmt.Errorf("Repository Sum mismatch for %s@%s", options.PackagePath, options.Version)
+		return nil, fmt.Errorf("Package Sum mismatch for %s@%s", options.PackagePath, options.Version)
 	}
 	members, err := validateMembers(options.Members)
 	if err != nil {
 		return nil, err
+	}
+	previousSkillNames := options.PreviousSkillNames
+	if len(previousSkillNames) == 0 {
+		previousSkillNames = options.SkillNames
 	}
 	transaction := &Transaction{paths: make([]preparedPath, 0, len(options.Projections)+len(options.RemovedProjections)+1)}
 	fail := func(cause error) (*Transaction, error) {
@@ -98,9 +108,9 @@ func Prepare(options Options) (*Transaction, error) {
 	}
 	var packageStorePath preparedPath
 	if options.RemovePackage {
-		packageStorePath, err = reconcileRemoval(moduleTemporary, moduleTarget)
+		packageStorePath, err = reconcileRemoval(moduleTemporary, moduleTarget, options.ReplaceConflicts)
 	} else {
-		packageStorePath, err = reconcilePreparedPath(moduleTemporary, moduleTarget)
+		packageStorePath, err = reconcilePreparedPath(moduleTemporary, moduleTarget, options.ReplaceConflicts)
 	}
 	if err != nil {
 		_ = os.RemoveAll(moduleTemporary)
@@ -111,78 +121,136 @@ func Prepare(options Options) (*Transaction, error) {
 	seenAgents, seenTargets := map[string]bool{}, map[string]bool{}
 	for _, projection := range options.Projections {
 		if projection.Agent == "" || projection.Root == "" || seenAgents[projection.Agent] {
-			return fail(fmt.Errorf("invalid or duplicate Repository Projection Agent %q", projection.Agent))
+			return fail(fmt.Errorf("invalid or duplicate Package Projection Agent %q", projection.Agent))
 		}
 		seenAgents[projection.Agent] = true
 		selected, err := validateSelection(projection.Selected, members)
 		if err != nil {
 			return fail(fmt.Errorf("Agent %s: %w", projection.Agent, err))
 		}
-		target := CoordinatePath(projection.Root, options.PackagePath, options.Version)
-		targetKey := filepath.Clean(target)
-		if seenTargets[targetKey] {
-			return fail(fmt.Errorf("duplicate Repository Projection target %s", target))
-		}
-		seenTargets[targetKey] = true
-		temporary, err := materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
-			member, isManifest := memberForManifest(path, members)
-			return !isManifest || (member != "" && selected[member])
-		})
-		if err != nil {
-			return fail(err)
-		}
-		var baseline string
+		previous := map[string]bool{}
 		if projection.PreviousSelected != nil {
-			previous, validationErr := validateSelection(projection.PreviousSelected, members)
-			if validationErr != nil {
-				return fail(fmt.Errorf("Agent %s previous selection: %w", projection.Agent, validationErr))
+			previousMembers := members
+			if projection.PreviousVersion != "" && projection.PreviousVersion != options.Version {
+				previousMembers = memberKeys(previousSkillNames)
 			}
-			baseline, err = materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
-				member, isManifest := memberForManifest(path, members)
-				return !isManifest || (member != "" && previous[member])
-			})
+			previous, err = validateSelection(projection.PreviousSelected, previousMembers)
 			if err != nil {
-				return fail(err)
+				return fail(fmt.Errorf("Agent %s previous selection: %w", projection.Agent, err))
 			}
 		}
-		prepared, err := reconcileProjection(temporary, baseline, target)
-		if err != nil {
-			_ = os.RemoveAll(temporary)
-			if baseline != "" {
-				_ = os.RemoveAll(baseline)
+		for path := range selected {
+			name, nameErr := projectionSkillName(options.SkillNames, path)
+			if nameErr != nil {
+				return fail(nameErr)
 			}
-			return fail(fmt.Errorf("Repository Projection Local Modification for Agent %s: %w", projection.Agent, err))
+			target := filepath.Join(projection.Root, name)
+			if seenTargets[filepath.Clean(target)] {
+				return fail(fmt.Errorf("duplicate Package Projection target %s", target))
+			}
+			seenTargets[filepath.Clean(target)] = true
+			desiredStore := memberStorePath(moduleTarget, path)
+			baselineStore := ""
+			for previousPath := range previous {
+				previousName, nameErr := projectionSkillName(previousSkillNames, previousPath)
+				if nameErr == nil && previousName == name {
+					previousVersion := projection.PreviousVersion
+					if previousVersion == "" {
+						previousVersion = options.Version
+					}
+					baselineStore = memberStorePath(CoordinatePath(options.PackagesRoot, options.PackagePath, previousVersion), previousPath)
+					break
+				}
+			}
+			prepared, prepareErr := reconcileProjectionLink(target, desiredStore, baselineStore, options.ReplaceConflicts)
+			if prepareErr != nil {
+				return fail(fmt.Errorf("Package Projection Local Modification for Agent %s: %w", projection.Agent, prepareErr))
+			}
+			transaction.paths = append(transaction.paths, prepared)
 		}
-		transaction.paths = append(transaction.paths, prepared)
+		for previousPath := range previous {
+			previousName, nameErr := projectionSkillName(previousSkillNames, previousPath)
+			if nameErr != nil {
+				return fail(nameErr)
+			}
+			if selectedNameExists(selected, options.SkillNames, previousName) {
+				continue
+			}
+			target := filepath.Join(projection.Root, previousName)
+			previousVersion := projection.PreviousVersion
+			if previousVersion == "" {
+				previousVersion = options.Version
+			}
+			baselineStore := memberStorePath(CoordinatePath(options.PackagesRoot, options.PackagePath, previousVersion), previousPath)
+			prepared, prepareErr := reconcileProjectionLinkRemoval(target, baselineStore, options.ReplaceConflicts)
+			if prepareErr != nil {
+				return fail(fmt.Errorf("Package Projection Local Modification for Agent %s: %w", projection.Agent, prepareErr))
+			}
+			transaction.paths = append(transaction.paths, prepared)
+		}
+		legacy := CoordinatePath(projection.Root, options.PackagePath, options.Version)
+		if _, statErr := os.Lstat(legacy); statErr == nil {
+			baseline, materializeErr := materialize(options.Archive, options.PackagePath, options.Version, legacy, func(path string) bool {
+				member, isManifest := memberForManifest(path, members)
+				return !isManifest || (member != "" && selected[member])
+			})
+			if materializeErr != nil {
+				return fail(materializeErr)
+			}
+			prepared, removalErr := reconcileRemoval(baseline, legacy, options.ReplaceConflicts)
+			if removalErr != nil {
+				return fail(fmt.Errorf("legacy Package Projection Local Modification for Agent %s: %w", projection.Agent, removalErr))
+			}
+			transaction.paths = append(transaction.paths, prepared)
+		} else if !os.IsNotExist(statErr) {
+			return fail(statErr)
+		}
 	}
 	for _, projection := range options.RemovedProjections {
 		if projection.Agent == "" || projection.Root == "" || seenAgents[projection.Agent] || projection.PreviousSelected == nil {
-			return fail(fmt.Errorf("invalid or duplicate removed Repository Projection Agent %q", projection.Agent))
+			return fail(fmt.Errorf("invalid or duplicate removed Package Projection Agent %q", projection.Agent))
 		}
 		seenAgents[projection.Agent] = true
 		previous, err := validateSelection(projection.PreviousSelected, members)
 		if err != nil {
 			return fail(fmt.Errorf("Agent %s previous selection: %w", projection.Agent, err))
 		}
-		target := CoordinatePath(projection.Root, options.PackagePath, options.Version)
-		targetKey := filepath.Clean(target)
-		if seenTargets[targetKey] {
-			return fail(fmt.Errorf("duplicate Repository Projection target %s", target))
+		if !projection.LegacyOnly {
+			for path := range previous {
+				name, nameErr := projectionSkillName(previousSkillNames, path)
+				if nameErr != nil {
+					return fail(nameErr)
+				}
+				target := filepath.Join(projection.Root, name)
+				if seenTargets[filepath.Clean(target)] {
+					return fail(fmt.Errorf("duplicate Package Projection target %s", target))
+				}
+				seenTargets[filepath.Clean(target)] = true
+				baselineStore := memberStorePath(moduleTarget, path)
+				prepared, prepareErr := reconcileProjectionLinkRemoval(target, baselineStore, options.ReplaceConflicts)
+				if prepareErr != nil {
+					return fail(fmt.Errorf("Package Projection Local Modification for Agent %s: %w", projection.Agent, prepareErr))
+				}
+				transaction.paths = append(transaction.paths, prepared)
+			}
 		}
-		seenTargets[targetKey] = true
-		baseline, err := materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
-			member, isManifest := memberForManifest(path, members)
-			return !isManifest || (member != "" && previous[member])
-		})
-		if err != nil {
-			return fail(err)
+		legacy := CoordinatePath(projection.Root, options.PackagePath, options.Version)
+		if _, statErr := os.Lstat(legacy); statErr == nil {
+			baseline, materializeErr := materialize(options.Archive, options.PackagePath, options.Version, legacy, func(path string) bool {
+				member, isManifest := memberForManifest(path, members)
+				return !isManifest || (member != "" && previous[member])
+			})
+			if materializeErr != nil {
+				return fail(materializeErr)
+			}
+			prepared, removalErr := reconcileRemoval(baseline, legacy, options.ReplaceConflicts)
+			if removalErr != nil {
+				return fail(fmt.Errorf("legacy Package Projection Local Modification for Agent %s: %w", projection.Agent, removalErr))
+			}
+			transaction.paths = append(transaction.paths, prepared)
+		} else if !os.IsNotExist(statErr) {
+			return fail(statErr)
 		}
-		prepared, err := reconcileRemoval(baseline, target)
-		if err != nil {
-			_ = os.RemoveAll(baseline)
-			return fail(fmt.Errorf("Repository Projection Local Modification for Agent %s: %w", projection.Agent, err))
-		}
-		transaction.paths = append(transaction.paths, prepared)
 	}
 	return transaction, nil
 }
@@ -204,7 +272,7 @@ func memberForManifest(path string, members map[string]string) (string, bool) {
 
 func (transaction *Transaction) Commit() error {
 	if transaction == nil || transaction.committed {
-		return fmt.Errorf("Repository transaction is unavailable or already committed")
+		return fmt.Errorf("Package transaction is unavailable or already committed")
 	}
 	for index := range transaction.paths {
 		path := &transaction.paths[index]
@@ -219,7 +287,7 @@ func (transaction *Transaction) Commit() error {
 		case pathCreate:
 			if _, err := os.Lstat(path.target); err == nil {
 				_ = transaction.Rollback()
-				return fmt.Errorf("Repository transaction target appeared concurrently: %s", path.target)
+				return fmt.Errorf("Package transaction target appeared concurrently: %s", path.target)
 			} else if !os.IsNotExist(err) {
 				_ = transaction.Rollback()
 				return err
@@ -227,18 +295,18 @@ func (transaction *Transaction) Commit() error {
 		case pathReplace:
 			if err := os.Rename(path.target, path.backup); err != nil {
 				_ = transaction.Rollback()
-				return fmt.Errorf("backup Repository Projection %s: %w", path.target, err)
+				return fmt.Errorf("backup Package Projection %s: %w", path.target, err)
 			}
 		case pathDelete:
 			if err := os.Rename(path.target, path.backup); err != nil {
 				_ = transaction.Rollback()
-				return fmt.Errorf("backup removed Repository Projection %s: %w", path.target, err)
+				return fmt.Errorf("backup removed Package Projection %s: %w", path.target, err)
 			}
 			path.applied = true
 			continue
 		default:
 			_ = transaction.Rollback()
-			return fmt.Errorf("invalid Repository transaction action")
+			return fmt.Errorf("invalid Package transaction action")
 		}
 		if err := os.Rename(path.temporary, path.target); err != nil {
 			if path.action == pathReplace {
@@ -256,13 +324,19 @@ func (transaction *Transaction) Commit() error {
 
 func (transaction *Transaction) Finalize() error {
 	if transaction == nil || !transaction.committed || transaction.finalized {
-		return fmt.Errorf("Repository transaction is not committed or is already finalized")
+		return fmt.Errorf("Package transaction is not committed or is already finalized")
 	}
 	var failures []string
 	for index := range transaction.paths {
 		path := &transaction.paths[index]
 		if path.backup != "" {
-			if err := os.RemoveAll(path.backup); err != nil {
+			var err error
+			if path.dispose != nil {
+				err = path.dispose(path.backup)
+			} else {
+				err = os.RemoveAll(path.backup)
+			}
+			if err != nil {
 				failures = append(failures, err.Error())
 				continue
 			}
@@ -270,10 +344,37 @@ func (transaction *Transaction) Finalize() error {
 		}
 	}
 	if len(failures) > 0 {
-		return fmt.Errorf("finalize Repository transaction: %s", strings.Join(failures, "; "))
+		return fmt.Errorf("finalize Package transaction: %s", strings.Join(failures, "; "))
 	}
 	transaction.finalized = true
 	return nil
+}
+
+// SetReplacedPathDisposer assigns post-commit disposal to exact replacement
+// targets and returns the targets owned by this transaction.
+func (transaction *Transaction) SetReplacedPathDisposer(targets []string, dispose func(string) error) map[string]bool {
+	owned := make(map[string]bool)
+	wanted := make(map[string]bool, len(targets))
+	for _, target := range targets {
+		wanted[transactionPathIdentity(target)] = true
+	}
+	for index := range transaction.paths {
+		path := &transaction.paths[index]
+		clean := transactionPathIdentity(path.target)
+		if wanted[clean] && path.action == pathReplace {
+			path.dispose = dispose
+			owned[clean] = true
+		}
+	}
+	return owned
+}
+
+func transactionPathIdentity(path string) string {
+	parent := filepath.Dir(filepath.Clean(path))
+	if resolved, err := filepath.EvalSymlinks(parent); err == nil {
+		parent = resolved
+	}
+	return filepath.Join(parent, filepath.Base(path))
 }
 
 func (transaction *Transaction) Rollback() error {
@@ -281,7 +382,7 @@ func (transaction *Transaction) Rollback() error {
 		return nil
 	}
 	if transaction.finalized {
-		return fmt.Errorf("Repository transaction is already finalized")
+		return fmt.Errorf("Package transaction is already finalized")
 	}
 	var failures []string
 	for index := len(transaction.paths) - 1; index >= 0; index-- {
@@ -310,12 +411,12 @@ func (transaction *Transaction) Rollback() error {
 		}
 	}
 	if len(failures) > 0 {
-		return fmt.Errorf("rollback Repository transaction: %s", strings.Join(failures, "; "))
+		return fmt.Errorf("rollback Package transaction: %s", strings.Join(failures, "; "))
 	}
 	return nil
 }
 
-func reconcileRemoval(baseline, target string) (preparedPath, error) {
+func reconcileRemoval(baseline, target string, replaceConflict bool) (preparedPath, error) {
 	if _, err := os.Lstat(target); os.IsNotExist(err) {
 		_ = os.RemoveAll(baseline)
 		return preparedPath{target: target, action: pathUnchanged}, nil
@@ -333,7 +434,7 @@ func reconcileRemoval(baseline, target string) (preparedPath, error) {
 	if err := os.RemoveAll(baseline); err != nil {
 		return preparedPath{}, err
 	}
-	if actualDigest != baselineDigest {
+	if actualDigest != baselineDigest && !replaceConflict {
 		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
 	}
 	placeholder, err := os.MkdirTemp(filepath.Dir(target), ".skillsgo-removal-")
@@ -351,7 +452,7 @@ func materialize(archive []byte, packagePath, version, target string, keep func(
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", err
 	}
-	temporary, err := os.MkdirTemp(parent, ".skillsgo-repository-")
+	temporary, err := os.MkdirTemp(parent, ".skillsgo-Package-")
 	if err != nil {
 		return "", err
 	}
@@ -379,7 +480,7 @@ func materialize(archive []byte, packagePath, version, target string, keep func(
 		destination := filepath.Join(temporary, filepath.FromSlash(entry.Path))
 		relative, err := filepath.Rel(temporary, destination)
 		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return "", fmt.Errorf("Repository file escapes destination: %s", entry.Path)
+			return "", fmt.Errorf("Package file escapes destination: %s", entry.Path)
 		}
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 			return "", err
@@ -419,14 +520,14 @@ func materialize(archive []byte, packagePath, version, target string, keep func(
 		}
 		relative, err := filepath.Rel(canonicalTemporary, resolved)
 		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return "", fmt.Errorf("Repository symlink escapes destination: %s", entry.Path)
+			return "", fmt.Errorf("Package symlink escapes destination: %s", entry.Path)
 		}
 	}
 	valid = true
 	return temporary, nil
 }
 
-func reconcilePreparedPath(temporary, target string) (preparedPath, error) {
+func reconcilePreparedPath(temporary, target string, replaceConflict bool) (preparedPath, error) {
 	if _, err := os.Lstat(target); os.IsNotExist(err) {
 		return preparedPath{temporary: temporary, target: target, action: pathCreate}, nil
 	} else if err != nil {
@@ -440,8 +541,14 @@ func reconcilePreparedPath(temporary, target string) (preparedPath, error) {
 	if err != nil {
 		return preparedPath{}, err
 	}
-	if actual != expected {
+	if actual != expected && !replaceConflict {
 		return preparedPath{}, fmt.Errorf("existing path %s differs from deterministic content", target)
+	}
+	if actual != expected {
+		return preparedPath{temporary: temporary, target: target, backup: temporary + ".backup", action: pathReplace}, nil
+	}
+	if replaceConflict {
+		return preparedPath{temporary: temporary, target: target, backup: temporary + ".backup", action: pathReplace}, nil
 	}
 	if err := os.RemoveAll(temporary); err != nil {
 		return preparedPath{}, err
@@ -449,7 +556,165 @@ func reconcilePreparedPath(temporary, target string) (preparedPath, error) {
 	return preparedPath{target: target, action: pathUnchanged}, nil
 }
 
-func reconcileProjection(desired, baseline, target string) (preparedPath, error) {
+func projectionSkillName(names map[string]string, path string) (string, error) {
+	name := strings.TrimSpace(names[path])
+	if name == "" && len(names) == 0 {
+		name = filepath.Base(filepath.FromSlash(path))
+		if path == "." {
+			name = "root-skill"
+		}
+	}
+	if name == "" || name == "." || filepath.Base(name) != name || strings.ContainsAny(name, `/\\`) {
+		return "", fmt.Errorf("Package member %q requires a safe canonical Skill name", path)
+	}
+	return name, nil
+}
+
+func memberKeys(names map[string]string) map[string]string {
+	result := make(map[string]string, len(names))
+	for path := range names {
+		key := "."
+		if path != "." {
+			portable, err := protocolartifact.PortablePathKey(path)
+			if err != nil {
+				continue
+			}
+			key = portable
+		}
+		result[key] = path
+	}
+	return result
+}
+
+func memberStorePath(packageRoot, memberPath string) string {
+	if memberPath == "." {
+		return packageRoot
+	}
+	return filepath.Join(packageRoot, filepath.FromSlash(memberPath))
+}
+
+func selectedNameExists(selected map[string]bool, names map[string]string, expected string) bool {
+	for path := range selected {
+		if names[path] == expected {
+			return true
+		}
+	}
+	return false
+}
+
+func existingProjectionLinkMatches(target, storeTarget string) (bool, error) {
+	info, err := os.Lstat(target)
+	if err != nil {
+		return false, err
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return false, nil
+	}
+	link, err := os.Readlink(target)
+	if err != nil {
+		return false, err
+	}
+	actual := link
+	if !filepath.IsAbs(actual) {
+		actual = filepath.Join(filepath.Dir(target), actual)
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(target); resolveErr == nil {
+		actual = resolved
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(storeTarget); resolveErr == nil {
+		storeTarget = resolved
+	}
+	return filepath.Clean(actual) == filepath.Clean(storeTarget), nil
+}
+
+func temporaryProjectionLink(target, storeTarget string) (string, error) {
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return "", err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(target), ".skillsgo-projection-")
+	if err != nil {
+		return "", err
+	}
+	temporaryPath := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(temporaryPath)
+		return "", err
+	}
+	if err := os.Remove(temporaryPath); err != nil {
+		return "", err
+	}
+	destination, err := filepath.Rel(filepath.Dir(target), storeTarget)
+	if err != nil {
+		return "", err
+	}
+	if err := os.Symlink(destination, temporaryPath); err != nil {
+		return "", fmt.Errorf("create Agent Skill projection link: %w", err)
+	}
+	return temporaryPath, nil
+}
+
+func reconcileProjectionLink(target, desiredStore, baselineStore string, replaceConflict bool) (preparedPath, error) {
+	if matches, err := existingProjectionLinkMatches(target, desiredStore); err == nil && matches {
+		if replaceConflict {
+			temporary, createErr := temporaryProjectionLink(target, desiredStore)
+			if createErr != nil {
+				return preparedPath{}, createErr
+			}
+			return preparedPath{temporary: temporary, target: target, backup: temporary + ".backup", action: pathReplace}, nil
+		}
+		return preparedPath{target: target, action: pathUnchanged}, nil
+	} else if os.IsNotExist(err) {
+		temporary, createErr := temporaryProjectionLink(target, desiredStore)
+		if createErr != nil {
+			return preparedPath{}, createErr
+		}
+		return preparedPath{temporary: temporary, target: target, action: pathCreate}, nil
+	} else if err != nil {
+		return preparedPath{}, err
+	}
+	baselineMatches := false
+	if baselineStore != "" {
+		baselineMatches, _ = existingProjectionLinkMatches(target, baselineStore)
+	}
+	if !baselineMatches && !replaceConflict {
+		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
+	}
+	temporary, err := temporaryProjectionLink(target, desiredStore)
+	if err != nil {
+		return preparedPath{}, err
+	}
+	return preparedPath{temporary: temporary, target: target, backup: temporary + ".backup", action: pathReplace}, nil
+}
+
+func reconcileProjectionLinkRemoval(target, baselineStore string, replaceConflict bool) (preparedPath, error) {
+	if _, err := os.Lstat(target); os.IsNotExist(err) {
+		return preparedPath{target: target, action: pathUnchanged}, nil
+	} else if err != nil {
+		return preparedPath{}, err
+	}
+	matches, err := existingProjectionLinkMatches(target, baselineStore)
+	if err != nil {
+		return preparedPath{}, err
+	}
+	if !matches && !replaceConflict {
+		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
+	}
+	placeholder, err := os.CreateTemp(filepath.Dir(target), ".skillsgo-removal-")
+	if err != nil {
+		return preparedPath{}, err
+	}
+	backup := placeholder.Name()
+	if err := placeholder.Close(); err != nil {
+		_ = os.Remove(backup)
+		return preparedPath{}, err
+	}
+	if err := os.Remove(backup); err != nil {
+		return preparedPath{}, err
+	}
+	return preparedPath{target: target, backup: backup, action: pathDelete}, nil
+}
+
+func reconcileProjection(desired, baseline, target string, replaceConflict bool) (preparedPath, error) {
 	if _, err := os.Lstat(target); os.IsNotExist(err) {
 		if baseline != "" {
 			_ = os.RemoveAll(baseline)
@@ -474,6 +739,9 @@ func reconcileProjection(desired, baseline, target string) (preparedPath, error)
 		return preparedPath{target: target, action: pathUnchanged}, nil
 	}
 	if baseline == "" {
+		if replaceConflict {
+			return preparedPath{temporary: desired, target: target, backup: desired + ".backup", action: pathReplace}, nil
+		}
 		return preparedPath{}, fmt.Errorf("existing path %s differs from deterministic content", target)
 	}
 	baselineDigest, err := treeDigest(baseline)
@@ -483,7 +751,7 @@ func reconcileProjection(desired, baseline, target string) (preparedPath, error)
 	if err := os.RemoveAll(baseline); err != nil {
 		return preparedPath{}, err
 	}
-	if actualDigest != baselineDigest {
+	if actualDigest != baselineDigest && !replaceConflict {
 		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
 	}
 	return preparedPath{temporary: desired, target: target, backup: desired + ".backup", action: pathReplace}, nil
@@ -491,7 +759,7 @@ func reconcileProjection(desired, baseline, target string) (preparedPath, error)
 
 func validateMembers(values []string) (map[string]string, error) {
 	if len(values) == 0 {
-		return nil, fmt.Errorf("Repository membership must not be empty")
+		return nil, fmt.Errorf("Package membership must not be empty")
 	}
 	members := make(map[string]string, len(values))
 	for _, value := range values {
@@ -499,12 +767,12 @@ func validateMembers(values []string) (map[string]string, error) {
 		if value != "." {
 			portable, err := protocolartifact.PortablePathKey(value)
 			if err != nil {
-				return nil, fmt.Errorf("invalid Repository member path %q", value)
+				return nil, fmt.Errorf("invalid Package member path %q", value)
 			}
 			key = portable
 		}
 		if _, exists := members[key]; exists {
-			return nil, fmt.Errorf("duplicate Repository member path %q", value)
+			return nil, fmt.Errorf("duplicate Package member path %q", value)
 		}
 		members[key] = value
 	}
@@ -537,7 +805,7 @@ func validateSelection(values []string, members map[string]string) (map[string]b
 func treeDigest(root string) (string, error) {
 	info, err := os.Lstat(root)
 	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("Repository path %s is not a directory", root)
+		return "", fmt.Errorf("Package path %s is not a directory", root)
 	}
 	paths := make([]string, 0)
 	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
@@ -566,7 +834,7 @@ func treeDigest(root string) (string, error) {
 			return "", err
 		}
 		if !info.Mode().IsRegular() && !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
-			return "", fmt.Errorf("Repository path contains unsupported file %s", relative)
+			return "", fmt.Errorf("Package path contains unsupported file %s", relative)
 		}
 		kind := "d"
 		if info.Mode().IsRegular() {
@@ -595,6 +863,88 @@ func treeDigest(root string) (string, error) {
 			}
 			_, _ = io.WriteString(hash, filepath.ToSlash(target))
 		}
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func projectionDigestFromDirectory(root string, keep func(string) bool) (string, error) {
+	info, err := os.Lstat(root)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf("Package path %s is not a directory", root)
+	}
+	leaves := map[string]bool{}
+	paths := map[string]bool{}
+	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if path == root || entry.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if keep != nil && !keep(relative) {
+			return nil
+		}
+		leaves[relative] = true
+		paths[relative] = true
+		for parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(relative))); parent != "."; parent = filepath.ToSlash(filepath.Dir(filepath.FromSlash(parent))) {
+			paths[parent] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	ordered := make([]string, 0, len(paths))
+	for relative := range paths {
+		ordered = append(ordered, relative)
+	}
+	sort.Strings(ordered)
+	hash := sha256.New()
+	for _, relative := range ordered {
+		if !leaves[relative] {
+			_, _ = fmt.Fprintf(hash, "d %04o %s\n", os.FileMode(0o755), relative)
+			continue
+		}
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode().IsRegular() {
+			mode := os.FileMode(0o644)
+			if info.Mode().Perm()&0o111 != 0 {
+				mode = 0o755
+			}
+			_, _ = fmt.Fprintf(hash, "f %04o %s\n", mode, relative)
+			file, err := os.Open(path)
+			if err != nil {
+				return "", err
+			}
+			_, copyErr := io.Copy(hash, file)
+			closeErr := file.Close()
+			if copyErr != nil {
+				return "", copyErr
+			}
+			if closeErr != nil {
+				return "", closeErr
+			}
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			_, _ = fmt.Fprintf(hash, "l %04o %s\n", info.Mode().Perm(), relative)
+			target, err := os.Readlink(path)
+			if err != nil {
+				return "", err
+			}
+			_, _ = io.WriteString(hash, filepath.ToSlash(target))
+			continue
+		}
+		return "", fmt.Errorf("Package path contains unsupported file %s", relative)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }

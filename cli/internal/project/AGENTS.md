@@ -3,9 +3,8 @@
 
 ## Members
 
-- `file_lock.go`: adapts gofrs/flock operating-system locks into bounded cross-process exclusion shared by Workspace persistence writers; process exit releases ownership without PID files or stale-lock heuristics.
-- `workspace_yaml.go`: owns strict `skills.yaml` Package dependency intent, strict `skills-lock.yaml` integrity, Global Declaration/State roots, nearest Workspace discovery, atomic paired loading with journal recovery, exact pair validation, deterministic normalization, and paired crash-recoverable publication.
-- `metadata_transaction.go`: owns exact YAML/Lock snapshots, rollback journal recovery, and atomic paired publication under the workspace metadata lock.
+- `workspace_yaml.go`: owns strict `skills.yaml` Package dependency intent, strict `skills-lock.yaml` integrity, Global Declaration/State roots, nearest Workspace discovery, paired loading with journal recovery, exact pair validation, deterministic normalization, and paired crash-recoverable publication.
+- `metadata_transaction.go`: owns exact YAML/Lock snapshots, rollback journal recovery, and atomic paired publication without persistent lock artifacts.
 - `*_test.go`: specifies pure persistence parsing plus behavior exercised through the CLI command seam.
 
 ## Architectural Boundary

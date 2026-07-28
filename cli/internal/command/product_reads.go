@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, bounded single/file/stdin Find input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides keyword and explicit-source `find`, including best-effort cold Package publication before Catalog reads, plus grouped Hub service commands with Human-default and explicit JSON results.
+ * [INPUT]: Depends on Cobra, bounded file/stdin candidate input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
+ * [OUTPUT]: Provides keyword and explicit-source `find`, including best-effort cold Package publication before Catalog reads, plus grouped Hub service commands including source-language `find-candidates` with Human-default and explicit JSON results.
  * [POS]: Serves as the deep read-only product boundary that owns source normalization and hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -57,7 +57,7 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 				continue
 			}
 			for _, skill := range candidates {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@%s  %s\n", skill.Name, skill.PackagePath, skill.Version, skill.Path); err != nil {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@[%s]  %s\n", skill.Name, skill.PackagePath, strings.Join(skill.Versions, ", "), skill.Path); err != nil {
 					return err
 				}
 			}
@@ -89,7 +89,7 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 }
 
 func newFindCommand() *cobra.Command {
-	var hubURL, lang, packagePath, input, output string
+	var hubURL, lang, packagePath, output string
 	var exactName bool
 	var page, perPage int
 	cmd := &cobra.Command{
@@ -102,19 +102,8 @@ func newFindCommand() *cobra.Command {
   skillsgo find setup-matt-pocock-skills --module github.com/mattpocock/skills --exact-name
 
   # Read another result page
-  skillsgo find typescript --page 1 --per-page 50
-
-  # Run a batch machine query from stdin
-  skillsgo find --input - --output json < find-queries.json`,
-		Args: func(_ *cobra.Command, args []string) error {
-			if input == "" && len(args) != 1 {
-				return fmt.Errorf("find requires one query or --input")
-			}
-			if input != "" && len(args) != 0 {
-				return fmt.Errorf("query and --input cannot be used together")
-			}
-			return nil
-		},
+  skillsgo find typescript --page 1 --per-page 50`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validateProductOutput(output); err != nil {
 				return err
@@ -129,27 +118,6 @@ func newFindCommand() *cobra.Command {
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
-			}
-			if input != "" {
-				if packagePath != "" || exactName || page != 0 {
-					return fmt.Errorf("--module, --exact-name, and --page are unavailable with --input")
-				}
-				batchLimit := 10
-				if cmd.Flags().Changed("per-page") {
-					batchLimit = perPage
-				}
-				request, err := readFindInput(cmd, input, batchLimit, canonical)
-				if err != nil {
-					return err
-				}
-				document, err := client.FindBatch(cmd.Context(), request)
-				if err != nil {
-					return err
-				}
-				if output == "json" {
-					return writeProductDocument(cmd, document)
-				}
-				return writeFindHuman(cmd, document, true)
 			}
 			query := strings.TrimSpace(args[0])
 			if query == "" {
@@ -185,7 +153,6 @@ func newFindCommand() *cobra.Command {
 	cmd.Flags().IntVar(&perPage, "per-page", 20, "results per page")
 	cmd.Flags().StringVar(&lang, "lang", "", "preferred presentation language")
 	cmd.Flags().StringVar(&packagePath, "module", "", "canonical Package Path")
-	cmd.Flags().StringVar(&input, "input", "", "batch Find JSON file or - for stdin")
 	cmd.Flags().BoolVar(&exactName, "exact-name", false, "return only exact Skill names")
 	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
 	return cmd
@@ -194,10 +161,9 @@ func newFindCommand() *cobra.Command {
 type findInput struct {
 	Queries []protocolapi.CandidateQuery `json:"queries"`
 	Limit   int                          `json:"limit"`
-	Lang    string                       `json:"lang,omitempty"`
 }
 
-func readFindInput(cmd *cobra.Command, path string, flagLimit int, flagLocale string) (protocolapi.FindCandidatesRequest, error) {
+func readFindCandidatesInput(cmd *cobra.Command, path string, flagLimit int) (protocolapi.FindCandidatesRequest, error) {
 	var reader io.Reader = cmd.InOrStdin()
 	var file *os.File
 	var err error
@@ -227,14 +193,44 @@ func readFindInput(cmd *cobra.Command, path string, flagLimit int, flagLocale st
 	if input.Limit < 1 || input.Limit > 10 {
 		return protocolapi.FindCandidatesRequest{}, fmt.Errorf("Find input limit must be between 1 and 10")
 	}
-	locale := flagLocale
-	if locale == "" {
-		locale, err = canonicalLang(input.Lang)
-		if err != nil {
-			return protocolapi.FindCandidatesRequest{}, err
-		}
+	return protocolapi.FindCandidatesRequest{Queries: input.Queries, Limit: input.Limit}, nil
+}
+
+func newHubFindCandidatesCommand() *cobra.Command {
+	var hubURL, input, output string
+	var limit int
+	cmd := &cobra.Command{
+		Use:     "find-candidates",
+		Short:   appi18n.Pick("Find source-language Skill candidates", "查找原文 Skill 候选"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo hub find-candidates --input - --output json < find-queries.json",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
+			request, err := readFindCandidatesInput(cmd, input, limit)
+			if err != nil {
+				return err
+			}
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			document, err := client.FindCandidates(cmd.Context(), request)
+			if err != nil {
+				return err
+			}
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
+			return writeFindHuman(cmd, document, true)
+		},
 	}
-	return protocolapi.FindCandidatesRequest{Queries: input.Queries, Limit: input.Limit, Lang: locale}, nil
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
+	cmd.Flags().StringVar(&input, "input", "-", "candidate Find JSON file or - for stdin")
+	cmd.Flags().IntVar(&limit, "limit", 10, "maximum candidates per query")
+	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
+	return cmd
 }
 
 func newHubCommand() *cobra.Command {
@@ -306,6 +302,6 @@ func newHubCommand() *cobra.Command {
 	}
 	check.Flags().String("hub", defaultHubURL(), "Hub origin")
 	check.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(info, check, newCatalogUpdateCheckCommand())
+	root.AddCommand(info, check, newHubFindCandidatesCommand(), newCatalogUpdateCheckCommand())
 	return root
 }

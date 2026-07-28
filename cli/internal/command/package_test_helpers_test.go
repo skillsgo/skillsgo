@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on archive/JSON encoders and CLI Hub Repository contract types.
- * [OUTPUT]: Provides compact Repository protocol fixtures shared by command tests.
- * [POS]: Serves as test-only infrastructure for Repository-oriented command seams.
+ * [INPUT]: Depends on archive/JSON encoders and CLI Hub Package contract types.
+ * [OUTPUT]: Provides compact Package protocol fixtures shared by command tests.
+ * [POS]: Serves as test-only infrastructure for Package-oriented command seams.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command

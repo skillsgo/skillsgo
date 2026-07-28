@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the workspace metadata file lock, exact YAML/Lock paths, filesystem snapshots, and atomic rename.
+ * [INPUT]: Depends on exact YAML/Lock paths, filesystem snapshots, and atomic rename.
  * [OUTPUT]: Provides crash-recoverable paired workspace metadata publication with rollback and no Receipt storage.
  * [POS]: Serves as the private transaction primitive beneath skills.yaml and skills-lock.yaml.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -28,23 +28,14 @@ type metadataTransaction struct {
 	Snapshots     []metadataFileSnapshot `yaml:"snapshots"`
 }
 
-func workspaceMetadataLockPath(root string) string {
-	return filepath.Join(root, ".skillsgo.metadata.lock")
-}
-
 func metadataTransactionPath(root string) string {
 	return filepath.Join(root, ".skillsgo.metadata-transaction.yaml")
 }
 
-func withWorkspaceMetadataLock(root string, operation func() error) error {
+func withWorkspaceMetadataRecovery(root string, operation func() error) error {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
-	unlock, err := acquireFileLock(workspaceMetadataLockPath(root))
-	if err != nil {
-		return err
-	}
-	defer unlock()
 	if err := recoverMetadataTransaction(root); err != nil {
 		return err
 	}
