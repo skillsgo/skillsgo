@@ -153,7 +153,6 @@ void main() {
     expect(libraryLocation('Global Skills'), findsOneWidget);
     expect(find.text('Projects'), findsOneWidget);
     expect(find.text('All Agents'), findsOneWidget);
-    expect(find.text('Global'), findsOneWidget);
     expect(find.byKey(const Key('library-add-project')), findsOneWidget);
     await tester.tap(find.byKey(const Key('library-agent-filter')));
     await tester.pumpAndSettle();

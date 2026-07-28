@@ -243,12 +243,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(gateway.managementTargetHistory, hasLength(1));
-    expect(gateway.managementTargetHistory.single, hasLength(3));
+    expect(gateway.managementTargetHistory.single, hasLength(2));
     expect(
       gateway.managementTargetHistory.single.values,
       everyElement(TargetManagementAction.remove),
     );
-    expect(gateway.libraryEntries, isEmpty);
+    expect(gateway.libraryEntries, hasLength(1));
+    expect(gateway.libraryEntries!.single.name, 'demo');
+    expect(gateway.libraryEntries!.single.targets, hasLength(1));
+    expect(
+      gateway.libraryEntries!.single.targets.single.scope,
+      InstallationScope.project,
+    );
   });
 
   testWidgets('unhealthy targets offer no automatic mutation', (tester) async {

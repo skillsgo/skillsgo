@@ -162,9 +162,14 @@ class _LibrarySelectionBarTransitionState
     if (child == null) {
       return const SizedBox.shrink(key: ValueKey('selection-bar-empty'));
     }
-    final faded = FadeTransition(opacity: _controller, child: child);
+    final faded = FadeTransition(
+      key: const Key('library-selection-bar-fade-transition'),
+      opacity: _controller,
+      child: child,
+    );
     if (widget.disableAnimations) return faded;
     return SlideTransition(
+      key: const Key('library-selection-bar-slide-transition'),
       position: Tween<Offset>(
         begin: const Offset(0, .25),
         end: Offset.zero,

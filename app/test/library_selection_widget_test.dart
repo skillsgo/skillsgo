@@ -537,15 +537,9 @@ void main() {
       await tester.tap(selection);
       await tester.pump();
       expect(find.byKey(visibleKey), findsOneWidget);
-      final selectionBarSwitcher = find.byKey(
-        const Key('library-selection-bar-switcher'),
-      );
       expect(
-        find.descendant(
-          of: selectionBarSwitcher,
-          matching: find.byType(SlideTransition),
-        ),
-        findsWidgets,
+        find.byKey(const Key('library-selection-bar-slide-transition')),
+        findsOneWidget,
       );
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.binding.hasScheduledFrame, isTrue);
@@ -564,10 +558,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 80));
       final exitingFade = tester.widget<FadeTransition>(
-        find.descendant(
-          of: selectionBarSwitcher,
-          matching: find.byType(FadeTransition),
-        ),
+        find.byKey(const Key('library-selection-bar-fade-transition')),
       );
       expect(exitingFade.opacity.value, inExclusiveRange(.45, .6));
       await tester.tap(selection);
@@ -622,21 +613,12 @@ void main() {
       );
       await tester.pump();
 
-      final selectionBarSwitcher = find.byKey(
-        const Key('library-selection-bar-switcher'),
+      expect(
+        find.byKey(const Key('library-selection-bar-fade-transition')),
+        findsOneWidget,
       );
       expect(
-        find.descendant(
-          of: selectionBarSwitcher,
-          matching: find.byType(FadeTransition),
-        ),
-        findsWidgets,
-      );
-      expect(
-        find.descendant(
-          of: selectionBarSwitcher,
-          matching: find.byType(SlideTransition),
-        ),
+        find.byKey(const Key('library-selection-bar-slide-transition')),
         findsNothing,
       );
     },
