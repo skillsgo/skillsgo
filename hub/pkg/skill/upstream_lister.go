@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides upstream version listing plus Repository semantic Tag and commit-identity contracts.
+ * [OUTPUT]: Provides upstream version listing plus Repository semantic Tag and backfill-revision commit-identity contracts.
  * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,7 +29,14 @@ type RepositoryTagLister interface {
 	ListRepositoryTags(ctx context.Context, packagePath string) ([]RepositoryTag, error)
 }
 
+// RepositoryBackfillLister returns up to twenty highest canonical semantic
+// Tags, or up to twenty recent default-branch pseudo-versions when none exist.
+type RepositoryBackfillLister interface {
+	ListRepositoryBackfillVersions(ctx context.Context, packagePath string) ([]RepositoryTag, error)
+}
+
 type RepositoryVersionLister interface {
 	UpstreamLister
 	RepositoryTagLister
+	RepositoryBackfillLister
 }

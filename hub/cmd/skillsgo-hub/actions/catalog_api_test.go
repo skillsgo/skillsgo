@@ -48,7 +48,7 @@ func openActionTestCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()
 	ctx := t.Context()
 	dsn := actionTestPostgresDSN(t)
-	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 	return metadata
@@ -227,7 +227,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, packageResponse.Skills, 1)
 
 	findBatch := httptest.NewRecorder()
-	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10,"lang":"en"}`))
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")
 	serveFiber(t, r, findBatch, findBatchRequest)
 	require.Equal(t, http.StatusOK, findBatch.Code)
@@ -236,7 +236,8 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, batchResponse.Candidates, 2)
 	require.Len(t, batchResponse.Candidates[0], 1)
 	require.Len(t, batchResponse.Candidates[1], 1)
-	require.Equal(t, "v0.0.0-test", batchResponse.Candidates[1][0].Version)
+	require.Equal(t, []string{"v0.0.0-test"}, batchResponse.Candidates[1][0].Versions)
+	require.Equal(t, "https://github.com/mattpocock.png?size=256", *batchResponse.Candidates[1][0].ImageURL)
 	require.Len(t, response.Skills, 1)
 	require.NotNil(t, response.Skills[0].ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Repository artifact and metadata resolution, and request validation.
- * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, language-aware ordered batch Skill-card hydration with opportunistic Repository metadata refresh, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Package artifact and metadata resolution, and request validation.
+ * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -295,9 +295,13 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
 			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find request")
 		}
-		lang, err := presentation.CanonicalLang(request.Lang)
-		if err != nil || len(lang) > 35 {
-			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find lang")
+		lang := ""
+		if request.Lang != "" {
+			var err error
+			lang, err = presentation.CanonicalLang(request.Lang)
+			if err != nil || len(lang) > 35 {
+				return writeAPIError(c, fiber.StatusBadRequest, "invalid Find lang")
+			}
 		}
 		for index, item := range request.Queries {
 			item.Name = strings.TrimSpace(item.Name)
@@ -325,9 +329,17 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		for _, item := range found {
 			matches := make([]protocolapi.SkillCandidate, 0, len(item.Skills))
 			for _, skill := range item.Skills {
+				versions, versionErr := metadata.SkillPublishedVersionsByPath(c.Context(), skill.PackagePath, skill.Path)
+				if versionErr != nil {
+					return writeInternalAPIError(c, "catalog.find_batch_versions", fiber.StatusInternalServerError, "internal_error", "Find failed", versionErr)
+				}
+				if len(versions) == 0 {
+					continue
+				}
 				matches = append(matches, protocolapi.SkillCandidate{
-					PackagePath: skill.PackagePath, Version: skill.LatestVersion, Name: skill.Name,
+					PackagePath: skill.PackagePath, Versions: versions, Name: skill.Name,
 					Path: skill.Path, Description: skill.Description,
+					ImageURL: skillImageURL(skill.SourceHost, skill.SourceRepository),
 				})
 			}
 			candidates = append(candidates, matches)

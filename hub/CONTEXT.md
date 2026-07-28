@@ -49,7 +49,7 @@ The atomic visibility change that publishes one immutable Package Version, its c
 _Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source validation
 
 **Package History Backfill**:
-An authenticated Hub administration operation that accepts one or more Package Paths and incrementally publishes every canonical semantic-version Tag discovered from each Package's Source Repository. Each Package owns an independent durable run that commits valid versions and retains diagnosable partial failures.
+An authenticated Hub administration operation that accepts one or more Package Paths and incrementally publishes at most the twenty highest canonical semantic-version Tags discovered from each Package's Source Repository. When a Repository has no canonical Tags, the run instead publishes up to the twenty most recent default-branch commits as immutable pseudo-versions. This keeps prewarming bounded without turning Backfill into unbounded commit crawling or branch subscription. Each Package owns an independent durable run that commits valid versions and retains diagnosable partial failures.
 _Avoid_: add option, commit crawl, branch subscription, automatic repository refresh
 
 **Backfill Request**:
@@ -57,7 +57,7 @@ A bounded administration request that validates and submits a duplicate-free set
 _Avoid_: Backfill Run, atomic multi-repository import, combined repository status
 
 **Backfill Run**:
-One durable, deduplicated attempt to publish unprocessed and previously failed semantic-version Tags for a Source Repository. Its business status is queued, running, complete, or complete with errors and is independent of River's transport state.
+One durable, deduplicated attempt to publish at most the twenty highest unprocessed or previously failed semantic-version Tags for a Source Repository, or pseudo-versions for up to its twenty most recent default-branch commits when no canonical Tags exist. Its business status is queued, running, complete, or complete with errors and is independent of River's transport state.
 _Avoid_: River job, atomic repository import, installation request
 
 **Historical Publication**:

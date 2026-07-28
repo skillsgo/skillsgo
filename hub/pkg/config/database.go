@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict PostgreSQL identifier rules and Hub database environment configuration.
- * [OUTPUT]: Provides validated PostgreSQL-only Hub catalog configuration with one process-fixed schema defaulting to public.
+ * [OUTPUT]: Provides validated PostgreSQL-only Hub catalog configuration with one process-fixed schema, bounded maximum connections, and connection lifetime.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,6 @@ type DatabaseConfig struct {
 	DSN             string `envconfig:"SKILLSGO_HUB_DATABASE_DSN"`
 	Schema          string `envconfig:"SKILLSGO_HUB_DATABASE_SCHEMA"`
 	MaxOpenConns    int    `envconfig:"SKILLSGO_HUB_DATABASE_MAX_OPEN_CONNS" validate:"min=1"`
-	MaxIdleConns    int    `envconfig:"SKILLSGO_HUB_DATABASE_MAX_IDLE_CONNS" validate:"min=0"`
 	ConnMaxLifetime int    `envconfig:"SKILLSGO_HUB_DATABASE_CONN_MAX_LIFETIME" validate:"min=0"`
 }
 

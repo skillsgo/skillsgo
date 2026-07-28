@@ -39,7 +39,7 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	metadata, err := catalog.Open(ctx, config.DatabaseConfig{
-		DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2,
+		DSN: dsn, MaxOpenConns: 5,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
