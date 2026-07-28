@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a coordinate Scope Package Store directory, its locked Package identity/version/Sum, and the shared Package Artifact format.
- * [OUTPUT]: Verifies a Package Store, reconstructs its canonical Package ZIP including safe symlinks, and compares deterministic selected-member Projections without inferring publication membership from arbitrary SKILL.md files.
+ * [OUTPUT]: Verifies a Package Store, reconstructs its canonical Package ZIP including safe symlinks, and verifies direct Agent Skill links plus legacy deterministic projections without inferring publication membership from arbitrary SKILL.md files.
  * [POS]: Serves as the trusted local read boundary from authoritative Scope Package Store back into projection transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -76,7 +76,7 @@ func ReadVerifiedPackage(packagesRoot, packagePath, version, expectedSum string)
 	return archive, nil
 }
 
-// VerifyProjection compares an existing Repository Projection with the exact
+// VerifyProjection compares an existing Package Projection with the exact
 // projection derived from verified artifact bytes and immutable membership.
 func VerifyProjection(root, packagePath, version string, archive []byte, members, selected []string) error {
 	memberSet, err := validateMembers(members)
@@ -105,7 +105,50 @@ func VerifyProjection(root, packagePath, version string, archive []byte, members
 		return err
 	}
 	if actualDigest != expectedDigest {
-		return fmt.Errorf("Repository Projection Local Modification for %s@%s", packagePath, version)
+		return fmt.Errorf("Package Projection Local Modification for %s@%s", packagePath, version)
+	}
+	return nil
+}
+
+// VerifyProjectionDirectory compares a Projection with selected content from
+// an already verified Scope Package Store without materializing a temporary
+// copy. Callers must verify packageRoot against the Workspace Lock first.
+func VerifyProjectionDirectory(packageRoot, projectionRoot string, members, selected []string) error {
+	memberSet, err := validateMembers(members)
+	if err != nil {
+		return err
+	}
+	selectedSet, err := validateSelection(selected, memberSet)
+	if err != nil {
+		return err
+	}
+	expectedDigest, err := projectionDigestFromDirectory(packageRoot, func(path string) bool {
+		member, isManifest := memberForManifest(path, memberSet)
+		return !isManifest || (member != "" && selectedSet[member])
+	})
+	if err != nil {
+		return err
+	}
+	actualDigest, err := treeDigest(projectionRoot)
+	if err != nil {
+		return err
+	}
+	if actualDigest != expectedDigest {
+		return fmt.Errorf("Package Projection Local Modification")
+	}
+	return nil
+}
+
+// VerifySkillProjection verifies that one Agent-visible Skill entry is a
+// direct symlink to its immutable member directory in the Scope Package Store.
+func VerifySkillProjection(packageRoot, projectionPath, memberPath string) error {
+	expected := memberStorePath(packageRoot, memberPath)
+	matches, err := existingProjectionLinkMatches(projectionPath, expected)
+	if err != nil {
+		return err
+	}
+	if !matches {
+		return fmt.Errorf("Skill Projection Local Modification")
 	}
 	return nil
 }

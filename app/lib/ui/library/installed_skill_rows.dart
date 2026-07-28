@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection visibility and callbacks, clipboard feedback, and scope popovers.
- * [OUTPUT]: Provides installed Skill rows with geometry-preserving optional selection controls plus Global/Project scope summaries, Agent rows, popovers, and copyable project paths.
+ * [OUTPUT]: Provides installed Skill rows with descriptions, geometry-preserving optional selection controls, context-aware Agent summaries, and project-target popovers with copyable paths.
  * [POS]: Serves as the installed target presentation segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -74,32 +74,25 @@ class _InstalledSkillRow extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        skill.description.trim().isEmpty
-                            ? _installationCoverageLabel(
-                                context,
-                                skill,
-                                projects,
-                              )
-                            : skill.description.trim(),
-                        textDirection: contentTextDirection(
-                          skill.description.trim().isEmpty
-                              ? _installationCoverageLabel(
-                                  context,
-                                  skill,
-                                  projects,
-                                )
-                              : skill.description.trim(),
+                      if (skill.description.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          skill.description.trim(),
+                          key: ValueKey(
+                            'library-skill-description-${skill.inventoryKey}',
+                          ),
+                          textDirection: contentTextDirection(
+                            skill.description,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: scheme.onSurfaceVariant,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -135,55 +128,35 @@ class _LibraryInstallationScopeSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = _installationScopeGroups(skill, projects);
     if (groups.isEmpty) return const SizedBox.shrink();
-    final user = groups.where((group) => group.project == null).firstOrNull;
-    final projectGroups = groups
-        .where((group) => group.project != null)
-        .toList(growable: false);
     return Semantics(
       label: groups.map((group) => group.semanticLabel(agentLabel)).join(', '),
       excludeSemantics: true,
       child: SizedBox(
-        height: 39,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 18,
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: user == null
-                    ? const SizedBox.shrink()
-                    : _ScopeAgentRow(
-                        agents: user.agents,
-                        agentLabel: agentLabel,
-                      ),
-              ),
-            ),
-            const SizedBox(height: 3),
-            SizedBox(
-              height: 18,
-              child: _ProjectScopeLine(
-                groups: projectGroups,
-                agentLabel: agentLabel,
-              ),
-            ),
-          ],
+        height: 18,
+        child: _InstallationScopeLine(
+          inventoryKey: skill.inventoryKey,
+          groups: groups,
+          agentLabel: agentLabel,
         ),
       ),
     );
   }
 }
 
-class _ProjectScopeLine extends StatelessWidget {
-  const _ProjectScopeLine({required this.groups, required this.agentLabel});
+class _InstallationScopeLine extends StatelessWidget {
+  const _InstallationScopeLine({
+    required this.inventoryKey,
+    required this.groups,
+    required this.agentLabel,
+  });
 
+  final String inventoryKey;
   final List<_InstallationScopeGroup> groups;
   final String Function(String) agentLabel;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    if (groups.isEmpty) return const SizedBox.shrink();
     final visible = groups.take(2).toList(growable: false);
     final hidden = groups.length - visible.length;
     return Row(
@@ -200,7 +173,8 @@ class _ProjectScopeLine extends StatelessWidget {
               ),
             ),
           Flexible(
-            child: _ProjectScopeSegment(
+            child: _InstallationScopeSegment(
+              inventoryKey: inventoryKey,
               group: visible[index],
               agentLabel: agentLabel,
             ),
@@ -218,40 +192,34 @@ class _ProjectScopeLine extends StatelessWidget {
   }
 }
 
-class _ProjectScopeSegment extends StatelessWidget {
-  const _ProjectScopeSegment({required this.group, required this.agentLabel});
+class _InstallationScopeSegment extends StatelessWidget {
+  const _InstallationScopeSegment({
+    required this.inventoryKey,
+    required this.group,
+    required this.agentLabel,
+  });
 
+  final String inventoryKey;
   final _InstallationScopeGroup group;
   final String Function(String) agentLabel;
 
   @override
   Widget build(BuildContext context) {
-    final project = group.project!;
+    final project = group.project;
+    final segment = KeyedSubtree(
+      key: ValueKey(
+        project == null
+            ? 'library-scope-global-agents-$inventoryKey'
+            : 'library-scope-project-agents-${project.id}',
+      ),
+      child: _ScopeAgentRow(agents: group.agents, agentLabel: agentLabel),
+    );
+    if (project == null) return segment;
     return _ProjectScopePopover(
       project: project,
       agents: group.agents,
       agentLabel: agentLabel,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ProjectIdentityIcon(project: project, size: 16),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              project.name,
-              textDirection: contentTextDirection(project.name),
-              key: ValueKey('library-scope-project-${project.id}'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: segment,
     );
   }
 }

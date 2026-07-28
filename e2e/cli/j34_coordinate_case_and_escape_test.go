@@ -35,7 +35,7 @@ func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/collection:")
 	require.Contains(t, string(manifest), "- camel-case")
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "CamelCase", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 
 	detail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/fixtures.test/group/subgroup/collection/versions/v1.0.0/skills?path=skills/CamelCase")
 	require.Equal(t, 0, detail.exitCode, detail.output)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on resolved SkillsGo semantic colors and Primer Primitives 11.9.0 component-state conventions.
- * [OUTPUT]: Provides source-traceable button, control, card, overlay, navigation, search, focus, and inverse-surface danger tokens as a Flutter ThemeExtension.
+ * [OUTPUT]: Provides source-traceable button, control, card, overlay, navigation color and optical-alignment, search, focus, and inverse-surface danger tokens as a Flutter ThemeExtension.
  * [POS]: Serves as the component-token layer between SkillsGo semantic colors and reusable Flutter widgets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,6 +45,9 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     required this.statusDangerOnInverse,
     required this.statusDangerForeground,
     this.focusRingWidth = 2,
+    this.navigationLabelOpticalOffsetY = -1,
+    this.navigationStrokeLabelOpticalOffsetY = 0,
+    this.navigationStrokeIconOpticalOffsetY = -1,
   });
 
   final Color controlRest;
@@ -83,6 +86,9 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
   final Color statusDangerOnInverse;
   final Color statusDangerForeground;
   final double focusRingWidth;
+  final double navigationLabelOpticalOffsetY;
+  final double navigationStrokeLabelOpticalOffsetY;
+  final double navigationStrokeIconOpticalOffsetY;
 
   @override
   SkillsComponentTokens copyWith({
@@ -122,6 +128,9 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     Color? statusDangerOnInverse,
     Color? statusDangerForeground,
     double? focusRingWidth,
+    double? navigationLabelOpticalOffsetY,
+    double? navigationStrokeLabelOpticalOffsetY,
+    double? navigationStrokeIconOpticalOffsetY,
   }) => SkillsComponentTokens(
     controlRest: controlRest ?? this.controlRest,
     controlHover: controlHover ?? this.controlHover,
@@ -164,6 +173,14 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     statusDangerForeground:
         statusDangerForeground ?? this.statusDangerForeground,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
+    navigationLabelOpticalOffsetY:
+        navigationLabelOpticalOffsetY ?? this.navigationLabelOpticalOffsetY,
+    navigationStrokeLabelOpticalOffsetY:
+        navigationStrokeLabelOpticalOffsetY ??
+        this.navigationStrokeLabelOpticalOffsetY,
+    navigationStrokeIconOpticalOffsetY:
+        navigationStrokeIconOpticalOffsetY ??
+        this.navigationStrokeIconOpticalOffsetY,
   );
 
   @override
@@ -235,6 +252,21 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
       ),
       focusRingWidth:
           focusRingWidth + (other.focusRingWidth - focusRingWidth) * t,
+      navigationLabelOpticalOffsetY:
+          navigationLabelOpticalOffsetY +
+          (other.navigationLabelOpticalOffsetY -
+                  navigationLabelOpticalOffsetY) *
+              t,
+      navigationStrokeLabelOpticalOffsetY:
+          navigationStrokeLabelOpticalOffsetY +
+          (other.navigationStrokeLabelOpticalOffsetY -
+                  navigationStrokeLabelOpticalOffsetY) *
+              t,
+      navigationStrokeIconOpticalOffsetY:
+          navigationStrokeIconOpticalOffsetY +
+          (other.navigationStrokeIconOpticalOffsetY -
+                  navigationStrokeIconOpticalOffsetY) *
+              t,
     );
   }
 }

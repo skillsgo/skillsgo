@@ -31,7 +31,7 @@ func TestJ09MultiAgentInstall(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.Len(t, installed.Projections, 2)
 	for _, projection := range installed.Projections {
-		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
+		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "SKILL.md"))
 	}
 
 }

@@ -9,12 +9,12 @@ import 'package:integration_test/integration_test.dart';
 import 'catalog_update_check_test.dart' as catalog_update;
 import 'machine_failure_recovery_test.dart' as machine_failure;
 import 'repository_install_all_test.dart' as repository_install;
-import 'takeover_management_test.dart' as takeover;
+import 'adoption_management_test.dart' as adoption;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   repository_install.registerRepositoryInstallAllJourney();
   catalog_update.registerCatalogUpdateCheckJourney();
-  takeover.registerTakeoverManagementJourney();
+  adoption.registerAdoptionManagementJourney();
   machine_failure.registerMachineFailureRecoveryJourney();
 }

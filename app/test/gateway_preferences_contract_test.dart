@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SharedPreferences, temporary filesystem boundaries, controlled CLI output, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies appearance, language, reminder, one-time takeover-introduction, Hub-origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
+ * [OUTPUT]: Specifies appearance, language, reminder, one-time adoption-introduction, Hub-origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
  * [POS]: Serves as the preferences, onboarding, and project contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,18 +47,6 @@ void main() {
     expect(restored.updateAvailable, isFalse);
     expect(restored.securityAdvisory, isFalse);
   });
-
-  test(
-    'Batch Takeover introduction is unseen until an explicit choice',
-    () async {
-      final gateway = RealSkillsGateway();
-      expect(await gateway.loadBatchTakeoverPromptSeen(), isFalse);
-
-      await gateway.markBatchTakeoverPromptSeen();
-
-      expect(await RealSkillsGateway().loadBatchTakeoverPromptSeen(), isTrue);
-    },
-  );
 
   test(
     'selected language is forwarded to Hub Find as canonical content locale',

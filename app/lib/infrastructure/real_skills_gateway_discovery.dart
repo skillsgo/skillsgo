@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language unified CLI Find, Cloud Ranking/Trending/Hot, and strict translation-aware Package Version Skill detail loading through `show --path`.
+ * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
+ * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, Cloud Ranking/Trending/Hot, and translation-aware Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,6 +79,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       }
       final rawSkills = decoded['skills'] as List;
       final installedCounts = <String, int>{};
+      final installedVersions = <String, Set<String>>{};
       try {
         final installed = await listInstalled(
           projects: await loadAddedProjects(),
@@ -87,6 +88,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           if (skill.packagePath.isNotEmpty) {
             installedCounts['${skill.packagePath}\u0000${skill.name}'] =
                 skill.targetCount;
+            installedVersions
+                .putIfAbsent(
+                  '${skill.packagePath}\u0000${skill.name}',
+                  () => <String>{},
+                )
+                .addAll(skill.versions);
           }
         }
       } on Object {
@@ -154,6 +161,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
                   ? (metric['change'] as num).toInt()
                   : 0,
               localTargetCount: installedCounts['$packagePath\u0000$name'] ?? 0,
+              localVersions: List.unmodifiable(
+                installedVersions['$packagePath\u0000$name'] ?? const {},
+              ),
             );
           })
           .toList(growable: false);
@@ -199,7 +209,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   }
 
   @override
-  Future<List<List<SkillSummary>>> findSources(
+  Future<List<List<AdoptionCandidate>>> findSources(
     List<PackageFindQuery> queries, {
     int limit = 10,
   }) async {
@@ -213,7 +223,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    final lang = await _contentLang();
     final chunks = <List<PackageFindQuery>>[
       for (var start = 0; start < queries.length; start += _sourceFindChunkSize)
         queries.sublist(
@@ -221,7 +230,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           (start + _sourceFindChunkSize).clamp(0, queries.length),
         ),
     ];
-    final results = <List<SkillSummary>>[];
+    final results = <List<AdoptionCandidate>>[];
     for (
       var start = 0;
       start < chunks.length;
@@ -232,8 +241,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         (start + _sourceFindConcurrentChunks).clamp(0, chunks.length),
       );
       final waveResults = await Future.wait([
-        for (final chunk in wave)
-          _findSourceChunk(chunk, limit: limit, lang: lang),
+        for (final chunk in wave) _findSourceChunk(chunk, limit: limit),
       ]);
       for (final chunkResults in waveResults) {
         results.addAll(chunkResults);
@@ -242,10 +250,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     return results;
   }
 
-  Future<List<List<SkillSummary>>> _findSourceChunk(
+  Future<List<List<AdoptionCandidate>>> _findSourceChunk(
     List<PackageFindQuery> queries, {
     required int limit,
-    required String lang,
   }) async {
     final request = jsonEncode({
       'queries': [
@@ -259,13 +266,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       'limit': limit,
     });
     final result = await _runCli([
-      'find',
+      'hub',
+      'find-candidates',
       '--input',
       '-',
       '--hub',
       _hubOrigin,
-      '--lang',
-      lang,
       '--output',
       'json',
     ], stdin: request);
@@ -295,27 +301,32 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     }
   }
 
-  SkillSummary _decodeSkillCandidate(Object? raw) {
+  AdoptionCandidate _decodeSkillCandidate(Object? raw) {
     if (raw is! Map<String, dynamic>) throw const FormatException();
     final packagePath = raw['packagePath'];
     final name = raw['name'];
     final description = raw['description'];
-    final version = raw['version'];
+    final versions = raw['versions'];
     final path = raw['path'];
+    final imageUrl = raw['imageUrl'];
     if (packagePath is! String ||
         name is! String ||
         description is! String ||
-        version is! String ||
-        path is! String) {
+        versions is! List ||
+        versions.isEmpty ||
+        versions.any((item) => item is! String || item.isEmpty) ||
+        versions.toSet().length != versions.length ||
+        path is! String ||
+        imageUrl != null && imageUrl is! String) {
       throw const FormatException();
     }
-    return SkillSummary(
+    return AdoptionCandidate(
       packagePath: packagePath,
-      installName: path.isNotEmpty ? p.basename(path) : name,
       name: name,
       path: path,
       description: description,
-      latestVersion: version,
+      versions: List<String>.unmodifiable(versions.cast<String>()),
+      imageUrl: imageUrl as String?,
     );
   }
 
@@ -465,16 +476,19 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       var installationTargets = <SkillInstallationTarget>[];
+      var packageInstallationTargets = <SkillInstallationTarget>[];
       try {
         final installed = await listInstalled(
           projects: await loadAddedProjects(),
         );
-        installationTargets = installed
-            .where(
-              (entry) =>
-                  entry.packagePath == skill.packagePath &&
-                  entry.name == skill.name,
-            )
+        final packageEntries = installed.where(
+          (entry) => entry.packagePath == skill.packagePath,
+        );
+        installationTargets = packageEntries
+            .where((entry) => entry.name == skill.name)
+            .expand((entry) => entry.targets)
+            .toList(growable: false);
+        packageInstallationTargets = packageEntries
             .expand((entry) => entry.targets)
             .toList(growable: false);
       } on Object {
@@ -492,6 +506,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         sourceLanguage: decoded['sourceLanguage'] as String,
         translated: decoded['translated'] as bool,
         installationTargets: installationTargets,
+        packageInstallationTargets: packageInstallationTargets,
       );
     } on SkillsException {
       rethrow;

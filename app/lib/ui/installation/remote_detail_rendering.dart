@@ -107,7 +107,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            RepositoryAvatar(
+                            PackageAvatar(
                               source: value.packagePath,
                               imageUrl: widget.skill.imageUrl,
                               size: 26,
@@ -141,7 +141,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
                       ignoring: compactProgress < .95,
                       child: InstallLocationMenuAnchor(
                         builder: (context, present) => PrimaryCapsuleButton(
-                          label: _installActionLabel(value),
+                          label: context.l10n.install,
                           height: 36,
                           horizontalPadding: 16,
                           labelStyle: const TextStyle(
@@ -189,7 +189,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RepositoryAvatar(
+              PackageAvatar(
                 source: widget.skill.packagePath,
                 imageUrl: widget.skill.imageUrl,
                 size: 116,
@@ -262,7 +262,7 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
         actions: InstallLocationMenuAnchor(
           builder: (context, present) => PrimaryCapsuleButton(
             key: const Key('detail-hero-install'),
-            label: _installActionLabel(value),
+            label: context.l10n.install,
             height: 40,
             horizontalPadding: 18,
             labelStyle: const TextStyle(
@@ -304,11 +304,6 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       ),
     );
   }
-
-  String _installActionLabel(SkillDetail value) =>
-      value.installationTargets.isNotEmpty || execution?.hasSuccess == true
-      ? context.l10n.installMoreTargets
-      : context.l10n.install;
 
   Widget _translationState() {
     final scheme = Theme.of(context).colorScheme;
@@ -396,8 +391,8 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     final scheme = Theme.of(context).colorScheme;
     final items = [
       (
-        label: context.l10n.detailRepository,
-        value: _repositoryDisplayName(value.packagePath),
+        label: context.l10n.detailPackageSource,
+        value: _packageDisplayName(value.packagePath),
       ),
       (label: context.l10n.detailUpdated, value: _shortDate(value.time)),
       (
@@ -477,15 +472,15 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     );
   }
 
-  String _repositoryDisplayName(String repository) {
-    final firstSeparator = repository.indexOf('/');
+  String _packageDisplayName(String packagePath) {
+    final firstSeparator = packagePath.indexOf('/');
     if (firstSeparator <= 0) {
-      return repository;
+      return packagePath;
     }
-    final firstSegment = repository.substring(0, firstSeparator);
+    final firstSegment = packagePath.substring(0, firstSeparator);
     return firstSegment.contains('.')
-        ? repository.substring(firstSeparator + 1)
-        : repository;
+        ? packagePath.substring(firstSeparator + 1)
+        : packagePath;
   }
 
   String _shortDate(DateTime? value) {

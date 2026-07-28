@@ -317,7 +317,6 @@
   "update": "อัปเดต",
   "backToLibrary": "กลับไปที่ห้องสมุด",
   "remove": "ลบ",
-  "manageTargets": "จัดการขอบเขต",
   "skillsSelected": "เลือก {count} แล้ว",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "ล้างการเลือก",
   "selectCurrentResults": "เลือกผลลัพธ์ปัจจุบัน",
   "clearCurrentResultSelection": "ล้างการเลือกผลลัพธ์ปัจจุบัน",
-  "manageTargetsTitle": "จัดการเป้าหมายการติดตั้ง",
-  "manageTargetsDescription": "เลือกการดำเนินการที่แน่นอนสำหรับแต่ละเป้าหมาย เป้าหมายที่ไม่ได้เลือกจะไม่เปลี่ยนแปลง",
   "targetActionsSelected": "เลือก {selected} จาก {total} เป้าหมายแล้ว",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "ยืนยันการลบ",
-  "applyTargetActions": "ใช้การกระทำที่เลือก",
   "managementProgressTitle": "การใช้การดำเนินการตามเป้าหมาย",
   "managementResultsTitle": "ผลลัพธ์การกระทำตามเป้าหมาย",
   "managementResultSummary": "{succeeded} สำเร็จ {failed} ล้มเหลว",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต skills.yaml และ skills-lock.yaml",
   "targetContentPreserved": "เนื้อหาเป้าหมายปัจจุบันจะถูกเก็บรักษาไว้",
   "localReadFailed": "ไม่สามารถอ่านทักษะนี้ได้",
   "localReadFailedMessage": "SkillsGo ไม่สามารถอ่านทักษะที่ติดตั้งนี้ได้ ตรวจสอบว่าโฟลเดอร์พร้อมใช้งานและเข้าถึงได้ จากนั้นลองอีกครั้ง",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "คุณสามารถเรียกดูทักษะนี้ต่อไปได้ แต่ยังไม่มีเป้าหมายการติดตั้ง ติดตั้ง Agent ที่รองรับ จากนั้นเรียกใช้การตรวจจับอีกครั้ง",
   "clearCustomPath": "ล้างเส้นทางที่กำหนดเอง",
   "privacyProvenance": "ความเป็นส่วนตัวและที่มา",
-  "privacySummary": "การค้นหาของคุณไม่ได้รับการบันทึก และ SkillsGo จะไม่เก็บบันทึกคำสั่ง",
   "language": "ภาษา",
   "translatedContent": "แปลแล้ว",
   "translatedFrom": "แปลจาก{language}",
@@ -686,19 +680,19 @@
   "installedCell": "ติดตั้งแล้ว",
   "unsupportedCell": "ไม่พร้อมใช้งาน",
   "confirmInstall": "ยืนยันการติดตั้ง",
-  "installAllRepositorySkills": "ติดตั้งทักษะพื้นที่เก็บข้อมูลทั้งหมด ({count})",
+  "installAllPackageSkills": "ติดตั้งทักษะพื้นที่เก็บข้อมูลทั้งหมด ({count})",
   "installAllSkillsTo": "ติดตั้งทักษะทั้งหมดเพื่อ",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "ติดตั้งทักษะ {repository} ทั้งหมด ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "ติดตั้งทักษะ {packagePath} ทั้งหมด ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "จัดการทักษะที่มีอยู่",
-  "batchTakeoverActionCount": "จัดการ ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "จัดการทักษะที่มีอยู่",
+  "batchAdoptionActionCount": "จัดการ ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "กำลังตรวจสอบทักษะที่มีอยู่...",
-  "batchTakeoverRetry": "ตรวจสอบ Skill ที่สามารถนำมาจัดการได้อีกครั้ง",
-  "batchTakeoverEligibleCount": "สามารถจัดการ {count} ได้",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "กำลังตรวจสอบทักษะที่มีอยู่...",
+  "batchAdoptionRetry": "ตรวจสอบ Skill ที่สามารถนำมาจัดการได้อีกครั้ง",
+  "batchAdoptionEligibleCount": "สามารถจัดการ {count} ได้",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "เพิ่มทักษะการบริหารจัดการ...",
-  "batchTakeoverTitle": "จัดการทักษะที่มีอยู่ด้วย SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo จะเพิ่มบันทึกการจัดการในพื้นที่โดยไม่ต้องย้าย เขียนทับ หรืออัปโหลดไฟล์ทักษะ รายการที่ไม่รองรับหรือเปลี่ยนแปลงจะถูกข้ามไป",
-  "batchTakeoverStoryTitle": "เปลี่ยนทักษะที่กระจัดกระจายให้เป็นห้องสมุดที่ชัดเจน",
-  "batchTakeoverStoryDescription": "SkillsGo พบ {count, plural, =1{1 ทักษะที่มีอยู่} other{{count} ทักษะที่มีอยู่}} ที่สามารถจัดการได้ในตำแหน่งนี้",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "เพิ่มทักษะการบริหารจัดการ...",
+  "batchAdoptionTitle": "จัดการทักษะที่มีอยู่ด้วย SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo จะเพิ่มบันทึกการจัดการในพื้นที่โดยไม่ต้องย้าย เขียนทับ หรืออัปโหลดไฟล์ทักษะ รายการที่ไม่รองรับหรือเปลี่ยนแปลงจะถูกข้ามไป",
+  "batchAdoptionStoryTitle": "เปลี่ยนทักษะที่กระจัดกระจายให้เป็นห้องสมุดที่ชัดเจน",
+  "batchAdoptionStoryDescription": "SkillsGo พบ {count, plural, =1{1 ทักษะที่มีอยู่} other{{count} ทักษะที่มีอยู่}} ที่สามารถจัดการได้ในตำแหน่งนี้",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "ก่อนการจัดการ ยังไม่ชัดเจนว่าทักษะที่มีอยู่ถูกติดตั้งไว้ที่ใด ไม่ว่าจะเป็นทักษะปัจจุบัน วิธีการกู้คืน หรือว่าโครงการใช้เวอร์ชันเดียวกันหรือไม่",
-  "batchTakeoverPainLocation": "ตำแหน่งการติดตั้งที่ไม่รู้จัก",
-  "batchTakeoverPainFreshness": "สถานะการอัปเดตที่ไม่รู้จัก",
-  "batchTakeoverPainRecovery": "กู้คืนไม่ได้เมื่อเกิดความเสียหาย",
-  "batchTakeoverPainVersionDrift": "เวอร์ชันต่างๆ ทั่วทั้งโครงการ",
-  "batchTakeoverFolderTitle": "ทักษะที่มีอยู่",
-  "batchTakeoverFolderSubtitle": "สถานะไม่ชัดเจน",
-  "batchTakeoverAfterLabel": "หลังจากนั้น",
-  "batchTakeoverAfterTitle": "ห้องสมุดที่ชัดเจนแห่งหนึ่ง",
-  "batchTakeoverLibraryTitle": "ห้องสมุด SkillsGo",
-  "batchTakeoverBenefitLocation": "เคลียร์สถานที่",
-  "batchTakeoverBenefitFreshness": "การอัปเดตที่มองเห็นได้",
-  "batchTakeoverBenefitRecovery": "ฟื้นตัวได้ง่าย",
-  "batchTakeoverBenefitVersions": "เวอร์ชันที่ชัดเจน",
-  "batchTakeoverManagedSection": "จัดการดูแลโดย SkillsGo",
-  "batchTakeoverPendingSection": "รอดำเนินการ",
-  "batchTakeoverItemManaged": "{name} จัดการโดย SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "ก่อนการจัดการ ยังไม่ชัดเจนว่าทักษะที่มีอยู่ถูกติดตั้งไว้ที่ใด ไม่ว่าจะเป็นทักษะปัจจุบัน วิธีการกู้คืน หรือว่าโครงการใช้เวอร์ชันเดียวกันหรือไม่",
+  "batchAdoptionPainLocation": "ตำแหน่งการติดตั้งที่ไม่รู้จัก",
+  "batchAdoptionPainFreshness": "สถานะการอัปเดตที่ไม่รู้จัก",
+  "batchAdoptionPainRecovery": "กู้คืนไม่ได้เมื่อเกิดความเสียหาย",
+  "batchAdoptionPainVersionDrift": "เวอร์ชันต่างๆ ทั่วทั้งโครงการ",
+  "batchAdoptionFolderTitle": "ทักษะที่มีอยู่",
+  "batchAdoptionFolderSubtitle": "สถานะไม่ชัดเจน",
+  "batchAdoptionAfterLabel": "หลังจากนั้น",
+  "batchAdoptionAfterTitle": "ห้องสมุดที่ชัดเจนแห่งหนึ่ง",
+  "batchAdoptionLibraryTitle": "ห้องสมุด SkillsGo",
+  "batchAdoptionBenefitLocation": "เคลียร์สถานที่",
+  "batchAdoptionBenefitFreshness": "การอัปเดตที่มองเห็นได้",
+  "batchAdoptionBenefitRecovery": "ฟื้นตัวได้ง่าย",
+  "batchAdoptionBenefitVersions": "เวอร์ชันที่ชัดเจน",
+  "batchAdoptionManagedSection": "จัดการดูแลโดย SkillsGo",
+  "batchAdoptionPendingSection": "รอดำเนินการ",
+  "batchAdoptionItemManaged": "{name} จัดการโดย SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "ไม่สามารถเพิ่ม {name} ในการจัดการได้",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "ไม่สามารถเพิ่ม {name} ในการจัดการได้",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} กำลังรอการจัดการ",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} กำลังรอการจัดการ",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "หลังจากการจัดการ {count, plural, =1{1 ทักษะคือ} other{{count} ทักษะเป็น}} ได้รับการจัดระเบียบในไลบรารีเดียวโดยมีสถานะการจัดการที่ชัดเจน",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "หลังจากการจัดการ {count, plural, =1{1 ทักษะคือ} other{{count} ทักษะเป็น}} ได้รับการจัดระเบียบในไลบรารีเดียวโดยมีสถานะการจัดการที่ชัดเจน",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "อีก +{count}",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "อีก +{count}",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "เพิ่มทักษะที่มีอยู่เหล่านี้ให้กับการจัดการ SkillsGo",
-  "batchTakeoverTransitionLabel": "จัดระเบียบ",
-  "batchTakeoverStatusTitle": "สถานะการจัดการ",
-  "batchTakeoverStatusManaged": "จัดการ",
-  "batchTakeoverStatusProgress": "การจัดระเบียบ",
-  "batchTakeoverStatusSkipped": "ข้ามไป",
-  "batchTakeoverStatusFilesStay": "ไฟล์ทักษะจะยังคงอยู่ในตำแหน่งเดิม",
-  "batchTakeoverBoardSemantics": "ทักษะจะถูกจัดเรียงเป็นแถวที่สมบูรณ์และบันทึกโดย SkillsGo โดยไม่ต้องย้ายไฟล์",
-  "batchTakeoverBoardComplete": "ชัดเจนทั้งหมด",
-  "batchTakeoverBoardPartial": "เสร็จสมบูรณ์",
-  "batchTakeoverStatusTotal": "รวม",
-  "batchTakeoverQueueComplete": "ไม่มีทักษะใดรออยู่",
-  "batchTakeoverQueueWaiting": "ทักษะจะย้ายมาที่นี่หลังจากการตรวจสอบแล้ว",
-  "batchTakeoverNextLabel": "ถัดไป",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 บล็อกตัวจัดการ SkillsGo} other{{count} บล็อกตัวจัดการ SkillsGo}} กรอกแถวสุดท้าย",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "เพิ่มทักษะที่มีอยู่เหล่านี้ให้กับการจัดการ SkillsGo",
+  "batchAdoptionTransitionLabel": "จัดระเบียบ",
+  "batchAdoptionStatusTitle": "สถานะการจัดการ",
+  "batchAdoptionStatusManaged": "จัดการ",
+  "batchAdoptionStatusProgress": "การจัดระเบียบ",
+  "batchAdoptionStatusSkipped": "ข้ามไป",
+  "batchAdoptionStatusFilesStay": "ไฟล์ทักษะจะยังคงอยู่ในตำแหน่งเดิม",
+  "batchAdoptionBoardSemantics": "ทักษะจะถูกจัดเรียงเป็นแถวที่สมบูรณ์และบันทึกโดย SkillsGo โดยไม่ต้องย้ายไฟล์",
+  "batchAdoptionBoardComplete": "ชัดเจนทั้งหมด",
+  "batchAdoptionBoardPartial": "เสร็จสมบูรณ์",
+  "batchAdoptionStatusTotal": "รวม",
+  "batchAdoptionQueueComplete": "ไม่มีทักษะใดรออยู่",
+  "batchAdoptionQueueWaiting": "ทักษะจะย้ายมาที่นี่หลังจากการตรวจสอบแล้ว",
+  "batchAdoptionNextLabel": "ถัดไป",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 บล็อกตัวจัดการ SkillsGo} other{{count} บล็อกตัวจัดการ SkillsGo}} กรอกแถวสุดท้าย",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "ไฟล์ เส้นทาง และเวิร์กโฟลว์ปัจจุบันของคุณจะยังคงอยู่ในตำแหน่งเดิม SkillsGo จัดทำบันทึกการจัดการในพื้นที่ให้เสร็จสิ้นเท่านั้น",
-  "batchTakeoverLaterHint": "หากคุณข้าม คุณสามารถใช้จัดการทักษะที่มีอยู่จากห้องสมุดได้ตลอดเวลา",
-  "batchTakeoverSkip": "ไม่ใช่ตอนนี้",
-  "batchTakeoverConfirm": "เพิ่มไปยังการจัดการ",
-  "batchTakeoverExecutionRetry": "ลองอีกครั้ง",
-  "batchTakeoverResultTitle": "เพิ่มทักษะในการบริหารจัดการ",
-  "batchTakeoverSummary": "เพิ่มทักษะ {takenOver} ในการจัดการแล้ว, {skipped} ข้ามไป",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "ไฟล์ เส้นทาง และเวิร์กโฟลว์ปัจจุบันของคุณจะยังคงอยู่ในตำแหน่งเดิม SkillsGo จัดทำบันทึกการจัดการในพื้นที่ให้เสร็จสิ้นเท่านั้น",
+  "batchAdoptionLaterHint": "หากคุณข้าม คุณสามารถใช้จัดการทักษะที่มีอยู่จากห้องสมุดได้ตลอดเวลา",
+  "batchAdoptionSkip": "ไม่ใช่ตอนนี้",
+  "batchAdoptionConfirm": "เพิ่มไปยังการจัดการ",
+  "batchAdoptionExecutionRetry": "ลองอีกครั้ง",
+  "batchAdoptionResultTitle": "เพิ่มทักษะในการบริหารจัดการ",
+  "batchAdoptionSummary": "เพิ่มทักษะ {adopted} ในการจัดการแล้ว, {skipped} ข้ามไป",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "ปิด",
+  "batchAdoptionClose": "ปิด",
   "installMoreTargets": "ติดตั้งในสถานที่เพิ่มเติม",
-  "detailRepository": "พื้นที่เก็บข้อมูล",
+  "detailPackageSource": "แหล่งที่มาของแพ็กเกจ",
   "detailStars": "ดาว",
   "detailUpdated": "อัปเดตแล้ว",
-  "detailArchiveSize": "ขนาดไปรษณีย์",
+  "detailArchiveSize": "ขนาดแพ็กเกจ",
   "pathLabel": "เส้นทางโครงการ",
   "copyProjectPath": "คัดลอกเส้นทางโครงการ",
   "projectPathCopied": "คัดลอกเส้นทางโครงการแล้ว",

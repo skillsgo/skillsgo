@@ -25,9 +25,13 @@ func TestJ13SameNameMembersRemainExactlySelectable(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, byName.exitCode, byName.output)
-	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0")
-	require.FileExists(t, filepath.Join(projection, "one", "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(projection, "two", "SKILL.md"))
+	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "shared")
+	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
+	firstTarget, err := filepath.EvalSymlinks(projection)
+	require.NoError(t, err)
+	firstExpected, err := filepath.EvalSymlinks(filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0", "one"))
+	require.NoError(t, err)
+	require.Equal(t, firstExpected, firstTarget)
 
 	resetLocalInstallation(t, ctx, container)
 	byPath := execCLI(t, ctx, container,
@@ -37,6 +41,10 @@ func TestJ13SameNameMembersRemainExactlySelectable(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, byPath.exitCode, byPath.output)
-	require.NoFileExists(t, filepath.Join(projection, "one", "SKILL.md"))
-	require.FileExists(t, filepath.Join(projection, "two", "SKILL.md"))
+	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
+	secondTarget, err := filepath.EvalSymlinks(projection)
+	require.NoError(t, err)
+	secondExpected, err := filepath.EvalSymlinks(filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0", "two"))
+	require.NoError(t, err)
+	require.Equal(t, secondExpected, secondTarget)
 }

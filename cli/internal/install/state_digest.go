@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one exact local filesystem path and its ordinary files/directories or external symlink identity.
- * [OUTPUT]: Provides a deterministic framed state digest used to bind External takeover/removal review to execution.
+ * [OUTPUT]: Provides a deterministic framed state digest used to bind External adoption/removal review to execution.
  * [POS]: Serves as the narrow filesystem concurrency token helper; it does not materialize managed Repository content.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

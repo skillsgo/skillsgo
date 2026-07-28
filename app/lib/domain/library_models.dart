@@ -1,28 +1,78 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware local/remote Skill detail, and Batch Takeover scope/plan/preview plus named per-item result values.
+ * [OUTPUT]: Provides Adoption candidates and exact reviewed mappings, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware local/remote Skill detail with exact Skill and Package-scope targets, and Batch Adoption presentation results.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'installation_models.dart';
 import 'system_models.dart';
 
-class BatchTakeoverResult {
-  const BatchTakeoverResult({
-    required this.takenOver,
-    required this.skipped,
+class AdoptionCandidate {
+  const AdoptionCandidate({
+    required this.packagePath,
+    required this.name,
+    required this.path,
+    required this.description,
+    required this.versions,
+    this.imageUrl,
+  });
+
+  final String packagePath;
+  final String name;
+  final String path;
+  final String description;
+  final List<String> versions;
+  final String? imageUrl;
+}
+
+class AdoptionRequestItem {
+  const AdoptionRequestItem({
+    required this.inventoryKey,
+    required this.name,
+    required this.packagePath,
+    required this.version,
+    required this.skillPath,
+    required this.targets,
+  });
+
+  final String inventoryKey;
+  final String name;
+  final String packagePath;
+  final String version;
+  final String skillPath;
+  final List<AdoptionTarget> targets;
+}
+
+class AdoptionTarget {
+  const AdoptionTarget({
+    required this.agent,
+    required this.scope,
+    required this.path,
+    this.projectRoot = '',
+  });
+
+  final String agent;
+  final InstallationScope scope;
+  final String projectRoot;
+  final String path;
+}
+
+class BatchAdoptionResult {
+  const BatchAdoptionResult({
+    required this.adopted,
+    required this.failed,
     this.items = const [],
   });
 
-  final int takenOver;
-  final int skipped;
-  final List<BatchTakeoverItemResult> items;
+  final int adopted;
+  final int failed;
+  final List<BatchAdoptionItemResult> items;
 }
 
-enum BatchTakeoverItemStatus { takenOver, skipped }
+enum BatchAdoptionItemStatus { adopted, failed }
 
-class BatchTakeoverItemResult {
-  const BatchTakeoverItemResult({
+class BatchAdoptionItemResult {
+  const BatchAdoptionItemResult({
     required this.name,
     required this.skillId,
     required this.status,
@@ -31,52 +81,12 @@ class BatchTakeoverItemResult {
 
   final String name;
   final String skillId;
-  final BatchTakeoverItemStatus status;
+  final BatchAdoptionItemStatus status;
   final String reason;
 }
 
-enum BatchTakeoverScopeKind { all, global, project }
-
-class BatchTakeoverScope {
-  const BatchTakeoverScope._(this.kind, this.projectRoot);
-
-  static const all = BatchTakeoverScope._(BatchTakeoverScopeKind.all, '');
-  static const global = BatchTakeoverScope._(BatchTakeoverScopeKind.global, '');
-
-  factory BatchTakeoverScope.project(String projectRoot) =>
-      BatchTakeoverScope._(BatchTakeoverScopeKind.project, projectRoot);
-
-  final BatchTakeoverScopeKind kind;
-  final String projectRoot;
-}
-
-class BatchTakeoverPlan {
-  const BatchTakeoverPlan({
-    required this.id,
-    required this.allEligibleCount,
-    required this.globalEligibleCount,
-    this.eligibleCountByProjectRoot = const {},
-    this.previews = const [],
-  });
-
-  final String id;
-  final int allEligibleCount;
-  final int globalEligibleCount;
-  final Map<String, int> eligibleCountByProjectRoot;
-  final List<BatchTakeoverPreview> previews;
-
-  int eligibleCount(BatchTakeoverScope scope) => switch (scope.kind) {
-    BatchTakeoverScopeKind.all => allEligibleCount,
-    BatchTakeoverScopeKind.global => globalEligibleCount,
-    BatchTakeoverScopeKind.project => eligibleForProject(scope.projectRoot),
-  };
-
-  int eligibleForProject(String projectRoot) =>
-      eligibleCountByProjectRoot[projectRoot] ?? 0;
-}
-
-class BatchTakeoverPreview {
-  const BatchTakeoverPreview({
+class BatchAdoptionPreview {
+  const BatchAdoptionPreview({
     required this.name,
     required this.skillId,
     required this.scope,
@@ -193,6 +203,7 @@ class SkillDetail {
     this.sourceLanguage = '',
     this.translated = false,
     this.installationTargets = const [],
+    this.packageInstallationTargets = const [],
   });
 
   final String name;
@@ -206,6 +217,7 @@ class SkillDetail {
   final String sourceLanguage;
   final bool translated;
   final List<SkillInstallationTarget> installationTargets;
+  final List<SkillInstallationTarget> packageInstallationTargets;
 }
 
 class InstalledSkill {

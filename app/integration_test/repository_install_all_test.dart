@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, JourneyRuntime isolation, onboarding preferences, a disposable Hub/schema, the bundled CLI, and the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, YAML/Lock state, Scope Package Store, and ordinary-file Repository Projections.
+ * [OUTPUT]: Verifies Package search, the stable Package-wide installation action, bundled-CLI dry-run-to-apply execution, YAML/Lock state, Scope Package Store, and ordinary-file Package Projections.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
+import 'package:skillsgo/ui/native_components.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'support/journey_runtime.dart';
@@ -64,20 +65,13 @@ void registerRepositoryInstallAllJourney() {
         timeout: const Duration(seconds: 30),
       );
 
-      final installAllLabels = find.byWidgetPredicate(
-        (widget) =>
-            widget is Text &&
-            (widget.data == 'Install all skills' || widget.data == '安装所有技能'),
+      final installButtonFinder = find.byKey(
+        const ValueKey('install-location-submit'),
       );
-      expect(installAllLabels, findsWidgets);
-      final installButtonFinder = find
-          .ancestor(
-            of: installAllLabels.last,
-            matching: find.byType(FilledButton),
-          )
-          .first;
       await _pumpUntilEnabledButton(tester, installButtonFinder);
-      final installButton = tester.widget<FilledButton>(installButtonFinder);
+      final installButton = tester.widget<PrimaryCapsuleButton>(
+        installButtonFinder,
+      );
       expect(installButton.onPressed, isNotNull);
       installButton.onPressed!();
       await tester.pump();
@@ -116,9 +110,7 @@ void registerRepositoryInstallAllJourney() {
         isTrue,
       );
       expect(
-        File(
-          '$sandbox/test-agent/skills/$coordinate/skills/alpha/SKILL.md',
-        ).existsSync(),
+        File('$sandbox/test-agent/skills/alpha/SKILL.md').existsSync(),
         isTrue,
       );
     },
@@ -129,11 +121,11 @@ void registerRepositoryInstallAllJourney() {
 Future<void> _pumpUntilEnabledButton(WidgetTester tester, Finder finder) async {
   final deadline = DateTime.now().add(const Duration(seconds: 30));
   while (DateTime.now().isBefore(deadline)) {
-    final buttons = tester.widgetList<FilledButton>(finder);
+    final buttons = tester.widgetList<PrimaryCapsuleButton>(finder);
     if (buttons.isNotEmpty && buttons.first.onPressed != null) return;
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(tester.widget<FilledButton>(finder).onPressed, isNotNull);
+  expect(tester.widget<PrimaryCapsuleButton>(finder).onPressed, isNotNull);
 }
 
 Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
@@ -145,9 +137,7 @@ Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
 }
 
 Future<void> _pumpUntilInstalled(WidgetTester tester, String sandbox) async {
-  final installed = File(
-    '$sandbox/test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
-  );
+  final installed = File('$sandbox/test-agent/skills/alpha/SKILL.md');
   final deadline = DateTime.now().add(const Duration(minutes: 2));
   while (!installed.existsSync() && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));

@@ -317,7 +317,6 @@
   "update": "アップデート",
   "backToLibrary": "ライブラリに戻る",
   "remove": "削除",
-  "manageTargets": "スコープの管理",
   "skillsSelected": "{count} が選択されました",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "選択をクリア",
   "selectCurrentResults": "現在の結果を選択してください",
   "clearCurrentResultSelection": "現在の結果の選択をクリアします",
-  "manageTargetsTitle": "インストールターゲットの管理",
-  "manageTargetsDescription": "ターゲットごとに正確なアクションを選択してください。選択されていないターゲットは変更されません。",
   "targetActionsSelected": "{total} 個中 {selected} 個のターゲットが選択されました",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "削除の確認",
-  "applyTargetActions": "選択したアクションを適用する",
   "managementProgressTitle": "ターゲットアクションの適用",
   "managementResultsTitle": "目標行動結果",
   "managementResultSummary": "{succeeded} は成功しました、{failed} は失敗しました",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "選択したプロジェクト操作により、skills.yaml と skills-lock.yaml が更新されます。",
   "targetContentPreserved": "現在のターゲット コンテンツは保持されます。",
   "localReadFailed": "このスキルを読み取れません",
   "localReadFailedMessage": "SkillsGo は、このインストールされたスキルを読み取ることができませんでした。そのフォルダーが使用可能でアクセス可能であることを確認してから、再試行してください。",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "このスキルを参照し続けることはできますが、インストール対象はまだありません。サポートされているエージェントをインストールしてから、検出を再度実行します。",
   "clearCustomPath": "カスタムパスをクリアする",
   "privacyProvenance": "プライバシーと出所",
-  "privacySummary": "検索は保存されず、SkillsGo はコマンド ログを保存しません。",
   "language": "言語",
   "translatedContent": "翻訳済み",
   "translatedFrom": "{language}から翻訳",
@@ -686,19 +680,19 @@
   "installedCell": "インストール済み",
   "unsupportedCell": "利用不可",
   "confirmInstall": "インストールの確認",
-  "installAllRepositorySkills": "すべてのリポジトリ スキル ({count}) をインストールします",
+  "installAllPackageSkills": "すべてのリポジトリ スキル ({count}) をインストールします",
   "installAllSkillsTo": "すべてのスキルをインストールする",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "すべての {repository} スキル ({count}) をインストールします",
-  "@installRepositorySkills": {
+  "installPackageSkills": "すべての {packagePath} スキル ({count}) をインストールします",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "既存のスキルを管理する",
-  "batchTakeoverActionCount": "管理 ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "既存のスキルを管理する",
+  "batchAdoptionActionCount": "管理 ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "既存のスキルを確認しています…",
-  "batchTakeoverRetry": "管理に追加できるスキルを再確認",
-  "batchTakeoverEligibleCount": "{count}は管理可能です",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "既存のスキルを確認しています…",
+  "batchAdoptionRetry": "管理に追加できるスキルを再確認",
+  "batchAdoptionEligibleCount": "{count}は管理可能です",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "マネジメントにスキルを加える…",
-  "batchTakeoverTitle": "SkillsGo で既存のスキルを管理しますか?",
-  "batchTakeoverDescription": "SkillsGo は、スキル ファイルの移動、上書き、アップロードを行わずに、ローカル管理レコードを追加します。サポートされていない項目や変更された項目はスキップされます。",
-  "batchTakeoverStoryTitle": "分散したスキルを 1 つの明確なライブラリにまとめる",
-  "batchTakeoverStoryDescription": "SkillsGo は、この場所で管理できる {count, plural, =1{1 個の既存スキル} other{{count} 個の既存スキル}} を見つけました。",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "マネジメントにスキルを加える…",
+  "batchAdoptionTitle": "SkillsGo で既存のスキルを管理しますか?",
+  "batchAdoptionDescription": "SkillsGo は、スキル ファイルの移動、上書き、アップロードを行わずに、ローカル管理レコードを追加します。サポートされていない項目や変更された項目はスキップされます。",
+  "batchAdoptionStoryTitle": "分散したスキルを 1 つの明確なライブラリにまとめる",
+  "batchAdoptionStoryDescription": "SkillsGo は、この場所で管理できる {count, plural, =1{1 個の既存スキル} other{{count} 個の既存スキル}} を見つけました。",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "管理する前は、既存のスキルがどこにインストールされているか、最新のものであるか、回復方法、プロジェクトが同じバージョンを使用しているかどうかが不明瞭です。",
-  "batchTakeoverPainLocation": "不明なインストール場所",
-  "batchTakeoverPainFreshness": "不明なアップデートステータス",
-  "batchTakeoverPainRecovery": "壊れたら回復しない",
-  "batchTakeoverPainVersionDrift": "プロジェクト間で異なるバージョン",
-  "batchTakeoverFolderTitle": "既存のスキル",
-  "batchTakeoverFolderSubtitle": "不明なステータス",
-  "batchTakeoverAfterLabel": "後",
-  "batchTakeoverAfterTitle": "クリアライブラリー 1 つ",
-  "batchTakeoverLibraryTitle": "SkillsGo ライブラリ",
-  "batchTakeoverBenefitLocation": "場所をクリアする",
-  "batchTakeoverBenefitFreshness": "更新が表示されます",
-  "batchTakeoverBenefitRecovery": "簡単な回復",
-  "batchTakeoverBenefitVersions": "バージョンクリア",
-  "batchTakeoverManagedSection": "SkillsGo が管理",
-  "batchTakeoverPendingSection": "保留中",
-  "batchTakeoverItemManaged": "{name} は SkillsGo によって管理されています",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "管理する前は、既存のスキルがどこにインストールされているか、最新のものであるか、回復方法、プロジェクトが同じバージョンを使用しているかどうかが不明瞭です。",
+  "batchAdoptionPainLocation": "不明なインストール場所",
+  "batchAdoptionPainFreshness": "不明なアップデートステータス",
+  "batchAdoptionPainRecovery": "壊れたら回復しない",
+  "batchAdoptionPainVersionDrift": "プロジェクト間で異なるバージョン",
+  "batchAdoptionFolderTitle": "既存のスキル",
+  "batchAdoptionFolderSubtitle": "不明なステータス",
+  "batchAdoptionAfterLabel": "後",
+  "batchAdoptionAfterTitle": "クリアライブラリー 1 つ",
+  "batchAdoptionLibraryTitle": "SkillsGo ライブラリ",
+  "batchAdoptionBenefitLocation": "場所をクリアする",
+  "batchAdoptionBenefitFreshness": "更新が表示されます",
+  "batchAdoptionBenefitRecovery": "簡単な回復",
+  "batchAdoptionBenefitVersions": "バージョンクリア",
+  "batchAdoptionManagedSection": "SkillsGo が管理",
+  "batchAdoptionPendingSection": "保留中",
+  "batchAdoptionItemManaged": "{name} は SkillsGo によって管理されています",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} を管理に追加できませんでした",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} を管理に追加できませんでした",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} は管理を待っています",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} は管理を待っています",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "管理後、{count, plural, =1{1 つのスキルは} other{{count} のスキルは}} が 1 つのライブラリに整理され、管理ステータスが明確になります。",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "管理後、{count, plural, =1{1 つのスキルは} other{{count} のスキルは}} が 1 つのライブラリに整理され、管理ステータスが明確になります。",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count}以上",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count}以上",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "これらの既存のスキルを SkillsGo 管理に追加します。",
-  "batchTakeoverTransitionLabel": "整理する",
-  "batchTakeoverStatusTitle": "管理状況",
-  "batchTakeoverStatusManaged": "管理された",
-  "batchTakeoverStatusProgress": "整理する",
-  "batchTakeoverStatusSkipped": "スキップされました",
-  "batchTakeoverStatusFilesStay": "スキルファイルは元の場所に残ります",
-  "batchTakeoverBoardSemantics": "スキルは完全な行に配置され、ファイルを移動せずに SkillsGo によって記録されます。",
-  "batchTakeoverBoardComplete": "オールクリア",
-  "batchTakeoverBoardPartial": "完了",
-  "batchTakeoverStatusTotal": "合計",
-  "batchTakeoverQueueComplete": "待っているスキルはありません",
-  "batchTakeoverQueueWaiting": "スキルは検証後にここに移動します",
-  "batchTakeoverNextLabel": "次へ",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo オーガナイザー ブロック} other{{count} SkillsGo オーガナイザー ブロック}} で最後の行を完成させます",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "これらの既存のスキルを SkillsGo 管理に追加します。",
+  "batchAdoptionTransitionLabel": "整理する",
+  "batchAdoptionStatusTitle": "管理状況",
+  "batchAdoptionStatusManaged": "管理された",
+  "batchAdoptionStatusProgress": "整理する",
+  "batchAdoptionStatusSkipped": "スキップされました",
+  "batchAdoptionStatusFilesStay": "スキルファイルは元の場所に残ります",
+  "batchAdoptionBoardSemantics": "スキルは完全な行に配置され、ファイルを移動せずに SkillsGo によって記録されます。",
+  "batchAdoptionBoardComplete": "オールクリア",
+  "batchAdoptionBoardPartial": "完了",
+  "batchAdoptionStatusTotal": "合計",
+  "batchAdoptionQueueComplete": "待っているスキルはありません",
+  "batchAdoptionQueueWaiting": "スキルは検証後にここに移動します",
+  "batchAdoptionNextLabel": "次へ",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo オーガナイザー ブロック} other{{count} SkillsGo オーガナイザー ブロック}} で最後の行を完成させます",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "ファイル、パス、および現在のワークフローは、正確な場所に残ります。 SkillsGo はローカル管理記録のみを完了します。",
-  "batchTakeoverLaterHint": "スキップした場合は、いつでも「ライブラリ」から「既存のスキルの管理」を使用できます。",
-  "batchTakeoverSkip": "今ではありません",
-  "batchTakeoverConfirm": "管理に追加",
-  "batchTakeoverExecutionRetry": "再試行",
-  "batchTakeoverResultTitle": "マネジメントにスキルを追加",
-  "batchTakeoverSummary": "{takenOver} スキルが管理に追加され、{skipped} はスキップされました。",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "ファイル、パス、および現在のワークフローは、正確な場所に残ります。 SkillsGo はローカル管理記録のみを完了します。",
+  "batchAdoptionLaterHint": "スキップした場合は、いつでも「ライブラリ」から「既存のスキルの管理」を使用できます。",
+  "batchAdoptionSkip": "今ではありません",
+  "batchAdoptionConfirm": "管理に追加",
+  "batchAdoptionExecutionRetry": "再試行",
+  "batchAdoptionResultTitle": "マネジメントにスキルを追加",
+  "batchAdoptionSummary": "{adopted} スキルが管理に追加され、{skipped} はスキップされました。",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "閉じる",
+  "batchAdoptionClose": "閉じる",
   "installMoreTargets": "より多くの場所にインストールする",
-  "detailRepository": "リポジトリ",
+  "detailPackageSource": "パッケージの提供元",
   "detailStars": "スター",
   "detailUpdated": "更新されました",
-  "detailArchiveSize": "郵便番号サイズ",
+  "detailArchiveSize": "パッケージサイズ",
   "pathLabel": "プロジェクトパス",
   "copyProjectPath": "プロジェクトパスをコピーする",
   "projectPathCopied": "プロジェクトパスがコピーされました",

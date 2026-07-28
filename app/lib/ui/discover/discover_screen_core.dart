@@ -199,7 +199,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     SkillSummary skill, {
     InstallLocationAction preferredAction = InstallLocationAction.currentSkill,
   }) async {
-    final operation = ref.read(installOperationProvider(skill.coordinateKey));
+    final operation = ref.read(
+      installOperationProvider(skill.versionedCoordinateKey),
+    );
     if (operation.operating) return;
     try {
       late SkillDetail detail;
@@ -232,6 +234,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             projects = values[1] as List<AddedProject>;
             riskPolicy = values[2] as PersonalRiskPolicy;
             return InstallLocationMenuRequest(
+              summary: skill,
               gateway: widget.gateway,
               catalog: catalog,
               detail: detail,
@@ -364,13 +367,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
                       ).colorScheme.surfaceContainerHighest,
                       child: RemoteDetailScreen(
                         key: ValueKey(
-                          'discover-detail-${selectedSkill!.coordinateKey}',
+                          'discover-detail-${selectedSkill!.versionedCoordinateKey}',
                         ),
                         gateway: widget.gateway,
                         skill: selectedSkill!,
                         operation: ref.read(
                           installOperationProvider(
-                            selectedSkill!.coordinateKey,
+                            selectedSkill!.versionedCoordinateKey,
                           ),
                         ),
                         openPlanOnLoad: openPlanOnDetailLoad,

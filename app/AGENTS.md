@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Repository installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and consume Cloud-composed ranking cards.
+- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and consume Cloud-composed ranking cards.
 
 ## Commands
 
@@ -41,7 +41,7 @@ flutter build macos --release
 ## Boundaries
 
 - The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. In Cloud mode it may call only the Cloud origin declared by `skillsgo hub info` for Cloud-composed ranking reads.
-- The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Repository Projections.
+- The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
 - The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.

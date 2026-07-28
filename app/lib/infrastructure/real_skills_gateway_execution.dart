@@ -13,17 +13,19 @@ mixin _RealSkillsGatewayExecutionSupport on _RealSkillsGatewayCore {
     required Iterable<InstallationPlanTarget> Function(T item)
     affectedBindingsOf,
   }) {
-    final targetKeys = items.map(targetOf).map(updateTargetKey).toSet();
+    final targetKeys = items.map(targetOf).map(installationTargetKey).toSet();
     for (final item in items) {
       final target = targetOf(item);
       final bindings = affectedBindingsOf(item).toList(growable: false);
       if (bindings.isNotEmpty &&
           (!bindings.any(
                 (binding) =>
-                    updateTargetKey(binding) == updateTargetKey(target),
+                    installationTargetKey(binding) ==
+                    installationTargetKey(target),
               ) ||
               bindings.any(
-                (binding) => !targetKeys.contains(updateTargetKey(binding)),
+                (binding) =>
+                    !targetKeys.contains(installationTargetKey(binding)),
               ))) {
         throw const FormatException();
       }

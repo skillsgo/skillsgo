@@ -1,23 +1,34 @@
 /*
- * [INPUT]: Depends on the shared nested-navigation library, SkillsRailItem values and optional exact counts, selection state, compact density, and Flutter Material interaction primitives.
- * [OUTPUT]: Provides the private animated, accessible rail button with an optional inline count capsule used by SkillsSideRail.
+ * [INPUT]: Depends on the shared nested-navigation library, a localized label, optional HugeIcon or image identity, Unicode grapheme clusters for automatic multilingual abbreviation, optional exact counts, selection state, compact density, stable navigation-label typography, composited state coloring, and Flutter Material interaction primitives.
+ * [OUTPUT]: Provides the public accessible SkillsNavigationButton with icon/image/fallback identity resolution, optical alignment, multilingual abbreviation, layout-stable selected coloring, and an optional inline count capsule used by SkillsSideRail and standalone navigation surfaces.
  * [POS]: Serves as the per-destination row presentation segment of nested navigation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../nested_navigation.dart';
 
-class _RailButton<T> extends StatelessWidget {
-  const _RailButton({
-    required this.item,
-    required this.focusNode,
+class SkillsNavigationButton extends StatelessWidget {
+  const SkillsNavigationButton({
+    super.key,
+    required this.label,
     required this.selected,
     required this.onPressed,
+    this.focusNode,
+    this.compact = false,
+    this.icon,
+    this.image,
+    this.count,
+    this.countLabel,
   });
 
-  final SkillsRailItem<T> item;
-  final FocusNode focusNode;
+  final String label;
   final bool selected;
   final VoidCallback onPressed;
+  final FocusNode? focusNode;
+  final bool compact;
+  final List<List<dynamic>>? icon;
+  final Widget? image;
+  final int? count;
+  final String? countLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +36,12 @@ class _RailButton<T> extends StatelessWidget {
     final foreground = selected
         ? context.skillsComponents.navigationSelectedForeground
         : scheme.onSurfaceVariant;
-    final horizontalPadding = item.compact ? 12.0 : 14.0;
-    final leadingGap = item.compact ? 8.0 : 10.0;
-    final itemExtent = item.compact
-        ? _compactRailItemExtent
-        : _standardRailItemExtent;
+    const horizontalPadding = 14.0;
+    const leadingGap = 10.0;
     return Semantics(
       selected: selected,
       button: true,
-      label: item.countLabel == null
-          ? item.label
-          : '${item.label}, ${item.countLabel}',
+      label: countLabel == null ? label : '$label, $countLabel',
       child: TextButton(
         focusNode: focusNode,
         onPressed: onPressed,
@@ -45,10 +51,10 @@ class _RailButton<T> extends StatelessWidget {
               backgroundColor: Colors.transparent,
               shape: const StadiumBorder(),
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              minimumSize: Size.fromHeight(itemExtent),
+              minimumSize: const Size.fromHeight(_railItemExtent),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               alignment: AlignmentDirectional.centerStart,
-              textStyle: context.skillsTypography.bodySecondary,
+              textStyle: context.skillsTypography.navigationLabel,
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
@@ -63,30 +69,41 @@ class _RailButton<T> extends StatelessWidget {
             ),
         child: Row(
           children: [
-            if (item.leading != null) ...[
-              item.leading!,
-              SizedBox(width: leadingGap),
-            ] else if (item.icon != null) ...[
-              HugeIcon(
-                icon: item.icon!,
-                size: 18,
-                strokeWidth: 1.5,
-                color: foreground,
-              ),
-              SizedBox(width: leadingGap),
-            ],
+            _identity(context, foreground),
+            SizedBox(width: leadingGap),
             Expanded(
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
+              child: Transform.translate(
+                offset: Offset(
+                  0,
+                  icon == null
+                      ? context.skillsComponents.navigationLabelOpticalOffsetY
+                      : context
+                            .skillsComponents
+                            .navigationStrokeLabelOpticalOffsetY,
+                ),
+                child: ColorFiltered(
+                  key: const Key('skills-navigation-label-color'),
+                  colorFilter: ColorFilter.mode(foreground, BlendMode.srcIn),
+                  child: Text(
+                    label,
+                    style: context.skillsTypography.navigationLabel.copyWith(
+                      color: scheme.onSurface,
+                    ),
+                    textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false,
+                      applyHeightToLastDescent: false,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                  ),
+                ),
               ),
             ),
-            if (item.count case final count?) ...[
-              SizedBox(width: item.compact ? 6 : 8),
+            if (count case final count?) ...[
+              SizedBox(width: compact ? 6 : 8),
               Tooltip(
-                message: item.countLabel ?? '$count',
+                message: countLabel ?? '$count',
                 child: ExcludeSemantics(
                   child: Container(
                     constraints: const BoxConstraints(minWidth: 22),
@@ -114,4 +131,61 @@ class _RailButton<T> extends StatelessWidget {
       ),
     );
   }
+
+  Widget _identity(BuildContext context, Color foreground) {
+    if (icon case final icon?) {
+      return Transform.translate(
+        offset: Offset(
+          0,
+          context.skillsComponents.navigationStrokeIconOpticalOffsetY,
+        ),
+        child: HugeIcon(
+          icon: icon,
+          size: 18,
+          strokeWidth: 1.5,
+          color: foreground,
+        ),
+      );
+    }
+    if (image case final image?) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox.square(dimension: 18, child: image),
+      );
+    }
+    return Container(
+      key: const Key('skills-navigation-fallback-identity'),
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: foreground.withValues(alpha: selected ? .16 : .08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: foreground.withValues(alpha: .18)),
+      ),
+      child: Text(
+        skillsNavigationAbbreviation(label),
+        maxLines: 1,
+        style: context.skillsTypography.compactControlLabel.copyWith(
+          color: foreground,
+          fontSize: 7,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+String skillsNavigationAbbreviation(String label) {
+  final words = label
+      .trim()
+      .split(RegExp(r'[\s\-_—–/\\·・、，。:：]+', unicode: true))
+      .where((word) => word.isNotEmpty)
+      .toList(growable: false);
+  if (words.isEmpty) return '?';
+  if (words.length > 1) {
+    return '${words.first.characters.first}${words.last.characters.first}'
+        .toUpperCase();
+  }
+  return words.single.characters.take(2).toString().toUpperCase();
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI target-operation streams, Repository update documents, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies reviewed Target Operation Plans, local Repository update planning, confirmed execution projected onto Library targets, progress, and Catalog-only batch update-state contracts.
+ * [INPUT]: Uses controlled CLI target-operation streams, Package update receipts, and the production SkillsGateway adapter.
+ * [OUTPUT]: Specifies Target Operation Plans, direct Package updates with identity-only receipt validation, and Catalog-only batch update-state contracts.
  * [POS]: Serves as the target-management and update contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,7 +16,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('managed removal uses the Repository member machine protocol', () async {
+  test('managed removal uses the Package member machine protocol', () async {
     const installed = InstalledSkill(
       inventoryKey: 'hub:github.com/example/skills:demo',
       name: 'demo',
@@ -51,7 +51,7 @@ void main() {
       installed.targets,
     );
     final plan = preflight.selectActions({
-      updateTargetKey(preflight.targets.single.target):
+      installationTargetKey(preflight.targets.single.target):
           TargetManagementAction.remove,
     });
     final execution = await gateway.executeTargetManagement(plan);
@@ -66,6 +66,67 @@ void main() {
       '--output',
       'json',
     ]);
+  });
+
+  test('managed removal executes every Skill in the same Scope', () async {
+    InstalledSkill installed(String name) => InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills:$name',
+      name: name,
+      path: '/work/.codex/skills/$name',
+      agents: const ['codex'],
+      targetCount: 1,
+      packagePath: 'github.com/example/skills',
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.project,
+          projectRoot: '/work',
+          path: '/work/.codex/skills/$name',
+          version: 'v1.2.3',
+        ),
+      ],
+    );
+    final runner = FakeProcessRunner()
+      ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"package-remove","skills":["alpha"],"scope":"project"}\n',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"package-remove","skills":["beta"],"scope":"project"}\n',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
+    final preflights = await Future.wait([
+      for (final skill in [installed('alpha'), installed('beta')])
+        gateway.preflightTargetManagement(skill, skill.targets),
+    ]);
+    final targets = [for (final plan in preflights) ...plan.targets];
+    final plan = TargetManagementPlan(
+      targets: [
+        for (final item in targets) item.select(TargetManagementAction.remove),
+      ],
+      summary: const TargetManagementPlanSummary(removable: 2),
+    );
+
+    final execution = await gateway.executeTargetManagement(plan);
+
+    expect(execution.summary.succeeded, 2);
+    expect(
+      runner.calls.map((call) => call.arguments),
+      containsAllInOrder([
+        ['remove', 'alpha', '--project', '/work', '--yes', '--output', 'json'],
+        ['remove', 'beta', '--project', '/work', '--yes', '--output', 'json'],
+      ]),
+    );
   });
 
   test(
@@ -115,7 +176,7 @@ void main() {
         installed,
         installed.targets,
       );
-      final targetKey = updateTargetKey(preflight.targets.single.target);
+      final targetKey = installationTargetKey(preflight.targets.single.target);
       final plan = preflight.selectActions({
         targetKey: TargetManagementAction.remove,
       });
@@ -248,7 +309,7 @@ void main() {
     expect(runner.lastArguments, isNot(contains('--target')));
   });
 
-  test('update uses one confirmed Repository coordinate transaction', () async {
+  test('update delegates one Package coordinate per scope to CLI', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll(const [
         ProcessOutput(
@@ -278,23 +339,8 @@ void main() {
         ),
       ],
     );
-    final plan = await gateway.preflightUpdate(
-      installed,
-      installed.targets,
-      toVersion: 'v2',
-    );
-    final progress = <UpdateTargetProgress>[];
-
     expect(runner.calls, isEmpty);
-
-    final execution = await gateway.executeUpdate(
-      plan,
-      onProgress: progress.add,
-    );
-
-    expect(progress, hasLength(2));
-    expect(execution.summary.succeeded, 1);
-    expect(execution.results.single.toVersion, 'v2');
+    await gateway.updatePackage(installed, toVersion: 'v2');
     expect(runner.calls, hasLength(1));
     expect(runner.calls.single.arguments, [
       'update',
@@ -315,7 +361,7 @@ void main() {
       stderr: 'Repository Projection Local Modification',
     );
     await expectLater(
-      gateway.executeUpdate(plan),
+      gateway.updatePackage(installed, toVersion: 'v2'),
       throwsA(isA<SkillsException>()),
     );
 
@@ -325,7 +371,7 @@ void main() {
       stderr: '',
     );
     await expectLater(
-      gateway.executeUpdate(plan),
+      gateway.updatePackage(installed, toVersion: 'v2'),
       throwsA(
         isA<SkillsException>().having(
           (error) => error.kind,
@@ -333,6 +379,66 @@ void main() {
           SkillsFailureKind.invalidResponse,
         ),
       ),
+    );
+  });
+
+  test('update deduplicates Agents into one command for each Scope', () async {
+    final runner = FakeProcessRunner()
+      ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"package-update","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex","claude-code"],"scope":"global","packageDir":"/tmp/global"}\n',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"package-update","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"project","projectRoot":"/work","packageDir":"/work/.skillsgo/packages"}\n',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
+    const installed = InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills:test',
+      name: 'test',
+      path: '/tmp/Test',
+      agents: ['codex', 'claude-code'],
+      targetCount: 3,
+      packagePath: 'github.com/example/skills',
+      targets: [
+        SkillInstallationTarget(
+          scope: InstallationScope.global,
+          agent: 'codex',
+          path: '/tmp/codex/Test',
+          version: 'v1',
+        ),
+        SkillInstallationTarget(
+          scope: InstallationScope.global,
+          agent: 'claude-code',
+          path: '/tmp/claude/Test',
+          version: 'v1',
+        ),
+        SkillInstallationTarget(
+          scope: InstallationScope.project,
+          projectRoot: '/work',
+          agent: 'codex',
+          path: '/work/.codex/skills/Test',
+          version: 'v1',
+        ),
+      ],
+    );
+
+    await gateway.updatePackage(installed, toVersion: 'v2');
+
+    expect(runner.calls, hasLength(2));
+    expect(runner.calls[0].arguments, contains('--global'));
+    expect(
+      runner.calls[1].arguments,
+      containsAllInOrder(['--project', '/work']),
     );
   });
 }

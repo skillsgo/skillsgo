@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Composes capability-specific SkillsGateway test-double mixins over shared controllable state and canonical domain fixtures.
+ * [INPUT]: Composes capability-specific SkillsGateway test-double mixins over shared controllable state, async/math helpers, and canonical domain fixtures.
  * [OUTPUT]: Provides FakeSkillsGateway for rendered App and gateway-adjacent behavior tests.
  * [POS]: Serves as the stable test boundary that hides scenario controls behind the production gateway contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
+import 'dart:math';
 
 import 'package:skillsgo/domain/skills_gateway.dart';
 

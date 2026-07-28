@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Package metadata, localized copy, SkillsGo typography, and installation callbacks.
- * [OUTPUT]: Provides the Package source header, metadata formatting, and install-all action.
+ * [OUTPUT]: Provides the Package source header, metadata formatting, and stable Package installation entry.
  * [POS]: Serves as the Package-context presentation segment of the Discover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,7 +37,7 @@ class _PackageSourceHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RepositoryAvatar(
+        PackageAvatar(
           source: packagePath,
           imageUrl: summary?.imageUrl ?? firstSkill.imageUrl,
           size: 88,

@@ -17,6 +17,7 @@
 - `0012-compose-cloud-rankings-with-hub-cards.md`: makes Cloud the ranking composition boundary through uncached singleflight Hub batch reads and requires one-query ordered Hub hydration.
 - `0013-require-user-reviewed-external-skill-adoption.md`: makes External Skill adoption a user-reviewed Hub candidate and immutable-version selection, permits multiple versions of one Repository per scope, and requires 30-day per-Skill recovery.
 - `0014-localize-presentation-content-without-translating-artifacts.md`: localizes descriptions and display-only Skill documents across the Hub, Protocol, CLI, and App while keeping Package Artifacts and Agent execution source-only.
+- `0015-make-package-updates-scope-aware.md`: makes `Scope × Package Path` the update target, unifies preview and execution under `skillsgo update`, and replaces Skill-level availability checks with Package-level Hub reads.
 
 ## Architectural Boundary
 

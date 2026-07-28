@@ -40,8 +40,8 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 			claudeTarget = containerPathOnHost(t, sandboxRoot, projection.Path)
 		}
 	}
-	require.FileExists(t, filepath.Join(codexTarget, "skills", "alpha", "SKILL.md"))
-	require.FileExists(t, filepath.Join(claudeTarget, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(codexTarget, "SKILL.md"))
+	require.FileExists(t, filepath.Join(claudeTarget, "SKILL.md"))
 
 	removeClaude := execCLI(t, ctx, container,
 		"remove", "alpha",
@@ -53,7 +53,7 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 	require.Equal(t, 0, removeClaude.exitCode, removeClaude.output)
 	_, err := os.Lstat(claudeTarget)
 	require.ErrorIs(t, err, os.ErrNotExist)
-	require.FileExists(t, filepath.Join(codexTarget, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(codexTarget, "SKILL.md"))
 
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)

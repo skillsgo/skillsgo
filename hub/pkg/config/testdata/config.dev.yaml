@@ -201,7 +201,6 @@ ArtifactOrigin: ""
 Database:
   DSN: "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
   MaxOpenConns: 10
-  MaxIdleConns: 5
   ConnMaxLifetime: 1800
 
 # River partitions this total worker budget across source (60%), default (20%),

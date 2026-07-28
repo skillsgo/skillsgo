@@ -23,7 +23,7 @@ func TestJ17UnhealthyTargetCannotBeRemoved(t *testing.T) {
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
-	targetPath := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha")
+	targetPath := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
 	skillPath := filepath.Join(targetPath, "SKILL.md")
 	const localChange = "keep this modified content\n"
 	require.NoError(t, os.WriteFile(skillPath, []byte(localChange), 0o600))

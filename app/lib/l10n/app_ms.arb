@@ -317,7 +317,6 @@
   "update": "Kemas kini",
   "backToLibrary": "Kembali ke Perpustakaan",
   "remove": "Alih keluar",
-  "manageTargets": "Urus skop",
   "skillsSelected": "{count} dipilih",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Kosongkan pilihan",
   "selectCurrentResults": "Pilih hasil semasa",
   "clearCurrentResultSelection": "Kosongkan pemilihan hasil semasa",
-  "manageTargetsTitle": "Uruskan sasaran pemasangan",
-  "manageTargetsDescription": "Pilih tindakan yang tepat untuk setiap sasaran. Sasaran yang tidak dipilih tidak akan berubah.",
   "targetActionsSelected": "{selected} daripada {total} sasaran dipilih",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Sahkan alih keluar",
-  "applyTargetActions": "Gunakan tindakan yang dipilih",
   "managementProgressTitle": "Mengaplikasikan tindakan sasaran",
   "managementResultsTitle": "Hasil tindakan sasaran",
   "managementResultSummary": "{succeeded} berjaya, {failed} gagal",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Tindakan projek yang dipilih akan mengemas kini skills.yaml dan skills-lock.yaml.",
   "targetContentPreserved": "Kandungan sasaran semasa akan dikekalkan.",
   "localReadFailed": "Tidak boleh membaca Kemahiran ini",
   "localReadFailedMessage": "SkillsGo tidak dapat membaca kemahiran yang dipasang ini. Semak sama ada foldernya tersedia dan boleh diakses, kemudian cuba lagi.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Anda boleh terus menyemak imbas Kemahiran ini, tetapi tiada sasaran pemasangan lagi. Pasang Ejen yang disokong, kemudian jalankan pengesanan sekali lagi.",
   "clearCustomPath": "Kosongkan laluan tersuai",
   "privacyProvenance": "Privasi & asal",
-  "privacySummary": "Carian anda tidak disimpan dan SkillsGo tidak menyimpan log arahan.",
   "language": "Bahasa",
   "translatedContent": "Diterjemahkan",
   "translatedFrom": "Diterjemahkan daripada {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Dipasang",
   "unsupportedCell": "Tidak tersedia",
   "confirmInstall": "Sahkan Pemasangan",
-  "installAllRepositorySkills": "Pasang semua kemahiran repositori ({count})",
+  "installAllPackageSkills": "Pasang semua kemahiran repositori ({count})",
   "installAllSkillsTo": "Pasang semua kemahiran untuk",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Pasang semua kemahiran {repository} ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Pasang semua kemahiran {packagePath} ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Mengurus kemahiran sedia ada",
-  "batchTakeoverActionCount": "Urus ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Mengurus kemahiran sedia ada",
+  "batchAdoptionActionCount": "Urus ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Menyemak kemahiran sedia ada…",
-  "batchTakeoverRetry": "Semak kemahiran terurus sekali lagi",
-  "batchTakeoverEligibleCount": "{count} boleh diurus",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Menyemak kemahiran sedia ada…",
+  "batchAdoptionRetry": "Semak kemahiran terurus sekali lagi",
+  "batchAdoptionEligibleCount": "{count} boleh diurus",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Menambah kemahiran kepada pengurusan…",
-  "batchTakeoverTitle": "Urus kemahiran sedia ada dengan SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo akan menambah rekod pengurusan tempatan tanpa mengalihkan, menulis ganti atau memuat naik fail kemahiran. Item yang tidak disokong atau ditukar akan dilangkau.",
-  "batchTakeoverStoryTitle": "Ubah kemahiran bertaburan menjadi satu Perpustakaan yang jelas",
-  "batchTakeoverStoryDescription": "SkillsGo menemui {count, plural, =1{1 kemahiran sedia ada} other{{count} kemahiran sedia ada}} ia boleh mengurus di lokasi ini.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Menambah kemahiran kepada pengurusan…",
+  "batchAdoptionTitle": "Urus kemahiran sedia ada dengan SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo akan menambah rekod pengurusan tempatan tanpa mengalihkan, menulis ganti atau memuat naik fail kemahiran. Item yang tidak disokong atau ditukar akan dilangkau.",
+  "batchAdoptionStoryTitle": "Ubah kemahiran bertaburan menjadi satu Perpustakaan yang jelas",
+  "batchAdoptionStoryDescription": "SkillsGo menemui {count, plural, =1{1 kemahiran sedia ada} other{{count} kemahiran sedia ada}} ia boleh mengurus di lokasi ini.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Sebelum pengurusan, tidak jelas di mana kemahiran sedia ada dipasang, sama ada kemahiran semasa, cara memulihkannya atau sama ada projek menggunakan versi yang sama.",
-  "batchTakeoverPainLocation": "Lokasi pemasangan tidak diketahui",
-  "batchTakeoverPainFreshness": "Status kemas kini tidak diketahui",
-  "batchTakeoverPainRecovery": "Tiada pemulihan apabila patah",
-  "batchTakeoverPainVersionDrift": "Versi berbeza merentas projek",
-  "batchTakeoverFolderTitle": "Kemahiran Sedia Ada",
-  "batchTakeoverFolderSubtitle": "Status tidak jelas",
-  "batchTakeoverAfterLabel": "SELEPAS",
-  "batchTakeoverAfterTitle": "Satu Perpustakaan yang jelas",
-  "batchTakeoverLibraryTitle": "Perpustakaan SkillsGo",
-  "batchTakeoverBenefitLocation": "Kosongkan lokasi",
-  "batchTakeoverBenefitFreshness": "Kemas kini kelihatan",
-  "batchTakeoverBenefitRecovery": "Pemulihan yang mudah",
-  "batchTakeoverBenefitVersions": "Versi jelas",
-  "batchTakeoverManagedSection": "Diuruskan oleh SkillsGo",
-  "batchTakeoverPendingSection": "Belum selesai",
-  "batchTakeoverItemManaged": "{name} diurus oleh SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Sebelum pengurusan, tidak jelas di mana kemahiran sedia ada dipasang, sama ada kemahiran semasa, cara memulihkannya atau sama ada projek menggunakan versi yang sama.",
+  "batchAdoptionPainLocation": "Lokasi pemasangan tidak diketahui",
+  "batchAdoptionPainFreshness": "Status kemas kini tidak diketahui",
+  "batchAdoptionPainRecovery": "Tiada pemulihan apabila patah",
+  "batchAdoptionPainVersionDrift": "Versi berbeza merentas projek",
+  "batchAdoptionFolderTitle": "Kemahiran Sedia Ada",
+  "batchAdoptionFolderSubtitle": "Status tidak jelas",
+  "batchAdoptionAfterLabel": "SELEPAS",
+  "batchAdoptionAfterTitle": "Satu Perpustakaan yang jelas",
+  "batchAdoptionLibraryTitle": "Perpustakaan SkillsGo",
+  "batchAdoptionBenefitLocation": "Kosongkan lokasi",
+  "batchAdoptionBenefitFreshness": "Kemas kini kelihatan",
+  "batchAdoptionBenefitRecovery": "Pemulihan yang mudah",
+  "batchAdoptionBenefitVersions": "Versi jelas",
+  "batchAdoptionManagedSection": "Diuruskan oleh SkillsGo",
+  "batchAdoptionPendingSection": "Belum selesai",
+  "batchAdoptionItemManaged": "{name} diurus oleh SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} tidak dapat ditambahkan pada pengurusan",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} tidak dapat ditambahkan pada pengurusan",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} sedang menunggu untuk diurus",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} sedang menunggu untuk diurus",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Selepas pengurusan, {count, plural, =1{1 kemahiran ialah} other{{count} kemahiran}} disusun dalam satu Perpustakaan dengan status terurus yang jelas.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Selepas pengurusan, {count, plural, =1{1 kemahiran ialah} other{{count} kemahiran}} disusun dalam satu Perpustakaan dengan status terurus yang jelas.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} lagi",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} lagi",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Tambahkan kemahiran sedia ada ini pada pengurusan SkillsGo.",
-  "batchTakeoverTransitionLabel": "ATURKAN",
-  "batchTakeoverStatusTitle": "Status pengurusan",
-  "batchTakeoverStatusManaged": "Terurus",
-  "batchTakeoverStatusProgress": "Menganjur",
-  "batchTakeoverStatusSkipped": "Dilangkau",
-  "batchTakeoverStatusFilesStay": "Fail kemahiran kekal di lokasi asalnya",
-  "batchTakeoverBoardSemantics": "Kemahiran disusun ke dalam baris yang lengkap dan direkodkan oleh SkillsGo tanpa mengalihkan failnya.",
-  "batchTakeoverBoardComplete": "SEMUA JELAS",
-  "batchTakeoverBoardPartial": "LENGKAP",
-  "batchTakeoverStatusTotal": "Jumlah",
-  "batchTakeoverQueueComplete": "Tiada kemahiran menunggu",
-  "batchTakeoverQueueWaiting": "Kemahiran akan berpindah ke sini selepas pengesahan",
-  "batchTakeoverNextLabel": "SETERUSNYA",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 blok penganjur SkillsGo} other{{count} blok penganjur SkillsGo}} lengkapkan baris terakhir",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Tambahkan kemahiran sedia ada ini pada pengurusan SkillsGo.",
+  "batchAdoptionTransitionLabel": "ATURKAN",
+  "batchAdoptionStatusTitle": "Status pengurusan",
+  "batchAdoptionStatusManaged": "Terurus",
+  "batchAdoptionStatusProgress": "Menganjur",
+  "batchAdoptionStatusSkipped": "Dilangkau",
+  "batchAdoptionStatusFilesStay": "Fail kemahiran kekal di lokasi asalnya",
+  "batchAdoptionBoardSemantics": "Kemahiran disusun ke dalam baris yang lengkap dan direkodkan oleh SkillsGo tanpa mengalihkan failnya.",
+  "batchAdoptionBoardComplete": "SEMUA JELAS",
+  "batchAdoptionBoardPartial": "LENGKAP",
+  "batchAdoptionStatusTotal": "Jumlah",
+  "batchAdoptionQueueComplete": "Tiada kemahiran menunggu",
+  "batchAdoptionQueueWaiting": "Kemahiran akan berpindah ke sini selepas pengesahan",
+  "batchAdoptionNextLabel": "SETERUSNYA",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 blok penganjur SkillsGo} other{{count} blok penganjur SkillsGo}} lengkapkan baris terakhir",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Fail, laluan dan aliran kerja semasa anda kekal di tempatnya. SkillsGo hanya melengkapkan rekod pengurusan tempatannya.",
-  "batchTakeoverLaterHint": "Jika anda melangkau, anda boleh menggunakan Urus kemahiran sedia ada daripada Perpustakaan pada bila-bila masa.",
-  "batchTakeoverSkip": "bukan sekarang",
-  "batchTakeoverConfirm": "Tambahkan pada pengurusan",
-  "batchTakeoverExecutionRetry": "Cuba semula",
-  "batchTakeoverResultTitle": "Kemahiran ditambah kepada pengurusan",
-  "batchTakeoverSummary": "Kemahiran {takenOver} ditambahkan pada pengurusan, {skipped} dilangkau.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Fail, laluan dan aliran kerja semasa anda kekal di tempatnya. SkillsGo hanya melengkapkan rekod pengurusan tempatannya.",
+  "batchAdoptionLaterHint": "Jika anda melangkau, anda boleh menggunakan Urus kemahiran sedia ada daripada Perpustakaan pada bila-bila masa.",
+  "batchAdoptionSkip": "bukan sekarang",
+  "batchAdoptionConfirm": "Tambahkan pada pengurusan",
+  "batchAdoptionExecutionRetry": "Cuba semula",
+  "batchAdoptionResultTitle": "Kemahiran ditambah kepada pengurusan",
+  "batchAdoptionSummary": "Kemahiran {adopted} ditambahkan pada pengurusan, {skipped} dilangkau.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "tutup",
+  "batchAdoptionClose": "tutup",
   "installMoreTargets": "Pasang di lebih banyak lokasi",
-  "detailRepository": "Repositori",
+  "detailPackageSource": "Sumber pakej",
   "detailStars": "Bintang",
   "detailUpdated": "dikemas kini",
-  "detailArchiveSize": "Saiz ZIP",
+  "detailArchiveSize": "Saiz pakej",
   "pathLabel": "Laluan projek",
   "copyProjectPath": "Salin laluan projek",
   "projectPathCopied": "Laluan projek disalin",

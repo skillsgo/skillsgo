@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
 import 'io_process_runner.dart';
+import 'logging/app_logger.dart';
 import 'project_icon_resolver.dart';
 
 part 'real_skills_gateway_codec.dart';
@@ -47,7 +48,6 @@ const _themeModeKey = 'theme_mode';
 const _languageKey = 'language';
 const _updateReminderKey = 'reminder_update_available';
 const _securityReminderKey = 'reminder_security_advisory';
-const _batchTakeoverPromptSeenKey = 'batch_takeover_prompt_seen_v1';
 const _allowCriticalOverrideKey = 'allow_critical_risk_override';
 const _addedProjectsKey = 'added_projects_v1';
 const _onboardingCompletedKey = 'onboarding_completed_v1';
@@ -159,6 +159,43 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     _hubOriginLoaded = true;
   }
 
+  @override
+  Future<DiagnosticLogInfo> loadDiagnosticLogInfo() async => DiagnosticLogInfo(
+    directory: appLogger.directory?.path ?? '',
+    totalBytes: await appLogger.totalBytes(),
+  );
+
+  @override
+  Future<void> openDiagnosticLogDirectory() async {
+    final directory = appLogger.directory;
+    if (directory == null) return;
+    await directory.create(recursive: true);
+    await Process.start('/usr/bin/open', [directory.path]);
+  }
+
+  @override
+  Future<bool> exportDiagnosticLogs() async {
+    final location = await file_selector.getSaveLocation(
+      suggestedName: 'skillsgo-diagnostics.log',
+      acceptedTypeGroups: const [
+        file_selector.XTypeGroup(label: 'Log', extensions: ['log']),
+      ],
+    );
+    if (location == null) return false;
+    await appLogger.exportTo(File(location.path));
+    return true;
+  }
+
+  @override
+  Future<void> clearDiagnosticLogs() => appLogger.clear();
+
+  @override
+  List<DiagnosticLogEntry> recentDiagnosticLogs({int limit = 200}) =>
+      appLogger.recent(limit: limit);
+
+  @override
+  Stream<DiagnosticLogEntry> watchDiagnosticLogs() => appLogger.events;
+
   static String _bundledPathFor(String executable) => p.normalize(
     p.join(p.dirname(executable), '..', 'Resources', 'bin', 'skillsgo'),
   );
@@ -177,6 +214,26 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   });
 
   SkillsException _commandFailure(CommandResult result);
+
+  SkillsException _invalidCliResponse(
+    String operation,
+    String message,
+    CommandResult command,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    appLogger.error(
+      'gateway.protocol',
+      'response_decode_failed',
+      error,
+      stackTrace,
+      {
+        'operation': operation,
+        'responsePreview': appLogger.humanPreview(command.output.stdout),
+      },
+    );
+    return SkillsException(message, kind: SkillsFailureKind.invalidResponse);
+  }
 }
 
 class RealSkillsGateway extends _RealSkillsGatewayCore

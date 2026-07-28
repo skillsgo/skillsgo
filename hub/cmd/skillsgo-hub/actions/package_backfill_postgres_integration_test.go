@@ -35,7 +35,7 @@ import (
 
 type backfillIntegrationLister struct{ versions []string }
 
-func (l *backfillIntegrationLister) ListRepositoryTags(context.Context, string) ([]skill.RepositoryTag, error) {
+func (l *backfillIntegrationLister) ListRepositoryBackfillVersions(context.Context, string) ([]skill.RepositoryTag, error) {
 	tags := make([]skill.RepositoryTag, 0, len(l.versions))
 	for _, version := range l.versions {
 		tags = append(tags, skill.RepositoryTag{Version: version, CommitSHA: "commit-" + version})
@@ -82,7 +82,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 8, MaxIdleConns: 2})
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 8})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 

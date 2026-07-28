@@ -471,6 +471,42 @@ abstract class AppLocalizations {
   /// **'Install'**
   String get install;
 
+  /// No description provided for @upgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get upgrade;
+
+  /// No description provided for @downgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Downgrade'**
+  String get downgrade;
+
+  /// No description provided for @packageSkillsSwitchTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills from this package will switch version together.'**
+  String get packageSkillsSwitchTogether;
+
+  /// No description provided for @switchVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch version'**
+  String get switchVersion;
+
+  /// No description provided for @upgradeToVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to {version}'**
+  String upgradeToVersion(String version);
+
+  /// No description provided for @downgradeToVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Downgrade to {version}'**
+  String downgradeToVersion(String version);
+
   /// No description provided for @installAll.
   ///
   /// In en, this message translates to:
@@ -807,11 +843,23 @@ abstract class AppLocalizations {
   /// **'Project'**
   String get specificProject;
 
+  /// No description provided for @libraryGlobalScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Global Skills'**
+  String get libraryGlobalScope;
+
   /// No description provided for @globalScope.
   ///
   /// In en, this message translates to:
   /// **'Global'**
   String get globalScope;
+
+  /// No description provided for @globalSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Global Skills'**
+  String get globalSkills;
 
   /// No description provided for @addProject.
   ///
@@ -1095,12 +1143,6 @@ abstract class AppLocalizations {
   /// **'Remove'**
   String get remove;
 
-  /// No description provided for @manageTargets.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage scope'**
-  String get manageTargets;
-
   /// No description provided for @skillsSelected.
   ///
   /// In en, this message translates to:
@@ -1125,18 +1167,6 @@ abstract class AppLocalizations {
   /// **'Clear current result selection'**
   String get clearCurrentResultSelection;
 
-  /// No description provided for @manageTargetsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage installation targets'**
-  String get manageTargetsTitle;
-
-  /// No description provided for @manageTargetsDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose an exact action for each target. Unselected targets will not change.'**
-  String get manageTargetsDescription;
-
   /// No description provided for @targetActionsSelected.
   ///
   /// In en, this message translates to:
@@ -1148,12 +1178,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Confirm remove'**
   String get confirmRemoveTarget;
-
-  /// No description provided for @applyTargetActions.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply selected actions'**
-  String get applyTargetActions;
 
   /// No description provided for @managementProgressTitle.
   ///
@@ -1172,12 +1196,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{succeeded} succeeded, {failed} failed'**
   String managementResultSummary(int succeeded, int failed);
-
-  /// No description provided for @workspaceOwnershipChanges.
-  ///
-  /// In en, this message translates to:
-  /// **'Selected project actions will update skills.yaml and skills-lock.yaml.'**
-  String get workspaceOwnershipChanges;
 
   /// No description provided for @targetContentPreserved.
   ///
@@ -1962,8 +1980,128 @@ abstract class AppLocalizations {
   /// No description provided for @privacySummary.
   ///
   /// In en, this message translates to:
-  /// **'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.'**
+  /// **'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.'**
   String get privacySummary;
+
+  /// No description provided for @diagnosticLogsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic logs'**
+  String get diagnosticLogsTitle;
+
+  /// No description provided for @diagnosticLogsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Local App and CLI diagnostics use {size}. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.'**
+  String diagnosticLogsDescription(String size);
+
+  /// No description provided for @openLogFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get openLogFolder;
+
+  /// No description provided for @viewLiveLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View live'**
+  String get viewLiveLogs;
+
+  /// No description provided for @exportLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Export logs'**
+  String get exportLogs;
+
+  /// No description provided for @clearLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear logs'**
+  String get clearLogs;
+
+  /// No description provided for @logsExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic logs exported.'**
+  String get logsExported;
+
+  /// No description provided for @logsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostic logs cleared.'**
+  String get logsCleared;
+
+  /// No description provided for @logActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The diagnostic log action could not be completed.'**
+  String get logActionFailed;
+
+  /// No description provided for @logViewerLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get logViewerLive;
+
+  /// No description provided for @logViewerPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get logViewerPaused;
+
+  /// No description provided for @searchLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Search logs'**
+  String get searchLogs;
+
+  /// No description provided for @allLogLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get allLogLevels;
+
+  /// No description provided for @warningLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get warningLogs;
+
+  /// No description provided for @errorLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get errorLogs;
+
+  /// No description provided for @pauseLogFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get pauseLogFollow;
+
+  /// No description provided for @resumeLogFollow.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeLogFollow;
+
+  /// No description provided for @clearViewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear view'**
+  String get clearViewer;
+
+  /// No description provided for @noDiagnosticLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching logs yet.'**
+  String get noDiagnosticLogs;
+
+  /// No description provided for @backToLatestLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest'**
+  String get backToLatestLog;
 
   /// No description provided for @language.
   ///
@@ -2349,11 +2487,11 @@ abstract class AppLocalizations {
   /// **'Confirm Installation'**
   String get confirmInstall;
 
-  /// No description provided for @installAllRepositorySkills.
+  /// No description provided for @installAllPackageSkills.
   ///
   /// In en, this message translates to:
   /// **'Install all skills from this source ({count})'**
-  String installAllRepositorySkills(int count);
+  String installAllPackageSkills(int count);
 
   /// No description provided for @installAllSkillsTo.
   ///
@@ -2361,11 +2499,11 @@ abstract class AppLocalizations {
   /// **'Install all skills to'**
   String get installAllSkillsTo;
 
-  /// No description provided for @installRepositorySkills.
+  /// No description provided for @installPackageSkills.
   ///
   /// In en, this message translates to:
-  /// **'Install all skills from {repository} ({count})'**
-  String installRepositorySkills(String repository, int count);
+  /// **'Install all skills from {packagePath} ({count})'**
+  String installPackageSkills(String packagePath, int count);
 
   /// No description provided for @installSkillTo.
   ///
@@ -2823,11 +2961,11 @@ abstract class AppLocalizations {
   /// **'+{count} more locations'**
   String moreCoverage(int count);
 
-  /// No description provided for @batchTakeoverAction.
+  /// No description provided for @batchAdoptionAction.
   ///
   /// In en, this message translates to:
   /// **'Manage existing skills'**
-  String get batchTakeoverAction;
+  String get batchAdoptionAction;
 
   /// No description provided for @handExternalSkillsToSkillsGoManagementCount.
   ///
@@ -2838,8 +2976,8 @@ abstract class AppLocalizations {
   /// No description provided for @confirmSkillsGoManagementCount.
   ///
   /// In en, this message translates to:
-  /// **'Confirm SkillsGo management ({count})'**
-  String confirmSkillsGoManagementCount(int count);
+  /// **'Confirm SkillsGo management ({selected}/{total})'**
+  String confirmSkillsGoManagementCount(int selected, int total);
 
   /// No description provided for @skillColumnLabel.
   ///
@@ -2847,11 +2985,11 @@ abstract class AppLocalizations {
   /// **'Skill'**
   String get skillColumnLabel;
 
-  /// No description provided for @repositorySourceColumnLabel.
+  /// No description provided for @packageSourceColumnLabel.
   ///
   /// In en, this message translates to:
   /// **'Source'**
-  String get repositorySourceColumnLabel;
+  String get packageSourceColumnLabel;
 
   /// No description provided for @versionColumnLabel.
   ///
@@ -2859,11 +2997,11 @@ abstract class AppLocalizations {
   /// **'Version'**
   String get versionColumnLabel;
 
-  /// No description provided for @repositoryMatching.
+  /// No description provided for @packageMatching.
   ///
   /// In en, this message translates to:
   /// **'Matching sources…'**
-  String get repositoryMatching;
+  String get packageMatching;
 
   /// No description provided for @sourceMatchUnavailable.
   ///
@@ -2886,326 +3024,344 @@ abstract class AppLocalizations {
   /// No description provided for @versionPendingSelection.
   ///
   /// In en, this message translates to:
-  /// **'Pending Source'**
+  /// **'Select a source first'**
   String get versionPendingSelection;
 
-  /// No description provided for @batchTakeoverActionCount.
+  /// No description provided for @batchAdoptionActionCount.
   ///
   /// In en, this message translates to:
   /// **'Manage ({count})'**
-  String batchTakeoverActionCount(int count);
+  String batchAdoptionActionCount(int count);
 
-  /// No description provided for @batchTakeoverChecking.
+  /// No description provided for @batchAdoptionChecking.
   ///
   /// In en, this message translates to:
   /// **'Checking existing skills…'**
-  String get batchTakeoverChecking;
+  String get batchAdoptionChecking;
 
-  /// No description provided for @batchTakeoverRetry.
+  /// No description provided for @batchAdoptionRetry.
   ///
   /// In en, this message translates to:
   /// **'Check manageable skills again'**
-  String get batchTakeoverRetry;
+  String get batchAdoptionRetry;
 
-  /// No description provided for @batchTakeoverEligibleCount.
+  /// No description provided for @batchAdoptionEligibleCount.
   ///
   /// In en, this message translates to:
   /// **'{count} can be managed'**
-  String batchTakeoverEligibleCount(int count);
+  String batchAdoptionEligibleCount(int count);
 
-  /// No description provided for @batchTakeoverPending.
+  /// No description provided for @batchAdoptionPending.
   ///
   /// In en, this message translates to:
-  /// **'Adding skills to management…'**
-  String get batchTakeoverPending;
+  /// **'Importing…'**
+  String get batchAdoptionPending;
 
-  /// No description provided for @batchTakeoverTitle.
+  /// No description provided for @batchAdoptionTitle.
   ///
   /// In en, this message translates to:
   /// **'Manage existing skills with SkillsGo?'**
-  String get batchTakeoverTitle;
+  String get batchAdoptionTitle;
 
-  /// No description provided for @batchTakeoverDescription.
+  /// No description provided for @batchAdoptionDescription.
   ///
   /// In en, this message translates to:
   /// **'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.'**
-  String get batchTakeoverDescription;
+  String get batchAdoptionDescription;
 
-  /// No description provided for @batchTakeoverStoryTitle.
+  /// No description provided for @batchAdoptionStoryTitle.
   ///
   /// In en, this message translates to:
   /// **'Turn scattered skills into one clear Library'**
-  String get batchTakeoverStoryTitle;
+  String get batchAdoptionStoryTitle;
 
-  /// No description provided for @batchTakeoverStoryDescription.
+  /// No description provided for @batchAdoptionStoryDescription.
   ///
   /// In en, this message translates to:
   /// **'SkillsGo found {count, plural, =1{1 existing skill} other{{count} existing skills}} it can manage in this location.'**
-  String batchTakeoverStoryDescription(int count);
+  String batchAdoptionStoryDescription(int count);
 
-  /// No description provided for @batchTakeoverBeforeSemantics.
+  /// No description provided for @batchAdoptionBeforeSemantics.
   ///
   /// In en, this message translates to:
   /// **'Before management, it is unclear where existing skills are installed, whether they are current, how to recover them, or whether projects use the same version.'**
-  String get batchTakeoverBeforeSemantics;
+  String get batchAdoptionBeforeSemantics;
 
-  /// No description provided for @batchTakeoverPainLocation.
+  /// No description provided for @batchAdoptionPainLocation.
   ///
   /// In en, this message translates to:
   /// **'Unknown install location'**
-  String get batchTakeoverPainLocation;
+  String get batchAdoptionPainLocation;
 
-  /// No description provided for @batchTakeoverPainFreshness.
+  /// No description provided for @batchAdoptionPainFreshness.
   ///
   /// In en, this message translates to:
   /// **'Unknown update status'**
-  String get batchTakeoverPainFreshness;
+  String get batchAdoptionPainFreshness;
 
-  /// No description provided for @batchTakeoverPainRecovery.
+  /// No description provided for @batchAdoptionPainRecovery.
   ///
   /// In en, this message translates to:
   /// **'No recovery when broken'**
-  String get batchTakeoverPainRecovery;
+  String get batchAdoptionPainRecovery;
 
-  /// No description provided for @batchTakeoverPainVersionDrift.
+  /// No description provided for @batchAdoptionPainVersionDrift.
   ///
   /// In en, this message translates to:
   /// **'Different versions across projects'**
-  String get batchTakeoverPainVersionDrift;
+  String get batchAdoptionPainVersionDrift;
 
-  /// No description provided for @batchTakeoverFolderTitle.
+  /// No description provided for @batchAdoptionFolderTitle.
   ///
   /// In en, this message translates to:
   /// **'Existing Skills'**
-  String get batchTakeoverFolderTitle;
+  String get batchAdoptionFolderTitle;
 
-  /// No description provided for @batchTakeoverFolderSubtitle.
+  /// No description provided for @batchAdoptionFolderSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Unclear status'**
-  String get batchTakeoverFolderSubtitle;
+  String get batchAdoptionFolderSubtitle;
 
-  /// No description provided for @batchTakeoverAfterLabel.
+  /// No description provided for @batchAdoptionAfterLabel.
   ///
   /// In en, this message translates to:
   /// **'AFTER'**
-  String get batchTakeoverAfterLabel;
+  String get batchAdoptionAfterLabel;
 
-  /// No description provided for @batchTakeoverAfterTitle.
+  /// No description provided for @batchAdoptionAfterTitle.
   ///
   /// In en, this message translates to:
   /// **'One clear Library'**
-  String get batchTakeoverAfterTitle;
+  String get batchAdoptionAfterTitle;
 
-  /// No description provided for @batchTakeoverLibraryTitle.
+  /// No description provided for @batchAdoptionLibraryTitle.
   ///
   /// In en, this message translates to:
   /// **'SkillsGo Library'**
-  String get batchTakeoverLibraryTitle;
+  String get batchAdoptionLibraryTitle;
 
-  /// No description provided for @batchTakeoverBenefitLocation.
+  /// No description provided for @batchAdoptionBenefitLocation.
   ///
   /// In en, this message translates to:
   /// **'Clear locations'**
-  String get batchTakeoverBenefitLocation;
+  String get batchAdoptionBenefitLocation;
 
-  /// No description provided for @batchTakeoverBenefitFreshness.
+  /// No description provided for @batchAdoptionBenefitFreshness.
   ///
   /// In en, this message translates to:
   /// **'Updates visible'**
-  String get batchTakeoverBenefitFreshness;
+  String get batchAdoptionBenefitFreshness;
 
-  /// No description provided for @batchTakeoverBenefitRecovery.
+  /// No description provided for @batchAdoptionBenefitRecovery.
   ///
   /// In en, this message translates to:
   /// **'Easy recovery'**
-  String get batchTakeoverBenefitRecovery;
+  String get batchAdoptionBenefitRecovery;
 
-  /// No description provided for @batchTakeoverBenefitVersions.
+  /// No description provided for @batchAdoptionBenefitVersions.
   ///
   /// In en, this message translates to:
   /// **'Versions clear'**
-  String get batchTakeoverBenefitVersions;
+  String get batchAdoptionBenefitVersions;
 
-  /// No description provided for @batchTakeoverManagedSection.
+  /// No description provided for @batchAdoptionManagedSection.
   ///
   /// In en, this message translates to:
   /// **'Managed by SkillsGo'**
-  String get batchTakeoverManagedSection;
+  String get batchAdoptionManagedSection;
 
-  /// No description provided for @batchTakeoverPendingSection.
+  /// No description provided for @batchAdoptionPendingSection.
   ///
   /// In en, this message translates to:
   /// **'Pending'**
-  String get batchTakeoverPendingSection;
+  String get batchAdoptionPendingSection;
 
-  /// No description provided for @batchTakeoverItemManaged.
+  /// No description provided for @batchAdoptionItemManaged.
   ///
   /// In en, this message translates to:
   /// **'{name} is managed by SkillsGo'**
-  String batchTakeoverItemManaged(String name);
+  String batchAdoptionItemManaged(String name);
 
-  /// No description provided for @batchTakeoverItemSkipped.
+  /// No description provided for @batchAdoptionItemSkipped.
   ///
   /// In en, this message translates to:
   /// **'{name} could not be added to management'**
-  String batchTakeoverItemSkipped(String name);
+  String batchAdoptionItemSkipped(String name);
 
-  /// No description provided for @batchTakeoverItemPending.
+  /// No description provided for @batchAdoptionItemPending.
   ///
   /// In en, this message translates to:
   /// **'{name} is waiting to be managed'**
-  String batchTakeoverItemPending(String name);
+  String batchAdoptionItemPending(String name);
 
-  /// No description provided for @batchTakeoverAfterSemantics.
+  /// No description provided for @batchAdoptionAfterSemantics.
   ///
   /// In en, this message translates to:
   /// **'After management, {count, plural, =1{1 skill is} other{{count} skills are}} organized in one Library with a clear managed status.'**
-  String batchTakeoverAfterSemantics(int count);
+  String batchAdoptionAfterSemantics(int count);
 
-  /// No description provided for @batchTakeoverMoreSkills.
+  /// No description provided for @batchAdoptionMoreSkills.
   ///
   /// In en, this message translates to:
   /// **'+{count} more'**
-  String batchTakeoverMoreSkills(int count);
+  String batchAdoptionMoreSkills(int count);
 
-  /// No description provided for @batchTakeoverTransitionSemantics.
+  /// No description provided for @batchAdoptionTransitionSemantics.
   ///
   /// In en, this message translates to:
   /// **'Add these existing skills to SkillsGo management.'**
-  String get batchTakeoverTransitionSemantics;
+  String get batchAdoptionTransitionSemantics;
 
-  /// No description provided for @batchTakeoverTransitionLabel.
+  /// No description provided for @batchAdoptionTransitionLabel.
   ///
   /// In en, this message translates to:
   /// **'ORGANIZE'**
-  String get batchTakeoverTransitionLabel;
+  String get batchAdoptionTransitionLabel;
 
-  /// No description provided for @batchTakeoverStatusTitle.
+  /// No description provided for @batchAdoptionStatusTitle.
   ///
   /// In en, this message translates to:
   /// **'Management status'**
-  String get batchTakeoverStatusTitle;
+  String get batchAdoptionStatusTitle;
 
-  /// No description provided for @batchTakeoverStatusManaged.
+  /// No description provided for @batchAdoptionStatusManaged.
   ///
   /// In en, this message translates to:
   /// **'Managed'**
-  String get batchTakeoverStatusManaged;
+  String get batchAdoptionStatusManaged;
 
-  /// No description provided for @batchTakeoverStatusProgress.
+  /// No description provided for @batchAdoptionStatusProgress.
   ///
   /// In en, this message translates to:
   /// **'Organizing'**
-  String get batchTakeoverStatusProgress;
+  String get batchAdoptionStatusProgress;
 
-  /// No description provided for @batchTakeoverStatusSkipped.
+  /// No description provided for @batchAdoptionStatusSkipped.
   ///
   /// In en, this message translates to:
   /// **'Skipped'**
-  String get batchTakeoverStatusSkipped;
+  String get batchAdoptionStatusSkipped;
 
-  /// No description provided for @batchTakeoverStatusFilesStay.
+  /// No description provided for @batchAdoptionStatusFilesStay.
   ///
   /// In en, this message translates to:
   /// **'Skill files stay in their original locations'**
-  String get batchTakeoverStatusFilesStay;
+  String get batchAdoptionStatusFilesStay;
 
-  /// No description provided for @batchTakeoverBoardSemantics.
+  /// No description provided for @batchAdoptionBoardSemantics.
   ///
   /// In en, this message translates to:
   /// **'Skills are arranged into complete rows and recorded by SkillsGo without moving their files.'**
-  String get batchTakeoverBoardSemantics;
+  String get batchAdoptionBoardSemantics;
 
-  /// No description provided for @batchTakeoverBoardComplete.
+  /// No description provided for @batchAdoptionBoardComplete.
   ///
   /// In en, this message translates to:
   /// **'ALL CLEAR'**
-  String get batchTakeoverBoardComplete;
+  String get batchAdoptionBoardComplete;
 
-  /// No description provided for @batchTakeoverBoardPartial.
+  /// No description provided for @batchAdoptionBoardPartial.
   ///
   /// In en, this message translates to:
   /// **'COMPLETE'**
-  String get batchTakeoverBoardPartial;
+  String get batchAdoptionBoardPartial;
 
-  /// No description provided for @batchTakeoverStatusTotal.
+  /// No description provided for @batchAdoptionStatusTotal.
   ///
   /// In en, this message translates to:
   /// **'Total'**
-  String get batchTakeoverStatusTotal;
+  String get batchAdoptionStatusTotal;
 
-  /// No description provided for @batchTakeoverQueueComplete.
+  /// No description provided for @batchAdoptionQueueComplete.
   ///
   /// In en, this message translates to:
   /// **'No skills are waiting'**
-  String get batchTakeoverQueueComplete;
+  String get batchAdoptionQueueComplete;
 
-  /// No description provided for @batchTakeoverQueueWaiting.
+  /// No description provided for @batchAdoptionQueueWaiting.
   ///
   /// In en, this message translates to:
   /// **'Skills will move here after verification'**
-  String get batchTakeoverQueueWaiting;
+  String get batchAdoptionQueueWaiting;
 
-  /// No description provided for @batchTakeoverNextLabel.
+  /// No description provided for @batchAdoptionNextLabel.
   ///
   /// In en, this message translates to:
   /// **'NEXT'**
-  String get batchTakeoverNextLabel;
+  String get batchAdoptionNextLabel;
 
-  /// No description provided for @batchTakeoverFillerCount.
+  /// No description provided for @batchAdoptionFillerCount.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 SkillsGo organizer block} other{{count} SkillsGo organizer blocks}} complete the final rows'**
-  String batchTakeoverFillerCount(int count);
+  String batchAdoptionFillerCount(int count);
 
-  /// No description provided for @batchTakeoverPreservation.
+  /// No description provided for @batchAdoptionPreservation.
   ///
   /// In en, this message translates to:
   /// **'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.'**
-  String get batchTakeoverPreservation;
+  String get batchAdoptionPreservation;
 
-  /// No description provided for @batchTakeoverLaterHint.
+  /// No description provided for @batchAdoptionLaterHint.
   ///
   /// In en, this message translates to:
   /// **'If you skip, you can use Manage existing skills from Library anytime.'**
-  String get batchTakeoverLaterHint;
+  String get batchAdoptionLaterHint;
 
-  /// No description provided for @batchTakeoverSkip.
+  /// No description provided for @batchAdoptionSkip.
   ///
   /// In en, this message translates to:
   /// **'Not now'**
-  String get batchTakeoverSkip;
+  String get batchAdoptionSkip;
 
-  /// No description provided for @batchTakeoverConfirm.
+  /// No description provided for @batchAdoptionConfirm.
   ///
   /// In en, this message translates to:
   /// **'Add to management'**
-  String get batchTakeoverConfirm;
+  String get batchAdoptionConfirm;
 
-  /// No description provided for @batchTakeoverExecutionRetry.
+  /// No description provided for @batchAdoptionExecutionRetry.
   ///
   /// In en, this message translates to:
   /// **'Retry'**
-  String get batchTakeoverExecutionRetry;
+  String get batchAdoptionExecutionRetry;
 
-  /// No description provided for @batchTakeoverResultTitle.
+  /// No description provided for @batchAdoptionResultTitle.
   ///
   /// In en, this message translates to:
   /// **'Skills added to management'**
-  String get batchTakeoverResultTitle;
+  String get batchAdoptionResultTitle;
 
-  /// No description provided for @batchTakeoverSummary.
+  /// No description provided for @batchAdoptionSummary.
   ///
   /// In en, this message translates to:
-  /// **'{takenOver} skills added to management, {skipped} skipped.'**
-  String batchTakeoverSummary(int takenOver, int skipped);
+  /// **'{adopted} skills added to management, {skipped} skipped.'**
+  String batchAdoptionSummary(int adopted, int skipped);
 
-  /// No description provided for @batchTakeoverClose.
+  /// No description provided for @batchAdoptionFailureSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{adopted} skills added to management, {failed} failed.'**
+  String batchAdoptionFailureSummary(int adopted, int failed);
+
+  /// No description provided for @batchAdoptionStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get batchAdoptionStatusFailed;
+
+  /// No description provided for @batchAdoptionItemFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} failed'**
+  String batchAdoptionItemFailed(String name);
+
+  /// No description provided for @batchAdoptionClose.
   ///
   /// In en, this message translates to:
   /// **'Close'**
-  String get batchTakeoverClose;
+  String get batchAdoptionClose;
 
   /// No description provided for @installMoreTargets.
   ///
@@ -3213,11 +3369,11 @@ abstract class AppLocalizations {
   /// **'Install in more locations'**
   String get installMoreTargets;
 
-  /// No description provided for @detailRepository.
+  /// No description provided for @detailPackageSource.
   ///
   /// In en, this message translates to:
-  /// **'Source'**
-  String get detailRepository;
+  /// **'Package Source'**
+  String get detailPackageSource;
 
   /// No description provided for @detailStars.
   ///
@@ -3234,7 +3390,7 @@ abstract class AppLocalizations {
   /// No description provided for @detailArchiveSize.
   ///
   /// In en, this message translates to:
-  /// **'ZIP Size'**
+  /// **'Package Size'**
   String get detailArchiveSize;
 
   /// No description provided for @pathLabel.
@@ -3416,6 +3572,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repair the bundled CLI, then retry to continue.'**
   String get onboardingCliErrorDescription;
+
+  /// No description provided for @removeSkillsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The following Skills will be removed'**
+  String get removeSkillsDescription;
+
+  /// No description provided for @confirmRemoveSkillsInline.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {count} Skills?'**
+  String confirmRemoveSkillsInline(int count);
+
+  /// No description provided for @removingSkillsProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing {finished}/{total}'**
+  String removingSkillsProgress(int finished, int total);
+
+  /// No description provided for @confirmRemoveSkillsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove now'**
+  String get confirmRemoveSkillsAction;
+
+  /// No description provided for @viewRemovalDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get viewRemovalDetails;
+
+  /// No description provided for @hideRemovalDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide details'**
+  String get hideRemovalDetails;
 }
 
 class _AppLocalizationsDelegate

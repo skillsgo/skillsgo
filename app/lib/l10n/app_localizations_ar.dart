@@ -215,6 +215,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get install => 'تثبيت';
 
   @override
+  String get upgrade => 'Upgrade';
+
+  @override
+  String get downgrade => 'Downgrade';
+
+  @override
+  String get packageSkillsSwitchTogether =>
+      'Skills from this package will switch version together.';
+
+  @override
+  String get switchVersion => 'Switch version';
+
+  @override
+  String upgradeToVersion(String version) {
+    return 'Upgrade to $version';
+  }
+
+  @override
+  String downgradeToVersion(String version) {
+    return 'Downgrade to $version';
+  }
+
+  @override
   String get installAll => 'تثبيت جميع Skills';
 
   @override
@@ -410,7 +433,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get specificProject => 'مشروع';
 
   @override
+  String get libraryGlobalScope => 'Global Skills';
+
+  @override
   String get globalScope => 'عام';
+
+  @override
+  String get globalSkills => 'Global Skills';
 
   @override
   String get addProject => 'أضف المشروع';
@@ -569,9 +598,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get remove => 'إزالة';
 
   @override
-  String get manageTargets => 'إدارة النطاق';
-
-  @override
   String skillsSelected(int count) {
     return 'تم تحديد ⁨$count⁩';
   }
@@ -586,22 +612,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get clearCurrentResultSelection => 'مسح تحديد النتيجة الحالية';
 
   @override
-  String get manageTargetsTitle => 'إدارة أهداف التثبيت';
-
-  @override
-  String get manageTargetsDescription =>
-      'اختر الإجراء الدقيق لكل هدف. لن تتغير الأهداف غير المحددة.';
-
-  @override
   String targetActionsSelected(int selected, int total) {
     return 'تم تحديد أهداف ⁨$selected⁩ لـ ⁨$total⁩';
   }
 
   @override
   String get confirmRemoveTarget => 'تأكيد الإزالة';
-
-  @override
-  String get applyTargetActions => 'تطبيق الإجراءات المحددة';
 
   @override
   String get managementProgressTitle => 'تطبيق الإجراءات المستهدفة';
@@ -613,10 +629,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String managementResultSummary(int succeeded, int failed) {
     return 'نجح ⁨$succeeded⁩، وفشل ⁨$failed⁩';
   }
-
-  @override
-  String get workspaceOwnershipChanges =>
-      'سيتم تحديث إجراءات المشروع المحددة skills.yaml وskills-lock.yaml.';
 
   @override
   String get targetContentPreserved =>
@@ -1080,7 +1092,70 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'لا يتم حفظ عمليات البحث التي تجريها، ولا يحتفظ SkillsGo بسجلات الأوامر.';
+      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+
+  @override
+  String get diagnosticLogsTitle => 'Diagnostic logs';
+
+  @override
+  String diagnosticLogsDescription(String size) {
+    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+  }
+
+  @override
+  String get openLogFolder => 'Open folder';
+
+  @override
+  String get viewLiveLogs => 'View live';
+
+  @override
+  String get exportLogs => 'Export logs';
+
+  @override
+  String get clearLogs => 'Clear logs';
+
+  @override
+  String get logsExported => 'Diagnostic logs exported.';
+
+  @override
+  String get logsCleared => 'Diagnostic logs cleared.';
+
+  @override
+  String get logActionFailed =>
+      'The diagnostic log action could not be completed.';
+
+  @override
+  String get logViewerLive => 'Live';
+
+  @override
+  String get logViewerPaused => 'Paused';
+
+  @override
+  String get searchLogs => 'Search logs';
+
+  @override
+  String get allLogLevels => 'All';
+
+  @override
+  String get warningLogs => 'Warnings';
+
+  @override
+  String get errorLogs => 'Errors';
+
+  @override
+  String get pauseLogFollow => 'Pause';
+
+  @override
+  String get resumeLogFollow => 'Resume';
+
+  @override
+  String get clearViewer => 'Clear view';
+
+  @override
+  String get noDiagnosticLogs => 'No matching logs yet.';
+
+  @override
+  String get backToLatestLog => 'Latest';
 
   @override
   String get language => 'اللغة';
@@ -1317,7 +1392,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get confirmInstall => 'تأكيد التثبيت';
 
   @override
-  String installAllRepositorySkills(int count) {
+  String installAllPackageSkills(int count) {
     return 'تثبيت جميع مهارات المستودع (⁨$count⁩)';
   }
 
@@ -1325,8 +1400,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get installAllSkillsTo => 'تثبيت جميع Skills في';
 
   @override
-  String installRepositorySkills(String repository, int count) {
-    return 'تثبيت جميع مهارات ⁨$repository⁩ (⁨$count⁩)';
+  String installPackageSkills(String packagePath, int count) {
+    return 'تثبيت جميع مهارات ⁨$packagePath⁩ (⁨$count⁩)';
   }
 
   @override
@@ -1627,7 +1702,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverAction => 'إدارة المهارات الموجودة';
+  String get batchAdoptionAction => 'إدارة المهارات الموجودة';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -1635,21 +1710,21 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String confirmSkillsGoManagementCount(int count) {
-    return 'Confirm SkillsGo management ($count)';
+  String confirmSkillsGoManagementCount(int selected, int total) {
+    return 'Confirm SkillsGo management ($selected/$total)';
   }
 
   @override
   String get skillColumnLabel => 'Skill';
 
   @override
-  String get repositorySourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Source';
 
   @override
   String get versionColumnLabel => 'Version';
 
   @override
-  String get repositoryMatching => 'Matching sources…';
+  String get packageMatching => 'Matching sources…';
 
   @override
   String get sourceMatchUnavailable => 'Source matching unavailable';
@@ -1663,40 +1738,40 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get versionPendingSelection => 'Pending Source';
+  String get versionPendingSelection => 'Select a source first';
 
   @override
-  String batchTakeoverActionCount(int count) {
+  String batchAdoptionActionCount(int count) {
     return 'إدارة (⁨$count⁩)';
   }
 
   @override
-  String get batchTakeoverChecking => 'التحقق من المهارات الموجودة...';
+  String get batchAdoptionChecking => 'التحقق من المهارات الموجودة...';
 
   @override
-  String get batchTakeoverRetry => 'إعادة التحقق من Skills التي يمكن إدارتها';
+  String get batchAdoptionRetry => 'إعادة التحقق من Skills التي يمكن إدارتها';
 
   @override
-  String batchTakeoverEligibleCount(int count) {
+  String batchAdoptionEligibleCount(int count) {
     return 'يمكن إدارة ⁨$count⁩';
   }
 
   @override
-  String get batchTakeoverPending => 'إضافة مهارات إلى الإدارة...';
+  String get batchAdoptionPending => 'إضافة مهارات إلى الإدارة...';
 
   @override
-  String get batchTakeoverTitle => 'إدارة المهارات الموجودة مع SkillsGo؟';
+  String get batchAdoptionTitle => 'إدارة المهارات الموجودة مع SkillsGo؟';
 
   @override
-  String get batchTakeoverDescription =>
+  String get batchAdoptionDescription =>
       'سيضيف SkillsGo سجلات الإدارة المحلية دون نقل ملفات المهارات أو الكتابة فوقها أو تحميلها. سيتم تخطي العناصر غير المدعومة أو التي تم تغييرها.';
 
   @override
-  String get batchTakeoverStoryTitle =>
+  String get batchAdoptionStoryTitle =>
       'اجمع Skills المتفرقة في مكتبة واحدة واضحة';
 
   @override
-  String batchTakeoverStoryDescription(int count) {
+  String batchAdoptionStoryDescription(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1711,71 +1786,71 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverBeforeSemantics =>
+  String get batchAdoptionBeforeSemantics =>
       'قبل الإدارة، ليس من الواضح أين يتم تثبيت المهارات الموجودة، وما إذا كانت حديثة، أو كيفية استعادتها، أو ما إذا كانت المشاريع تستخدم نفس الإصدار.';
 
   @override
-  String get batchTakeoverPainLocation => 'موقع التثبيت غير معروف';
+  String get batchAdoptionPainLocation => 'موقع التثبيت غير معروف';
 
   @override
-  String get batchTakeoverPainFreshness => 'حالة التحديث غير معروفة';
+  String get batchAdoptionPainFreshness => 'حالة التحديث غير معروفة';
 
   @override
-  String get batchTakeoverPainRecovery => 'لا توجد استعادة عند حدوث تلف';
+  String get batchAdoptionPainRecovery => 'لا توجد استعادة عند حدوث تلف';
 
   @override
-  String get batchTakeoverPainVersionDrift => 'إصدارات مختلفة عبر المشاريع';
+  String get batchAdoptionPainVersionDrift => 'إصدارات مختلفة عبر المشاريع';
 
   @override
-  String get batchTakeoverFolderTitle => 'Skills موجودة';
+  String get batchAdoptionFolderTitle => 'Skills موجودة';
 
   @override
-  String get batchTakeoverFolderSubtitle => 'الوضع غير واضح';
+  String get batchAdoptionFolderSubtitle => 'الوضع غير واضح';
 
   @override
-  String get batchTakeoverAfterLabel => 'بعد';
+  String get batchAdoptionAfterLabel => 'بعد';
 
   @override
-  String get batchTakeoverAfterTitle => 'مكتبة واحدة واضحة';
+  String get batchAdoptionAfterTitle => 'مكتبة واحدة واضحة';
 
   @override
-  String get batchTakeoverLibraryTitle => 'مكتبة SkillsGo';
+  String get batchAdoptionLibraryTitle => 'مكتبة SkillsGo';
 
   @override
-  String get batchTakeoverBenefitLocation => 'مواقع واضحة';
+  String get batchAdoptionBenefitLocation => 'مواقع واضحة';
 
   @override
-  String get batchTakeoverBenefitFreshness => 'التحديثات مرئية';
+  String get batchAdoptionBenefitFreshness => 'التحديثات مرئية';
 
   @override
-  String get batchTakeoverBenefitRecovery => 'استعادة سهلة';
+  String get batchAdoptionBenefitRecovery => 'استعادة سهلة';
 
   @override
-  String get batchTakeoverBenefitVersions => 'الإصدارات واضحة';
+  String get batchAdoptionBenefitVersions => 'الإصدارات واضحة';
 
   @override
-  String get batchTakeoverManagedSection => 'تحت إدارة SkillsGo';
+  String get batchAdoptionManagedSection => 'تحت إدارة SkillsGo';
 
   @override
-  String get batchTakeoverPendingSection => 'في انتظار';
+  String get batchAdoptionPendingSection => 'في انتظار';
 
   @override
-  String batchTakeoverItemManaged(String name) {
+  String batchAdoptionItemManaged(String name) {
     return 'تتم إدارة ⁨$name⁩ بواسطة SkillsGo';
   }
 
   @override
-  String batchTakeoverItemSkipped(String name) {
+  String batchAdoptionItemSkipped(String name) {
     return 'لا يمكن إضافة ⁨$name⁩ إلى الإدارة';
   }
 
   @override
-  String batchTakeoverItemPending(String name) {
+  String batchAdoptionItemPending(String name) {
     return '⁨$name⁩ في انتظار إدارتها';
   }
 
   @override
-  String batchTakeoverAfterSemantics(int count) {
+  String batchAdoptionAfterSemantics(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1790,57 +1865,57 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String batchTakeoverMoreSkills(int count) {
+  String batchAdoptionMoreSkills(int count) {
     return '+⁨$count⁩ المزيد';
   }
 
   @override
-  String get batchTakeoverTransitionSemantics =>
+  String get batchAdoptionTransitionSemantics =>
       'أضف هذه المهارات الموجودة إلى إدارة SkillsGo.';
 
   @override
-  String get batchTakeoverTransitionLabel => 'تنظيم';
+  String get batchAdoptionTransitionLabel => 'تنظيم';
 
   @override
-  String get batchTakeoverStatusTitle => 'حالة الإدارة';
+  String get batchAdoptionStatusTitle => 'حالة الإدارة';
 
   @override
-  String get batchTakeoverStatusManaged => 'مُدار';
+  String get batchAdoptionStatusManaged => 'مُدار';
 
   @override
-  String get batchTakeoverStatusProgress => 'جارٍ التنظيم';
+  String get batchAdoptionStatusProgress => 'جارٍ التنظيم';
 
   @override
-  String get batchTakeoverStatusSkipped => 'تم تخطيه';
+  String get batchAdoptionStatusSkipped => 'تم تخطيه';
 
   @override
-  String get batchTakeoverStatusFilesStay =>
+  String get batchAdoptionStatusFilesStay =>
       'تظل ملفات Skill في مواقعها الأصلية';
 
   @override
-  String get batchTakeoverBoardSemantics =>
+  String get batchAdoptionBoardSemantics =>
       'يتم ترتيب Skills في صفوف كاملة ويتم تسجيلها بواسطة SkillsGo دون نقل ملفاتها.';
 
   @override
-  String get batchTakeoverBoardComplete => 'كل شيء واضح';
+  String get batchAdoptionBoardComplete => 'كل شيء واضح';
 
   @override
-  String get batchTakeoverBoardPartial => 'اكتمل جزئيًا';
+  String get batchAdoptionBoardPartial => 'اكتمل جزئيًا';
 
   @override
-  String get batchTakeoverStatusTotal => 'المجموع';
+  String get batchAdoptionStatusTotal => 'المجموع';
 
   @override
-  String get batchTakeoverQueueComplete => 'لا توجد مهارات في الانتظار';
+  String get batchAdoptionQueueComplete => 'لا توجد مهارات في الانتظار';
 
   @override
-  String get batchTakeoverQueueWaiting => 'ستظهر Skills هنا بعد التحقق';
+  String get batchAdoptionQueueWaiting => 'ستظهر Skills هنا بعد التحقق';
 
   @override
-  String get batchTakeoverNextLabel => 'التالي';
+  String get batchAdoptionNextLabel => 'التالي';
 
   @override
-  String batchTakeoverFillerCount(int count) {
+  String batchAdoptionFillerCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1855,38 +1930,51 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverPreservation =>
+  String get batchAdoptionPreservation =>
       'تظل ملفاتك ومساراتك وسير العمل الحالي في مكانها تمامًا. SkillsGo يكمل فقط سجلات الإدارة المحلية الخاصة به.';
 
   @override
-  String get batchTakeoverLaterHint =>
+  String get batchAdoptionLaterHint =>
       'إذا قمت بالتخطي، يمكنك استخدام إدارة المهارات الموجودة من المكتبة في أي وقت.';
 
   @override
-  String get batchTakeoverSkip => 'ليس الآن';
+  String get batchAdoptionSkip => 'ليس الآن';
 
   @override
-  String get batchTakeoverConfirm => 'إضافة إلى الإدارة';
+  String get batchAdoptionConfirm => 'إضافة إلى الإدارة';
 
   @override
-  String get batchTakeoverExecutionRetry => 'أعد المحاولة';
+  String get batchAdoptionExecutionRetry => 'أعد المحاولة';
 
   @override
-  String get batchTakeoverResultTitle => 'أُضيفت Skills إلى الإدارة';
+  String get batchAdoptionResultTitle => 'أُضيفت Skills إلى الإدارة';
 
   @override
-  String batchTakeoverSummary(int takenOver, int skipped) {
-    return 'تمت إضافة مهارات ⁨$takenOver⁩ إلى الإدارة، وتم تخطي ⁨$skipped⁩.';
+  String batchAdoptionSummary(int adopted, int skipped) {
+    return 'تمت إضافة مهارات ⁨$adopted⁩ إلى الإدارة، وتم تخطي ⁨$skipped⁩.';
   }
 
   @override
-  String get batchTakeoverClose => 'إغلاق';
+  String batchAdoptionFailureSummary(int adopted, int failed) {
+    return '$adopted skills added to management, $failed failed.';
+  }
+
+  @override
+  String get batchAdoptionStatusFailed => 'Failed';
+
+  @override
+  String batchAdoptionItemFailed(String name) {
+    return '$name failed';
+  }
+
+  @override
+  String get batchAdoptionClose => 'إغلاق';
 
   @override
   String get installMoreTargets => 'تثبيت في المزيد من المواقع';
 
   @override
-  String get detailRepository => 'المستودع';
+  String get detailPackageSource => 'مصدر الحزمة';
 
   @override
   String get detailStars => 'النجوم';
@@ -1895,7 +1983,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get detailUpdated => 'تم التحديث';
 
   @override
-  String get detailArchiveSize => 'حجم ZIP';
+  String get detailArchiveSize => 'حجم الحزمة';
 
   @override
   String get pathLabel => 'مسار المشروع';
@@ -1998,4 +2086,26 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get onboardingCliErrorDescription =>
       'أصلح CLI المرفق، ثم حاول مجددًا للمتابعة.';
+
+  @override
+  String get removeSkillsDescription => 'The following Skills will be removed';
+
+  @override
+  String confirmRemoveSkillsInline(int count) {
+    return 'Remove $count Skills?';
+  }
+
+  @override
+  String removingSkillsProgress(int finished, int total) {
+    return 'Removing $finished/$total';
+  }
+
+  @override
+  String get confirmRemoveSkillsAction => 'Remove now';
+
+  @override
+  String get viewRemovalDetails => 'View details';
+
+  @override
+  String get hideRemovalDetails => 'Hide details';
 }

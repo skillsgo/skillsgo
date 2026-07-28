@@ -10,7 +10,7 @@ superseded_by:
 
 This proposal records the original matrix-plan and External Adoption design. It
 is no longer an implementation source: the current domain language, direct
-Installation Request, Batch Takeover, and shipped navigation are defined by the
+Installation Request, Batch Adoption, and shipped navigation are defined by the
 documents listed in `superseded_by`.
 
 ## Problem Statement
@@ -27,7 +27,7 @@ Discover provides Hub-backed Search plus Cloud-backed Ranking, Trending, and Hot
 
 Installing a Skill opens an Installation Plan represented as a multi-location by multi-Agent matrix. Users may select any set of cells. The bundled SkillsGo CLI validates and executes the explicit targets, returns structured per-target outcomes, retains successful targets after partial failure, and supports retrying failed targets.
 
-Clean installations first complete the two-step Mandatory Onboarding defined in `mandatory-onboarding.md`. Projects are added through explicit directory selection. External Installations remain inspectable until exact-path removal or verified Repository-backed Batch Takeover. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
+Clean installations first complete the two-step Mandatory Onboarding defined in `mandatory-onboarding.md`. Projects are added through explicit directory selection. External Installations remain inspectable until exact-path removal or verified Repository-backed Batch Adoption. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
 
 ## User Stories
 
@@ -98,7 +98,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 65. As a user with an unhealthy target, I want SkillsGo to report the conflict without repair or destructive removal, so that it never overwrites or deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
-68. As a user with a healthy External Installation, I want update disabled while exact-path removal and explicit Batch Takeover remain available, so that SkillsGo never claims ownership silently.
+68. As a user with a healthy External Installation, I want update disabled while exact-path removal and explicit Batch Adoption remain available, so that SkillsGo never claims ownership silently.
 69. External Adoption is deferred beyond the first release; reinstalling from an explicit source is the only way to create managed ownership.
 70. As a user reviewing a Hub match, I want source and version confirmed before association, so that content is not replaced by assumption.
 71. As a user pasting an explicit Git source, I want the App to resolve it through the bundled CLI and render the returned Repository members or single Skill with the existing discovery cards, so that uncataloged public sources remain installable without direct App-to-Hub protocol coupling.
@@ -134,7 +134,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Use the shared floating rounded left-rail shell for Library and Settings. Rail items use visible labels; the rail is not an icon-only clone of Burrow. Discover keeps its compact collection navigation above the result surface.
 - Discover rail order is Search, Ranking, Trending, and Hot. Search is the initial route.
 - Library rail order is All Skills, Global, and every Added Project. All Skills and Global remain fixed at the top, only the Added Project list scrolls, and Add Project remains pinned at the bottom. Fixed dividers separate the scrollable project list from both the leading destinations and footer action; neither divider moves with project scrolling. The project list uses one slim, rounded desktop scrollbar that does not compete with project labels or selected capsules; the platform must not add a second hover scrollbar. Added Project rows use a compact desktop density while the fixed destinations and Add Project retain their larger navigation targets. The toolbar owns search, update status, and a combinable Agent multi-select; it does not repeat project selection. An empty Added Project uses a concise, project-name-independent title and a Browse Skills action that returns to Discover without setup guidance.
-- Present the first eligible Batch Takeover plan in the active Library as a one-time, persisted Before/After introduction. Keep the illustration count-bound, localized, accessible, reduced-motion-aware, and separate from authorization; both Confirm and Skip complete the introduction, while the existing counted action remains the permanent manual entry.
+- Present the first eligible Batch Adoption plan in the active Library as a one-time, persisted Before/After introduction. Keep the illustration count-bound, localized, accessible, reduced-motion-aware, and separate from authorization; both Confirm and Skip complete the introduction, while the existing counted action remains the permanent manual entry.
 - Settings rail order is General, Reminders, Agents, and Advanced. Advanced ends with an explicit local Library refresh that rescans local inventory without mutating installations.
 - Preserve each top-level destination's last subroute, search input, scroll position, and in-flight operations for the current session. Detail navigation carries an explicit origin so Back restores the source view.
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
@@ -154,7 +154,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Existing identical targets are skipped. Same-name different-source collisions, Version Divergence, and Local Modifications require explicit resolutions.
 - Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Manifest only after confirmation. Fixed commits without a movable reference do not report an available update.
 - Removing a managed member updates the owning Repository dependency and every affected Agent Projection in that declaration scope. Modified Projections are never overwritten.
-- Detect External Installations by reconciling known Agent directories with declared Repository Projections. Inspection is read-only until takeover.
+- Detect External Installations by reconciling known Agent directories with declared Repository Projections. Inspection is read-only until adoption.
 - External removal uses the exact discovered target and reviewed filesystem state. It creates no Workspace declaration or inferred source metadata.
 - Hub collection contracts remain Search plus ranked Skills using `all_time`, `trending`, and `hot` semantics. Pagination and empty collections must return stable machine-readable shapes.
 - Hub detail must provide the immutable metadata needed by the App to display source, Manifest, files, Trust Level, and Risk Assessment without relying on human web pages.

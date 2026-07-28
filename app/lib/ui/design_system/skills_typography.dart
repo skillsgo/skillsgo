@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter ThemeExtension, the platform-localized Material TextTheme, and semantic ColorScheme foreground roles.
- * [OUTPUT]: Provides the system-font-first semantic typography contract consumed by SkillsGo UI and reusable components.
+ * [OUTPUT]: Provides the system-font-first semantic typography contract, including navigation and compact control-label geometry, consumed by SkillsGo UI and reusable components.
  * [POS]: Serves as the global typography layer beside SkillsColorTokens and SkillsComponentTokens in the SkillsGo design system.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,8 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
     required this.body,
     required this.bodySecondary,
     required this.label,
+    required this.navigationLabel,
+    required this.compactControlLabel,
     required this.metadata,
     required this.caption,
     required this.code,
@@ -64,6 +66,21 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
           fontWeight: FontWeight.w500,
           letterSpacing: 0,
         ),
+        navigationLabel: (textTheme.labelLarge ?? const TextStyle()).copyWith(
+          color: scheme.onSurfaceVariant,
+          fontSize: 14,
+          height: 1,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0,
+        ),
+        compactControlLabel: (textTheme.labelMedium ?? const TextStyle())
+            .copyWith(
+              color: scheme.onSurface,
+              fontSize: 12,
+              height: 1,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .05,
+            ),
         metadata: (textTheme.bodySmall ?? const TextStyle()).copyWith(
           color: scheme.onSurfaceVariant,
           fontSize: 12,
@@ -93,6 +110,8 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
   final TextStyle body;
   final TextStyle bodySecondary;
   final TextStyle label;
+  final TextStyle navigationLabel;
+  final TextStyle compactControlLabel;
   final TextStyle metadata;
   final TextStyle caption;
   final TextStyle code;
@@ -105,6 +124,8 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
     TextStyle? body,
     TextStyle? bodySecondary,
     TextStyle? label,
+    TextStyle? navigationLabel,
+    TextStyle? compactControlLabel,
     TextStyle? metadata,
     TextStyle? caption,
     TextStyle? code,
@@ -115,6 +136,8 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
     body: body ?? this.body,
     bodySecondary: bodySecondary ?? this.bodySecondary,
     label: label ?? this.label,
+    navigationLabel: navigationLabel ?? this.navigationLabel,
+    compactControlLabel: compactControlLabel ?? this.compactControlLabel,
     metadata: metadata ?? this.metadata,
     caption: caption ?? this.caption,
     code: code ?? this.code,
@@ -131,6 +154,8 @@ class SkillsTypography extends ThemeExtension<SkillsTypography> {
       body: mix(body, other.body),
       bodySecondary: mix(bodySecondary, other.bodySecondary),
       label: mix(label, other.label),
+      navigationLabel: mix(navigationLabel, other.navigationLabel),
+      compactControlLabel: mix(compactControlLabel, other.compactControlLabel),
       metadata: mix(metadata, other.metadata),
       caption: mix(caption, other.caption),
       code: mix(code, other.code),

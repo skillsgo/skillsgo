@@ -317,7 +317,6 @@
   "update": "تحديث",
   "backToLibrary": "العودة إلى المكتبة",
   "remove": "إزالة",
-  "manageTargets": "إدارة النطاق",
   "skillsSelected": "تم تحديد ⁨{count}⁩",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "مسح التحديد",
   "selectCurrentResults": "حدد النتائج الحالية",
   "clearCurrentResultSelection": "مسح تحديد النتيجة الحالية",
-  "manageTargetsTitle": "إدارة أهداف التثبيت",
-  "manageTargetsDescription": "اختر الإجراء الدقيق لكل هدف. لن تتغير الأهداف غير المحددة.",
   "targetActionsSelected": "تم تحديد أهداف ⁨{selected}⁩ لـ ⁨{total}⁩",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "تأكيد الإزالة",
-  "applyTargetActions": "تطبيق الإجراءات المحددة",
   "managementProgressTitle": "تطبيق الإجراءات المستهدفة",
   "managementResultsTitle": "نتائج إجراءات الأهداف",
   "managementResultSummary": "نجح ⁨{succeeded}⁩، وفشل ⁨{failed}⁩",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "سيتم تحديث إجراءات المشروع المحددة skills.yaml وskills-lock.yaml.",
   "targetContentPreserved": "سيتم الحفاظ على المحتوى المستهدف الحالي.",
   "localReadFailed": "تعذرت قراءة هذه Skill",
   "localReadFailedMessage": "تعذر على SkillsGo قراءة Skill المثبتة. تأكد من وجود مجلدها وإمكانية الوصول إليه، ثم حاول مجددًا.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "يمكنك الاستمرار في تصفح Skill، ولكن لا يوجد هدف تثبيت حتى الآن. قم بتثبيت Agent المدعوم، ثم قم بتشغيل الكشف مرة أخرى.",
   "clearCustomPath": "مسح المسار المخصص",
   "privacyProvenance": "الخصوصية والمصدر",
-  "privacySummary": "لا يتم حفظ عمليات البحث التي تجريها، ولا يحتفظ SkillsGo بسجلات الأوامر.",
   "language": "اللغة",
   "translatedContent": "مترجم",
   "translatedFrom": "مترجم من {language}",
@@ -686,19 +680,19 @@
   "installedCell": "تم التثبيت",
   "unsupportedCell": "غير متاح",
   "confirmInstall": "تأكيد التثبيت",
-  "installAllRepositorySkills": "تثبيت جميع مهارات المستودع (⁨{count}⁩)",
+  "installAllPackageSkills": "تثبيت جميع مهارات المستودع (⁨{count}⁩)",
   "installAllSkillsTo": "تثبيت جميع Skills في",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "تثبيت جميع مهارات ⁨{repository}⁩ (⁨{count}⁩)",
-  "@installRepositorySkills": {
+  "installPackageSkills": "تثبيت جميع مهارات ⁨{packagePath}⁩ (⁨{count}⁩)",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "إدارة المهارات الموجودة",
-  "batchTakeoverActionCount": "إدارة (⁨{count}⁩)",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "إدارة المهارات الموجودة",
+  "batchAdoptionActionCount": "إدارة (⁨{count}⁩)",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "التحقق من المهارات الموجودة...",
-  "batchTakeoverRetry": "إعادة التحقق من Skills التي يمكن إدارتها",
-  "batchTakeoverEligibleCount": "يمكن إدارة ⁨{count}⁩",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "التحقق من المهارات الموجودة...",
+  "batchAdoptionRetry": "إعادة التحقق من Skills التي يمكن إدارتها",
+  "batchAdoptionEligibleCount": "يمكن إدارة ⁨{count}⁩",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "إضافة مهارات إلى الإدارة...",
-  "batchTakeoverTitle": "إدارة المهارات الموجودة مع SkillsGo؟",
-  "batchTakeoverDescription": "سيضيف SkillsGo سجلات الإدارة المحلية دون نقل ملفات المهارات أو الكتابة فوقها أو تحميلها. سيتم تخطي العناصر غير المدعومة أو التي تم تغييرها.",
-  "batchTakeoverStoryTitle": "اجمع Skills المتفرقة في مكتبة واحدة واضحة",
-  "batchTakeoverStoryDescription": "عثر SkillsGo في هذا الموقع على {count, plural, =0{لا Skills حالية} =1{Skill واحدة حالية يمكنه إدارتها} =2{Skill اثنتين حاليتين يمكنه إدارتهما} few{⁨{count}⁩ Skills حالية يمكنه إدارتها} many{⁨{count}⁩ Skill حالية يمكنه إدارتها} other{⁨{count}⁩ Skill حالية يمكنه إدارتها}}.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "إضافة مهارات إلى الإدارة...",
+  "batchAdoptionTitle": "إدارة المهارات الموجودة مع SkillsGo؟",
+  "batchAdoptionDescription": "سيضيف SkillsGo سجلات الإدارة المحلية دون نقل ملفات المهارات أو الكتابة فوقها أو تحميلها. سيتم تخطي العناصر غير المدعومة أو التي تم تغييرها.",
+  "batchAdoptionStoryTitle": "اجمع Skills المتفرقة في مكتبة واحدة واضحة",
+  "batchAdoptionStoryDescription": "عثر SkillsGo في هذا الموقع على {count, plural, =0{لا Skills حالية} =1{Skill واحدة حالية يمكنه إدارتها} =2{Skill اثنتين حاليتين يمكنه إدارتهما} few{⁨{count}⁩ Skills حالية يمكنه إدارتها} many{⁨{count}⁩ Skill حالية يمكنه إدارتها} other{⁨{count}⁩ Skill حالية يمكنه إدارتها}}.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "قبل الإدارة، ليس من الواضح أين يتم تثبيت المهارات الموجودة، وما إذا كانت حديثة، أو كيفية استعادتها، أو ما إذا كانت المشاريع تستخدم نفس الإصدار.",
-  "batchTakeoverPainLocation": "موقع التثبيت غير معروف",
-  "batchTakeoverPainFreshness": "حالة التحديث غير معروفة",
-  "batchTakeoverPainRecovery": "لا توجد استعادة عند حدوث تلف",
-  "batchTakeoverPainVersionDrift": "إصدارات مختلفة عبر المشاريع",
-  "batchTakeoverFolderTitle": "Skills موجودة",
-  "batchTakeoverFolderSubtitle": "الوضع غير واضح",
-  "batchTakeoverAfterLabel": "بعد",
-  "batchTakeoverAfterTitle": "مكتبة واحدة واضحة",
-  "batchTakeoverLibraryTitle": "مكتبة SkillsGo",
-  "batchTakeoverBenefitLocation": "مواقع واضحة",
-  "batchTakeoverBenefitFreshness": "التحديثات مرئية",
-  "batchTakeoverBenefitRecovery": "استعادة سهلة",
-  "batchTakeoverBenefitVersions": "الإصدارات واضحة",
-  "batchTakeoverManagedSection": "تحت إدارة SkillsGo",
-  "batchTakeoverPendingSection": "في انتظار",
-  "batchTakeoverItemManaged": "تتم إدارة ⁨{name}⁩ بواسطة SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "قبل الإدارة، ليس من الواضح أين يتم تثبيت المهارات الموجودة، وما إذا كانت حديثة، أو كيفية استعادتها، أو ما إذا كانت المشاريع تستخدم نفس الإصدار.",
+  "batchAdoptionPainLocation": "موقع التثبيت غير معروف",
+  "batchAdoptionPainFreshness": "حالة التحديث غير معروفة",
+  "batchAdoptionPainRecovery": "لا توجد استعادة عند حدوث تلف",
+  "batchAdoptionPainVersionDrift": "إصدارات مختلفة عبر المشاريع",
+  "batchAdoptionFolderTitle": "Skills موجودة",
+  "batchAdoptionFolderSubtitle": "الوضع غير واضح",
+  "batchAdoptionAfterLabel": "بعد",
+  "batchAdoptionAfterTitle": "مكتبة واحدة واضحة",
+  "batchAdoptionLibraryTitle": "مكتبة SkillsGo",
+  "batchAdoptionBenefitLocation": "مواقع واضحة",
+  "batchAdoptionBenefitFreshness": "التحديثات مرئية",
+  "batchAdoptionBenefitRecovery": "استعادة سهلة",
+  "batchAdoptionBenefitVersions": "الإصدارات واضحة",
+  "batchAdoptionManagedSection": "تحت إدارة SkillsGo",
+  "batchAdoptionPendingSection": "في انتظار",
+  "batchAdoptionItemManaged": "تتم إدارة ⁨{name}⁩ بواسطة SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "لا يمكن إضافة ⁨{name}⁩ إلى الإدارة",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "لا يمكن إضافة ⁨{name}⁩ إلى الإدارة",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "⁨{name}⁩ في انتظار إدارتها",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "⁨{name}⁩ في انتظار إدارتها",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "بعد إضافتها إلى الإدارة، تصبح {count, plural, =0{لا Skills منظّمة} =1{Skill واحدة منظّمة} =2{Skill اثنتان منظّمتان} few{⁨{count}⁩ Skills منظّمة} many{⁨{count}⁩ Skill منظّمة} other{⁨{count}⁩ Skill منظّمة}} في Library واحدة بحالة إدارة واضحة.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "بعد إضافتها إلى الإدارة، تصبح {count, plural, =0{لا Skills منظّمة} =1{Skill واحدة منظّمة} =2{Skill اثنتان منظّمتان} few{⁨{count}⁩ Skills منظّمة} many{⁨{count}⁩ Skill منظّمة} other{⁨{count}⁩ Skill منظّمة}} في Library واحدة بحالة إدارة واضحة.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+⁨{count}⁩ المزيد",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+⁨{count}⁩ المزيد",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "أضف هذه المهارات الموجودة إلى إدارة SkillsGo.",
-  "batchTakeoverTransitionLabel": "تنظيم",
-  "batchTakeoverStatusTitle": "حالة الإدارة",
-  "batchTakeoverStatusManaged": "مُدار",
-  "batchTakeoverStatusProgress": "جارٍ التنظيم",
-  "batchTakeoverStatusSkipped": "تم تخطيه",
-  "batchTakeoverStatusFilesStay": "تظل ملفات Skill في مواقعها الأصلية",
-  "batchTakeoverBoardSemantics": "يتم ترتيب Skills في صفوف كاملة ويتم تسجيلها بواسطة SkillsGo دون نقل ملفاتها.",
-  "batchTakeoverBoardComplete": "كل شيء واضح",
-  "batchTakeoverBoardPartial": "اكتمل جزئيًا",
-  "batchTakeoverStatusTotal": "المجموع",
-  "batchTakeoverQueueComplete": "لا توجد مهارات في الانتظار",
-  "batchTakeoverQueueWaiting": "ستظهر Skills هنا بعد التحقق",
-  "batchTakeoverNextLabel": "التالي",
-  "batchTakeoverFillerCount": "تُكمل {count, plural, =0{لا كتل تنظيم} =1{كتلة تنظيم واحدة من SkillsGo} =2{كتلتا تنظيم من SkillsGo} few{⁨{count}⁩ كتل تنظيم من SkillsGo} many{⁨{count}⁩ كتلة تنظيم من SkillsGo} other{⁨{count}⁩ كتلة تنظيم من SkillsGo}} الصفوف الأخيرة.",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "أضف هذه المهارات الموجودة إلى إدارة SkillsGo.",
+  "batchAdoptionTransitionLabel": "تنظيم",
+  "batchAdoptionStatusTitle": "حالة الإدارة",
+  "batchAdoptionStatusManaged": "مُدار",
+  "batchAdoptionStatusProgress": "جارٍ التنظيم",
+  "batchAdoptionStatusSkipped": "تم تخطيه",
+  "batchAdoptionStatusFilesStay": "تظل ملفات Skill في مواقعها الأصلية",
+  "batchAdoptionBoardSemantics": "يتم ترتيب Skills في صفوف كاملة ويتم تسجيلها بواسطة SkillsGo دون نقل ملفاتها.",
+  "batchAdoptionBoardComplete": "كل شيء واضح",
+  "batchAdoptionBoardPartial": "اكتمل جزئيًا",
+  "batchAdoptionStatusTotal": "المجموع",
+  "batchAdoptionQueueComplete": "لا توجد مهارات في الانتظار",
+  "batchAdoptionQueueWaiting": "ستظهر Skills هنا بعد التحقق",
+  "batchAdoptionNextLabel": "التالي",
+  "batchAdoptionFillerCount": "تُكمل {count, plural, =0{لا كتل تنظيم} =1{كتلة تنظيم واحدة من SkillsGo} =2{كتلتا تنظيم من SkillsGo} few{⁨{count}⁩ كتل تنظيم من SkillsGo} many{⁨{count}⁩ كتلة تنظيم من SkillsGo} other{⁨{count}⁩ كتلة تنظيم من SkillsGo}} الصفوف الأخيرة.",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "تظل ملفاتك ومساراتك وسير العمل الحالي في مكانها تمامًا. SkillsGo يكمل فقط سجلات الإدارة المحلية الخاصة به.",
-  "batchTakeoverLaterHint": "إذا قمت بالتخطي، يمكنك استخدام إدارة المهارات الموجودة من المكتبة في أي وقت.",
-  "batchTakeoverSkip": "ليس الآن",
-  "batchTakeoverConfirm": "إضافة إلى الإدارة",
-  "batchTakeoverExecutionRetry": "أعد المحاولة",
-  "batchTakeoverResultTitle": "أُضيفت Skills إلى الإدارة",
-  "batchTakeoverSummary": "تمت إضافة مهارات ⁨{takenOver}⁩ إلى الإدارة، وتم تخطي ⁨{skipped}⁩.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "تظل ملفاتك ومساراتك وسير العمل الحالي في مكانها تمامًا. SkillsGo يكمل فقط سجلات الإدارة المحلية الخاصة به.",
+  "batchAdoptionLaterHint": "إذا قمت بالتخطي، يمكنك استخدام إدارة المهارات الموجودة من المكتبة في أي وقت.",
+  "batchAdoptionSkip": "ليس الآن",
+  "batchAdoptionConfirm": "إضافة إلى الإدارة",
+  "batchAdoptionExecutionRetry": "أعد المحاولة",
+  "batchAdoptionResultTitle": "أُضيفت Skills إلى الإدارة",
+  "batchAdoptionSummary": "تمت إضافة مهارات ⁨{adopted}⁩ إلى الإدارة، وتم تخطي ⁨{skipped}⁩.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "إغلاق",
+  "batchAdoptionClose": "إغلاق",
   "installMoreTargets": "تثبيت في المزيد من المواقع",
-  "detailRepository": "المستودع",
+  "detailPackageSource": "مصدر الحزمة",
   "detailStars": "النجوم",
   "detailUpdated": "تم التحديث",
-  "detailArchiveSize": "حجم ZIP",
+  "detailArchiveSize": "حجم الحزمة",
   "pathLabel": "مسار المشروع",
   "copyProjectPath": "نسخ مسار المشروع",
   "projectPathCopied": "تم نسخ مسار المشروع",

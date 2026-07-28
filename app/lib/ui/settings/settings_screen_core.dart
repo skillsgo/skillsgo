@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding operations, Mermaid child-page state, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,15 +49,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Offset? _wallpaperIndicatorTo;
   _SettingsRoute selectedRoute = _SettingsRoute.general;
   bool showingMermaidGallery = false;
+  bool showingDiagnosticLogs = false;
   CliStatus? status;
   HubStatus? hubStatus;
   PersonalRiskPolicy? riskPolicy;
   ReminderSettings reminderSettings = const ReminderSettings();
+  DiagnosticLogInfo? diagnosticLogInfo;
   bool detecting = true;
   bool loadingSettings = true;
   bool testingHub = false;
   bool restartingOnboarding = false;
   bool refreshingLibrary = false;
+  bool managingDiagnosticLogs = false;
   bool? libraryRefreshSucceeded;
   String? notice;
   AgentCatalog? get agentCatalog => ref.watch(agentCatalogProvider).catalog;
@@ -123,11 +126,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       widget.gateway.loadHubOrigin(),
       widget.gateway.loadRiskPolicy(),
       widget.gateway.loadReminderSettings(),
+      widget.gateway.loadDiagnosticLogInfo(),
     ]);
     if (!mounted) return;
     hubController.text = values[0] as String;
     riskPolicy = values[1] as PersonalRiskPolicy;
     reminderSettings = values[2] as ReminderSettings;
+    diagnosticLogInfo = values[3] as DiagnosticLogInfo;
     await detect();
     if (!mounted) return;
     setState(() => loadingSettings = false);
@@ -253,6 +258,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     setState(() {
       selectedRoute = route;
       showingMermaidGallery = false;
+      showingDiagnosticLogs = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scrollController.hasClients) scrollController.jumpTo(0);
@@ -272,7 +278,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   @override
   Widget build(BuildContext context) => SkillsDestinationLayout(
-    bodyTransitionKey: (selectedRoute, showingMermaidGallery),
+    bodyTransitionKey: (
+      selectedRoute,
+      showingMermaidGallery,
+      showingDiagnosticLogs,
+    ),
     rail: SkillsSideRail<_SettingsRoute>(
       semanticLabel: context.l10n.settingsNavigation,
       selected: selectedRoute,
@@ -302,6 +312,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     ),
     child: loadingSettings
         ? const Center(child: CircularProgressIndicator())
+        : showingDiagnosticLogs
+        ? _diagnosticLogViewer()
         : showingMermaidGallery
         ? _mermaidGallery()
         : _settingsPage(),

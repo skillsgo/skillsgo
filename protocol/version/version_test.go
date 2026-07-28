@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses unordered stable, prerelease, pseudo, shorthand, canonical, invalid, and empty version sets.
- * [OUTPUT]: Specifies stable-first ordering, highest-within-class selection, pseudo exclusion, and canonical filtering.
+ * [INPUT]: Uses unordered stable, prerelease, pseudo, duplicate, shorthand, canonical, invalid, and empty version sets.
+ * [OUTPUT]: Specifies immutable-version recognition, current-version priority, stable/prerelease/pseudo list ordering, deduplication, highest-within-class selection, pseudo exclusion from latest release selection, and canonical filtering.
  * [POS]: Serves as exhaustive compatibility coverage for Hub resolution and CLI legacy list reads.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,6 +22,64 @@ func TestIsImmutable(t *testing.T) {
 		if got := IsImmutable(test.version); got != test.want {
 			t.Fatalf("IsImmutable(%q) = %v, want %v", test.version, got, test.want)
 		}
+	}
+}
+
+func TestOrderedImmutableVersions(t *testing.T) {
+	pseudoOld := "v0.0.0-20260101000000-abcdef123456"
+	pseudoNew := "v1.2.4-0.20260727010101-fedcba654321"
+	want := []string{
+		"v2.0.0", "v1.2.3",
+		"v3.0.0-rc.2", "v3.0.0-beta.1",
+		pseudoNew, pseudoOld,
+	}
+	got := OrderedImmutableVersions([]string{
+		pseudoOld, "v3.0.0-beta.1", "latest", "v1", "1.2.3",
+		"v1.2.3", pseudoNew, "v3.0.0-rc.2", "v2.0.0", "v1.2.3",
+	})
+	if len(got) != len(want) {
+		t.Fatalf("OrderedImmutableVersions() = %#v, want %#v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("OrderedImmutableVersions()[%d] = %q, want %q; all = %#v", index, got[index], want[index], got)
+		}
+	}
+	if empty := OrderedImmutableVersions(nil); len(empty) != 0 {
+		t.Fatalf("OrderedImmutableVersions(nil) = %#v, want empty", empty)
+	}
+}
+
+func TestHasHigherPriorityScenarioMatrix(t *testing.T) {
+	pseudoOld := "v1.0.1-0.20260101000000-abcdef123456"
+	pseudoNew := "v1.0.1-0.20260727010101-fedcba654321"
+	tests := []struct {
+		name      string
+		candidate string
+		current   string
+		want      bool
+	}{
+		{name: "first immutable version", candidate: "v1.0.0", want: true},
+		{name: "invalid candidate", candidate: "latest", current: "v1.0.0", want: false},
+		{name: "invalid current is repaired", candidate: "v1.0.0", current: "latest", want: true},
+		{name: "same version", candidate: "v1.0.0", current: "v1.0.0", want: false},
+		{name: "higher stable", candidate: "v1.1.0", current: "v1.0.0", want: true},
+		{name: "lower stable", candidate: "v1.0.0", current: "v1.1.0", want: false},
+		{name: "stable beats higher prerelease", candidate: "v1.1.0", current: "v2.0.0-rc.1", want: true},
+		{name: "prerelease cannot replace stable", candidate: "v2.0.0-rc.1", current: "v1.1.0", want: false},
+		{name: "higher prerelease", candidate: "v2.0.0-rc.2", current: "v2.0.0-rc.1", want: true},
+		{name: "lower prerelease", candidate: "v2.0.0-beta.1", current: "v2.0.0-rc.1", want: false},
+		{name: "tag beats pseudo", candidate: "v0.1.0-rc.1", current: pseudoNew, want: true},
+		{name: "pseudo cannot replace tag", candidate: pseudoNew, current: "v0.1.0-rc.1", want: false},
+		{name: "newer pseudo", candidate: pseudoNew, current: pseudoOld, want: true},
+		{name: "older pseudo", candidate: pseudoOld, current: pseudoNew, want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := HasHigherPriority(test.candidate, test.current); got != test.want {
+				t.Fatalf("HasHigherPriority(%q, %q) = %v, want %v", test.candidate, test.current, got, test.want)
+			}
+		})
 	}
 }
 

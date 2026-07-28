@@ -77,7 +77,7 @@ func TestManageCommandIsRemoved(t *testing.T) {
 }
 
 func TestRemovedCommandsStayAbsent(t *testing.T) {
-	for _, name := range []string{"use", "init", "inventory", "takeover", "info", "detail"} {
+	for _, name := range []string{"use", "init", "inventory", "adoption", "info", "detail"} {
 		t.Run(name, func(t *testing.T) {
 			var output bytes.Buffer
 			err := Execute([]string{name}, &output, &output)

@@ -24,7 +24,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	paths := []string{
-		containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"),
+		containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"),
 		filepath.Join(sandboxRoot, "project", "skills.yaml"),
 		filepath.Join(sandboxRoot, "project", "skills-lock.yaml"),
 	}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway Agent and asynchronously enriched Added Project models, localized copy, Flutter Material MenuAnchor, SkillsGo semantic typography, Portal Labs stacked toasts, shared project identities, and vendored Agent SVGs.
- * [OUTPUT]: Provides an edge-aware anchored installation menu that opens immediately, resolves its data and newly batch-added project icons without blocking interaction, asks where a Skill or Repository should be available, executes the initiating surface's preferred install scope, and publishes App-top stacked success or error feedback.
+ * [OUTPUT]: Provides an edge-aware anchored installation menu that opens immediately, resolves its data and newly batch-added project icons without blocking interaction, asks where a Skill or Package should be available, executes the initiating surface's preferred install scope, and publishes App-top stacked success or error feedback.
  * [POS]: Serves as the shared first step of installation from discovery cards and remote Skill detail.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

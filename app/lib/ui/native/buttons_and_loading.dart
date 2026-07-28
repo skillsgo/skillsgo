@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter Material buttons, HugeIcons, progress, shape/state properties, SkillsGo component tokens, and reduced-motion semantics.
- * [OUTPUT]: Provides skeleton boxes plus capsule buttons with optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
+ * [OUTPUT]: Provides skeleton boxes plus fixed-height capsule buttons with control-specific label geometry, optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
  * [POS]: Serves as the action and cold-loading segment of the native component library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,7 +51,25 @@ class PrimaryCapsuleButton extends StatelessWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.hoverBackgroundColor,
-  });
+  }) : _compact = false;
+
+  const PrimaryCapsuleButton.compact({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.busy = false,
+    this.labelWidget,
+    this.trailingIcon,
+    this.trailingWidget,
+    this.disabledBackgroundColor,
+    this.disabledForegroundColor,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.hoverBackgroundColor,
+  }) : height = 28,
+       horizontalPadding = 9,
+       labelStyle = null,
+       _compact = true;
 
   final String label;
   final VoidCallback? onPressed;
@@ -67,15 +85,29 @@ class PrimaryCapsuleButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
   final Color? hoverBackgroundColor;
+  final bool _compact;
 
   @override
   Widget build(BuildContext context) {
     final components = context.skillsComponents;
-    final textGeometry = labelStyle ?? context.skillsTypography.label;
-    return FilledButton(
+    final textGeometry =
+        labelStyle ??
+        (_compact
+            ? context.skillsTypography.compactControlLabel
+            : context.skillsTypography.label);
+    final resolvedTextGeometry = _textGeometryOnly(
+      textGeometry.copyWith(
+        fontWeight: labelStyle?.fontWeight ?? textGeometry.fontWeight,
+        leadingDistribution: TextLeadingDistribution.even,
+      ),
+    );
+    final button = FilledButton(
       onPressed: busy ? null : onPressed,
       style: ButtonStyle(
-        minimumSize: WidgetStatePropertyAll(Size(0, height)),
+        minimumSize: WidgetStatePropertyAll(
+          _compact ? Size.zero : Size(0, height),
+        ),
+        alignment: Alignment.center,
         padding: WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: horizontalPadding),
         ),
@@ -96,14 +128,7 @@ class PrimaryCapsuleButton extends StatelessWidget {
         ),
         shape: const WidgetStatePropertyAll(StadiumBorder()),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: WidgetStatePropertyAll(
-          _textGeometryOnly(
-            textGeometry.copyWith(
-              fontWeight: labelStyle?.fontWeight ?? FontWeight.w600,
-              leadingDistribution: TextLeadingDistribution.even,
-            ),
-          ),
-        ),
+        textStyle: WidgetStatePropertyAll(resolvedTextGeometry),
       ),
       child: busy
           ? const SizedBox.square(
@@ -113,7 +138,15 @@ class PrimaryCapsuleButton extends StatelessWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                labelWidget ?? Text(label),
+                labelWidget ??
+                    Text(
+                      label,
+                      style: resolvedTextGeometry,
+                      textHeightBehavior: const TextHeightBehavior(
+                        applyHeightToFirstAscent: false,
+                        applyHeightToLastDescent: false,
+                      ),
+                    ),
                 if (trailingWidget != null || trailingIcon != null) ...[
                   const SizedBox(width: 8),
                   trailingWidget ??
@@ -122,6 +155,7 @@ class PrimaryCapsuleButton extends StatelessWidget {
               ],
             ),
     );
+    return _compact ? SizedBox(height: height, child: button) : button;
   }
 }
 

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Package Backfill validation, semantic-version filtering, and bounded diagnostics.
- * [OUTPUT]: Verifies canonical batch input, deterministic Tag traversal, pseudo-version exclusion, and safe diagnostic bounds.
+ * [INPUT]: Depends on Package Backfill validation, immutable-version filtering, and bounded diagnostics.
+ * [OUTPUT]: Verifies canonical batch input, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
  * [POS]: Serves as the fast behavior contract for Package History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -105,13 +105,17 @@ func TestBackfillRouterPreservesMixedRepositoryOutcomes(t *testing.T) {
 	require.Equal(t, "not_found", statuses.Results[1].ErrorCode)
 }
 
-func TestCanonicalSemanticVersionsAreDeterministic(t *testing.T) {
-	actual := canonicalSemanticTags([]skill.RepositoryTag{
+func TestCanonicalBackfillVersionsAreDeterministic(t *testing.T) {
+	actual := canonicalBackfillVersions([]skill.RepositoryTag{
 		{Version: "main", CommitSHA: "main"}, {Version: "v2.0.0", CommitSHA: "two"},
 		{Version: "v1.0.0", CommitSHA: "one"}, {Version: "v1.0.0", CommitSHA: "one"},
 		{Version: "v1.1.0-0.20260722000000-deadbeefdead", CommitSHA: "pseudo"}, {Version: "v1.0", CommitSHA: "short"},
 	})
-	require.Equal(t, []skill.RepositoryTag{{Version: "v1.0.0", CommitSHA: "one"}, {Version: "v2.0.0", CommitSHA: "two"}}, actual)
+	require.Equal(t, []skill.RepositoryTag{
+		{Version: "v1.0.0", CommitSHA: "one"},
+		{Version: "v1.1.0-0.20260722000000-deadbeefdead", CommitSHA: "pseudo"},
+		{Version: "v2.0.0", CommitSHA: "two"},
+	}, actual)
 }
 
 func TestBackfillDiagnosticExposesOnlyStableCode(t *testing.T) {

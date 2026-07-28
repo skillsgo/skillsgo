@@ -13,14 +13,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	packagePath, version, _, _, server := takeoverRepositoryFixture(t)
+	packagePath, version, _, _, server := adoptionPackageFixture(t)
 	defer server.Close()
 	require.NoError(t, Execute([]string{"add", packagePath + "@" + version, "--skill", "alpha", "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
 
@@ -38,7 +37,7 @@ func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	require.NoError(t, json.Unmarshal(healthyOutput.Bytes(), &healthy))
 	require.True(t, healthy.Healthy)
 
-	target := filepath.Join(packagestore.CoordinatePath(filepath.Join(home, ".codex", "skills"), packagePath, version), "skills", "alpha", "SKILL.md")
+	target := filepath.Join(home, ".codex", "skills", "alpha", "SKILL.md")
 	require.NoError(t, os.WriteFile(target, []byte("modified"), 0o644))
 	var unhealthyOutput bytes.Buffer
 	require.Error(t, Execute([]string{"verify", "--global", "--output", "json"}, &unhealthyOutput, &bytes.Buffer{}))

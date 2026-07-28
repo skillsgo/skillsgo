@@ -183,7 +183,7 @@ row actions.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Takeover uses the selected location as its complete scope boundary. All Skills scans Global Scope and every accessible Added Project, Global scans only Global Scope, and a Project route scans only that Project. Independent planning displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
+Batch Adoption uses the selected location as its complete scope boundary. All Skills scans Global Scope and every accessible Added Project, Global scans only Global Scope, and a Project route scans only that Project. Independent planning displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -232,7 +232,7 @@ An item found in an Agent directory without a SkillsGo receipt appears as an Ext
 
 The first time an active Library view finishes planning with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage, and reduced-motion users receive the same deterministic layout without physics. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
 
-Batch Takeover performs the following journey within the currently selected Library location:
+Batch Adoption performs the following journey within the currently selected Library location:
 
 1. Preflight External copies reported by the CLI across Global Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
 2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
@@ -240,7 +240,7 @@ Batch Takeover performs the following journey within the currently selected Libr
 4. Revalidate each authorized candidate against the immutable Repository Artifact, install through the ordinary Dependency/Lock/Package Store/Projection transaction, and move the superseded External directory to recoverable trash.
 5. Skip unmatched, invalid, unsupported-lock, missing, or post-planning-changed copies independently and report their target-specific reasons; never include newly appeared copies without another planning pass.
 
-Local import remains a separate explicit journey and never happens as an implicit Batch Takeover fallback.
+Local import remains a separate explicit journey and never happens as an implicit Batch Adoption fallback.
 
 ## Journey 5: Add and Manage a Project
 
@@ -294,7 +294,7 @@ Suggested logical routes:
 | No Added Project | Keep Add Project visible without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
 | Agent with zero Skills | Keep the Agent entry and prompt discovery |
-| External Installation | Allow inspection, healthy exact-path removal, and explicit scoped Batch Takeover; disable update until managed |
+| External Installation | Allow inspection, healthy exact-path removal, and explicit scoped Batch Adoption; disable update until managed |
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
 | Manually replaced target | Mark unhealthy; do not delete or overwrite automatically; require user resolution |
@@ -302,4 +302,4 @@ Suggested logical routes:
 
 ## Implemented Contract Posture
 
-The App uses versioned CLI machine contracts for Agent inspection, unified local inventory, public discovery, immutable detail, direct Installation Requests, scoped Batch Takeover, exact target management, and Update Plans. The UI does not call the Hub directly, parse human-oriented CLI text, or reconstruct mutation results from filesystem guesses.
+The App uses versioned CLI machine contracts for Agent inspection, unified local inventory, public discovery, immutable detail, direct Installation Requests, scoped Batch Adoption, exact target management, and Update Plans. The UI does not call the Hub directly, parse human-oriented CLI text, or reconstruct mutation results from filesystem guesses.

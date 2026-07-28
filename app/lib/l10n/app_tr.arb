@@ -317,7 +317,6 @@
   "update": "Güncelleme",
   "backToLibrary": "Kütüphaneye Geri Dön",
   "remove": "Kaldır",
-  "manageTargets": "Kapsamı yönet",
   "skillsSelected": "{count} seçildi",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Seçimi temizle",
   "selectCurrentResults": "Mevcut sonuçları seç",
   "clearCurrentResultSelection": "Geçerli sonuç seçimini temizle",
-  "manageTargetsTitle": "Kurulum hedeflerini yönetin",
-  "manageTargetsDescription": "Her hedef için tam bir eylem seçin. Seçilmeyen hedefler değişmeyecektir.",
   "targetActionsSelected": "{total} hedeflerinden {selected} seçildi",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Kaldırmayı onayla",
-  "applyTargetActions": "Seçili eylemleri uygula",
   "managementProgressTitle": "Hedef eylemleri uygulama",
   "managementResultsTitle": "Hedef eylem sonuçları",
   "managementResultSummary": "{succeeded} başarılı oldu, {failed} başarısız oldu",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Seçilen proje eylemleri skills.yaml ve skills-lock.yaml'yi güncelleyecektir.",
   "targetContentPreserved": "Mevcut hedef içerik korunacaktır.",
   "localReadFailed": "Bu Skill okunamıyor",
   "localReadFailedMessage": "SkillsGo bu yüklü beceriyi okuyamadı. Klasörünün kullanılabilir ve erişilebilir olduğundan emin olun ve tekrar deneyin.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Bu Skill'ye göz atmaya devam edebilirsiniz ancak henüz bir kurulum hedefi yok. Desteklenen bir Agent yükleyin, ardından algılamayı yeniden çalıştırın.",
   "clearCustomPath": "Özel yolu temizle",
   "privacyProvenance": "Gizlilik ve menşe",
-  "privacySummary": "Aramalarınız kaydedilmez ve SkillsGo komut günlüklerini tutmaz.",
   "language": "Dil",
   "translatedContent": "Çevrildi",
   "translatedFrom": "{language} dilinden çevrildi",
@@ -686,19 +680,19 @@
   "installedCell": "Yüklendi",
   "unsupportedCell": "Kullanılamıyor",
   "confirmInstall": "Kurulumu Onaylayın",
-  "installAllRepositorySkills": "Tüm depo becerilerini yükleyin ({count})",
+  "installAllPackageSkills": "Tüm depo becerilerini yükleyin ({count})",
   "installAllSkillsTo": "Tüm becerileri yükleyin",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Tüm {repository} becerilerini yükleyin ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Tüm {packagePath} becerilerini yükleyin ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Mevcut becerileri yönetin",
-  "batchTakeoverActionCount": "Yönet ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Mevcut becerileri yönetin",
+  "batchAdoptionActionCount": "Yönet ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Mevcut beceriler kontrol ediliyor…",
-  "batchTakeoverRetry": "Yönetilebilir becerileri tekrar kontrol edin",
-  "batchTakeoverEligibleCount": "{count} yönetilebilir",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Mevcut beceriler kontrol ediliyor…",
+  "batchAdoptionRetry": "Yönetilebilir becerileri tekrar kontrol edin",
+  "batchAdoptionEligibleCount": "{count} yönetilebilir",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Yönetime beceriler katmak…",
-  "batchTakeoverTitle": "SkillsGo ile mevcut becerilerinizi yönetin mi?",
-  "batchTakeoverDescription": "SkillsGo, beceri dosyalarını taşımadan, üzerine yazmadan veya yüklemeden yerel yönetim kayıtlarını ekleyecektir. Desteklenmeyen veya değiştirilen öğeler atlanacaktır.",
-  "batchTakeoverStoryTitle": "Dağınık becerileri tek bir temiz Kitaplığa dönüştürün",
-  "batchTakeoverStoryDescription": "SkillsGo bu konumda yönetebileceği {count, plural, =1{1 mevcut Skill} other{{count} mevcut Skills}} buldu.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Yönetime beceriler katmak…",
+  "batchAdoptionTitle": "SkillsGo ile mevcut becerilerinizi yönetin mi?",
+  "batchAdoptionDescription": "SkillsGo, beceri dosyalarını taşımadan, üzerine yazmadan veya yüklemeden yerel yönetim kayıtlarını ekleyecektir. Desteklenmeyen veya değiştirilen öğeler atlanacaktır.",
+  "batchAdoptionStoryTitle": "Dağınık becerileri tek bir temiz Kitaplığa dönüştürün",
+  "batchAdoptionStoryDescription": "SkillsGo bu konumda yönetebileceği {count, plural, =1{1 mevcut Skill} other{{count} mevcut Skills}} buldu.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Yönetimden önce mevcut becerilerin nereye yüklendiği, güncel olup olmadığı, nasıl kurtarılacağı veya projelerin aynı sürümü kullanıp kullanmadığı belirsizdir.",
-  "batchTakeoverPainLocation": "Bilinmeyen yükleme konumu",
-  "batchTakeoverPainFreshness": "Bilinmeyen güncelleme durumu",
-  "batchTakeoverPainRecovery": "Kırıldığında iyileşme yok",
-  "batchTakeoverPainVersionDrift": "Projeler arasında farklı versiyonlar",
-  "batchTakeoverFolderTitle": "Mevcut Skills",
-  "batchTakeoverFolderSubtitle": "Belirsiz durum",
-  "batchTakeoverAfterLabel": "SONRA",
-  "batchTakeoverAfterTitle": "Temiz bir Kütüphane",
-  "batchTakeoverLibraryTitle": "SkillsGo Kütüphanesi",
-  "batchTakeoverBenefitLocation": "Konumları temizle",
-  "batchTakeoverBenefitFreshness": "Güncellemeler görünüyor",
-  "batchTakeoverBenefitRecovery": "Kolay kurtarma",
-  "batchTakeoverBenefitVersions": "Sürümler temiz",
-  "batchTakeoverManagedSection": "SkillsGo tarafından yönetilmektedir",
-  "batchTakeoverPendingSection": "Beklemede",
-  "batchTakeoverItemManaged": "{name}, SkillsGo tarafından yönetilmektedir",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Yönetimden önce mevcut becerilerin nereye yüklendiği, güncel olup olmadığı, nasıl kurtarılacağı veya projelerin aynı sürümü kullanıp kullanmadığı belirsizdir.",
+  "batchAdoptionPainLocation": "Bilinmeyen yükleme konumu",
+  "batchAdoptionPainFreshness": "Bilinmeyen güncelleme durumu",
+  "batchAdoptionPainRecovery": "Kırıldığında iyileşme yok",
+  "batchAdoptionPainVersionDrift": "Projeler arasında farklı versiyonlar",
+  "batchAdoptionFolderTitle": "Mevcut Skills",
+  "batchAdoptionFolderSubtitle": "Belirsiz durum",
+  "batchAdoptionAfterLabel": "SONRA",
+  "batchAdoptionAfterTitle": "Temiz bir Kütüphane",
+  "batchAdoptionLibraryTitle": "SkillsGo Kütüphanesi",
+  "batchAdoptionBenefitLocation": "Konumları temizle",
+  "batchAdoptionBenefitFreshness": "Güncellemeler görünüyor",
+  "batchAdoptionBenefitRecovery": "Kolay kurtarma",
+  "batchAdoptionBenefitVersions": "Sürümler temiz",
+  "batchAdoptionManagedSection": "SkillsGo tarafından yönetilmektedir",
+  "batchAdoptionPendingSection": "Beklemede",
+  "batchAdoptionItemManaged": "{name}, SkillsGo tarafından yönetilmektedir",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} yönetime eklenemedi",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} yönetime eklenemedi",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} yönetilmeyi bekliyor",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} yönetilmeyi bekliyor",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Yönetimden sonra {count, plural, =1{1 Skill} other{{count} Skills}}, yönetim durumu açıkça görülen tek bir Library içinde düzenlenir.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Yönetimden sonra {count, plural, =1{1 Skill} other{{count} Skills}}, yönetim durumu açıkça görülen tek bir Library içinde düzenlenir.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} daha fazla",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} daha fazla",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Bu mevcut becerileri SkillsGo yönetimine ekleyin.",
-  "batchTakeoverTransitionLabel": "ORGANİZE EDİN",
-  "batchTakeoverStatusTitle": "Yönetim durumu",
-  "batchTakeoverStatusManaged": "Yönetilen",
-  "batchTakeoverStatusProgress": "Düzenleme",
-  "batchTakeoverStatusSkipped": "Atlandı",
-  "batchTakeoverStatusFilesStay": "Skill dosyaları orijinal konumlarında kalır",
-  "batchTakeoverBoardSemantics": "Skills, tam satırlar halinde düzenlenir ve dosyaları taşınmadan SkillsGo tarafından kaydedilir.",
-  "batchTakeoverBoardComplete": "HEPSİ TEMİZ",
-  "batchTakeoverBoardPartial": "TAMAMLANDI",
-  "batchTakeoverStatusTotal": "Toplam",
-  "batchTakeoverQueueComplete": "Hiçbir beceri beklemiyor",
-  "batchTakeoverQueueWaiting": "Doğrulamadan sonra Skill’ler burada görünecek",
-  "batchTakeoverNextLabel": "SONRAKİ",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo düzenleyici bloğu} other{{count} SkillsGo düzenleyici bloğu}} son satırları tamamlar.",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Bu mevcut becerileri SkillsGo yönetimine ekleyin.",
+  "batchAdoptionTransitionLabel": "ORGANİZE EDİN",
+  "batchAdoptionStatusTitle": "Yönetim durumu",
+  "batchAdoptionStatusManaged": "Yönetilen",
+  "batchAdoptionStatusProgress": "Düzenleme",
+  "batchAdoptionStatusSkipped": "Atlandı",
+  "batchAdoptionStatusFilesStay": "Skill dosyaları orijinal konumlarında kalır",
+  "batchAdoptionBoardSemantics": "Skills, tam satırlar halinde düzenlenir ve dosyaları taşınmadan SkillsGo tarafından kaydedilir.",
+  "batchAdoptionBoardComplete": "HEPSİ TEMİZ",
+  "batchAdoptionBoardPartial": "TAMAMLANDI",
+  "batchAdoptionStatusTotal": "Toplam",
+  "batchAdoptionQueueComplete": "Hiçbir beceri beklemiyor",
+  "batchAdoptionQueueWaiting": "Doğrulamadan sonra Skill’ler burada görünecek",
+  "batchAdoptionNextLabel": "SONRAKİ",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo düzenleyici bloğu} other{{count} SkillsGo düzenleyici bloğu}} son satırları tamamlar.",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Dosyalarınız, yollarınız ve mevcut iş akışlarınız tam olarak oldukları yerde kalır. SkillsGo yalnızca yerel yönetim kayıtlarını tamamlar.",
-  "batchTakeoverLaterHint": "Atlarsanız istediğiniz zaman Kitaplık'taki Mevcut becerileri yönet seçeneğini kullanabilirsiniz.",
-  "batchTakeoverSkip": "Şimdi değil",
-  "batchTakeoverConfirm": "Yönetime ekle",
-  "batchTakeoverExecutionRetry": "Yeniden dene",
-  "batchTakeoverResultTitle": "Skill’ler yönetime eklendi",
-  "batchTakeoverSummary": "Yönetime {takenOver} becerileri eklendi, {skipped} atlandı.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Dosyalarınız, yollarınız ve mevcut iş akışlarınız tam olarak oldukları yerde kalır. SkillsGo yalnızca yerel yönetim kayıtlarını tamamlar.",
+  "batchAdoptionLaterHint": "Atlarsanız istediğiniz zaman Kitaplık'taki Mevcut becerileri yönet seçeneğini kullanabilirsiniz.",
+  "batchAdoptionSkip": "Şimdi değil",
+  "batchAdoptionConfirm": "Yönetime ekle",
+  "batchAdoptionExecutionRetry": "Yeniden dene",
+  "batchAdoptionResultTitle": "Skill’ler yönetime eklendi",
+  "batchAdoptionSummary": "Yönetime {adopted} becerileri eklendi, {skipped} atlandı.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Kapat",
+  "batchAdoptionClose": "Kapat",
   "installMoreTargets": "Daha fazla konuma yükleyin",
-  "detailRepository": "Depo",
+  "detailPackageSource": "Paket kaynağı",
   "detailStars": "Yıldızlar",
   "detailUpdated": "Güncellendi",
-  "detailArchiveSize": "ZIP Boyutu",
+  "detailArchiveSize": "Paket boyutu",
   "pathLabel": "Proje yolu",
   "copyProjectPath": "Proje yolunu kopyala",
   "projectPathCopied": "Proje yolu kopyalandı",

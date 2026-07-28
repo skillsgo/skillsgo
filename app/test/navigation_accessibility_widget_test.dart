@@ -149,9 +149,10 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
-    expect(find.text('All Skills'), findsOneWidget);
+    expect(find.text('All Skills'), findsNothing);
+    expect(libraryLocation('Global Skills'), findsOneWidget);
+    expect(find.text('Projects'), findsOneWidget);
     expect(find.text('All Agents'), findsOneWidget);
-    expect(find.text('Global'), findsOneWidget);
     expect(find.byKey(const Key('library-add-project')), findsOneWidget);
     await tester.tap(find.byKey(const Key('library-agent-filter')));
     await tester.pumpAndSettle();
@@ -243,9 +244,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Install'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
-    );
+    await tester.tap(find.widgetWithText(PrimaryCapsuleButton, 'Install').last);
     await tester.pump();
     await tester.tap(find.byKey(const Key('detail-back')));
     await tester.pump(const Duration(milliseconds: 500));

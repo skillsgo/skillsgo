@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses Catalog with Testcontainers PostgreSQL and deterministic Skill metadata.
- * [OUTPUT]: Specifies migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
+ * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
+ * [OUTPUT]: Specifies zero-minimum idle pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,10 +28,23 @@ func openTestCatalog(t *testing.T) *Catalog {
 	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	c, err := Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	c, err := Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	return c
+}
+
+func TestPoolConfigOverridesDSNWithZeroIdlePolicy(t *testing.T) {
+	poolConfig, err := newPoolConfig(config.DatabaseConfig{
+		DSN:          "postgres://example/database?pool_min_conns=7&pool_max_conn_idle_time=1h&pool_health_check_period=1h",
+		Schema:       config.DefaultDatabaseSchema,
+		MaxOpenConns: 4,
+	})
+	require.NoError(t, err)
+	require.Zero(t, poolConfig.MinConns)
+	require.Equal(t, int32(4), poolConfig.MaxConns)
+	require.Equal(t, 2*time.Minute, poolConfig.MaxConnIdleTime)
+	require.Equal(t, 30*time.Second, poolConfig.HealthCheckPeriod)
 }
 
 func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSHA, sum string, visibility PublicationVisibility, candidates []Skill) {
@@ -355,22 +368,54 @@ func TestPackageVersionOwnsVersionAndMemberHistory(t *testing.T) {
 
 	publish("v1.0.0", "commit-v1", "root", "member")
 	publish("v2.0.0", "commit-v2", "root")
+	publish("v3.0.0-rc.1", "commit-v3-rc", "root")
+	publish("v0.0.0-20260727010101-abcdefabcdef", "commit-pseudo", "root")
 	_, err := c.SkillByCoordinate(ctx, module, "member")
 	require.ErrorIs(t, err, pgx.ErrNoRows, "a Skill removed from the current Package publication must leave discovery")
-	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, module, "root"), "unchanged members still receive every Package publication version")
+	require.Equal(t, []string{"v2.0.0", "v1.0.0", "v3.0.0-rc.1", "v0.0.0-20260727010101-abcdefabcdef"}, mustPublishedVersions(t, c, module, "."), "unchanged members receive stable, prerelease, then pseudo Package versions")
 	_, err = c.CurrentSkill(ctx, module, "member")
 	require.ErrorIs(t, err, pgx.ErrNoRows)
-	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, module, "member"))
+	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, module, "skills/member"))
 	v1Members, err := c.VersionSkills(ctx, module, "v1.0.0")
 	require.NoError(t, err)
 	require.Equal(t, []string{"root", "member"}, []string{v1Members[0].Name, v1Members[1].Name})
 
-	// A current publication selects one Package Release; members never own
+	// A lower current publication remains historical; members never own
 	// independent latest-version pointers.
 	publish("v0.9.0", "commit-v0", "root", "member")
-	current, err := c.CurrentSkill(ctx, module, "member")
+	_, err = c.CurrentSkill(ctx, module, "member")
+	require.ErrorIs(t, err, pgx.ErrNoRows)
+	current, err := c.CurrentSkill(ctx, module, "root")
 	require.NoError(t, err)
-	require.Equal(t, "v0.9.0", current.Version)
+	require.Equal(t, "v2.0.0", current.Version)
+}
+
+func TestCurrentPublicationPriorityMatrix(t *testing.T) {
+	c := openTestCatalog(t)
+	module := "github.com/acme/current-priority"
+	member := []Skill{{PackagePath: module, Path: "skills/demo", Name: "demo", Description: "Priority fixture"}}
+	tests := []struct {
+		name      string
+		candidate string
+		want      string
+	}{
+		{name: "first pseudo becomes current", candidate: "v0.0.0-20260101000000-abcdef123456", want: "v0.0.0-20260101000000-abcdef123456"},
+		{name: "newer pseudo replaces older pseudo", candidate: "v0.0.0-20260701000000-fedcba654321", want: "v0.0.0-20260701000000-fedcba654321"},
+		{name: "prerelease tag replaces pseudo", candidate: "v2.0.0-rc.1", want: "v2.0.0-rc.1"},
+		{name: "newer pseudo cannot replace prerelease tag", candidate: "v2.0.0-0.20260702000000-aabbccddeeff", want: "v2.0.0-rc.1"},
+		{name: "stable tag replaces prerelease tag", candidate: "v1.0.0", want: "v1.0.0"},
+		{name: "higher prerelease cannot replace stable tag", candidate: "v3.0.0-rc.1", want: "v1.0.0"},
+		{name: "higher stable tag replaces stable tag", candidate: "v1.1.0", want: "v1.1.0"},
+		{name: "lower stable tag remains historical", candidate: "v0.9.0", want: "v1.1.0"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			publishTestPackage(t, c, module, test.candidate, "commit-"+test.candidate, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, member)
+			current, err := c.CurrentSkill(t.Context(), module, "demo")
+			require.NoError(t, err)
+			require.Equal(t, test.want, current.Version)
+		})
+	}
 }
 
 func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
@@ -405,9 +450,9 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
 }
 
-func mustPublishedVersions(t *testing.T, c *Catalog, packagePath, name string) []string {
+func mustPublishedVersions(t *testing.T, c *Catalog, packagePath, path string) []string {
 	t.Helper()
-	versions, err := c.SkillPublishedVersions(t.Context(), packagePath, name)
+	versions, err := c.SkillPublishedVersionsByPath(t.Context(), packagePath, path)
 	require.NoError(t, err)
 	return versions
 }

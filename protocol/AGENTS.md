@@ -22,7 +22,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 | `packageidentity/` | Canonical public Package identity primitives, including Path parsing, formatting, and initial Source Repository URL derivation. |
 | `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and Cloud coordinates. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |
-| `version/` | Canonical immutable versions, stable-first semantic-version selection, and the closed typed add-time Package Version Query grammar. |
+| `version/` | Canonical immutable versions, stable/prerelease/pseudo current-version priority and ordered lists, stable-first release selection, and the closed typed add-time Package Version Query grammar. |
 
 ## Architectural Boundary
 
