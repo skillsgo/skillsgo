@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the focused domain model modules for discovery, installation, Library, updates, target management, settings, and process contracts.
- * [OUTPUT]: Provides the stable SkillsGateway interface and re-exports the complete App domain vocabulary for existing callers.
- * [POS]: Serves as the narrow compatibility seam shared by UI journeys, production infrastructure, and test adapters while domain models remain locally organized.
+ * [OUTPUT]: Provides the stable SkillsGateway interface and re-exports the complete App domain vocabulary for callers.
+ * [POS]: Serves as the narrow seam shared by UI journeys, production infrastructure, and test adapters while domain models remain locally organized.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'discovery_models.dart';
@@ -10,7 +10,6 @@ import 'library_models.dart';
 import 'presentation_language.dart';
 import 'system_models.dart';
 import 'target_management_models.dart';
-import 'update_models.dart';
 
 export 'discovery_models.dart';
 export 'installation_models.dart';
@@ -19,7 +18,6 @@ export 'presentation_language.dart';
 export 'skill_coordinate.dart';
 export 'system_models.dart';
 export 'target_management_models.dart';
-export 'update_models.dart';
 
 abstract interface class SkillsGateway {
   Future<OnboardingState> loadOnboardingState();
@@ -42,8 +40,12 @@ abstract interface class SkillsGateway {
   Future<void> saveLanguage(AppLanguage language);
   Future<ReminderSettings> loadReminderSettings();
   Future<void> saveReminderSettings(ReminderSettings settings);
-  Future<bool> loadBatchTakeoverPromptSeen();
-  Future<void> markBatchTakeoverPromptSeen();
+  Future<DiagnosticLogInfo> loadDiagnosticLogInfo();
+  Future<void> openDiagnosticLogDirectory();
+  Future<bool> exportDiagnosticLogs();
+  Future<void> clearDiagnosticLogs();
+  List<DiagnosticLogEntry> recentDiagnosticLogs({int limit = 200});
+  Stream<DiagnosticLogEntry> watchDiagnosticLogs();
   Future<HubStatus> testHubOrigin(String origin);
   Future<HubRuntime> loadHubRuntime();
   Future<PersonalRiskPolicy> loadRiskPolicy();
@@ -69,14 +71,7 @@ abstract interface class SkillsGateway {
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
   });
-  Future<BatchTakeoverPlan> planBatchTakeover({
-    List<String> projectRoots = const [],
-  });
-  Future<BatchTakeoverResult> executeBatchTakeover(
-    BatchTakeoverPlan plan,
-    BatchTakeoverScope scope,
-  );
-  Future<List<List<SkillSummary>>> findSources(
+  Future<List<List<AdoptionCandidate>>> findSources(
     List<PackageFindQuery> queries, {
     int limit = 10,
   });
@@ -85,6 +80,7 @@ abstract interface class SkillsGateway {
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   );
+  Future<BatchAdoptionResult> adopt(List<AdoptionRequestItem> items);
   Future<InstallationExecution> installTargets(
     SkillSummary skill,
     String immutableVersion,
@@ -102,15 +98,7 @@ abstract interface class SkillsGateway {
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   });
-  Future<UpdatePlan> preflightUpdate(
-    InstalledSkill skill,
-    List<SkillInstallationTarget> targets, {
-    String? toVersion,
-  });
-  Future<UpdateExecution> executeUpdate(
-    UpdatePlan plan, {
-    void Function(UpdateTargetProgress progress)? onProgress,
-  });
+  Future<void> updatePackage(InstalledSkill skill, {required String toVersion});
   Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   );

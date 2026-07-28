@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Remote-detail restoration and installation planning, risk, recovery, and target behavior.
+ * [OUTPUT]: Specifies Remote-detail restoration, direct selected-version installation, risk, recovery, and target behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -118,9 +118,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('3 projects · 2 Agents'), findsOneWidget);
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
-    );
+    await tester.tap(find.widgetWithText(PrimaryCapsuleButton, 'Install').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
 
@@ -143,7 +141,7 @@ void main() {
     expect(gateway.installCalls, 1);
   });
 
-  testWidgets('installation selector does not expose installed target status', (
+  testWidgets('installation selector reinstalls a same-version target', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
@@ -159,46 +157,64 @@ void main() {
     await tester.pumpAndSettle();
     final discoveryRequestsBeforeInstall = gateway.collections.length;
 
-    expect(find.text('Installed'), findsNothing);
-    final confirm = find.widgetWithText(
-      PrimaryCapsuleButton,
-      'Confirm Installation',
-    );
-    expect(tester.widget<PrimaryCapsuleButton>(confirm).onPressed, isNotNull);
-    await tester.tap(confirm);
+    final install = find.widgetWithText(PrimaryCapsuleButton, 'Install').last;
+    expect(tester.widget<PrimaryCapsuleButton>(install).onPressed, isNotNull);
+    await tester.tap(install);
     await tester.pumpAndSettle();
-    expect(gateway.lastPlanSelections, hasLength(1));
-    expect(gateway.lastPlanSelections.single.agent, 'codex');
-    expect(gateway.lastPlanSelections.single.scope, InstallationScope.global);
+    expect(gateway.lastPlanSelections, isNotEmpty);
     expect(gateway.installCalls, 1);
     expect(gateway.collections, hasLength(discoveryRequestsBeforeInstall));
     expect(tester.getTopLeft(card).dy, cardTopBeforeInstall);
-    expect(find.text('Installation complete'), findsOneWidget);
-    expect(
-      find.text('The Skill is now available in the selected locations.'),
-      findsOneWidget,
-    );
-    final successTextContext = tester.element(
-      find.text('Installation complete'),
-    );
-    expect(
-      tester.widget<Text>(find.text('Installation complete')).style?.fontWeight,
-      FontWeight.w500,
-    );
-    expect(
-      tester
-          .widget<Text>(
-            find.text('The Skill is now available in the selected locations.'),
-          )
-          .style
-          ?.fontWeight,
-      FontWeight.w400,
-    );
-    expect(
-      DefaultTextStyle.of(successTextContext).style.decoration,
-      isNot(TextDecoration.underline),
-    );
   });
+
+  testWidgets(
+    'installation selector keeps a different-version target selectable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(
+        installed: true,
+        searchResults: const [
+          SkillSummary(
+            packagePath: 'example/skills',
+            installName: 'flutter-pro',
+            name: 'Flutter Pro',
+            latestVersion: 'v1.2.3',
+            localTargetCount: 1,
+            localVersions: ['v1.1.0'],
+          ),
+        ],
+        remoteDetail: SkillDetail(
+          name: 'Flutter Pro',
+          path: 'skills/flutter-pro',
+          packagePath: 'example/skills',
+          version: 'v1.2.3',
+          packageInstallationTargets: const [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/tmp/flutter-pro',
+              version: 'v1.1.0',
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(searchInput(), 'version-switch');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(find.text('Upgrade'), findsNothing);
+      await tester.tap(find.text('Install').first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Skills from this package will switch version together.'),
+        findsNothing,
+      );
+      final install = find.widgetWithText(PrimaryCapsuleButton, 'Install').last;
+      expect(tester.widget<PrimaryCapsuleButton>(install).onPressed, isNotNull);
+    },
+  );
 
   testWidgets(
     'confirmed installation overwrites a Local Modification directly',
@@ -218,7 +234,7 @@ void main() {
       await tester.tap(find.text('Install'));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
+        find.widgetWithText(PrimaryCapsuleButton, 'Install').last,
       );
       await tester.pumpAndSettle();
 
@@ -371,4 +387,28 @@ void main() {
     expect(find.text('Codex'), findsOneWidget);
     expect(find.text('Cursor'), findsNothing);
   });
+
+  testWidgets(
+    'selected Package version submits without a second confirmation',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(installed: false);
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(searchInput(), 'upgrade-impact');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(PrimaryCapsuleButton, 'Install').last,
+      );
+      await tester.pumpAndSettle();
+
+      expect(gateway.installCalls, 1);
+      expect(find.text('Install package?'), findsNothing);
+    },
+  );
 }

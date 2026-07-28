@@ -184,6 +184,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get install => '安装';
 
   @override
+  String get upgrade => '升级';
+
+  @override
+  String get downgrade => '降级';
+
+  @override
+  String get packageSkillsSwitchTogether => '同一来源的 Skills 会一起切换版本';
+
+  @override
+  String get switchVersion => '切换版本';
+
+  @override
+  String upgradeToVersion(String version) {
+    return '升级到 $version';
+  }
+
+  @override
+  String downgradeToVersion(String version) {
+    return '降级到 $version';
+  }
+
+  @override
   String get installAll => '安装所有技能';
 
   @override
@@ -377,7 +399,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get specificProject => '指定项目';
 
   @override
+  String get libraryGlobalScope => '全局 Skills';
+
+  @override
   String get globalScope => '全局安装';
+
+  @override
+  String get globalSkills => '全局 Skills';
 
   @override
   String get addProject => '添加项目';
@@ -533,9 +561,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remove => '移除';
 
   @override
-  String get manageTargets => '管理范围';
-
-  @override
   String skillsSelected(int count) {
     return '已选择 $count 项';
   }
@@ -550,21 +575,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get clearCurrentResultSelection => '清除当前结果选择';
 
   @override
-  String get manageTargetsTitle => '管理安装目标';
-
-  @override
-  String get manageTargetsDescription => '为每个目标选择精确操作；未选择的目标不会改变。';
-
-  @override
   String targetActionsSelected(int selected, int total) {
     return '已选择 $selected/$total 个目标';
   }
 
   @override
   String get confirmRemoveTarget => '确认移除';
-
-  @override
-  String get applyTargetActions => '执行所选操作';
 
   @override
   String get managementProgressTitle => '正在执行目标操作';
@@ -576,10 +592,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String managementResultSummary(int succeeded, int failed) {
     return '$succeeded 个成功，$failed 个失败';
   }
-
-  @override
-  String get workspaceOwnershipChanges =>
-      '所选项目操作将更新 skills.yaml 和 skills-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目标当前内容会被保留。';
@@ -1008,7 +1020,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacyProvenance => '隐私与来源说明';
 
   @override
-  String get privacySummary => '你的搜索记录不会被保存，SkillsGo 也不会保留命令日志。';
+  String get privacySummary => '搜索文字和技能内容不会写入日志。脱敏后的本地诊断日志最多保留 7 天，且绝不会自动上传。';
+
+  @override
+  String get diagnosticLogsTitle => '诊断日志';
+
+  @override
+  String diagnosticLogsDescription(String size) {
+    return 'App 与 CLI 的本地诊断日志当前占用 $size。日志会自动滚动，最多保留 7 天，且绝不会自动上传。';
+  }
+
+  @override
+  String get openLogFolder => '打开文件夹';
+
+  @override
+  String get viewLiveLogs => '实时查看';
+
+  @override
+  String get exportLogs => '导出日志';
+
+  @override
+  String get clearLogs => '清除日志';
+
+  @override
+  String get logsExported => '诊断日志已导出。';
+
+  @override
+  String get logsCleared => '诊断日志已清除。';
+
+  @override
+  String get logActionFailed => '未能完成诊断日志操作。';
+
+  @override
+  String get logViewerLive => '实时记录中';
+
+  @override
+  String get logViewerPaused => '已暂停跟随';
+
+  @override
+  String get searchLogs => '搜索日志';
+
+  @override
+  String get allLogLevels => '全部';
+
+  @override
+  String get warningLogs => '警告';
+
+  @override
+  String get errorLogs => '错误';
+
+  @override
+  String get pauseLogFollow => '暂停跟随';
+
+  @override
+  String get resumeLogFollow => '继续跟随';
+
+  @override
+  String get clearViewer => '清屏';
+
+  @override
+  String get noDiagnosticLogs => '暂无符合条件的日志。';
+
+  @override
+  String get backToLatestLog => '回到最新';
 
   @override
   String get language => '语言';
@@ -1241,7 +1315,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirmInstall => '确认安装';
 
   @override
-  String installAllRepositorySkills(int count) {
+  String installAllPackageSkills(int count) {
     return '安装此来源的全部技能（$count）';
   }
 
@@ -1249,8 +1323,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installAllSkillsTo => '安装所有技能到';
 
   @override
-  String installRepositorySkills(String repository, int count) {
-    return '安装来自 $repository 的全部技能（$count）';
+  String installPackageSkills(String packagePath, int count) {
+    return '安装来自 $packagePath 的全部技能（$count）';
   }
 
   @override
@@ -1517,7 +1591,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverAction => '纳入 SkillsGo 管理';
+  String get batchAdoptionAction => '纳入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -1525,21 +1599,21 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String confirmSkillsGoManagementCount(int count) {
-    return '确认由 SkillsGo 管理（$count）';
+  String confirmSkillsGoManagementCount(int selected, int total) {
+    return '确认由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
   String get skillColumnLabel => '技能';
 
   @override
-  String get repositorySourceColumnLabel => '来源';
+  String get packageSourceColumnLabel => '来源';
 
   @override
   String get versionColumnLabel => '版本';
 
   @override
-  String get repositoryMatching => '正在匹配来源…';
+  String get packageMatching => '正在匹配来源…';
 
   @override
   String get sourceMatchUnavailable => '来源匹配暂不可用';
@@ -1549,200 +1623,213 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String sourceMatchPercent(int percent) {
-    return '匹配度 $percent%';
+    return '匹配 $percent%';
   }
 
   @override
-  String get versionPendingSelection => '等待选择 Source';
+  String get versionPendingSelection => '先选择来源';
 
   @override
-  String batchTakeoverActionCount(int count) {
+  String batchAdoptionActionCount(int count) {
     return '纳入管理（$count）';
   }
 
   @override
-  String get batchTakeoverChecking => '正在检查可纳入的技能…';
+  String get batchAdoptionChecking => '正在检查可纳入的技能…';
 
   @override
-  String get batchTakeoverRetry => '重新检查可纳入技能';
+  String get batchAdoptionRetry => '重新检查可纳入技能';
 
   @override
-  String batchTakeoverEligibleCount(int count) {
+  String batchAdoptionEligibleCount(int count) {
     return '$count 个可纳入管理';
   }
 
   @override
-  String get batchTakeoverPending => '正在纳入管理…';
+  String get batchAdoptionPending => '导入中…';
 
   @override
-  String get batchTakeoverTitle => '将现有技能纳入 SkillsGo 管理？';
+  String get batchAdoptionTitle => '将现有技能纳入 SkillsGo 管理？';
 
   @override
-  String get batchTakeoverDescription =>
+  String get batchAdoptionDescription =>
       'SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。';
 
   @override
-  String get batchTakeoverStoryTitle => '把散落的技能，整理成一个清晰的 Library';
+  String get batchAdoptionStoryTitle => '把散落的技能，整理成一个清晰的 Library';
 
   @override
-  String batchTakeoverStoryDescription(int count) {
+  String batchAdoptionStoryDescription(int count) {
     return 'SkillsGo 在当前位置发现 $count 个可以纳入管理的现有技能。';
   }
 
   @override
-  String get batchTakeoverBeforeSemantics =>
+  String get batchAdoptionBeforeSemantics =>
       '纳入管理前，现有技能装在哪里、是不是最新、损坏后如何恢复，以及不同项目间的版本是否一致，都缺少清晰状态。';
 
   @override
-  String get batchTakeoverPainLocation => '不知道装在哪';
+  String get batchAdoptionPainLocation => '不知道装在哪';
 
   @override
-  String get batchTakeoverPainFreshness => '不知道是不是最新';
+  String get batchAdoptionPainFreshness => '不知道是不是最新';
 
   @override
-  String get batchTakeoverPainRecovery => '坏了无法恢复';
+  String get batchAdoptionPainRecovery => '坏了无法恢复';
 
   @override
-  String get batchTakeoverPainVersionDrift => '多个项目版本不一致';
+  String get batchAdoptionPainVersionDrift => '多个项目版本不一致';
 
   @override
-  String get batchTakeoverFolderTitle => '现有 Skills';
+  String get batchAdoptionFolderTitle => '现有 Skills';
 
   @override
-  String get batchTakeoverFolderSubtitle => '状态不清晰';
+  String get batchAdoptionFolderSubtitle => '状态不清晰';
 
   @override
-  String get batchTakeoverAfterLabel => '纳入后';
+  String get batchAdoptionAfterLabel => '纳入后';
 
   @override
-  String get batchTakeoverAfterTitle => '一个清晰的 Library';
+  String get batchAdoptionAfterTitle => '一个清晰的 Library';
 
   @override
-  String get batchTakeoverLibraryTitle => 'SkillsGo Library';
+  String get batchAdoptionLibraryTitle => 'SkillsGo Library';
 
   @override
-  String get batchTakeoverBenefitLocation => '位置清晰';
+  String get batchAdoptionBenefitLocation => '位置清晰';
 
   @override
-  String get batchTakeoverBenefitFreshness => '更新可见';
+  String get batchAdoptionBenefitFreshness => '更新可见';
 
   @override
-  String get batchTakeoverBenefitRecovery => '随时恢复';
+  String get batchAdoptionBenefitRecovery => '随时恢复';
 
   @override
-  String get batchTakeoverBenefitVersions => '版本明确';
+  String get batchAdoptionBenefitVersions => '版本明确';
 
   @override
-  String get batchTakeoverManagedSection => 'SkillsGo 管理中';
+  String get batchAdoptionManagedSection => 'SkillsGo 管理中';
 
   @override
-  String get batchTakeoverPendingSection => '待纳入';
+  String get batchAdoptionPendingSection => '待纳入';
 
   @override
-  String batchTakeoverItemManaged(String name) {
+  String batchAdoptionItemManaged(String name) {
     return '$name 已纳入 SkillsGo 管理';
   }
 
   @override
-  String batchTakeoverItemSkipped(String name) {
+  String batchAdoptionItemSkipped(String name) {
     return '$name 未能纳入管理';
   }
 
   @override
-  String batchTakeoverItemPending(String name) {
+  String batchAdoptionItemPending(String name) {
     return '$name 等待纳入管理';
   }
 
   @override
-  String batchTakeoverAfterSemantics(int count) {
+  String batchAdoptionAfterSemantics(int count) {
     return '纳入管理后，$count 个技能会整理到同一个 Library 中，并显示清晰的管理状态。';
   }
 
   @override
-  String batchTakeoverMoreSkills(int count) {
+  String batchAdoptionMoreSkills(int count) {
     return '另外 $count 个';
   }
 
   @override
-  String get batchTakeoverTransitionSemantics => '将这些现有技能纳入 SkillsGo 管理。';
+  String get batchAdoptionTransitionSemantics => '将这些现有技能纳入 SkillsGo 管理。';
 
   @override
-  String get batchTakeoverTransitionLabel => '整理';
+  String get batchAdoptionTransitionLabel => '整理';
 
   @override
-  String get batchTakeoverStatusTitle => '纳入状态';
+  String get batchAdoptionStatusTitle => '纳入状态';
 
   @override
-  String get batchTakeoverStatusManaged => '已纳入';
+  String get batchAdoptionStatusManaged => '已纳入';
 
   @override
-  String get batchTakeoverStatusProgress => '正在整理';
+  String get batchAdoptionStatusProgress => '正在整理';
 
   @override
-  String get batchTakeoverStatusSkipped => '已跳过';
+  String get batchAdoptionStatusSkipped => '已跳过';
 
   @override
-  String get batchTakeoverStatusFilesStay => '技能文件保留在原来的位置';
+  String get batchAdoptionStatusFilesStay => '技能文件保留在原来的位置';
 
   @override
-  String get batchTakeoverBoardSemantics =>
+  String get batchAdoptionBoardSemantics =>
       '技能会排列成完整的行并由 SkillsGo 建立管理记录，原文件不会移动。';
 
   @override
-  String get batchTakeoverBoardComplete => '全部整理';
+  String get batchAdoptionBoardComplete => '全部整理';
 
   @override
-  String get batchTakeoverBoardPartial => '整理完成';
+  String get batchAdoptionBoardPartial => '整理完成';
 
   @override
-  String get batchTakeoverStatusTotal => '总计';
+  String get batchAdoptionStatusTotal => '总计';
 
   @override
-  String get batchTakeoverQueueComplete => '没有待纳入的技能';
+  String get batchAdoptionQueueComplete => '没有待纳入的技能';
 
   @override
-  String get batchTakeoverQueueWaiting => '验证完成后，技能会从这里开始整理';
+  String get batchAdoptionQueueWaiting => '验证完成后，技能会从这里开始整理';
 
   @override
-  String get batchTakeoverNextLabel => 'NEXT';
+  String get batchAdoptionNextLabel => 'NEXT';
 
   @override
-  String batchTakeoverFillerCount(int count) {
+  String batchAdoptionFillerCount(int count) {
     return '使用 $count 个 SkillsGo 整理块补全最后几行';
   }
 
   @override
-  String get batchTakeoverPreservation =>
+  String get batchAdoptionPreservation =>
       '原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。';
 
   @override
-  String get batchTakeoverLaterHint => '暂时跳过后，仍可随时在 Library 点击「纳入管理」。';
+  String get batchAdoptionLaterHint => '暂时跳过后，仍可随时在 Library 点击「纳入管理」。';
 
   @override
-  String get batchTakeoverSkip => '暂时跳过';
+  String get batchAdoptionSkip => '暂时跳过';
 
   @override
-  String get batchTakeoverConfirm => '纳入管理';
+  String get batchAdoptionConfirm => '纳入管理';
 
   @override
-  String get batchTakeoverExecutionRetry => '重试纳入';
+  String get batchAdoptionExecutionRetry => '重试纳入';
 
   @override
-  String get batchTakeoverResultTitle => '已纳入管理';
+  String get batchAdoptionResultTitle => '已纳入管理';
 
   @override
-  String batchTakeoverSummary(int takenOver, int skipped) {
-    return '已纳入管理 $takenOver 个技能，跳过 $skipped 个。';
+  String batchAdoptionSummary(int adopted, int skipped) {
+    return '已纳入管理 $adopted 个技能，跳过 $skipped 个。';
   }
 
   @override
-  String get batchTakeoverClose => '关闭';
+  String batchAdoptionFailureSummary(int adopted, int failed) {
+    return '已纳入管理 $adopted 个技能，失败 $failed 个。';
+  }
+
+  @override
+  String get batchAdoptionStatusFailed => '失败';
+
+  @override
+  String batchAdoptionItemFailed(String name) {
+    return '$name 接管失败';
+  }
+
+  @override
+  String get batchAdoptionClose => '关闭';
 
   @override
   String get installMoreTargets => '安装到更多位置';
 
   @override
-  String get detailRepository => '来源';
+  String get detailPackageSource => '包来源';
 
   @override
   String get detailStars => '星标';
@@ -1751,7 +1838,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => 'ZIP 大小';
+  String get detailArchiveSize => '包大小';
 
   @override
   String get pathLabel => '项目路径';
@@ -1843,6 +1930,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get onboardingCliErrorDescription => '修复内置 CLI 后重试，即可继续。';
+
+  @override
+  String get removeSkillsDescription => '将移除以下技能';
+
+  @override
+  String confirmRemoveSkillsInline(int count) {
+    return '移除 $count 个 Skills？';
+  }
+
+  @override
+  String removingSkillsProgress(int finished, int total) {
+    return '正在移除 $finished/$total';
+  }
+
+  @override
+  String get confirmRemoveSkillsAction => '确认移除';
+
+  @override
+  String get viewRemovalDetails => '查看详情';
+
+  @override
+  String get hideRemovalDetails => '收起详情';
 }
 
 /// The translations for Chinese, as used in Hong Kong, using the Han script (`zh_Hant_HK`).
@@ -2215,6 +2324,9 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get specificProject => '指定項目';
 
   @override
+  String get libraryGlobalScope => '全局 Skills';
+
+  @override
   String get globalScope => '全局安裝';
 
   @override
@@ -2371,9 +2483,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get remove => '移除';
 
   @override
-  String get manageTargets => '管理範圍';
-
-  @override
   String skillsSelected(int count) {
     return '已選擇 $count 項';
   }
@@ -2388,21 +2497,12 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get clearCurrentResultSelection => '清除當前結果選擇';
 
   @override
-  String get manageTargetsTitle => '管理安裝目標';
-
-  @override
-  String get manageTargetsDescription => '為每個目標選擇精確操作；未選擇的目標不會改變。';
-
-  @override
   String targetActionsSelected(int selected, int total) {
     return '已選擇 $selected/$total 個目標';
   }
 
   @override
   String get confirmRemoveTarget => '確認移除';
-
-  @override
-  String get applyTargetActions => '執行所選操作';
 
   @override
   String get managementProgressTitle => '正在執行目標操作';
@@ -2414,10 +2514,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String managementResultSummary(int succeeded, int failed) {
     return '$succeeded 個成功，$failed 個失敗';
   }
-
-  @override
-  String get workspaceOwnershipChanges =>
-      '所選項目操作將更新 skills.yaml 和 skills-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目標當前內容會被保留。';
@@ -2846,9 +2942,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get privacyProvenance => '隱私與來源説明';
 
   @override
-  String get privacySummary => '你的搜索記錄不會被儲存，SkillsGo 也不會保留命令日誌。';
-
-  @override
   String get language => '語言';
 
   @override
@@ -3076,7 +3169,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get confirmInstall => '確認安裝';
 
   @override
-  String installAllRepositorySkills(int count) {
+  String installAllPackageSkills(int count) {
     return '安裝此來源的全部技能（$count）';
   }
 
@@ -3084,8 +3177,8 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get installAllSkillsTo => '安裝所有技能到';
 
   @override
-  String installRepositorySkills(String repository, int count) {
-    return '安裝來自 $repository 的全部技能（$count）';
+  String installPackageSkills(String packagePath, int count) {
+    return '安裝來自 $packagePath 的全部技能（$count）';
   }
 
   @override
@@ -3352,7 +3445,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   }
 
   @override
-  String get batchTakeoverAction => '納入 SkillsGo 管理';
+  String get batchAdoptionAction => '納入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -3360,21 +3453,21 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   }
 
   @override
-  String confirmSkillsGoManagementCount(int count) {
-    return '確認由 SkillsGo 管理（$count）';
+  String confirmSkillsGoManagementCount(int selected, int total) {
+    return '確認由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
   String get skillColumnLabel => '技能';
 
   @override
-  String get repositorySourceColumnLabel => '來源';
+  String get packageSourceColumnLabel => '來源';
 
   @override
   String get versionColumnLabel => '版本';
 
   @override
-  String get repositoryMatching => '正在配對來源…';
+  String get packageMatching => '正在配對來源…';
 
   @override
   String get sourceMatchUnavailable => '來源配對暫時無法使用';
@@ -3384,200 +3477,213 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String sourceMatchPercent(int percent) {
-    return '相符度 $percent%';
+    return '匹配 $percent%';
   }
 
   @override
-  String get versionPendingSelection => '等待選擇 Source';
+  String get versionPendingSelection => '先選擇來源';
 
   @override
-  String batchTakeoverActionCount(int count) {
+  String batchAdoptionActionCount(int count) {
     return '納入管理（$count）';
   }
 
   @override
-  String get batchTakeoverChecking => '正在檢查可納入的技能…';
+  String get batchAdoptionChecking => '正在檢查可納入的技能…';
 
   @override
-  String get batchTakeoverRetry => '重新檢查可納入技能';
+  String get batchAdoptionRetry => '重新檢查可納入技能';
 
   @override
-  String batchTakeoverEligibleCount(int count) {
+  String batchAdoptionEligibleCount(int count) {
     return '$count 個可納入管理';
   }
 
   @override
-  String get batchTakeoverPending => '正在納入管理…';
+  String get batchAdoptionPending => '匯入中…';
 
   @override
-  String get batchTakeoverTitle => '將現有技能納入 SkillsGo 管理？';
+  String get batchAdoptionTitle => '將現有技能納入 SkillsGo 管理？';
 
   @override
-  String get batchTakeoverDescription =>
+  String get batchAdoptionDescription =>
       'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
 
   @override
-  String get batchTakeoverStoryTitle => '把散落的技能，整理成一個清晰的 Library';
+  String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
 
   @override
-  String batchTakeoverStoryDescription(int count) {
+  String batchAdoptionStoryDescription(int count) {
     return 'SkillsGo 在當前位置發現 $count 個可以納入管理的現有技能。';
   }
 
   @override
-  String get batchTakeoverBeforeSemantics =>
+  String get batchAdoptionBeforeSemantics =>
       '納入管理前，現有技能裝在哪裏、是不是最新、損壞後如何恢復，以及不同項目間的版本是否一致，都缺少清晰狀態。';
 
   @override
-  String get batchTakeoverPainLocation => '不知道裝在哪';
+  String get batchAdoptionPainLocation => '不知道裝在哪';
 
   @override
-  String get batchTakeoverPainFreshness => '不知道是不是最新';
+  String get batchAdoptionPainFreshness => '不知道是不是最新';
 
   @override
-  String get batchTakeoverPainRecovery => '壞了無法恢復';
+  String get batchAdoptionPainRecovery => '壞了無法恢復';
 
   @override
-  String get batchTakeoverPainVersionDrift => '多個項目版本不一致';
+  String get batchAdoptionPainVersionDrift => '多個項目版本不一致';
 
   @override
-  String get batchTakeoverFolderTitle => '現有 Skills';
+  String get batchAdoptionFolderTitle => '現有 Skills';
 
   @override
-  String get batchTakeoverFolderSubtitle => '狀態不清晰';
+  String get batchAdoptionFolderSubtitle => '狀態不清晰';
 
   @override
-  String get batchTakeoverAfterLabel => '納入後';
+  String get batchAdoptionAfterLabel => '納入後';
 
   @override
-  String get batchTakeoverAfterTitle => '一個清晰的 Library';
+  String get batchAdoptionAfterTitle => '一個清晰的 Library';
 
   @override
-  String get batchTakeoverLibraryTitle => 'SkillsGo Library';
+  String get batchAdoptionLibraryTitle => 'SkillsGo Library';
 
   @override
-  String get batchTakeoverBenefitLocation => '位置清晰';
+  String get batchAdoptionBenefitLocation => '位置清晰';
 
   @override
-  String get batchTakeoverBenefitFreshness => '更新可見';
+  String get batchAdoptionBenefitFreshness => '更新可見';
 
   @override
-  String get batchTakeoverBenefitRecovery => '隨時恢復';
+  String get batchAdoptionBenefitRecovery => '隨時恢復';
 
   @override
-  String get batchTakeoverBenefitVersions => '版本明確';
+  String get batchAdoptionBenefitVersions => '版本明確';
 
   @override
-  String get batchTakeoverManagedSection => 'SkillsGo 管理中';
+  String get batchAdoptionManagedSection => 'SkillsGo 管理中';
 
   @override
-  String get batchTakeoverPendingSection => '待納入';
+  String get batchAdoptionPendingSection => '待納入';
 
   @override
-  String batchTakeoverItemManaged(String name) {
+  String batchAdoptionItemManaged(String name) {
     return '$name 已納入 SkillsGo 管理';
   }
 
   @override
-  String batchTakeoverItemSkipped(String name) {
+  String batchAdoptionItemSkipped(String name) {
     return '$name 未能納入管理';
   }
 
   @override
-  String batchTakeoverItemPending(String name) {
+  String batchAdoptionItemPending(String name) {
     return '$name 等待納入管理';
   }
 
   @override
-  String batchTakeoverAfterSemantics(int count) {
+  String batchAdoptionAfterSemantics(int count) {
     return '納入管理後，$count 個技能會整理到同一個 Library 中，並顯示清晰的管理狀態。';
   }
 
   @override
-  String batchTakeoverMoreSkills(int count) {
+  String batchAdoptionMoreSkills(int count) {
     return '另外 $count 個';
   }
 
   @override
-  String get batchTakeoverTransitionSemantics => '將這些現有技能納入 SkillsGo 管理。';
+  String get batchAdoptionTransitionSemantics => '將這些現有技能納入 SkillsGo 管理。';
 
   @override
-  String get batchTakeoverTransitionLabel => '整理';
+  String get batchAdoptionTransitionLabel => '整理';
 
   @override
-  String get batchTakeoverStatusTitle => '納入狀態';
+  String get batchAdoptionStatusTitle => '納入狀態';
 
   @override
-  String get batchTakeoverStatusManaged => '已納入';
+  String get batchAdoptionStatusManaged => '已納入';
 
   @override
-  String get batchTakeoverStatusProgress => '正在整理';
+  String get batchAdoptionStatusProgress => '正在整理';
 
   @override
-  String get batchTakeoverStatusSkipped => '已跳過';
+  String get batchAdoptionStatusSkipped => '已跳過';
 
   @override
-  String get batchTakeoverStatusFilesStay => '技能文件保留在原來的位置';
+  String get batchAdoptionStatusFilesStay => '技能文件保留在原來的位置';
 
   @override
-  String get batchTakeoverBoardSemantics =>
+  String get batchAdoptionBoardSemantics =>
       '技能會排列成完整的行並由 SkillsGo 建立管理記錄，原文件不會移動。';
 
   @override
-  String get batchTakeoverBoardComplete => '全部整理';
+  String get batchAdoptionBoardComplete => '全部整理';
 
   @override
-  String get batchTakeoverBoardPartial => '整理完成';
+  String get batchAdoptionBoardPartial => '整理完成';
 
   @override
-  String get batchTakeoverStatusTotal => '總計';
+  String get batchAdoptionStatusTotal => '總計';
 
   @override
-  String get batchTakeoverQueueComplete => '沒有待納入的技能';
+  String get batchAdoptionQueueComplete => '沒有待納入的技能';
 
   @override
-  String get batchTakeoverQueueWaiting => '驗證完成後，技能會從這裏開始整理';
+  String get batchAdoptionQueueWaiting => '驗證完成後，技能會從這裏開始整理';
 
   @override
-  String get batchTakeoverNextLabel => 'NEXT';
+  String get batchAdoptionNextLabel => 'NEXT';
 
   @override
-  String batchTakeoverFillerCount(int count) {
+  String batchAdoptionFillerCount(int count) {
     return '使用 $count 個 SkillsGo 整理塊補全最後幾行';
   }
 
   @override
-  String get batchTakeoverPreservation =>
+  String get batchAdoptionPreservation =>
       '原文件、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。';
 
   @override
-  String get batchTakeoverLaterHint => '暫時跳過後，仍可隨時在 Library 點擊「納入管理」。';
+  String get batchAdoptionLaterHint => '暫時跳過後，仍可隨時在 Library 點擊「納入管理」。';
 
   @override
-  String get batchTakeoverSkip => '暫時跳過';
+  String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchTakeoverConfirm => '納入管理';
+  String get batchAdoptionConfirm => '納入管理';
 
   @override
-  String get batchTakeoverExecutionRetry => '重試納入';
+  String get batchAdoptionExecutionRetry => '重試納入';
 
   @override
-  String get batchTakeoverResultTitle => '已納入管理';
+  String get batchAdoptionResultTitle => '已納入管理';
 
   @override
-  String batchTakeoverSummary(int takenOver, int skipped) {
-    return '已納入管理 $takenOver 個技能，跳過 $skipped 個。';
+  String batchAdoptionSummary(int adopted, int skipped) {
+    return '已納入管理 $adopted 個技能，跳過 $skipped 個。';
   }
 
   @override
-  String get batchTakeoverClose => '關閉';
+  String batchAdoptionFailureSummary(int adopted, int failed) {
+    return '已納入管理 $adopted 個技能，失敗 $failed 個。';
+  }
+
+  @override
+  String get batchAdoptionStatusFailed => '失敗';
+
+  @override
+  String batchAdoptionItemFailed(String name) {
+    return '$name 接管失敗';
+  }
+
+  @override
+  String get batchAdoptionClose => '關閉';
 
   @override
   String get installMoreTargets => '安裝到更多位置';
 
   @override
-  String get detailRepository => '來源';
+  String get detailPackageSource => '包來源';
 
   @override
   String get detailStars => '星標';
@@ -3586,7 +3692,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => 'ZIP 大小';
+  String get detailArchiveSize => '包大小';
 
   @override
   String get pathLabel => '項目路徑';
@@ -4051,6 +4157,9 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get specificProject => '指定專案';
 
   @override
+  String get libraryGlobalScope => '全域 Skills';
+
+  @override
   String get globalScope => '全域性安裝';
 
   @override
@@ -4207,9 +4316,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get remove => '移除';
 
   @override
-  String get manageTargets => '管理範圍';
-
-  @override
   String skillsSelected(int count) {
     return '已選擇 $count 項';
   }
@@ -4224,21 +4330,12 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get clearCurrentResultSelection => '清除當前結果選擇';
 
   @override
-  String get manageTargetsTitle => '管理安裝目標';
-
-  @override
-  String get manageTargetsDescription => '為每個目標選擇精確操作；未選擇的目標不會改變。';
-
-  @override
   String targetActionsSelected(int selected, int total) {
     return '已選擇 $selected/$total 個目標';
   }
 
   @override
   String get confirmRemoveTarget => '確認移除';
-
-  @override
-  String get applyTargetActions => '執行所選操作';
 
   @override
   String get managementProgressTitle => '正在執行目標操作';
@@ -4250,10 +4347,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String managementResultSummary(int succeeded, int failed) {
     return '$succeeded 個成功，$failed 個失敗';
   }
-
-  @override
-  String get workspaceOwnershipChanges =>
-      '所選專案操作將更新 skills.yaml 和 skills-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目標當前內容會被保留。';
@@ -4682,9 +4775,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get privacyProvenance => '隱私與來源說明';
 
   @override
-  String get privacySummary => '你的搜尋記錄不會被儲存，SkillsGo 也不會保留命令日誌。';
-
-  @override
   String get language => '語言';
 
   @override
@@ -4912,7 +5002,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get confirmInstall => '確認安裝';
 
   @override
-  String installAllRepositorySkills(int count) {
+  String installAllPackageSkills(int count) {
     return '安裝此來源的全部技能（$count）';
   }
 
@@ -4920,8 +5010,8 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get installAllSkillsTo => '安裝所有技能到';
 
   @override
-  String installRepositorySkills(String repository, int count) {
-    return '安裝來自 $repository 的全部技能（$count）';
+  String installPackageSkills(String packagePath, int count) {
+    return '安裝來自 $packagePath 的全部技能（$count）';
   }
 
   @override
@@ -5188,7 +5278,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   }
 
   @override
-  String get batchTakeoverAction => '納入 SkillsGo 管理';
+  String get batchAdoptionAction => '納入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -5196,21 +5286,21 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   }
 
   @override
-  String confirmSkillsGoManagementCount(int count) {
-    return '確認由 SkillsGo 管理（$count）';
+  String confirmSkillsGoManagementCount(int selected, int total) {
+    return '確認由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
   String get skillColumnLabel => '技能';
 
   @override
-  String get repositorySourceColumnLabel => '來源';
+  String get packageSourceColumnLabel => '來源';
 
   @override
   String get versionColumnLabel => '版本';
 
   @override
-  String get repositoryMatching => '正在比對來源…';
+  String get packageMatching => '正在比對來源…';
 
   @override
   String get sourceMatchUnavailable => '來源比對暫時無法使用';
@@ -5220,200 +5310,213 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String sourceMatchPercent(int percent) {
-    return '相符度 $percent%';
+    return '匹配 $percent%';
   }
 
   @override
-  String get versionPendingSelection => '等待選擇 Source';
+  String get versionPendingSelection => '先選擇來源';
 
   @override
-  String batchTakeoverActionCount(int count) {
+  String batchAdoptionActionCount(int count) {
     return '納入管理（$count）';
   }
 
   @override
-  String get batchTakeoverChecking => '正在檢查可納入的技能…';
+  String get batchAdoptionChecking => '正在檢查可納入的技能…';
 
   @override
-  String get batchTakeoverRetry => '重新檢查可納入技能';
+  String get batchAdoptionRetry => '重新檢查可納入技能';
 
   @override
-  String batchTakeoverEligibleCount(int count) {
+  String batchAdoptionEligibleCount(int count) {
     return '$count 個可納入管理';
   }
 
   @override
-  String get batchTakeoverPending => '正在納入管理…';
+  String get batchAdoptionPending => '匯入中…';
 
   @override
-  String get batchTakeoverTitle => '將現有技能納入 SkillsGo 管理？';
+  String get batchAdoptionTitle => '將現有技能納入 SkillsGo 管理？';
 
   @override
-  String get batchTakeoverDescription =>
+  String get batchAdoptionDescription =>
       'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
 
   @override
-  String get batchTakeoverStoryTitle => '把散落的技能，整理成一個清晰的 Library';
+  String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
 
   @override
-  String batchTakeoverStoryDescription(int count) {
+  String batchAdoptionStoryDescription(int count) {
     return 'SkillsGo 在當前位置發現 $count 個可以納入管理的現有技能。';
   }
 
   @override
-  String get batchTakeoverBeforeSemantics =>
+  String get batchAdoptionBeforeSemantics =>
       '納入管理前，現有技能裝在哪裡、是不是最新、損壞後如何恢復，以及不同專案間的版本是否一致，都缺少清晰狀態。';
 
   @override
-  String get batchTakeoverPainLocation => '不知道裝在哪';
+  String get batchAdoptionPainLocation => '不知道裝在哪';
 
   @override
-  String get batchTakeoverPainFreshness => '不知道是不是最新';
+  String get batchAdoptionPainFreshness => '不知道是不是最新';
 
   @override
-  String get batchTakeoverPainRecovery => '壞了無法恢復';
+  String get batchAdoptionPainRecovery => '壞了無法恢復';
 
   @override
-  String get batchTakeoverPainVersionDrift => '多個專案版本不一致';
+  String get batchAdoptionPainVersionDrift => '多個專案版本不一致';
 
   @override
-  String get batchTakeoverFolderTitle => '現有 Skills';
+  String get batchAdoptionFolderTitle => '現有 Skills';
 
   @override
-  String get batchTakeoverFolderSubtitle => '狀態不清晰';
+  String get batchAdoptionFolderSubtitle => '狀態不清晰';
 
   @override
-  String get batchTakeoverAfterLabel => '納入後';
+  String get batchAdoptionAfterLabel => '納入後';
 
   @override
-  String get batchTakeoverAfterTitle => '一個清晰的 Library';
+  String get batchAdoptionAfterTitle => '一個清晰的 Library';
 
   @override
-  String get batchTakeoverLibraryTitle => 'SkillsGo Library';
+  String get batchAdoptionLibraryTitle => 'SkillsGo Library';
 
   @override
-  String get batchTakeoverBenefitLocation => '位置清晰';
+  String get batchAdoptionBenefitLocation => '位置清晰';
 
   @override
-  String get batchTakeoverBenefitFreshness => '更新可見';
+  String get batchAdoptionBenefitFreshness => '更新可見';
 
   @override
-  String get batchTakeoverBenefitRecovery => '隨時恢復';
+  String get batchAdoptionBenefitRecovery => '隨時恢復';
 
   @override
-  String get batchTakeoverBenefitVersions => '版本明確';
+  String get batchAdoptionBenefitVersions => '版本明確';
 
   @override
-  String get batchTakeoverManagedSection => 'SkillsGo 管理中';
+  String get batchAdoptionManagedSection => 'SkillsGo 管理中';
 
   @override
-  String get batchTakeoverPendingSection => '待納入';
+  String get batchAdoptionPendingSection => '待納入';
 
   @override
-  String batchTakeoverItemManaged(String name) {
+  String batchAdoptionItemManaged(String name) {
     return '$name 已納入 SkillsGo 管理';
   }
 
   @override
-  String batchTakeoverItemSkipped(String name) {
+  String batchAdoptionItemSkipped(String name) {
     return '$name 未能納入管理';
   }
 
   @override
-  String batchTakeoverItemPending(String name) {
+  String batchAdoptionItemPending(String name) {
     return '$name 等待納入管理';
   }
 
   @override
-  String batchTakeoverAfterSemantics(int count) {
+  String batchAdoptionAfterSemantics(int count) {
     return '納入管理後，$count 個技能會整理到同一個 Library 中，並顯示清晰的管理狀態。';
   }
 
   @override
-  String batchTakeoverMoreSkills(int count) {
+  String batchAdoptionMoreSkills(int count) {
     return '另外 $count 個';
   }
 
   @override
-  String get batchTakeoverTransitionSemantics => '將這些現有技能納入 SkillsGo 管理。';
+  String get batchAdoptionTransitionSemantics => '將這些現有技能納入 SkillsGo 管理。';
 
   @override
-  String get batchTakeoverTransitionLabel => '整理';
+  String get batchAdoptionTransitionLabel => '整理';
 
   @override
-  String get batchTakeoverStatusTitle => '納入狀態';
+  String get batchAdoptionStatusTitle => '納入狀態';
 
   @override
-  String get batchTakeoverStatusManaged => '已納入';
+  String get batchAdoptionStatusManaged => '已納入';
 
   @override
-  String get batchTakeoverStatusProgress => '正在整理';
+  String get batchAdoptionStatusProgress => '正在整理';
 
   @override
-  String get batchTakeoverStatusSkipped => '已跳過';
+  String get batchAdoptionStatusSkipped => '已跳過';
 
   @override
-  String get batchTakeoverStatusFilesStay => '技能檔案保留在原來的位置';
+  String get batchAdoptionStatusFilesStay => '技能檔案保留在原來的位置';
 
   @override
-  String get batchTakeoverBoardSemantics =>
+  String get batchAdoptionBoardSemantics =>
       '技能會排列成完整的行並由 SkillsGo 建立管理記錄，原檔案不會移動。';
 
   @override
-  String get batchTakeoverBoardComplete => '全部整理';
+  String get batchAdoptionBoardComplete => '全部整理';
 
   @override
-  String get batchTakeoverBoardPartial => '整理完成';
+  String get batchAdoptionBoardPartial => '整理完成';
 
   @override
-  String get batchTakeoverStatusTotal => '總計';
+  String get batchAdoptionStatusTotal => '總計';
 
   @override
-  String get batchTakeoverQueueComplete => '沒有待納入的技能';
+  String get batchAdoptionQueueComplete => '沒有待納入的技能';
 
   @override
-  String get batchTakeoverQueueWaiting => '驗證完成後，技能會從這裡開始整理';
+  String get batchAdoptionQueueWaiting => '驗證完成後，技能會從這裡開始整理';
 
   @override
-  String get batchTakeoverNextLabel => 'NEXT';
+  String get batchAdoptionNextLabel => 'NEXT';
 
   @override
-  String batchTakeoverFillerCount(int count) {
+  String batchAdoptionFillerCount(int count) {
     return '使用 $count 個 SkillsGo 整理塊補全最後幾行';
   }
 
   @override
-  String get batchTakeoverPreservation =>
+  String get batchAdoptionPreservation =>
       '原檔案、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。';
 
   @override
-  String get batchTakeoverLaterHint => '暫時跳過後，仍可隨時在 Library 點選「納入管理」。';
+  String get batchAdoptionLaterHint => '暫時跳過後，仍可隨時在 Library 點選「納入管理」。';
 
   @override
-  String get batchTakeoverSkip => '暫時跳過';
+  String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchTakeoverConfirm => '納入管理';
+  String get batchAdoptionConfirm => '納入管理';
 
   @override
-  String get batchTakeoverExecutionRetry => '重試納入';
+  String get batchAdoptionExecutionRetry => '重試納入';
 
   @override
-  String get batchTakeoverResultTitle => '已納入管理';
+  String get batchAdoptionResultTitle => '已納入管理';
 
   @override
-  String batchTakeoverSummary(int takenOver, int skipped) {
-    return '已納入管理 $takenOver 個技能，跳過 $skipped 個。';
+  String batchAdoptionSummary(int adopted, int skipped) {
+    return '已納入管理 $adopted 個技能，跳過 $skipped 個。';
   }
 
   @override
-  String get batchTakeoverClose => '關閉';
+  String batchAdoptionFailureSummary(int adopted, int failed) {
+    return '已納入管理 $adopted 個技能，失敗 $failed 個。';
+  }
+
+  @override
+  String get batchAdoptionStatusFailed => '失敗';
+
+  @override
+  String batchAdoptionItemFailed(String name) {
+    return '$name 接管失敗';
+  }
+
+  @override
+  String get batchAdoptionClose => '關閉';
 
   @override
   String get installMoreTargets => '安裝到更多位置';
 
   @override
-  String get detailRepository => '來源';
+  String get detailPackageSource => '包來源';
 
   @override
   String get detailStars => '星標';
@@ -5422,7 +5525,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => 'ZIP 大小';
+  String get detailArchiveSize => '包大小';
 
   @override
   String get pathLabel => '專案路徑';

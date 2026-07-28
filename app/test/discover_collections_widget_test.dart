@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Discover search, source collections, leaderboard layout, pagination, and refresh behavior.
+ * [OUTPUT]: Specifies Discover search, source collections, stable install entry copy, leaderboard layout, pagination, and refresh behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -107,6 +107,8 @@ void main() {
               installName: 'flutter-pro',
               name: 'Flutter Pro',
               latestVersion: 'v1.2.3',
+              localTargetCount: 1,
+              localVersions: ['v1.3.0'],
               description:
                   'Build Flutter products with reliable engineering flows.',
             ),
@@ -137,7 +139,8 @@ void main() {
     expect(find.text('★ 12.8K'), findsOneWidget);
     expect(find.text('v1.2.3'), findsWidgets);
     expect(find.text('1 skill'), findsOneWidget);
-    expect(find.text('Install all skills'), findsOneWidget);
+    expect(find.text('Install'), findsNWidgets(2));
+    expect(find.text('Downgrade'), findsNothing);
     final installAll = tester.widget<PrimaryCapsuleButton>(
       find.byKey(const Key('package-install-all')),
     );
@@ -321,6 +324,7 @@ void main() {
       installs: 1200,
       metricKind: SkillMetricKind.allTimeInstalls,
       localTargetCount: 2,
+      localVersions: ['v1.0.0'],
     );
     final gateway = FakeSkillsGateway(
       discoveryPages: const {
@@ -359,6 +363,8 @@ void main() {
 
     await tester.tap(find.text('Ranking'));
     await tester.pumpAndSettle();
+    expect(find.text('Install'), findsOneWidget);
+    expect(find.text('Upgrade'), findsNothing);
     expect(
       find.text('Turn product goals into a concrete execution plan.'),
       findsOneWidget,
@@ -367,7 +373,7 @@ void main() {
     expect(find.text('v1.2.3'), findsNothing);
     expect(find.text('Community verified'), findsNothing);
     expect(find.text('Low risk'), findsNothing);
-    expect(find.text('Installed'), findsOneWidget);
+    expect(find.text('Installed'), findsNothing);
     expect(find.text('1.2K all-time installs'), findsOneWidget);
 
     await tester.tap(find.text('Trending'));

@@ -317,7 +317,6 @@
   "update": "оновлення",
   "backToLibrary": "Назад до бібліотеки",
   "remove": "видалити",
-  "manageTargets": "Керувати обсягом",
   "skillsSelected": "Вибрано {count}",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Очистити вибір",
   "selectCurrentResults": "Виберіть поточні результати",
   "clearCurrentResultSelection": "Очистити поточний вибір результату",
-  "manageTargetsTitle": "Керуйте цілями встановлення",
-  "manageTargetsDescription": "Виберіть точну дію для кожної цілі. Невибрані цілі не зміняться.",
   "targetActionsSelected": "Вибрано {selected} із {total} цілей",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Підтвердити видалення",
-  "applyTargetActions": "Застосувати вибрані дії",
   "managementProgressTitle": "Застосування цільових дій",
   "managementResultsTitle": "Цільові результати дії",
   "managementResultSummary": "{succeeded} вдалося, {failed} не вдалося",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Вибрані дії проекту оновлять skills.yaml і skills-lock.yaml.",
   "targetContentPreserved": "Поточний цільовий вміст буде збережено.",
   "localReadFailed": "Не можу прочитати цей Skill",
   "localReadFailedMessage": "SkillsGo не зміг прочитати цей встановлений навик. Переконайтеся, що його папка доступна та доступна, а потім повторіть спробу.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Ви можете й далі переглядати цей Skill, але цілі встановлення ще немає. Встановіть підтримуваний Agent і запустіть виявлення знову.",
   "clearCustomPath": "Очистити власний шлях",
   "privacyProvenance": "Конфіденційність і походження",
-  "privacySummary": "Ваші пошукові запити не зберігаються, а SkillsGo не веде журнали команд.",
   "language": "Мова",
   "translatedContent": "Перекладено",
   "translatedFrom": "Перекладено з мови: {language}",
@@ -686,19 +680,19 @@
   "installedCell": "встановлено",
   "unsupportedCell": "Недоступний",
   "confirmInstall": "Підтвердити встановлення",
-  "installAllRepositorySkills": "Встановити всі навички сховища ({count})",
+  "installAllPackageSkills": "Встановити всі навички сховища ({count})",
   "installAllSkillsTo": "Встановити всі навички для",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Встановити всі навички {repository} ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Встановити всі навички {packagePath} ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Керуйте наявними навичками",
-  "batchTakeoverActionCount": "Керувати ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Керуйте наявними навичками",
+  "batchAdoptionActionCount": "Керувати ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Перевірка наявних навичок…",
-  "batchTakeoverRetry": "Ще раз перевірте керовані навички",
-  "batchTakeoverEligibleCount": "{count} можна керувати",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Перевірка наявних навичок…",
+  "batchAdoptionRetry": "Ще раз перевірте керовані навички",
+  "batchAdoptionEligibleCount": "{count} можна керувати",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Додавання навичок до управління…",
-  "batchTakeoverTitle": "Керувати наявними навичками за допомогою SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo додасть локальні записи керування без переміщення, перезапису або завантаження файлів навичок. Непідтримувані або змінені елементи будуть пропущені.",
-  "batchTakeoverStoryTitle": "Перетворіть розрізнені навички в одну чітку бібліотеку",
-  "batchTakeoverStoryDescription": "SkillsGo знайшов тут {count, plural, one{{count} наявний Skill} few{{count} наявні Skill} many{{count} наявних Skill} other{{count} наявного Skill}}, якими можна керувати.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Додавання навичок до управління…",
+  "batchAdoptionTitle": "Керувати наявними навичками за допомогою SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo додасть локальні записи керування без переміщення, перезапису або завантаження файлів навичок. Непідтримувані або змінені елементи будуть пропущені.",
+  "batchAdoptionStoryTitle": "Перетворіть розрізнені навички в одну чітку бібліотеку",
+  "batchAdoptionStoryDescription": "SkillsGo знайшов тут {count, plural, one{{count} наявний Skill} few{{count} наявні Skill} many{{count} наявних Skill} other{{count} наявного Skill}}, якими можна керувати.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Перед керівництвом незрозуміло, де встановлено наявні навички, чи вони актуальні, як їх відновити, чи проекти використовують ту саму версію.",
-  "batchTakeoverPainLocation": "Невідоме місце встановлення",
-  "batchTakeoverPainFreshness": "Невідомий статус оновлення",
-  "batchTakeoverPainRecovery": "Немає відновлення при поломці",
-  "batchTakeoverPainVersionDrift": "Різні версії для проектів",
-  "batchTakeoverFolderTitle": "Існуючий Skills",
-  "batchTakeoverFolderSubtitle": "Незрозумілий статус",
-  "batchTakeoverAfterLabel": "ПІСЛЯ",
-  "batchTakeoverAfterTitle": "Одна чітка бібліотека",
-  "batchTakeoverLibraryTitle": "Бібліотека SkillsGo",
-  "batchTakeoverBenefitLocation": "Очистити локації",
-  "batchTakeoverBenefitFreshness": "Оновлення видно",
-  "batchTakeoverBenefitRecovery": "Легке відновлення",
-  "batchTakeoverBenefitVersions": "Версії зрозумілі",
-  "batchTakeoverManagedSection": "Керується SkillsGo",
-  "batchTakeoverPendingSection": "В очікуванні",
-  "batchTakeoverItemManaged": "{name} управляється SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Перед керівництвом незрозуміло, де встановлено наявні навички, чи вони актуальні, як їх відновити, чи проекти використовують ту саму версію.",
+  "batchAdoptionPainLocation": "Невідоме місце встановлення",
+  "batchAdoptionPainFreshness": "Невідомий статус оновлення",
+  "batchAdoptionPainRecovery": "Немає відновлення при поломці",
+  "batchAdoptionPainVersionDrift": "Різні версії для проектів",
+  "batchAdoptionFolderTitle": "Існуючий Skills",
+  "batchAdoptionFolderSubtitle": "Незрозумілий статус",
+  "batchAdoptionAfterLabel": "ПІСЛЯ",
+  "batchAdoptionAfterTitle": "Одна чітка бібліотека",
+  "batchAdoptionLibraryTitle": "Бібліотека SkillsGo",
+  "batchAdoptionBenefitLocation": "Очистити локації",
+  "batchAdoptionBenefitFreshness": "Оновлення видно",
+  "batchAdoptionBenefitRecovery": "Легке відновлення",
+  "batchAdoptionBenefitVersions": "Версії зрозумілі",
+  "batchAdoptionManagedSection": "Керується SkillsGo",
+  "batchAdoptionPendingSection": "В очікуванні",
+  "batchAdoptionItemManaged": "{name} управляється SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} не вдалося додати до керування",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} не вдалося додати до керування",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} чекає на керування",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} чекає на керування",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Після додавання {count, plural, one{{count} Skill упорядковано} few{{count} Skill упорядковано} many{{count} Skill упорядковано} other{{count} Skill упорядковано}} в одній Library зі зрозумілим статусом керування.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Після додавання {count, plural, one{{count} Skill упорядковано} few{{count} Skill упорядковано} many{{count} Skill упорядковано} other{{count} Skill упорядковано}} в одній Library зі зрозумілим статусом керування.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} більше",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} більше",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Додайте ці наявні навички до управління SkillsGo.",
-  "batchTakeoverTransitionLabel": "ОРГАНІЗУЙТЕ",
-  "batchTakeoverStatusTitle": "Статус управління",
-  "batchTakeoverStatusManaged": "Керований",
-  "batchTakeoverStatusProgress": "Організація",
-  "batchTakeoverStatusSkipped": "Пропущено",
-  "batchTakeoverStatusFilesStay": "Файли Skill залишаються у вихідних місцях",
-  "batchTakeoverBoardSemantics": "Skills впорядковуються в повні ряди та записуються SkillsGo без переміщення файлів.",
-  "batchTakeoverBoardComplete": "ВСЕ ЯСНО",
-  "batchTakeoverBoardPartial": "ЗАВЕРШЕНО",
-  "batchTakeoverStatusTotal": "Всього",
-  "batchTakeoverQueueComplete": "Ніякі навички не чекають",
-  "batchTakeoverQueueWaiting": "Після перевірки Skills з’являться тут",
-  "batchTakeoverNextLabel": "ДАЛІ",
-  "batchTakeoverFillerCount": "{count, plural, one{{count} блок-органайзер SkillsGo} few{{count} блоки-органайзери SkillsGo} many{{count} блоків-органайзерів SkillsGo} other{{count} блока-органайзера SkillsGo}} завершують останні рядки.",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Додайте ці наявні навички до управління SkillsGo.",
+  "batchAdoptionTransitionLabel": "ОРГАНІЗУЙТЕ",
+  "batchAdoptionStatusTitle": "Статус управління",
+  "batchAdoptionStatusManaged": "Керований",
+  "batchAdoptionStatusProgress": "Організація",
+  "batchAdoptionStatusSkipped": "Пропущено",
+  "batchAdoptionStatusFilesStay": "Файли Skill залишаються у вихідних місцях",
+  "batchAdoptionBoardSemantics": "Skills впорядковуються в повні ряди та записуються SkillsGo без переміщення файлів.",
+  "batchAdoptionBoardComplete": "ВСЕ ЯСНО",
+  "batchAdoptionBoardPartial": "ЗАВЕРШЕНО",
+  "batchAdoptionStatusTotal": "Всього",
+  "batchAdoptionQueueComplete": "Ніякі навички не чекають",
+  "batchAdoptionQueueWaiting": "Після перевірки Skills з’являться тут",
+  "batchAdoptionNextLabel": "ДАЛІ",
+  "batchAdoptionFillerCount": "{count, plural, one{{count} блок-органайзер SkillsGo} few{{count} блоки-органайзери SkillsGo} many{{count} блоків-органайзерів SkillsGo} other{{count} блока-органайзера SkillsGo}} завершують останні рядки.",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Ваші файли, шляхи та поточні робочі процеси залишаються там, де вони є. SkillsGo лише завершує свої локальні записи керування.",
-  "batchTakeoverLaterHint": "Якщо ви пропустите, ви зможете будь-коли скористатися пунктом керування наявними навичками з бібліотеки.",
-  "batchTakeoverSkip": "Не зараз",
-  "batchTakeoverConfirm": "Додати до управління",
-  "batchTakeoverExecutionRetry": "Повторіть спробу",
-  "batchTakeoverResultTitle": "Skills додано до керування",
-  "batchTakeoverSummary": "Навички {takenOver} додано до керування, {skipped} пропущено.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Ваші файли, шляхи та поточні робочі процеси залишаються там, де вони є. SkillsGo лише завершує свої локальні записи керування.",
+  "batchAdoptionLaterHint": "Якщо ви пропустите, ви зможете будь-коли скористатися пунктом керування наявними навичками з бібліотеки.",
+  "batchAdoptionSkip": "Не зараз",
+  "batchAdoptionConfirm": "Додати до управління",
+  "batchAdoptionExecutionRetry": "Повторіть спробу",
+  "batchAdoptionResultTitle": "Skills додано до керування",
+  "batchAdoptionSummary": "Навички {adopted} додано до керування, {skipped} пропущено.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Закрити",
+  "batchAdoptionClose": "Закрити",
   "installMoreTargets": "Встановити в інших місцях",
-  "detailRepository": "Репозиторій",
+  "detailPackageSource": "Джерело пакета",
   "detailStars": "Зірки",
   "detailUpdated": "Оновлено",
-  "detailArchiveSize": "Розмір ZIP",
+  "detailArchiveSize": "Розмір пакета",
   "pathLabel": "Шлях проекту",
   "copyProjectPath": "Копіювати шлях проекту",
   "projectPathCopied": "Шлях проекту скопійовано",

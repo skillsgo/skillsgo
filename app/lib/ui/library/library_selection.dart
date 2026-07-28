@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Library selection identity, selected entries, target-management/update callbacks, motion preferences, and scope toggle state.
- * [OUTPUT]: Provides scope grouping, animated selection bar, selected action controls, coverage/source labels, and All/Updates toggle.
+ * [INPUT]: Depends on Library selection identity, selected entries, removal/update callbacks, motion preferences, and scope toggle state.
+ * [OUTPUT]: Provides scope grouping, a stable selection bar with an inline two-click removal action, source labels, and All/Updates toggle.
  * [POS]: Serves as the multi-selection and scope-control segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -180,132 +180,187 @@ class _LibrarySelectionBar extends StatelessWidget {
     required this.selectedCount,
     required this.updateableCount,
     required this.operating,
+    required this.confirmingRemoval,
     required this.onClear,
     required this.onUpdate,
-    required this.onManage,
-    required this.manageLabel,
+    required this.onRequestRemove,
+    required this.onCancelRemove,
+    required this.onConfirmRemove,
   });
 
   final int selectedCount;
   final int updateableCount;
   final bool operating;
+  final bool confirmingRemoval;
   final VoidCallback onClear;
   final VoidCallback onUpdate;
-  final VoidCallback onManage;
-  final String manageLabel;
+  final VoidCallback onRequestRemove;
+  final VoidCallback onCancelRemove;
+  final VoidCallback onConfirmRemove;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final destructive = manageLabel == context.l10n.remove;
-    return Material(
-      key: const Key('library-selection-bar'),
-      color: scheme.inverseSurface,
-      surfaceTintColor: Colors.transparent,
-      elevation: 12,
-      shadowColor: scheme.shadow.withValues(alpha: .32),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.skillsSelected(selectedCount),
-              style: TextStyle(
-                color: scheme.onInverseSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 6),
-            IconButton(
-              tooltip: context.l10n.clearSelection,
-              onPressed: operating ? null : onClear,
-              visualDensity: VisualDensity.compact,
-              color: scheme.onInverseSurface,
-              disabledColor: scheme.onInverseSurface.withValues(alpha: .38),
-              icon: const HugeIcon(
-                icon: HugeIcons.strokeRoundedCancel01,
-                size: 17,
-                strokeWidth: 1.8,
-              ),
-            ),
-            SizedBox(
-              height: 22,
-              child: VerticalDivider(
-                color: scheme.onInverseSurface.withValues(alpha: .18),
-              ),
-            ),
-            FilledButton.tonalIcon(
-              key: const Key('library-update-selected'),
-              onPressed: operating || updateableCount == 0 ? null : onUpdate,
-              icon: const HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
-                size: 17,
-                strokeWidth: 1.8,
-              ),
-              label: Text(context.l10n.update),
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.primary,
-                foregroundColor: scheme.onPrimary,
-                disabledBackgroundColor: scheme.onInverseSurface.withValues(
-                  alpha: .12,
+    return Focus(
+      onKeyEvent: (_, event) {
+        if (confirmingRemoval &&
+            event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          onCancelRemove();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Material(
+        key: const Key('library-selection-bar'),
+        color: scheme.inverseSurface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 12,
+        shadowColor: scheme.shadow.withValues(alpha: .32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.l10n.skillsSelected(selectedCount),
+                style: TextStyle(
+                  color: scheme.onInverseSurface,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
-                disabledForegroundColor: scheme.onInverseSurface.withValues(
-                  alpha: .38,
-                ),
-                minimumSize: const Size(0, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 13),
+              ),
+              const SizedBox(width: 6),
+              IconButton(
+                key: const Key('library-clear-selection'),
+                tooltip: context.l10n.clearSelection,
+                onPressed: operating ? null : onClear,
                 visualDensity: VisualDensity.compact,
+                color: scheme.onInverseSurface,
+                disabledColor: scheme.onInverseSurface.withValues(alpha: .38),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedCancel01,
+                  size: 17,
+                  strokeWidth: 1.8,
+                ),
               ),
-            ),
-            TextButton.icon(
-              key: const Key('library-manage-selected'),
-              onPressed: operating ? null : onManage,
-              style: destructive
-                  ? TextButton.styleFrom(
-                      foregroundColor:
-                          context.skillsComponents.statusDangerOnInverse,
-                    )
-                  : TextButton.styleFrom(
-                      foregroundColor: scheme.onInverseSurface,
-                      disabledForegroundColor: scheme.onInverseSurface
-                          .withValues(alpha: .38),
+              SizedBox(
+                height: 22,
+                child: VerticalDivider(
+                  color: scheme.onInverseSurface.withValues(alpha: .18),
+                ),
+              ),
+              FilledButton.tonalIcon(
+                key: const Key('library-update-selected'),
+                onPressed: operating || updateableCount == 0 ? null : onUpdate,
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+                  size: 17,
+                  strokeWidth: 1.8,
+                ),
+                label: Text(context.l10n.update),
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  disabledBackgroundColor: scheme.onInverseSurface.withValues(
+                    alpha: .12,
+                  ),
+                  disabledForegroundColor: scheme.onInverseSurface.withValues(
+                    alpha: .38,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              TextButton(
+                key: const Key('library-remove-selected'),
+                onPressed: operating
+                    ? null
+                    : confirmingRemoval
+                    ? onConfirmRemove
+                    : onRequestRemove,
+                style: TextButton.styleFrom(
+                  foregroundColor:
+                      context.skillsComponents.statusDangerOnInverse,
+                  disabledForegroundColor: scheme.onInverseSurface.withValues(
+                    alpha: .38,
+                  ),
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  visualDensity: VisualDensity.compact,
+                  alignment: Alignment.centerLeft,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox.square(
+                      key: Key('library-remove-icon'),
+                      dimension: 20,
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedDelete02,
+                          size: 17,
+                          strokeWidth: 1.8,
+                        ),
+                      ),
                     ),
-              icon: HugeIcon(
-                icon: destructive
-                    ? HugeIcons.strokeRoundedDelete02
-                    : HugeIcons.strokeRoundedSettings02,
-                size: 17,
-                strokeWidth: 1.8,
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 20,
+                      child: AnimatedSwitcher(
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          final incoming =
+                              child.key ==
+                              ValueKey(
+                                confirmingRemoval
+                                    ? 'library-confirm-remove'
+                                    : 'library-remove-label',
+                              );
+                          final slide = Tween<Offset>(
+                            begin: Offset(0, incoming ? .55 : -.55),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return ClipRect(
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: slide,
+                                child: child,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          confirmingRemoval
+                              ? context.l10n.confirmRemoveSkillsAction
+                              : context.l10n.remove,
+                          key: ValueKey(
+                            confirmingRemoval
+                                ? 'library-confirm-remove'
+                                : 'library-remove-label',
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              label: Text(manageLabel),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-String _installationCoverageLabel(
-  BuildContext context,
-  InstalledSkill skill,
-  List<AddedProject> projects,
-) {
-  if (skill.targets.any((target) => target.scope == InstallationScope.global)) {
-    return context.l10n.allProjects;
-  }
-  if (skill.projects.length == 1) {
-    final root = skill.projects.single;
-    final name =
-        projects.where((project) => project.path == root).firstOrNull?.name ??
-        p.basename(root);
-    return '${context.l10n.specificProject}: $name';
-  }
-  return context.l10n.projectsSummary(skill.projects.length);
 }
 
 String _installedSourceLabel(BuildContext context, InstalledSkill skill) {

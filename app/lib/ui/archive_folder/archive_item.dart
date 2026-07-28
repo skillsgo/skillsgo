@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Flutter layout, typography, and decoration primitives plus caller-provided archive content and label presentation.
  * [OUTPUT]: Provides a reusable archival card with optional fixed label geometry and line clamping.
- * [POS]: Serves as the item primitive rendered by ArchiveFolder and takeover-story skill cards.
+ * [POS]: Serves as the item primitive rendered by ArchiveFolder and adoption-story skill cards.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';

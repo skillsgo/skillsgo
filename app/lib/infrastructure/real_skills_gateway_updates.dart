@@ -1,14 +1,14 @@
 /*
- * [INPUT]: Depends on the shared gateway state, locally reviewed Update Plans, confirmed Package-level CLI update execution, and progress callbacks.
- * [OUTPUT]: Provides local Package-coordinate update planning and confirmed execution projected onto selected Library targets, plus one latest-only Catalog batch update check.
- * [POS]: Serves as the Package Update capability inside the RealSkillsGateway adapter.
+ * [INPUT]: Depends on installed Package scope identity, an explicit immutable target version, CLI Package update, and Catalog update checks.
+ * [OUTPUT]: Provides direct Package-level update commands followed by identity-only receipt validation, plus one latest-only Catalog batch update check.
+ * [POS]: Serves as the thin Package Update capability inside RealSkillsGateway without reproducing CLI planning or target execution rules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
 
 mixin _RealSkillsGatewayUpdates
     on _RealSkillsGatewayCore, _RealSkillsGatewayExecutionSupport {
-  List<String> _repositoryUpdateScopeArguments(
+  List<String> _packageUpdateScopeArguments(
     InstallationScope scope,
     String projectRoot,
   ) => scope == InstallationScope.global
@@ -16,145 +16,39 @@ mixin _RealSkillsGatewayUpdates
       : ['--project', projectRoot];
 
   @override
-  Future<UpdatePlan> preflightUpdate(
-    InstalledSkill skill,
-    List<SkillInstallationTarget> targets, {
-    String? toVersion,
+  Future<void> updatePackage(
+    InstalledSkill skill, {
+    required String toVersion,
   }) async {
     if (skill.provenance != LibraryProvenance.hub ||
         skill.packagePath.isEmpty ||
-        targets.isEmpty ||
-        toVersion == null ||
-        toVersion.isEmpty ||
-        targets.any(
+        skill.targets.isEmpty ||
+        toVersion.trim().isEmpty ||
+        skill.targets.any(
           (target) =>
               target.version.isEmpty ||
               (target.scope == InstallationScope.project &&
                   target.projectRoot.isEmpty),
         )) {
       throw const SkillsException(
-        'Repository updates require managed targets and an explicit immutable candidate.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
-    final repository = skill.packagePath;
-    try {
-      final items = <UpdatePlanItem>[];
-      final changes = <WorkspaceManifestChange>[];
-      final grouped = <String, List<SkillInstallationTarget>>{};
-      for (final target in targets) {
-        final key = '${target.scope.name}\u0000${target.projectRoot}';
-        grouped.putIfAbsent(key, () => []).add(target);
-      }
-      for (final group in grouped.values) {
-        final representative = group.first;
-        if (group.any((target) => target.version != representative.version)) {
-          throw const FormatException();
-        }
-        for (final installed in group) {
-          items.add(
-            UpdatePlanItem(
-              target: InstallationPlanTarget(
-                scope: installed.scope,
-                projectRoot: installed.projectRoot,
-                agent: installed.agent,
-                path: installed.path,
-              ),
-              name: skill.name,
-              packagePath: skill.packagePath,
-              sourceRef: repository,
-              fromVersion: installed.version,
-              toVersion: toVersion,
-              action: UpdatePlanAction.update,
-              workspaceManifestChange:
-                  installed.scope == InstallationScope.project,
-            ),
-          );
-        }
-        if (representative.scope == InstallationScope.project) {
-          changes.add(
-            WorkspaceManifestChange(
-              projectRoot: representative.projectRoot,
-              path: p.join(representative.projectRoot, 'skills.yaml'),
-              skill: skill.name,
-              fromVersion: representative.version,
-              toVersion: toVersion,
-            ),
-          );
-        }
-      }
-      return UpdatePlan(
-        targets: List.unmodifiable(items),
-        workspaceManifestChanges: List.unmodifiable(changes),
-        summary: UpdatePlanSummary(
-          update: items.length,
-          current: 0,
-          pinned: 0,
-          failed: 0,
-        ),
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'Installed targets disagree on their current Package version.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
-  }
-
-  @override
-  Future<UpdateExecution> executeUpdate(
-    UpdatePlan plan, {
-    void Function(UpdateTargetProgress progress)? onProgress,
-  }) async {
-    if (plan.targets.isEmpty ||
-        plan.targets.any((item) => item.action != UpdatePlanAction.update)) {
-      throw const SkillsException(
-        'Update execution requires explicit updateable targets.',
+        'Package update requires managed scopes and an explicit immutable candidate.',
         kind: SkillsFailureKind.validation,
       );
     }
     await _ensureHubOrigin();
-    final grouped = <String, List<UpdatePlanItem>>{};
-    for (final item in plan.targets) {
-      final key =
-          '${item.packagePath}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
-      grouped.putIfAbsent(key, () => []).add(item);
+    final scopes = <String, SkillInstallationTarget>{};
+    for (final target in skill.targets) {
+      if (target.version == toVersion) continue;
+      scopes['${target.scope.name}\u0000${target.projectRoot}'] = target;
     }
-    final results = <UpdateTargetResult>[];
-    var sequence = 1;
+    if (scopes.isEmpty) return;
+    late CommandResult command;
     try {
-      for (final group in grouped.values) {
-        final representative = group.first;
-        for (final item in group) {
-          onProgress?.call(
-            UpdateTargetProgress(
-              sequence: sequence++,
-              target: item.target,
-              name: item.name,
-              packagePath: item.packagePath,
-              fromVersion: item.fromVersion,
-              toVersion: item.toVersion,
-              state: InstallationProgressState.started,
-            ),
-          );
-        }
-        if (group.any(
-          (item) =>
-              item.packagePath != representative.packagePath ||
-              item.name != representative.name ||
-              item.fromVersion != representative.fromVersion ||
-              item.toVersion != representative.toVersion,
-        )) {
-          throw const FormatException();
-        }
-        final repository = representative.packagePath;
-        final command = await _runCli([
+      for (final target in scopes.values) {
+        command = await _runCli([
           'update',
-          '$repository@${representative.toVersion}',
-          ..._repositoryUpdateScopeArguments(
-            representative.target.scope,
-            representative.target.projectRoot,
-          ),
+          '${skill.packagePath}@$toVersion',
+          ..._packageUpdateScopeArguments(target.scope, target.projectRoot),
           '--yes',
           '--output',
           'json',
@@ -166,47 +60,25 @@ mixin _RealSkillsGatewayUpdates
           command.output.stdout,
           phase: 'package-update',
         );
-        if (raw['packagePath'] != repository ||
-            raw['fromVersion'] != representative.fromVersion ||
-            raw['toVersion'] != representative.toVersion) {
+        final expectedScope = target.scope.name;
+        final expectedProjectRoot = target.scope == InstallationScope.project
+            ? target.projectRoot
+            : '';
+        if (raw['packagePath'] != skill.packagePath ||
+            raw['toVersion'] != toVersion ||
+            raw['scope'] != expectedScope ||
+            (raw['projectRoot'] ?? '') != expectedProjectRoot) {
           throw const FormatException();
         }
-        for (final item in group) {
-          final result = UpdateTargetResult(
-            target: item.target,
-            name: item.name,
-            packagePath: item.packagePath,
-            fromVersion: item.fromVersion,
-            toVersion: item.toVersion,
-            outcome: UpdateTargetOutcome.succeeded,
-          );
-          results.add(result);
-          onProgress?.call(
-            UpdateTargetProgress(
-              sequence: sequence++,
-              target: item.target,
-              name: item.name,
-              packagePath: item.packagePath,
-              fromVersion: item.fromVersion,
-              toVersion: item.toVersion,
-              state: InstallationProgressState.finished,
-              result: result,
-            ),
-          );
-        }
       }
-      return UpdateExecution(
-        results: List.unmodifiable(results),
-        summary: UpdateExecutionSummary(
-          succeeded: results.length,
-          skipped: 0,
-          failed: 0,
-        ),
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'The SkillsGo CLI returned invalid Update Result NDJSON.',
-        kind: SkillsFailureKind.invalidResponse,
+    } on Object catch (error, stackTrace) {
+      if (error is! FormatException && error is! TypeError) rethrow;
+      throw _invalidCliResponse(
+        'update_package',
+        'The SkillsGo CLI returned invalid Package Update JSON.',
+        command,
+        error,
+        stackTrace,
       );
     }
   }

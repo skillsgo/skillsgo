@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset and Library refresh state, Mermaid gallery navigation, and shared setting controls.
- * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, and the final Mermaid gallery entry.
+ * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset, Library refresh and App diagnostic-log state, Mermaid gallery navigation, and shared setting controls.
+ * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
  * [POS]: Serves as the general section composition of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -127,6 +127,12 @@ extension _SettingsSections on _SettingsScreenState {
         color: Theme.of(context).colorScheme.outlineVariant,
       ),
       const SizedBox(height: 24),
+      _diagnosticLogSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
       _mermaidGallerySettings(),
     ],
   );
@@ -213,6 +219,94 @@ extension _SettingsSections on _SettingsScreenState {
       refreshingLibrary = false;
       libraryRefreshSucceeded = !failed;
     });
+  }
+
+  Widget _diagnosticLogSettings() {
+    final info = diagnosticLogInfo;
+    final size = info == null ? '—' : _formatBytes(info.totalBytes);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _settingsHeading(
+          context.l10n.diagnosticLogsTitle,
+          context.l10n.diagnosticLogsDescription(size),
+        ),
+        const SizedBox(height: 18),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SkillsButton.outline(
+              key: const Key('view-live-diagnostic-logs'),
+              enabled: !managingDiagnosticLogs,
+              onPressed: _openDiagnosticLogViewer,
+              child: Text(context.l10n.viewLiveLogs),
+            ),
+            SkillsButton.outline(
+              key: const Key('open-diagnostic-logs'),
+              enabled: !managingDiagnosticLogs,
+              onPressed: () => unawaited(_openDiagnosticLogs()),
+              child: Text(context.l10n.openLogFolder),
+            ),
+            SkillsButton.outline(
+              key: const Key('export-diagnostic-logs'),
+              enabled: !managingDiagnosticLogs,
+              onPressed: () => unawaited(_exportDiagnosticLogs()),
+              child: Text(context.l10n.exportLogs),
+            ),
+            SkillsButton.outline(
+              key: const Key('clear-diagnostic-logs'),
+              enabled: !managingDiagnosticLogs && (info?.totalBytes ?? 0) > 0,
+              onPressed: () => unawaited(_clearDiagnosticLogs()),
+              child: Text(context.l10n.clearLogs),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openDiagnosticLogs() async {
+    await _manageDiagnosticLogs(widget.gateway.openDiagnosticLogDirectory);
+  }
+
+  void _openDiagnosticLogViewer() {
+    updateState(() => showingDiagnosticLogs = true);
+  }
+
+  Future<void> _exportDiagnosticLogs() async {
+    await _manageDiagnosticLogs(() async {
+      final exported = await widget.gateway.exportDiagnosticLogs();
+      if (mounted && exported) notice = context.l10n.logsExported;
+    });
+  }
+
+  Future<void> _clearDiagnosticLogs() async {
+    await _manageDiagnosticLogs(() async {
+      await widget.gateway.clearDiagnosticLogs();
+      if (mounted) notice = context.l10n.logsCleared;
+    });
+  }
+
+  Future<void> _manageDiagnosticLogs(Future<void> Function() action) async {
+    if (managingDiagnosticLogs) return;
+    updateState(() => managingDiagnosticLogs = true);
+    try {
+      await action();
+      final info = await widget.gateway.loadDiagnosticLogInfo();
+      if (mounted) updateState(() => diagnosticLogInfo = info);
+    } on Object {
+      if (mounted) updateState(() => notice = context.l10n.logActionFailed);
+    } finally {
+      if (mounted) updateState(() => managingDiagnosticLogs = false);
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    final kib = bytes / 1024;
+    if (kib < 1024) return '${kib.toStringAsFixed(1)} KB';
+    return '${(kib / 1024).toStringAsFixed(1)} MB';
   }
 
   Widget _mermaidGallerySettings() => Column(

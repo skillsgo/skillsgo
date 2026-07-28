@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, local Library refresh, and native/Beautiful Mermaid gallery behavior.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and native/Beautiful Mermaid gallery behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,6 +22,86 @@ import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  testWidgets('Advanced Settings shows and filters live readable logs', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 820));
+    final gateway = FakeSkillsGateway();
+    gateway.emitDiagnosticLog(
+      DiagnosticLogEntry(
+        time: DateTime(2026, 7, 28, 11, 30),
+        level: DiagnosticLogLevel.info,
+        category: 'app.lifecycle',
+        event: 'launch_ready',
+        formatted: '2026-07-28 11:30:00.000 INFO  [app.lifecycle] launch_ready',
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    final liveButton = find.byKey(const Key('view-live-diagnostic-logs'));
+    await tester.ensureVisible(liveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(liveButton);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('launch_ready'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('diagnostic-log-list')),
+        matching: find.byType(SelectionArea),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('diagnostic-log-list')),
+        matching: find.byType(SelectableText),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('pause-diagnostic-logs')));
+    gateway.emitDiagnosticLog(
+      DiagnosticLogEntry(
+        time: DateTime(2026, 7, 28, 11, 31),
+        level: DiagnosticLogLevel.error,
+        category: 'gateway.cli',
+        event: 'invocation_failed',
+        formatted:
+            '2026-07-28 11:31:00.000 ERROR [gateway.cli] '
+            'invocation_failed | fatal',
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('invocation_failed'), findsOneWidget);
+    expect(find.text('Resume'), findsOneWidget);
+    final visibleLogs = tester
+        .widgetList<SelectableText>(
+          find.descendant(
+            of: find.byKey(const Key('diagnostic-log-list')),
+            matching: find.byType(SelectableText),
+          ),
+        )
+        .map((text) => text.data ?? '')
+        .toList();
+    expect(visibleLogs.first, contains('invocation_failed'));
+
+    await tester.enterText(
+      find.byKey(const Key('diagnostic-log-search')),
+      'fatal',
+    );
+    await tester.pump();
+    expect(find.textContaining('launch_ready'), findsNothing);
+    expect(find.textContaining('invocation_failed'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('clear-diagnostic-log-viewer')));
+    await tester.pump();
+    expect(find.text('No matching logs yet.'), findsOneWidget);
+  });
+
   testWidgets('leaderboard tabs change selection without moving layout', (
     tester,
   ) async {

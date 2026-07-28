@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies exact All/User/Project adoption counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,20 +19,20 @@ import 'support/journey_runtime.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  registerTakeoverManagementJourney();
+  registerAdoptionManagementJourney();
 }
 
-void registerTakeoverManagementJourney() {
+void registerAdoptionManagementJourney() {
   testWidgets(
     'manages existing skills by location and refreshes exact counts',
     (tester) async {
-      final runtime = await JourneyRuntime.start('takeover_management');
+      final runtime = await JourneyRuntime.start('adoption_management');
       addTearDown(runtime.close);
       final sandbox = runtime.sandbox.path;
       final globalTarget = Directory(
         '$sandbox/test-agent/skills/user-existing',
       );
-      final projectRoot = Directory('$sandbox/takeover-project');
+      final projectRoot = Directory('$sandbox/adoption-project');
       final projectTarget = Directory(
         '${projectRoot.path}/.test-agent/skills/project-existing',
       );
@@ -57,13 +57,13 @@ void registerTakeoverManagementJourney() {
 
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
-      await preferences.setBool('batch_takeover_prompt_seen_v1', true);
+      await preferences.setBool('batch_adoption_prompt_seen_v1', true);
       await preferences.setString(
         'added_projects_v1',
         jsonEncode([
           {
-            'id': 'takeover-project',
-            'name': 'takeover-project',
+            'id': 'adoption-project',
+            'name': 'adoption-project',
             'path': projectRoot.path,
           },
         ]),
@@ -82,13 +82,13 @@ void registerTakeoverManagementJourney() {
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
 
-      await _pumpUntilTakeoverCount(tester, 2);
-      await _pumpUntil(tester, _projectRailCount('takeover-project', 1));
-      expect(_projectRailCount('takeover-project', 1), findsOneWidget);
+      await _pumpUntilAdoptionCount(tester, 2);
+      await _pumpUntil(tester, _projectRailCount('adoption-project', 1));
+      expect(_projectRailCount('adoption-project', 1), findsOneWidget);
 
-      await tester.tap(_railButton(find.text('takeover-project')));
-      await _pumpUntilTakeoverCount(tester, 1);
-      await _executeTakeover(tester, takenOver: 1, skipped: 0);
+      await tester.tap(_railButton(find.text('adoption-project')));
+      await _pumpUntilAdoptionCount(tester, 1);
+      await _executeAdoption(tester, adopted: 1, skipped: 0);
       expect(File('${projectRoot.path}/skills.yaml').existsSync(), isTrue);
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
@@ -104,13 +104,13 @@ void registerTakeoverManagementJourney() {
         projectSkillBytes,
       );
       expect(projectTarget.existsSync(), isFalse);
-      await _pumpUntil(tester, _projectRailCount('takeover-project', 0));
-      expect(_projectRailCount('takeover-project', 0), findsOneWidget);
+      await _pumpUntil(tester, _projectRailCount('adoption-project', 0));
+      expect(_projectRailCount('adoption-project', 0), findsOneWidget);
 
       await tester.tap(_railButton(_globalRailLabel()));
-      await _pumpUntilTakeoverCount(tester, 1);
-      await _executeTakeover(tester, takenOver: 1, skipped: 0);
-      await _pumpUntilTakeoverCount(tester, 0);
+      await _pumpUntilAdoptionCount(tester, 1);
+      await _executeAdoption(tester, adopted: 1, skipped: 0);
+      await _pumpUntilAdoptionCount(tester, 0);
       expect(File('$sandbox/home/.agents/skills.yaml').existsSync(), isTrue);
       expect(
         File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
@@ -125,9 +125,9 @@ void registerTakeoverManagementJourney() {
       expect(globalTarget.existsSync(), isFalse);
 
       await tester.tap(_railButton(_allSkillsRailLabel()));
-      await _pumpUntilTakeoverCount(tester, 0);
-      expect(_takeoverCount(0), findsOneWidget);
-      expect(_projectRailCount('takeover-project', 0), findsOneWidget);
+      await _pumpUntilAdoptionCount(tester, 0);
+      expect(_adoptionCount(0), findsOneWidget);
+      expect(_projectRailCount('adoption-project', 0), findsOneWidget);
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -148,8 +148,8 @@ void _writeJson(File file, Object value) {
   file.writeAsStringSync(jsonEncode(value));
 }
 
-Finder _takeoverCount(int count) => find.descendant(
-  of: find.byKey(const Key('library-batch-takeover')),
+Finder _adoptionCount(int count) => find.descendant(
+  of: find.byKey(const Key('library-batch-adoption')),
   matching: find.byWidgetPredicate(
     (widget) =>
         widget is Text &&
@@ -178,51 +178,51 @@ Finder _allSkillsRailLabel() => find.byWidgetPredicate(
 Finder _railButton(Finder label) =>
     find.ancestor(of: label, matching: find.byType(TextButton)).first;
 
-Future<void> _executeTakeover(
+Future<void> _executeAdoption(
   WidgetTester tester, {
-  required int takenOver,
+  required int adopted,
   required int skipped,
 }) async {
-  final takeoverAction = find.descendant(
-    of: find.byKey(const Key('library-batch-takeover')),
+  final adoptionAction = find.descendant(
+    of: find.byKey(const Key('library-batch-adoption')),
     matching: find.byType(OutlinedButton),
   );
-  await _pumpUntil(tester, takeoverAction);
-  await tester.ensureVisible(takeoverAction);
-  await tester.tap(takeoverAction);
-  await _pumpUntil(tester, find.byKey(const Key('batch-takeover-dialog')));
+  await _pumpUntil(tester, adoptionAction);
+  await tester.ensureVisible(adoptionAction);
+  await tester.tap(adoptionAction);
+  await _pumpUntil(tester, find.byKey(const Key('batch-adoption-dialog')));
   await tester.pumpAndSettle();
-  expect(find.byKey(const Key('batch-takeover-tetris-story')), findsOneWidget);
-  final confirm = find.byKey(const Key('batch-takeover-confirm'));
+  expect(find.byKey(const Key('batch-adoption-tetris-story')), findsOneWidget);
+  final confirm = find.byKey(const Key('batch-adoption-confirm'));
   expect(confirm, findsOneWidget);
   await tester.tap(confirm);
-  final completed = find.byKey(const Key('batch-takeover-board-complete'));
+  final completed = find.byKey(const Key('batch-adoption-board-complete'));
   await _pumpUntil(tester, completed);
   expect(
     tester.widget<Semantics>(completed).properties.label,
     anyOf(
-      '$takenOver skills added to management, $skipped skipped.',
-      '已纳入管理 $takenOver 个技能，跳过 $skipped 个。',
+      '$adopted skills added to management, $skipped skipped.',
+      '已纳入管理 $adopted 个技能，跳过 $skipped 个。',
     ),
   );
-  final close = find.byKey(const Key('batch-takeover-close'));
+  final close = find.byKey(const Key('batch-adoption-close'));
   await tester.tap(close);
   await tester.pumpAndSettle();
-  expect(find.byKey(const Key('batch-takeover-modal')), findsNothing);
+  expect(find.byKey(const Key('batch-adoption-modal')), findsNothing);
 }
 
-Future<void> _pumpUntilTakeoverCount(WidgetTester tester, int count) =>
-    _pumpUntil(tester, _takeoverCount(count));
+Future<void> _pumpUntilAdoptionCount(WidgetTester tester, int count) =>
+    _pumpUntil(tester, _adoptionCount(count));
 
 Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
   final deadline = DateTime.now().add(const Duration(seconds: 45));
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
-  final takeoverLabels = tester
+  final adoptionLabels = tester
       .widgetList<Text>(
         find.descendant(
-          of: find.byKey(const Key('library-batch-takeover')),
+          of: find.byKey(const Key('library-batch-adoption')),
           matching: find.byType(Text),
         ),
       )
@@ -231,6 +231,6 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
   expect(
     finder,
     findsWidgets,
-    reason: 'Rendered takeover labels: $takeoverLabels',
+    reason: 'Rendered adoption labels: $adoptionLabels',
   );
 }

@@ -1,12 +1,61 @@
 /*
  * [INPUT]: Uses shared controls and state from FakeSkillsGatewayCore plus domain gateway models.
- * [OUTPUT]: Provides installation planning/execution plus Batch Takeover plan/scope execution behavior.
+ * [OUTPUT]: Provides installation execution and reviewed External adoption behavior.
  * [POS]: Serves as one capability facet of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../fake_skills_gateway.dart';
 
 mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
+  @override
+  Future<BatchAdoptionResult> adopt(List<AdoptionRequestItem> items) async {
+    repositoryInstallCalls++;
+    adoptionRequests.add(List.unmodifiable(items));
+    for (final item in items) {
+      installCalls++;
+      installationSkillHistory.add(
+        SkillSummary(
+          packagePath: item.packagePath,
+          installName: item.name,
+          name: item.name,
+          path: item.skillPath,
+          latestVersion: item.version,
+        ),
+      );
+      installationVersionHistory.add(item.version);
+      executionSelectionHistory.add([
+        for (final target in item.targets)
+          InstallationTargetSelection(
+            scope: target.scope,
+            projectRoot: target.projectRoot,
+            agent: target.agent,
+          ),
+      ]);
+    }
+    var failed = false;
+    var reason = '';
+    if (installCompleter != null) {
+      final command = await installCompleter!.future;
+      failed = !command.succeeded;
+      reason = command.output.stderr;
+    }
+    return BatchAdoptionResult(
+      adopted: failed ? 0 : items.length,
+      failed: failed ? items.length : 0,
+      items: [
+        for (final item in items)
+          BatchAdoptionItemResult(
+            name: item.name,
+            skillId: '${item.packagePath}:${item.skillPath}',
+            status: failed
+                ? BatchAdoptionItemStatus.failed
+                : BatchAdoptionItemStatus.adopted,
+            reason: reason,
+          ),
+      ],
+    );
+  }
+
   @override
   Future<List<InstallationExecution>> installPackageTargets(
     List<SkillSummary> skills,
@@ -37,6 +86,8 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   }) async {
     if (installPlanErrors.isNotEmpty) throw installPlanErrors.removeAt(0);
     installCalls++;
+    installationSkillHistory.add(skill);
+    installationVersionHistory.add(immutableVersion);
     lastPlanSelections = List.unmodifiable(selections);
     executionSelectionHistory.add(List.unmodifiable(selections));
 
@@ -132,26 +183,5 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
         failed: failed,
       ),
     );
-  }
-
-  @override
-  Future<BatchTakeoverPlan> planBatchTakeover({
-    List<String> projectRoots = const [],
-  }) async {
-    takeoverPlanRequests.add(List.unmodifiable(projectRoots));
-    if (takeoverPlanCompleter != null) {
-      return takeoverPlanCompleter!.future;
-    }
-    return takeoverPlan;
-  }
-
-  @override
-  Future<BatchTakeoverResult> executeBatchTakeover(
-    BatchTakeoverPlan plan,
-    BatchTakeoverScope scope,
-  ) async {
-    takeoverRequests.add((plan: plan, scope: scope));
-    if (takeoverCompleter != null) return takeoverCompleter!.future;
-    return takeoverResult;
   }
 }

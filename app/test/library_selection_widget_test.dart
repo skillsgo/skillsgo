@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Unified Library grouping, degraded Hub behavior, External detail diagnostics, and selection motion.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies Unified Library grouping, exact location target projection, degraded Hub behavior without decorative-animation stalls, menu-scoped selection reset, External detail diagnostics, and selection motion.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,16 +11,163 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/ui/brand.dart';
+import 'package:skillsgo/ui/native_components.dart';
 import 'package:skillsgo/ui/subscription_segmented_switch.dart';
 
 import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  testWidgets('switching the Library location clears selected Skills', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    const project = AddedProject(
+      id: 'alpha',
+      name: 'Project Alpha',
+      path: '/work/alpha',
+      accessState: ProjectAccessState.accessible,
+    );
+    const entry = InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills:demo',
+      name: 'demo',
+      packagePath: 'github.com/example/skills',
+      path: '/Users/test/.codex/skills/demo',
+      agents: ['codex'],
+      targetCount: 2,
+      projects: ['/work/alpha'],
+      versions: ['v1'],
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.global,
+          path: '/Users/test/.codex/skills/demo',
+          version: 'v1',
+        ),
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.project,
+          projectRoot: '/work/alpha',
+          path: '/work/alpha/.agents/skills/demo',
+          version: 'v1',
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          installed: false,
+          addedProjects: const [project],
+          libraryEntries: const [entry],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    const selectionKey = ValueKey(
+      'library-select-hub:github.com/example/skills:demo',
+    );
+    await tester.tap(find.byKey(selectionKey));
+    await tester.pump();
+    expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
+
+    await tester.tap(libraryLocation('Project Alpha'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectionKey)).value,
+      isFalse,
+    );
+    expect(find.byKey(const Key('library-selection-bar')), findsNothing);
+  });
+
+  testWidgets('Project selection removes only the projected Project target', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    const project = AddedProject(
+      id: 'alpha',
+      name: 'Project Alpha',
+      path: '/work/alpha',
+      accessState: ProjectAccessState.accessible,
+    );
+    const entry = InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills:demo',
+      name: 'demo',
+      packagePath: 'github.com/example/skills',
+      path: '/Users/test/.codex/skills/demo',
+      agents: ['codex'],
+      targetCount: 2,
+      projects: ['/work/alpha'],
+      versions: ['v1'],
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.global,
+          path: '/Users/test/.codex/skills/demo',
+          version: 'v1',
+        ),
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.project,
+          projectRoot: '/work/alpha',
+          path: '/work/alpha/.agents/skills/demo',
+          version: 'v1',
+        ),
+      ],
+    );
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      addedProjects: const [project],
+      libraryEntries: const [entry],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(libraryLocation('Project Alpha'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills:demo'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+
+    expect(gateway.managementTargetHistory, hasLength(1));
+    expect(gateway.managementTargetHistory.single.keys, hasLength(1));
+    expect(
+      gateway.managementTargetHistory.single.keys.single,
+      contains('/work/alpha/.agents/skills/demo'),
+    );
+    expect(gateway.libraryEntries, hasLength(1));
+    expect(
+      gateway.libraryEntries!.single.targets.single.scope,
+      InstallationScope.global,
+    );
+  });
+
   testWidgets(
     'Hub outage never empties the selected Project or local Agent views',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       const project = AddedProject(
         id: 'alpha',
         name: 'Project Alpha',
@@ -81,20 +228,20 @@ void main() {
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(libraryLocation('Project Alpha'));
       await tester.pumpAndSettle();
 
       expect(find.text('Can’t connect to SkillsGo'), findsOneWidget);
       expect(find.text('hub-demo'), findsOneWidget);
 
-      await tester.tap(libraryLocation('All Skills'));
-      await tester.pumpAndSettle();
+      await tester.tap(libraryLocation('Global Skills'));
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Codex'));
       await tester.pumpAndSettle();
-      expect(find.text('hub-demo'), findsOneWidget);
+      expect(find.text('hub-demo'), findsNothing);
       expect(find.text('private-external'), findsOneWidget);
     },
   );
@@ -191,50 +338,6 @@ void main() {
       expect(find.byTooltip('Claude Code'), findsNothing);
       expect(libraryLocation('Project Alpha'), findsOneWidget);
       expect(libraryLocation('Project Beta'), findsOneWidget);
-      expect(
-        find.byKey(const Key('library-scope-project-alpha')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('library-scope-project-beta')),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .getTopLeft(find.byKey(const Key('library-scope-project-alpha')))
-            .dx,
-        greaterThan(tester.getTopLeft(find.text('demo').first).dx),
-      );
-      final projectHover = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
-      );
-      await projectHover.addPointer(
-        location: tester.getCenter(
-          find.byKey(const Key('library-scope-project-alpha')),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('/work/alpha'), findsOneWidget);
-      expect(find.text('Claude Code'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('copy-project-path-alpha')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-      expect(
-        find.byKey(const Key('copy-project-path-copied-alpha')),
-        findsOneWidget,
-      );
-      await projectHover.moveTo(tester.getCenter(find.text('Claude Code')));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('/work/alpha'), findsOneWidget);
-      expect(find.text('Claude Code'), findsOneWidget);
-      await projectHover.moveTo(const Offset(10, 10));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 240));
-      await tester.pumpAndSettle();
-      expect(find.text('/work/alpha'), findsNothing);
-      expect(find.text('Claude Code'), findsNothing);
-      await projectHover.removePointer();
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();
       expect(find.text('Cursor'), findsOneWidget);
@@ -244,6 +347,52 @@ void main() {
       await tester.tap(libraryLocation('Project Alpha'));
       await tester.pumpAndSettle();
       expect(find.text('Version divergence'), findsNothing);
+      expect(find.byTooltip('Claude Code'), findsOneWidget);
+      expect(find.byTooltip('Codex'), findsNothing);
+      expect(
+        find.byKey(const Key('library-scope-project-agents-alpha')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const Key(
+            'library-scope-global-agents-hub:github.com/example/skills:demo',
+          ),
+        ),
+        findsNothing,
+      );
+      final projectHover = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
+      await projectHover.addPointer(
+        location: tester.getCenter(
+          find.byKey(const Key('library-scope-project-agents-alpha')),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('/work/alpha'), findsOneWidget);
+      expect(find.text('Claude Code'), findsWidgets);
+      await tester.tap(find.byKey(const Key('copy-project-path-alpha')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(
+        find.byKey(const Key('copy-project-path-copied-alpha')),
+        findsOneWidget,
+      );
+      await projectHover.moveTo(
+        tester.getCenter(find.text('Claude Code').last),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('/work/alpha'), findsOneWidget);
+      expect(find.text('Claude Code'), findsWidgets);
+      await projectHover.moveTo(const Offset(10, 10));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 240));
+      await tester.pumpAndSettle();
+      expect(find.text('/work/alpha'), findsNothing);
+      expect(find.text('Claude Code'), findsNothing);
+      await projectHover.removePointer();
       await tester.tap(find.text('demo').first);
       await tester.pump();
       final openingDetail = tester.widget<SlideTransition>(
@@ -256,12 +405,9 @@ void main() {
       await tester.tap(
         find.byKey(const Key('installation-scope-toggle-project:/work/alpha')),
       );
-      await tester.tap(
-        find.byKey(const Key('installation-scope-toggle-global')),
-      );
       await tester.pumpAndSettle();
       expect(find.text('/work/alpha/.claude/skills/demo'), findsWidgets);
-      expect(find.text('/Users/test/.codex/skills/demo'), findsWidgets);
+      expect(find.text('/Users/test/.codex/skills/demo'), findsNothing);
       expect(
         find.byKey(const Key('installed-detail-compact-identity')),
         findsNothing,

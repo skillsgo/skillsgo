@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared RealSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
- * [OUTPUT]: Provides centralized machine-document envelope validation, private strict CLI decoders, argument encoders, and schema invariants.
+ * [OUTPUT]: Provides centralized machine-document envelope validation, minimal Package-install receipt validation, private strict CLI decoders, argument encoders, and schema invariants.
  * [POS]: Serves as the machine-protocol codec implementation inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -134,68 +134,15 @@ bool _samePlanTarget(
     left.agent == right.agent &&
     left.path == right.path;
 
-List<InstallationTargetResult> _moduleInstallationResults(
+void _validatePackageInstallationReceipt(
   Object? value,
-  SkillSummary skill,
+  String packagePath,
   String immutableVersion,
-  List<InstallationTargetSelection> selections,
 ) {
   final raw = _machineDocument(value, phases: const ['package-install']);
-  if (raw['packagePath'] != skill.packagePath ||
-      raw['version'] != immutableVersion ||
-      raw['sum'] is! String ||
-      (raw['sum'] as String).isEmpty ||
-      raw['packageDir'] is! String ||
-      (raw['packageDir'] as String).isEmpty ||
-      raw['skills'] is! List ||
-      raw['agents'] is! List ||
-      raw['projections'] is! List ||
-      raw['workspace'] is! Map<String, dynamic>) {
+  if (raw['packagePath'] != packagePath || raw['version'] != immutableVersion) {
     throw const FormatException();
   }
-  final expectedMember = skill.installationSelector;
-  if (!_strictStringList(raw['skills']).contains(expectedMember) ||
-      !_sameStringSet(
-        _strictStringList(raw['agents']),
-        selections.map((selection) => selection.agent),
-      )) {
-    throw const FormatException();
-  }
-  final workspace = raw['workspace'] as Map<String, dynamic>;
-  if (workspace['manifest'] is! String ||
-      !(workspace['manifest'] as String).endsWith('skills.yaml') ||
-      workspace['lock'] is! String ||
-      !(workspace['lock'] as String).endsWith('skills-lock.yaml')) {
-    throw const FormatException();
-  }
-  final pathsByAgent = <String, String>{};
-  for (final rawProjection in raw['projections'] as List) {
-    if (rawProjection is! Map<String, dynamic> ||
-        rawProjection['path'] is! String ||
-        (rawProjection['path'] as String).isEmpty) {
-      throw const FormatException();
-    }
-    for (final agent in _strictStringList(rawProjection['agents'])) {
-      if (pathsByAgent.containsKey(agent)) throw const FormatException();
-      pathsByAgent[agent] = rawProjection['path'] as String;
-    }
-  }
-  return selections
-      .map((selection) {
-        final path = pathsByAgent[selection.agent];
-        if (path == null) throw const FormatException();
-        return InstallationTargetResult(
-          target: InstallationPlanTarget(
-            scope: selection.scope,
-            projectRoot: selection.projectRoot,
-            agent: selection.agent,
-            path: path,
-          ),
-          action: InstallationPlanAction.create,
-          outcome: InstallationTargetOutcome.succeeded,
-        );
-      })
-      .toList(growable: false);
 }
 
 TargetFailure? _targetFailure(Object? raw) {

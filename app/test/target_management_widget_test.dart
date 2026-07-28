@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library selection, exact External removal, and modified-target safety behavior.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies Library selection, inline-confirmed multi-Skill removal without modal or decorative-animation stalls, and modified-target safety behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -112,10 +112,11 @@ void main() {
     expect(find.text('1 selected'), findsOneWidget);
   });
 
-  testWidgets('Target Management removes only the selected healthy target', (
-    tester,
-  ) async {
+  testWidgets('Remove confirms all selected Skills inline', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
         InstalledSkill(
@@ -143,6 +144,24 @@ void main() {
             ),
           ],
         ),
+        InstalledSkill(
+          inventoryKey: 'external:/Users/test/.codex/skills/tools',
+          name: 'tools',
+          packagePath: 'github.com/example/tools',
+          path: '/Users/test/.codex/skills/tools',
+          agents: ['codex'],
+          targetCount: 1,
+          versions: [],
+          provenance: LibraryProvenance.external,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/Users/test/.codex/skills/tools',
+              version: '',
+            ),
+          ],
+        ),
       ],
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
@@ -157,35 +176,79 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('library-manage-selected')));
-    await tester.pumpAndSettle();
-    expect(find.byType(SkillsDialog), findsOneWidget);
-    expect(find.text('0 of 2 targets selected'), findsOneWidget);
     await tester.tap(
-      find
-          .descendant(
-            of: find.byType(SkillsDialog),
-            matching: find.byType(SkillsCheckbox),
-          )
-          .first,
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/tools',
+        ),
+      ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('1 of 2 targets selected'), findsOneWidget);
-    await tester.tap(find.text('Apply selected actions'));
+    expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-selection-bar'))).dx,
+      closeTo(700, 1),
+    );
+    expect(find.text('Remove'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,
+      closeTo(tester.getCenter(find.text('Remove')).dy, .5),
+    );
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: false);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.text('Remove'), findsOneWidget);
+    expect(find.text('Remove now'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Remove')).dy,
+      lessThan(tester.getCenter(find.text('Remove now')).dy),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    await tester.pump();
+    expect(find.byKey(const Key('remove-targets-dialog')), findsNothing);
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.byKey(const Key('library-update-selected')), findsOneWidget);
+    expect(find.byKey(const Key('library-confirm-remove')), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,
+      closeTo(tester.getCenter(find.text('Remove now')).dy, .5),
+    );
+    await tester.tap(find.byKey(const Key('library-clear-selection')));
     await tester.pumpAndSettle();
-    expect(find.text('1 succeeded, 0 failed'), findsOneWidget);
-    await tester.tap(find.text('Close'));
+    expect(find.byKey(const Key('library-selection-bar')), findsNothing);
+    expect(gateway.managementTargetHistory, isEmpty);
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/demo',
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/tools',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
     await tester.pumpAndSettle();
 
     expect(gateway.managementTargetHistory, hasLength(1));
-    expect(gateway.managementTargetHistory.single, hasLength(1));
+    expect(gateway.managementTargetHistory.single, hasLength(3));
     expect(
-      gateway.managementTargetHistory.single.values.single,
-      TargetManagementAction.remove,
+      gateway.managementTargetHistory.single.values,
+      everyElement(TargetManagementAction.remove),
     );
-    expect(gateway.libraryEntries!.single.targets.single.agent, 'claude-code');
+    expect(gateway.libraryEntries, isEmpty);
   });
 
   testWidgets('unhealthy targets offer no automatic mutation', (tester) async {
@@ -230,7 +293,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('library-manage-selected')));
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
     await tester.pumpAndSettle();
 
     expect(find.text('Repair'), findsNothing);
@@ -274,7 +339,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('library-manage-selected')));
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
     await tester.pumpAndSettle();
     expect(find.text('Repair'), findsNothing);
     expect(gateway.managementTargetHistory, isEmpty);

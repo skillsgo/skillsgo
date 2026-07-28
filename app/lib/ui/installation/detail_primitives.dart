@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, domain detail models, InstallOperationController, localized status copy, and SkillsGo presentation primitives.
- * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Package enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero with inline context actions, and detail-page layout.
+ * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Package enumeration, one direct presentation-facing Installation submission seam, completion feedback, Skill hero with inline context actions, and detail-page layout.
  * [POS]: Serves as the reusable detail and Installation Request presentation primitives.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -168,22 +168,36 @@ Future<InstallLocationSubmission> submitInstallationRequest(
           selections: request.choice.selections,
           riskPolicy: request.riskPolicy,
         );
-  final outcome = await operation.submit(operationRequest);
-  if (outcome.succeeded) return const InstallLocationSubmission.success();
-  if (!context.mounted) {
+  try {
+    final outcome = await operation.submit(operationRequest);
+    if (outcome.succeeded) return const InstallLocationSubmission.success();
+    if (!context.mounted) {
+      return InstallLocationSubmission.failure(
+        title: failureTitle,
+        message: fallbackMessage,
+      );
+    }
+    final copy = failureCopy(
+      context,
+      outcome.error ?? StateError('Installation failed.'),
+    );
     return InstallLocationSubmission.failure(
       title: failureTitle,
-      message: fallbackMessage,
+      message: copy.message,
+    );
+  } on Object catch (error) {
+    if (!context.mounted) {
+      return InstallLocationSubmission.failure(
+        title: failureTitle,
+        message: fallbackMessage,
+      );
+    }
+    final copy = failureCopy(context, error);
+    return InstallLocationSubmission.failure(
+      title: failureTitle,
+      message: copy.message,
     );
   }
-  final copy = failureCopy(
-    context,
-    outcome.error ?? StateError('Installation failed.'),
-  );
-  return InstallLocationSubmission.failure(
-    title: failureTitle,
-    message: copy.message,
-  );
 }
 
 class _PlanError extends StatelessWidget {
@@ -261,7 +275,7 @@ class SkillDetailHero extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      RepositoryAvatar(
+      PackageAvatar(
         key: avatarKey,
         source: source,
         imageUrl: imageUrl,

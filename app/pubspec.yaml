@@ -1,4 +1,4 @@
-# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, Markdown, native Mermaid/YAML rendering, generated Beautiful Mermaid SVG previews, localization, persistence, natural ordering, process-backed integration, and platform services.
+# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, structured logging, Markdown, native Mermaid/YAML rendering, generated Beautiful Mermaid SVG previews, localization, persistence, natural ordering, process-backed integration, and platform services.
 # [OUTPUT]: Defines the skillsgo package identity, build version, dependency graph, bundled assets, and Flutter generation settings.
 # [POS]: Serves as the F2 build manifest and package boundary for the SkillsGo desktop App workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -40,6 +40,7 @@ dependencies:
   collection: ^1.19.1
   intl: ^0.20.2
   yaml: ^3.1.3
+  logging: ^1.3.0
 
   macos_window_utils: ^1.9.1
   window_manager: ^0.5.2
@@ -95,7 +96,7 @@ flutter:
     - assets/language-flags/
 
   fonts:
-    - family: TakeoverPixel
+    - family: AdoptionPixel
       fonts:
         - asset: assets/fonts/Silkscreen-Regular.ttf
 

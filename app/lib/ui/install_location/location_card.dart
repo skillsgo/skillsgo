@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Agent catalogs, Added Projects, exact existing targets, project icon resolution, install actions, target selections, and submission feedback.
- * [OUTPUT]: Provides the stateful location, project, Agent, Package-action loading gate, duplicate-target exclusion, validation, and submission card.
+ * [OUTPUT]: Provides the stateful location, project, Agent, Package-action loading gate, uniform reinstall-capable target selection, validation, and a stably identified Install action.
  * [POS]: Serves as the selection and submission owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ part of '../install_location_popover.dart';
 
 class _InstallLocationCard extends StatefulWidget {
   const _InstallLocationCard({
+    required this.summary,
     required this.gateway,
     required this.catalog,
     required this.detail,
@@ -17,9 +18,9 @@ class _InstallLocationCard extends StatefulWidget {
     required this.initialProjects,
     required this.onProjectAdded,
     required this.onSubmit,
-    this.existingTargets = const [],
   });
 
+  final SkillSummary summary;
   final SkillsGateway gateway;
   final AgentCatalog catalog;
   final SkillDetail detail;
@@ -29,7 +30,6 @@ class _InstallLocationCard extends StatefulWidget {
   final List<AddedProject> initialProjects;
   final ValueChanged<AddedProject> onProjectAdded;
   final ValueChanged<InstallLocationChoice> onSubmit;
-  final List<SkillInstallationTarget> existingTargets;
 
   @override
   State<_InstallLocationCard> createState() => _InstallLocationCardState();
@@ -46,18 +46,6 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   bool moduleSkillsLoading = false;
 
   List<AgentStatus> get agents => widget.catalog.installed;
-
-  bool _alreadyInstalled(
-    InstallationScope targetScope,
-    String agent, {
-    String projectRoot = '',
-  }) => widget.existingTargets.any(
-    (target) =>
-        target.scope == targetScope &&
-        target.agent == agent &&
-        (targetScope == InstallationScope.global ||
-            target.projectRoot == projectRoot),
-  );
 
   @override
   void initState() {
@@ -80,8 +68,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
           .where(
             (agent) =>
                 agent.installed &&
-                agent.supportedScopes.contains(InstallationScope.global) &&
-                !_alreadyInstalled(InstallationScope.global, agent.id),
+                agent.supportedScopes.contains(InstallationScope.global),
           )
           .map((agent) => agent.id),
     );
@@ -118,12 +105,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
       for (final project in projects)
         if (selectedProjects.contains(project.id))
           for (final agent in agents)
-            if (selectedProjectAgents.contains(agent.id) &&
-                !_alreadyInstalled(
-                  InstallationScope.project,
-                  agent.id,
-                  projectRoot: project.path,
-                ))
+            if (selectedProjectAgents.contains(agent.id))
               InstallationTargetSelection(
                 scope: InstallationScope.project,
                 projectRoot: project.path,
@@ -288,10 +270,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
               ] else
                 const Spacer(),
               PrimaryCapsuleButton(
-                label:
-                    widget.preferredAction == InstallLocationAction.moduleSkills
-                    ? l10n.installAll
-                    : l10n.confirmInstall,
+                key: const ValueKey('install-location-submit'),
+                label: l10n.install,
                 height: 36,
                 horizontalPadding: 18,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w400),
@@ -343,10 +323,10 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     required TextStyle style,
   }) {
     if (moduleName == null) {
-      return l10n.installAllRepositorySkills(count);
+      return l10n.installAllPackageSkills(count);
     }
 
-    String labelFor(String name) => l10n.installRepositorySkills(name, count);
+    String labelFor(String name) => l10n.installPackageSkills(name, count);
     if (_textWidth(labelFor(moduleName), style) <= maxWidth) {
       return labelFor(moduleName);
     }
@@ -360,7 +340,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
       final label = labelFor(compact);
       if (_textWidth(label, style) <= maxWidth) return label;
     }
-    return l10n.installAllRepositorySkills(count);
+    return l10n.installAllPackageSkills(count);
   }
 
   double _textWidth(String value, TextStyle style) {
@@ -417,15 +397,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                         ? selectedGlobalAgents
                         : selectedProjectAgents)
                     .contains(agent.id),
-            enabled:
-                agent.supportedScopes.contains(targetScope) &&
-                !(targetScope == InstallationScope.global &&
-                    _alreadyInstalled(targetScope, agent.id)),
-            supportingText:
-                targetScope == InstallationScope.global &&
-                    _alreadyInstalled(targetScope, agent.id)
-                ? l10n.agentInstalled
-                : !agent.supportedScopes.contains(targetScope)
+            enabled: agent.supportedScopes.contains(targetScope),
+            inlineStatusText: !agent.supportedScopes.contains(targetScope)
                 ? l10n.unsupportedCell
                 : null,
           ),

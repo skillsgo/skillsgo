@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Receives localized fixed and scrollable rail items with optional exact count badges, standard or compact density, selected values, destination content, an optional destination-wide foreground, optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
- * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance and a destination-wide foreground layer, plus the theme-tinted glass side rail with accessible density-aware selection motion and counts, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
+ * [INPUT]: Receives localized fixed and scrollable rail items with icon, image, or multilingual fallback identities, optional exact count badges, standard or compact density, selected values, destination content, an optional App-centered overlay, an optional destination-wide foreground, optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
+ * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, App-centered interactive overlay and destination-wide foreground layers, plus the theme-tinted glass side rail and reusable accessible navigation buttons with identity fallback, density-aware selection motion and counts, optional fixed leading destinations and labeled section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,8 +14,7 @@ import 'brand.dart';
 
 part 'navigation/rail_button.dart';
 
-const _standardRailItemExtent = 44.0;
-const _compactRailItemExtent = 38.0;
+const _railItemExtent = 38.0;
 
 class SkillsRailItem<T> {
   const SkillsRailItem({
@@ -23,7 +22,7 @@ class SkillsRailItem<T> {
     required this.label,
     this.compact = false,
     this.icon,
-    this.leading,
+    this.image,
     this.count,
     this.countLabel,
   });
@@ -32,7 +31,7 @@ class SkillsRailItem<T> {
   final String label;
   final bool compact;
   final List<List<dynamic>>? icon;
-  final Widget? leading;
+  final Widget? image;
   final int? count;
   final String? countLabel;
 }
@@ -42,12 +41,14 @@ class SkillsDestinationLayout extends StatefulWidget {
     super.key,
     required this.rail,
     required this.child,
+    this.overlay,
     this.foreground,
     this.bodyTransitionKey,
   });
 
   final Widget rail;
   final Widget child;
+  final Widget? overlay;
   final Widget? foreground;
   final Object? bodyTransitionKey;
 
@@ -116,6 +117,7 @@ class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
             ],
           ),
         ),
+        ?widget.overlay,
         if (widget.foreground case final foreground?)
           Positioned.fill(child: foreground),
       ],
@@ -161,6 +163,7 @@ class SkillsSideRail<T> extends StatefulWidget {
     required this.onSelected,
     this.fixedItems = const [],
     this.sectionDividers = false,
+    this.sectionLabel,
     this.header,
     this.footer,
   });
@@ -169,6 +172,7 @@ class SkillsSideRail<T> extends StatefulWidget {
   final List<SkillsRailItem<T>> fixedItems;
   final List<SkillsRailItem<T>> items;
   final bool sectionDividers;
+  final String? sectionLabel;
   final T? selected;
   final ValueChanged<T> onSelected;
   final Widget? header;
@@ -273,7 +277,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
               color: Color(0x3D000000),
               blurRadius: 32,
               spreadRadius: -6,
-              offset: Offset(0, 14),
+              offset: Offset.zero,
             ),
           ],
         ),
@@ -313,6 +317,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
                               _sectionDivider(
                                 context,
                                 key: const ValueKey('side-rail-header-divider'),
+                                label: widget.sectionLabel,
                               ),
                             Expanded(
                               child: Scrollbar(
@@ -408,8 +413,13 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
             right: 0,
             top: _itemTop(items, index),
             height: _itemExtent(items[index]),
-            child: _RailButton<T>(
-              item: items[index],
+            child: SkillsNavigationButton(
+              label: items[index].label,
+              compact: items[index].compact,
+              icon: items[index].icon,
+              image: items[index].image,
+              count: items[index].count,
+              countLabel: items[index].countLabel,
               focusNode: _focusNode(items[index].value),
               selected: items[index].value == widget.selected,
               onPressed: () => widget.onSelected(items[index].value),
@@ -422,17 +432,48 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
   double _contentHeight(List<SkillsRailItem<T>> items) =>
       items.fold<double>(0, (height, item) => height + _itemExtent(item));
 
-  Widget _sectionDivider(BuildContext context, {required Key key}) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    child: Divider(
+  Widget _sectionDivider(
+    BuildContext context, {
+    required Key key,
+    String? label,
+  }) {
+    final dividerColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: .1);
+    if (label == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Divider(
+          key: key,
+          height: _sectionDividerExtent,
+          color: dividerColor,
+        ),
+      );
+    }
+    return SizedBox(
       key: key,
-      height: _sectionDividerExtent,
-      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .1),
-    ),
-  );
+      height: 26,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: context.skillsTypography.caption.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Divider(height: 1, color: dividerColor)),
+          ],
+        ),
+      ),
+    );
+  }
 
-  double _itemExtent(SkillsRailItem<T> item) =>
-      item.compact ? _compactRailItemExtent : _standardRailItemExtent;
+  double _itemExtent(SkillsRailItem<T> item) => _railItemExtent;
 
   double _itemTop(List<SkillsRailItem<T>> items, int index) {
     var top = 0.0;

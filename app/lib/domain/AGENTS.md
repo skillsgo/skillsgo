@@ -6,10 +6,9 @@
 - `skills_gateway.dart`: defines the stable application-facing Gateway interface, including batch Package-scoped Find and atomic Package installation, and re-exports the complete domain vocabulary.
 - `system_models.dart`: owns cross-journey metric enums, exact update availability candidates, appearance settings, stdin-capable process contracts, command results, and typed failures.
 - `discovery_models.dart`: owns public Skill summaries, canonical page/per-page/has-more pagination, batch Package-scoped Find queries/results, logical coordinates and exact `Skill.path` installation selectors, Package metadata, discovery pages, and auditable files.
-- `installation_models.dart`: owns Installation Request target selection, execution results, failures, and stable target identity.
-- `update_models.dart`: owns locally reviewed Update Plans, target results, execution summaries, and progress.
+- `installation_models.dart`: owns Installation Request target selection, execution results, failures, and stable target identity without duplicating CLI Package-version policy.
 - `target_management_models.dart`: owns reviewed managed Package-member and External Installation removal plans, execution results, and progress.
-- `library_models.dart`: owns Agent catalogs, Added Projects, onboarding state, Skill detail, unified Library entries, and Batch Takeover scope/plan/result values.
+- `library_models.dart`: owns Agent catalogs, Added Projects, onboarding state, Skill detail, unified Library entries, and Batch Adoption scope/plan/result values.
 - `presentation_language.dart`: owns the persisted Presentation Language value and supported canonical `lang` resolution.
 - `skill_coordinate.dart`: owns Package Path plus Skill Name value equality and collision-safe internal keys shared across App journeys.
 

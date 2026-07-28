@@ -107,32 +107,37 @@ void main() {
     },
   );
 
-  testWidgets('installed discovery action never repeats the known target', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    const installedSkill = SkillSummary(
-      packagePath: 'github.com/acme/skills',
-      installName: 'planner',
-      name: 'Planner',
-      installs: 10,
-      localTargetCount: 1,
-    );
-    final gateway = FakeSkillsGateway(
-      discoveryPages: const {
-        'ranking:0': DiscoveryPage(skills: [installedSkill]),
-      },
-    );
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Ranking'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'installed discovery action remains install for another location',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const installedSkill = SkillSummary(
+        packagePath: 'github.com/acme/skills',
+        installName: 'planner',
+        name: 'Planner',
+        installs: 10,
+        localTargetCount: 1,
+      );
+      final gateway = FakeSkillsGateway(
+        discoveryPages: const {
+          'ranking:0': DiscoveryPage(skills: [installedSkill]),
+        },
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ranking'));
+      await tester.pumpAndSettle();
 
-    expect(gateway.installCalls, 0);
-    expect(find.text('Set installation location'), findsNothing);
-    expect(find.text('Installed'), findsOneWidget);
-    expect(find.text('Install'), findsNothing);
-  });
+      expect(gateway.installCalls, 0);
+      expect(find.text('Set installation location'), findsNothing);
+      expect(find.text('Installed'), findsNothing);
+      expect(find.text('Install'), findsOneWidget);
+      final installButton = tester.widget<PrimaryCapsuleButton>(
+        find.widgetWithText(PrimaryCapsuleButton, 'Install'),
+      );
+      expect(installButton.onPressed, isNotNull);
+    },
+  );
 
   testWidgets(
     'card and detail installation use the shared anchored location selector',
@@ -271,7 +276,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.tap(
-        find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
+        find.widgetWithText(PrimaryCapsuleButton, 'Install').last,
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
@@ -469,5 +474,4 @@ void main() {
     expect(find.byKey(const ValueKey('detail-skeleton')), findsNothing);
     expect(gateway.detailLoads, 2);
   });
-
 }

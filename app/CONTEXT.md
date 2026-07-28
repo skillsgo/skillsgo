@@ -64,24 +64,24 @@ _Avoid_: Installation Target, enabled toggle, persisted `visibleTo`
 The App's direct request to install one immutable Skill into explicit location-and-Agent selections. The CLI may prepare concrete actions internally for safety, but that preparation is process-local and is not an App protocol or a second user review step.
 _Avoid_: second installation selector, user-facing review ceremony
 
-**Batch Takeover**:
-The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Package and immutable-version choice before one confirmation.
-_Avoid_: automatic identity inference, content-authenticated takeover, implicit import, unmatched Local import
+**Batch Adoption**:
+The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. The App sends each chosen Package Path, immutable Version, Skill Path, and original Installation Targets once; the CLI stages the External copy, runs the ordinary Package installation transaction, and moves the superseded copy to Trash only after success.
+_Avoid_: automatic identity inference, content-authenticated adoption, separate adoption installation path, implicit import, unmatched Local import
 
 **Adoption Review**:
-The temporary Library mode in which complete Repository and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; ordinary Library inventory never waits for Hub matching.
-_Avoid_: permanent installation table, background takeover, second Library
+The temporary Library mode in which complete Package and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; ordinary Library inventory never waits for Hub matching.
+_Avoid_: permanent installation table, background adoption, second Library
 
 **Target Result**:
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
 _Avoid_: global transaction result, all-or-nothing install
 
-**Update Plan**:
-A reviewed set of exact managed Installation Targets, each resolved from its canonical Workspace Manifest requirement to an immutable destination version. Pinned targets are non-updateable, selected Workspace Manifest changes are explicit, and results remain target-specific for failed-only retry.
-_Avoid_: update every copy, latest-version overwrite, Skill-name-only update
+**Package Update**:
+The App's direct request for the CLI to move one declared Package in each installed Scope to an explicit immutable version. The CLI preserves that Scope's selected Skills and Agents, owns validation and atomic mutation, and the App refreshes Library inventory after success without reconstructing a target-level plan.
+_Avoid_: App-owned update plan, per-Skill version, projection-derived success, localized-output parsing
 
 **Target Operation Plan**:
-A reviewed, state-bound exact-path removal of healthy External Installations. Unselected targets do not change, and modified managed Repository Projections are never overwritten automatically.
+A reviewed, state-bound exact-path removal of healthy External Installations. Unselected targets do not change, and modified managed Package Projections are never overwritten automatically.
 _Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
@@ -93,7 +93,7 @@ A reviewed, state-bound deletion for one exact External Installation. SkillsGo s
 _Avoid_: name-based claim, automatic import, reinstall
 
 **Local Skill**:
-A managed, local-only Skill created through a separate explicit local import. Batch Takeover never converts an unmatched External Installation into a Local Skill.
+A managed, local-only Skill created through a separate explicit local import. Batch Adoption never converts an unmatched External Installation into a Local Skill.
 _Avoid_: published Skill, Hub artifact, unmanaged installation
 
 **Version Divergence**:

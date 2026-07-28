@@ -1,14 +1,14 @@
 /*
- * [INPUT]: Depends on the Library screen library, current-theme design tokens, repository avatars, localized takeover copy, and caller-provided preflight identities plus exact CLI transaction results.
- * [OUTPUT]: Provides a responsive modal hardware-console Batch Takeover surface with an input-blocking dismissible scrim, symmetric entrance and exit motion, a deterministic Tetris story ending with four localized LED pain-point pieces, a self-clearing managed board, an in-board settlement, physical controls, retry, and reduced-motion behavior.
- * [POS]: Serves as the visual product-story and truthful post-transaction feedback module of the Library Batch Takeover journey while delegated callbacks retain mutation ownership.
+ * [INPUT]: Depends on the Library screen library, current-theme design tokens, Package avatars, localized adoption copy, and caller-provided preflight identities plus exact CLI transaction results.
+ * [OUTPUT]: Provides a responsive modal hardware-console Batch Adoption surface with an input-blocking dismissible scrim, symmetric entrance and exit motion, automatic reviewed execution, transaction-accurate controls independent from the continuing story animation, vintage brand stickers, a borderless pending queue, a deterministic Tetris story ending with four localized LED pain-point pieces, a self-clearing managed board, an in-board settlement, and reduced-motion behavior.
+ * [POS]: Serves as the visual product-story and truthful post-transaction feedback module of the Library Batch Adoption journey while delegated callbacks retain mutation ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
 
-typedef _TakeoverIllustratedSkill = ({String name, String skillId});
+typedef _AdoptionIllustratedSkill = ({String name, String skillId});
 
-const _takeoverFallbackNames = <String>[
+const _adoptionFallbackNames = <String>[
   'my-review',
   'commit-helper',
   'docs-writer',
@@ -16,59 +16,59 @@ const _takeoverFallbackNames = <String>[
   'test-runner',
 ];
 
-const _takeoverBoardColumns = 10;
-const _takeoverBoardRows = 18;
-const _takeoverLcdGlass = Color(0xffaeb89a);
-const _takeoverLcdPanel = Color(0xffa8b394);
-const _takeoverLcdInk = Color(0xff273127);
-const _takeoverLcdMutedInk = Color(0xff596555);
-const _takeoverLcdGrid = Color(0xff7b8873);
+const _adoptionBoardColumns = 10;
+const _adoptionBoardRows = 18;
+const _adoptionLcdGlass = Color(0xffaeb89a);
+const _adoptionLcdPanel = Color(0xffa8b394);
+const _adoptionLcdInk = Color(0xff273127);
+const _adoptionLcdMutedInk = Color(0xff596555);
+const _adoptionLcdGrid = Color(0xff7b8873);
 
-enum _BatchTakeoverDialogOutcome { skipped, completed }
+enum _BatchAdoptionDialogOutcome { skipped, completed }
 
-enum _TakeoverPieceType { i, o, t, s, z, j, l }
+enum _AdoptionPieceType { i, o, t, s, z, j, l }
 
-enum _TakeoverPainPoint { location, freshness, recovery, versionDrift }
+enum _AdoptionPainPoint { location, freshness, recovery, versionDrift }
 
-Color _takeoverPainPointColor(_TakeoverPainPoint painPoint) =>
+Color _adoptionPainPointColor(_AdoptionPainPoint painPoint) =>
     switch (painPoint) {
-      _TakeoverPainPoint.location => const Color(0xffffb000),
-      _TakeoverPainPoint.freshness => const Color(0xff32cfff),
-      _TakeoverPainPoint.recovery => const Color(0xff35df83),
-      _TakeoverPainPoint.versionDrift => const Color(0xffff4f9a),
+      _AdoptionPainPoint.location => const Color(0xffffb000),
+      _AdoptionPainPoint.freshness => const Color(0xff32cfff),
+      _AdoptionPainPoint.recovery => const Color(0xff35df83),
+      _AdoptionPainPoint.versionDrift => const Color(0xffff4f9a),
     };
 
-String _takeoverPainPointName(
+String _adoptionPainPointName(
   BuildContext context,
-  _TakeoverPainPoint painPoint,
+  _AdoptionPainPoint painPoint,
 ) => switch (painPoint) {
-  _TakeoverPainPoint.location => context.l10n.batchTakeoverPainLocation,
-  _TakeoverPainPoint.freshness => context.l10n.batchTakeoverPainFreshness,
-  _TakeoverPainPoint.recovery => context.l10n.batchTakeoverPainRecovery,
-  _TakeoverPainPoint.versionDrift => context.l10n.batchTakeoverPainVersionDrift,
+  _AdoptionPainPoint.location => context.l10n.batchAdoptionPainLocation,
+  _AdoptionPainPoint.freshness => context.l10n.batchAdoptionPainFreshness,
+  _AdoptionPainPoint.recovery => context.l10n.batchAdoptionPainRecovery,
+  _AdoptionPainPoint.versionDrift => context.l10n.batchAdoptionPainVersionDrift,
 };
 
-typedef _TakeoverCell = ({int row, int column});
+typedef _AdoptionCell = ({int row, int column});
 
-class _TakeoverPiecePlan {
-  const _TakeoverPiecePlan({
+class _AdoptionPiecePlan {
+  const _AdoptionPiecePlan({
     required this.type,
     required this.column,
     required this.cells,
     required this.coreCellIndex,
   });
 
-  final _TakeoverPieceType type;
+  final _AdoptionPieceType type;
   final int column;
-  final List<_TakeoverCell> cells;
+  final List<_AdoptionCell> cells;
   final int coreCellIndex;
 }
 
 // Five pieces cover a complete 10 × 2 strip. Their order is gravity-safe:
 // the final I piece rests across the J/L pieces before both rows clear.
-const _takeoverClearTemplate = <_TakeoverPiecePlan>[
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.o,
+const _adoptionClearTemplate = <_AdoptionPiecePlan>[
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.o,
     column: 0,
     cells: [
       (row: 0, column: 0),
@@ -78,8 +78,8 @@ const _takeoverClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 0,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.o,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.o,
     column: 2,
     cells: [
       (row: 0, column: 2),
@@ -89,8 +89,8 @@ const _takeoverClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 0,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.j,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.j,
     column: 4,
     cells: [
       (row: 0, column: 4),
@@ -100,8 +100,8 @@ const _takeoverClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 1,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.l,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.l,
     column: 7,
     cells: [
       (row: 0, column: 9),
@@ -111,8 +111,8 @@ const _takeoverClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 3,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.i,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.i,
     column: 5,
     cells: [
       (row: 0, column: 5),
@@ -126,9 +126,9 @@ const _takeoverClearTemplate = <_TakeoverPiecePlan>[
 
 // Ten gravity-safe placements cover a 10 × 4 strip and exercise all seven
 // Tetromino types. Early pieces deliberately leave gaps for later pieces.
-const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.l,
+const _adoptionDiverseClearTemplate = <_AdoptionPiecePlan>[
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.l,
     column: 0,
     cells: [
       (row: 1, column: 0),
@@ -138,8 +138,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 2,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.s,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.s,
     column: 1,
     cells: [
       (row: 1, column: 1),
@@ -149,8 +149,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 1,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.l,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.l,
     column: 2,
     cells: [
       (row: 1, column: 2),
@@ -160,8 +160,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 2,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.i,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.i,
     column: 0,
     cells: [
       (row: 0, column: 0),
@@ -171,8 +171,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 1,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.o,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.o,
     column: 4,
     cells: [
       (row: 2, column: 4),
@@ -182,8 +182,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 0,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.t,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.t,
     column: 7,
     cells: [
       (row: 2, column: 8),
@@ -193,8 +193,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 2,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.t,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.t,
     column: 8,
     cells: [
       (row: 0, column: 9),
@@ -204,8 +204,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 2,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.z,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.z,
     column: 6,
     cells: [
       (row: 1, column: 7),
@@ -215,8 +215,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 2,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.j,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.j,
     column: 4,
     cells: [
       (row: 0, column: 4),
@@ -226,8 +226,8 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
     ],
     coreCellIndex: 1,
   ),
-  _TakeoverPiecePlan(
-    type: _TakeoverPieceType.i,
+  _AdoptionPiecePlan(
+    type: _AdoptionPieceType.i,
     column: 5,
     cells: [
       (row: 0, column: 5),
@@ -239,14 +239,14 @@ const _takeoverDiverseClearTemplate = <_TakeoverPiecePlan>[
   ),
 ];
 
-bool _takeoverTemplateIsExactCover() {
+bool _adoptionTemplateIsExactCover() {
   bool covers(
-    List<_TakeoverPiecePlan> template,
+    List<_AdoptionPiecePlan> template,
     int rows, {
     bool requireEveryType = false,
   }) {
     final cells = <String>{};
-    final types = <_TakeoverPieceType>{};
+    final types = <_AdoptionPieceType>{};
     for (final piece in template) {
       types.add(piece.type);
       if (piece.cells.length != 4) return false;
@@ -257,28 +257,28 @@ bool _takeoverTemplateIsExactCover() {
       }
     }
     return cells.length == rows * 10 &&
-        (!requireEveryType || types.length == _TakeoverPieceType.values.length);
+        (!requireEveryType || types.length == _AdoptionPieceType.values.length);
   }
 
-  return _takeoverClearTemplate.length == 5 &&
-      covers(_takeoverClearTemplate, 2) &&
-      _takeoverDiverseClearTemplate.length == 10 &&
-      covers(_takeoverDiverseClearTemplate, 4, requireEveryType: true);
+  return _adoptionClearTemplate.length == 5 &&
+      covers(_adoptionClearTemplate, 2) &&
+      _adoptionDiverseClearTemplate.length == 10 &&
+      covers(_adoptionDiverseClearTemplate, 4, requireEveryType: true);
 }
 
-List<_TakeoverPiecePlan> _takeoverTemplateAt(int index, int totalCount) {
+List<_AdoptionPiecePlan> _adoptionTemplateAt(int index, int totalCount) {
   final diverseCount = (totalCount ~/ 10) * 10;
-  if (index < diverseCount) return _takeoverDiverseClearTemplate;
-  return _takeoverClearTemplate;
+  if (index < diverseCount) return _adoptionDiverseClearTemplate;
+  return _adoptionClearTemplate;
 }
 
-int _takeoverBatchStart(int index, int totalCount) {
+int _adoptionBatchStart(int index, int totalCount) {
   final diverseCount = (totalCount ~/ 10) * 10;
   if (index < diverseCount) return (index ~/ 10) * 10;
   return diverseCount;
 }
 
-int _takeoverTemplateRows(List<_TakeoverPiecePlan> template) {
+int _adoptionTemplateRows(List<_AdoptionPiecePlan> template) {
   var rows = 0;
   for (final piece in template) {
     for (final cell in piece.cells) {
@@ -288,23 +288,23 @@ int _takeoverTemplateRows(List<_TakeoverPiecePlan> template) {
   return rows;
 }
 
-int _takeoverFillerCount(int realSkillCount, {int trailingCount = 0}) =>
+int _adoptionFillerCount(int realSkillCount, {int trailingCount = 0}) =>
     (5 - (realSkillCount + trailingCount) % 5) % 5;
 
-class _TakeoverVisualPiece {
-  const _TakeoverVisualPiece({
+class _AdoptionVisualPiece {
+  const _AdoptionVisualPiece({
     required this.skill,
     required this.isFiller,
     this.painPoint,
   });
 
-  final _TakeoverIllustratedSkill? skill;
+  final _AdoptionIllustratedSkill? skill;
   final bool isFiller;
-  final _TakeoverPainPoint? painPoint;
+  final _AdoptionPainPoint? painPoint;
 }
 
-class _BatchTakeoverConsole extends StatefulWidget {
-  const _BatchTakeoverConsole({
+class _BatchAdoptionConsole extends StatefulWidget {
+  const _BatchAdoptionConsole({
     required this.eligibleCount,
     required this.initiallyCompleted,
     required this.skillPreviews,
@@ -314,35 +314,51 @@ class _BatchTakeoverConsole extends StatefulWidget {
 
   final int eligibleCount;
   final bool initiallyCompleted;
-  final List<BatchTakeoverPreview> skillPreviews;
-  final Future<BatchTakeoverResult> Function() onConfirm;
-  final Future<void> Function(_BatchTakeoverDialogOutcome outcome) onExit;
+  final List<BatchAdoptionPreview> skillPreviews;
+  final Future<BatchAdoptionResult> Function() onConfirm;
+  final Future<void> Function(_BatchAdoptionDialogOutcome outcome) onExit;
 
   @override
-  State<_BatchTakeoverConsole> createState() => _BatchTakeoverConsoleState();
+  State<_BatchAdoptionConsole> createState() => _BatchAdoptionConsoleState();
 }
 
-class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
+class _BatchAdoptionConsoleState extends State<_BatchAdoptionConsole>
     with SingleTickerProviderStateMixin {
   final _modalOverlay = OverlayPortalController();
   AnimationController? _revealController;
   bool _executing = false;
   bool _exiting = false;
+  bool _transactionCompleted = false;
   bool _completed = false;
   Object? _error;
-  BatchTakeoverResult? _result;
-  List<_TakeoverVisualPiece> _pieces = const [];
+  BatchAdoptionResult? _result;
+  List<_AdoptionVisualPiece> _pieces = const [];
   int _settledCount = 0;
   bool _clearing = false;
+  bool _automaticExecutionScheduled = false;
 
   @override
   void initState() {
     super.initState();
     _modalOverlay.show();
     if (widget.initiallyCompleted) {
+      _transactionCompleted = true;
       _completed = true;
-      _result = const BatchTakeoverResult(takenOver: 0, skipped: 0);
+      _result = const BatchAdoptionResult(adopted: 0, failed: 0);
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.initiallyCompleted || _automaticExecutionScheduled) return;
+    _automaticExecutionScheduled = true;
+    final delay = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 900);
+    Future<void>.delayed(delay, () {
+      if (mounted) unawaited(_confirm());
+    });
   }
 
   @override
@@ -355,6 +371,7 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
     if (_executing) return;
     setState(() {
       _executing = true;
+      _transactionCompleted = false;
       _completed = false;
       _error = null;
       _result = null;
@@ -367,30 +384,30 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
       if (!mounted) return;
       final previewByKey = {
         for (final preview in widget.skillPreviews)
-          _takeoverSkillKey(preview.name, preview.skillId): (
+          _adoptionSkillKey(preview.name, preview.skillId): (
             name: preview.name,
             skillId: preview.skillId,
           ),
       };
       final successful = result.items
-          .where((item) => item.status == BatchTakeoverItemStatus.takenOver)
+          .where((item) => item.status == BatchAdoptionItemStatus.adopted)
           .map(
             (item) =>
-                previewByKey[_takeoverSkillKey(item.name, item.skillId)] ??
+                previewByKey[_adoptionSkillKey(item.name, item.skillId)] ??
                 (name: item.name, skillId: item.skillId),
           )
           .toList(growable: false);
-      final fillerCount = _takeoverFillerCount(
+      final fillerCount = _adoptionFillerCount(
         successful.length,
-        trailingCount: _TakeoverPainPoint.values.length,
+        trailingCount: _AdoptionPainPoint.values.length,
       );
-      final pieces = <_TakeoverVisualPiece>[
+      final pieces = <_AdoptionVisualPiece>[
         for (final skill in successful)
-          _TakeoverVisualPiece(skill: skill, isFiller: false),
+          _AdoptionVisualPiece(skill: skill, isFiller: false),
         for (var index = 0; index < fillerCount; index++)
-          const _TakeoverVisualPiece(skill: null, isFiller: true),
-        for (final painPoint in _TakeoverPainPoint.values)
-          _TakeoverVisualPiece(
+          const _AdoptionVisualPiece(skill: null, isFiller: true),
+        for (final painPoint in _AdoptionPainPoint.values)
+          _AdoptionVisualPiece(
             skill: null,
             isFiller: false,
             painPoint: painPoint,
@@ -399,22 +416,23 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
       setState(() {
         _result = result;
         _pieces = List.unmodifiable(pieces);
+        _executing = false;
+        _transactionCompleted = true;
       });
       if (MediaQuery.disableAnimationsOf(context)) {
         setState(() {
           _settledCount = pieces.length;
           _completed = true;
-          _executing = false;
         });
         return;
       }
       for (var index = 0; index < pieces.length; index++) {
         if (!mounted) return;
-        await Future<void>.delayed(_takeoverPieceDuration(index));
+        await Future<void>.delayed(_adoptionPieceDuration(index));
         if (!mounted) return;
         setState(() => _settledCount = index + 1);
-        final template = _takeoverTemplateAt(index, pieces.length);
-        final batchStart = _takeoverBatchStart(index, pieces.length);
+        final template = _adoptionTemplateAt(index, pieces.length);
+        final batchStart = _adoptionBatchStart(index, pieces.length);
         if (index + 1 == batchStart + template.length) {
           setState(() => _clearing = true);
           await Future<void>.delayed(const Duration(milliseconds: 180));
@@ -424,7 +442,6 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
       }
       if (!mounted) return;
       setState(() {
-        _executing = false;
         _completed = true;
       });
     } on Object catch (error) {
@@ -436,13 +453,13 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
     }
   }
 
-  Duration _takeoverPieceDuration(int index) {
+  Duration _adoptionPieceDuration(int index) {
     if (index < 4) return const Duration(milliseconds: 320);
     if (index < 12) return const Duration(milliseconds: 180);
     return const Duration(milliseconds: 105);
   }
 
-  Future<void> _exit(_BatchTakeoverDialogOutcome outcome) async {
+  Future<void> _exit(_BatchAdoptionDialogOutcome outcome) async {
     if (_exiting || _executing) return;
     setState(() => _exiting = true);
     final revealController = _revealController;
@@ -539,25 +556,25 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
   }) {
     final canDismiss = !_executing && !_exiting;
     return Stack(
-      key: const Key('batch-takeover-modal'),
+      key: const Key('batch-adoption-modal'),
       fit: StackFit.expand,
       children: [
         ModalBarrier(
-          key: const Key('batch-takeover-modal-barrier'),
+          key: const Key('batch-adoption-modal-barrier'),
           color: Colors.black.withValues(alpha: .36 * progress),
           dismissible: canDismiss,
           onDismiss: canDismiss
               ? () => unawaited(
                   _exit(
-                    _completed
-                        ? _BatchTakeoverDialogOutcome.completed
-                        : _BatchTakeoverDialogOutcome.skipped,
+                    _transactionCompleted
+                        ? _BatchAdoptionDialogOutcome.completed
+                        : _BatchAdoptionDialogOutcome.skipped,
                   ),
                 )
               : null,
-          semanticsLabel: _completed
-              ? context.l10n.batchTakeoverClose
-              : context.l10n.batchTakeoverSkip,
+          semanticsLabel: _transactionCompleted
+              ? context.l10n.batchAdoptionClose
+              : context.l10n.batchAdoptionSkip,
           barrierSemanticsDismissible: canDismiss,
         ),
         console,
@@ -574,8 +591,8 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 430, maxHeight: 590),
         child: RepaintBoundary(
-          key: const Key('batch-takeover-dialog'),
-          child: _TakeoverHardwareShell(
+          key: const Key('batch-adoption-dialog'),
+          child: _AdoptionHardwareShell(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
               child: Column(
@@ -595,7 +612,7 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _completed
+                          color: _transactionCompleted
                               ? const Color(0xff24b47e)
                               : _executing
                               ? const Color(0xffffb020)
@@ -608,7 +625,7 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _completed
+                        _transactionCompleted
                             ? 'DONE'
                             : _executing
                             ? 'PLAY'
@@ -623,7 +640,7 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
                   ),
                   const SizedBox(height: 10),
                   Expanded(
-                    child: _BatchTakeoverStory(
+                    child: _BatchAdoptionStory(
                       eligibleCount: widget.eligibleCount,
                       skillPreviews: widget.skillPreviews,
                       result: result,
@@ -644,57 +661,11 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  if (_completed)
-                    SizedBox(
-                      width: 156,
-                      child: _TakeoverHardwareButton(
-                        key: const Key('batch-takeover-close'),
-                        enabled: true,
-                        primary: true,
-                        onPressed: () =>
-                            _exit(_BatchTakeoverDialogOutcome.completed),
-                        label: context.l10n.batchTakeoverClose,
-                      ),
-                    )
-                  else
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 132,
-                          child: _TakeoverHardwareButton(
-                            key: const Key('batch-takeover-skip'),
-                            enabled: !_executing,
-                            primary: false,
-                            onPressed: _executing
-                                ? null
-                                : () => _exit(
-                                    _BatchTakeoverDialogOutcome.skipped,
-                                  ),
-                            label: context.l10n.batchTakeoverSkip,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: SizedBox(
-                            width: 156,
-                            child: _TakeoverHardwareButton(
-                              key: const Key('batch-takeover-confirm'),
-                              enabled: !_executing,
-                              primary: true,
-                              onPressed: _executing ? null : _confirm,
-                              label: _executing
-                                  ? context.l10n.batchTakeoverPending
-                                  : _error == null
-                                  ? context.l10n.batchTakeoverConfirm
-                                  : context.l10n.batchTakeoverExecutionRetry,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 9),
+                  _AdoptionStickerControls(
+                    completed: _transactionCompleted || _error != null,
+                    onClose: () => _exit(_BatchAdoptionDialogOutcome.completed),
+                  ),
                 ],
               ),
             ),
@@ -709,15 +680,91 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 430, maxHeight: 590),
       child: const RepaintBoundary(
-        key: Key('batch-takeover-console-back'),
-        child: _TakeoverHardwareShell(child: _TakeoverHardwareBack()),
+        key: Key('batch-adoption-console-back'),
+        child: _AdoptionHardwareShell(child: _AdoptionHardwareBack()),
       ),
     ),
   );
 }
 
-class _TakeoverHardwareBack extends StatelessWidget {
-  const _TakeoverHardwareBack();
+class _AdoptionStickerControls extends StatelessWidget {
+  const _AdoptionStickerControls({
+    required this.completed,
+    required this.onClose,
+  });
+
+  final bool completed;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    key: const Key('batch-adoption-vintage-stickers'),
+    height: 80,
+    child: Row(
+      children: [
+        Expanded(
+          key: const Key('batch-adoption-sticker-image-region'),
+          flex: 2,
+          child: Center(
+            child: Transform.scale(
+              scale: 1.24,
+              child: Transform.rotate(
+                angle: -.09,
+                child: Image.asset(
+                  'assets/branding/sticker-image.png',
+                  key: const Key('batch-adoption-sticker-image'),
+                  width: 108,
+                  height: 76,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  excludeFromSemantics: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          key: const Key('batch-adoption-control-region'),
+          child: Center(
+            child: _AdoptionHardwareButton(
+              key: Key(
+                completed ? 'batch-adoption-close' : 'batch-adoption-importing',
+              ),
+              enabled: completed,
+              preserveDisabledColor: true,
+              primary: true,
+              onPressed: completed ? onClose : null,
+              label: completed
+                  ? context.l10n.batchAdoptionClose
+                  : context.l10n.batchAdoptionPending,
+            ),
+          ),
+        ),
+        Expanded(
+          key: const Key('batch-adoption-sticker-text-region'),
+          flex: 2,
+          child: Center(
+            child: Transform.rotate(
+              angle: .045,
+              child: Image.asset(
+                'assets/branding/sticker-text.png',
+                key: const Key('batch-adoption-sticker-text'),
+                width: 146,
+                height: 76,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                excludeFromSemantics: true,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AdoptionHardwareBack extends StatelessWidget {
+  const _AdoptionHardwareBack();
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
@@ -728,10 +775,10 @@ class _TakeoverHardwareBack extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Stack(
           children: [
-            const Positioned(left: 0, top: 0, child: _TakeoverBackScrew()),
-            const Positioned(right: 0, top: 0, child: _TakeoverBackScrew()),
-            const Positioned(left: 0, bottom: 0, child: _TakeoverBackScrew()),
-            const Positioned(right: 0, bottom: 0, child: _TakeoverBackScrew()),
+            const Positioned(left: 0, top: 0, child: _AdoptionBackScrew()),
+            const Positioned(right: 0, top: 0, child: _AdoptionBackScrew()),
+            const Positioned(left: 0, bottom: 0, child: _AdoptionBackScrew()),
+            const Positioned(right: 0, bottom: 0, child: _AdoptionBackScrew()),
             Positioned(
               top: 48,
               left: 0,
@@ -741,7 +788,7 @@ class _TakeoverHardwareBack extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   child: Image.asset(
                     'assets/branding/skillsgo-logo.png',
-                    key: const Key('batch-takeover-console-back-logo'),
+                    key: const Key('batch-adoption-console-back-logo'),
                     width: 108,
                     height: 108,
                     fit: BoxFit.cover,
@@ -758,7 +805,7 @@ class _TakeoverHardwareBack extends StatelessWidget {
                     'SKILLSGO',
                     style: context.skillsTypography.caption.copyWith(
                       color: const Color(0xff575249),
-                      fontFamily: 'TakeoverPixel',
+                      fontFamily: 'AdoptionPixel',
                       fontSize: 12,
                       letterSpacing: 1.8,
                     ),
@@ -780,12 +827,12 @@ class _TakeoverHardwareBack extends StatelessWidget {
                           'MODEL SG-01',
                           style: context.skillsTypography.caption.copyWith(
                             color: const Color(0xff5f5a51),
-                            fontFamily: 'TakeoverPixel',
+                            fontFamily: 'AdoptionPixel',
                             fontSize: 8,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const _TakeoverBackVent(),
+                        const _AdoptionBackVent(),
                       ],
                     ),
                   ),
@@ -799,8 +846,8 @@ class _TakeoverHardwareBack extends StatelessWidget {
   );
 }
 
-class _TakeoverBackScrew extends StatelessWidget {
-  const _TakeoverBackScrew();
+class _AdoptionBackScrew extends StatelessWidget {
+  const _AdoptionBackScrew();
 
   @override
   Widget build(BuildContext context) => Container(
@@ -821,8 +868,8 @@ class _TakeoverBackScrew extends StatelessWidget {
   );
 }
 
-class _TakeoverBackVent extends StatelessWidget {
-  const _TakeoverBackVent();
+class _AdoptionBackVent extends StatelessWidget {
+  const _AdoptionBackVent();
 
   @override
   Widget build(BuildContext context) => Column(
@@ -839,8 +886,8 @@ class _TakeoverBackVent extends StatelessWidget {
   );
 }
 
-class _TakeoverHardwareShell extends StatelessWidget {
-  const _TakeoverHardwareShell({required this.child});
+class _AdoptionHardwareShell extends StatelessWidget {
+  const _AdoptionHardwareShell({required this.child});
 
   final Widget child;
 
@@ -897,26 +944,28 @@ class _TakeoverHardwareShell extends StatelessWidget {
   }
 }
 
-class _TakeoverHardwareButton extends StatefulWidget {
-  const _TakeoverHardwareButton({
+class _AdoptionHardwareButton extends StatefulWidget {
+  const _AdoptionHardwareButton({
     super.key,
     required this.label,
     required this.primary,
     required this.enabled,
     required this.onPressed,
+    this.preserveDisabledColor = false,
   });
 
   final String label;
   final bool primary;
   final bool enabled;
   final VoidCallback? onPressed;
+  final bool preserveDisabledColor;
 
   @override
-  State<_TakeoverHardwareButton> createState() =>
-      _TakeoverHardwareButtonState();
+  State<_AdoptionHardwareButton> createState() =>
+      _AdoptionHardwareButtonState();
 }
 
-class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
+class _AdoptionHardwareButtonState extends State<_AdoptionHardwareButton> {
   bool _pressed = false;
 
   void _setPressed(bool value) {
@@ -926,7 +975,8 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor = widget.enabled
+    final visuallyEnabled = widget.enabled || widget.preserveDisabledColor;
+    final buttonColor = visuallyEnabled
         ? widget.primary
               ? const Color(0xffd95750)
               : const Color(0xffaaa397)
@@ -982,8 +1032,8 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
                     child: TweenAnimationBuilder<double>(
                       key: Key(
                         widget.primary
-                            ? 'batch-takeover-confirm-face'
-                            : 'batch-takeover-skip-face',
+                            ? 'batch-adoption-confirm-face'
+                            : 'batch-adoption-skip-face',
                       ),
                       duration: duration,
                       curve: Curves.easeOut,
@@ -991,6 +1041,11 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
                       builder: (context, press, child) => Transform.scale(
                         scale: 1 - .035 * press,
                         child: DecoratedBox(
+                          key: Key(
+                            widget.primary
+                                ? 'batch-adoption-confirm-face-decoration'
+                                : 'batch-adoption-skip-face-decoration',
+                          ),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
@@ -1025,8 +1080,10 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
                             ),
                           ),
                           child: CustomPaint(
-                            foregroundPainter: _TakeoverButtonHighlightPainter(
-                              opacity: widget.enabled ? .38 * (1 - press) : .12,
+                            foregroundPainter: _AdoptionButtonHighlightPainter(
+                              opacity: visuallyEnabled
+                                  ? .38 * (1 - press)
+                                  : .12,
                             ),
                             child: child,
                           ),
@@ -1039,7 +1096,7 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
                             color: widget.primary
                                 ? const Color(0xffffffff)
                                 : const Color(0xff282722),
-                            fontFamily: 'TakeoverPixel',
+                            fontFamily: 'AdoptionPixel',
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                           ),
@@ -1056,7 +1113,7 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.skillsTypography.caption.copyWith(
-                color: widget.enabled
+                color: visuallyEnabled
                     ? const Color(0xff5a564e)
                     : const Color(0xff777168),
                 fontSize: 10,
@@ -1070,8 +1127,8 @@ class _TakeoverHardwareButtonState extends State<_TakeoverHardwareButton> {
   }
 }
 
-class _TakeoverButtonHighlightPainter extends CustomPainter {
-  const _TakeoverButtonHighlightPainter({required this.opacity});
+class _AdoptionButtonHighlightPainter extends CustomPainter {
+  const _AdoptionButtonHighlightPainter({required this.opacity});
 
   final double opacity;
 
@@ -1093,12 +1150,12 @@ class _TakeoverButtonHighlightPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverButtonHighlightPainter oldDelegate) =>
+  bool shouldRepaint(_AdoptionButtonHighlightPainter oldDelegate) =>
       oldDelegate.opacity != opacity;
 }
 
-class _BatchTakeoverStory extends StatelessWidget {
-  const _BatchTakeoverStory({
+class _BatchAdoptionStory extends StatelessWidget {
+  const _BatchAdoptionStory({
     required this.eligibleCount,
     required this.skillPreviews,
     required this.result,
@@ -1110,35 +1167,35 @@ class _BatchTakeoverStory extends StatelessWidget {
   });
 
   final int eligibleCount;
-  final List<BatchTakeoverPreview> skillPreviews;
-  final BatchTakeoverResult? result;
-  final List<_TakeoverVisualPiece> pieces;
+  final List<BatchAdoptionPreview> skillPreviews;
+  final BatchAdoptionResult? result;
+  final List<_AdoptionVisualPiece> pieces;
   final int settledCount;
   final bool clearing;
   final bool executing;
   final bool completed;
 
-  List<_TakeoverIllustratedSkill> get _orderedSkills {
-    final candidates = <_TakeoverIllustratedSkill>[];
+  List<_AdoptionIllustratedSkill> get _orderedSkills {
+    final candidates = <_AdoptionIllustratedSkill>[];
     final seen = <String>{};
     for (final preview in skillPreviews) {
       final name = preview.name.trim();
       if (name.isEmpty) continue;
-      if (!seen.add(_takeoverSkillKey(name, preview.skillId))) continue;
+      if (!seen.add(_adoptionSkillKey(name, preview.skillId))) continue;
       candidates.add((name: name, skillId: preview.skillId));
     }
-    final selected = <_TakeoverIllustratedSkill>[];
-    final deferred = <_TakeoverIllustratedSkill>[];
-    final repositories = <String>{};
+    final selected = <_AdoptionIllustratedSkill>[];
+    final deferred = <_AdoptionIllustratedSkill>[];
+    final packages = <String>{};
     for (final candidate in candidates) {
-      if (repositories.add(_takeoverRepositoryIdentity(candidate))) {
+      if (packages.add(_adoptionPackageIdentity(candidate))) {
         selected.add(candidate);
       } else {
         deferred.add(candidate);
       }
     }
     selected.addAll(deferred);
-    for (final fallback in _takeoverFallbackNames) {
+    for (final fallback in _adoptionFallbackNames) {
       if (selected.length >= eligibleCount) break;
       selected.add((name: fallback, skillId: ''));
     }
@@ -1155,19 +1212,19 @@ class _BatchTakeoverStory extends StatelessWidget {
         .take(settledCount)
         .where((piece) => !piece.isFiller && piece.skill != null)
         .map(
-          (piece) => _takeoverSkillKey(piece.skill!.name, piece.skill!.skillId),
+          (piece) => _adoptionSkillKey(piece.skill!.name, piece.skill!.skillId),
         )
         .toSet();
     final orderedSkills = _orderedSkills;
     final plannedIndexBySkillKey = <String, int>{
       for (var index = 0; index < orderedSkills.length; index++)
-        _takeoverSkillKey(
+        _adoptionSkillKey(
           orderedSkills[index].name,
           orderedSkills[index].skillId,
         ): index,
       for (var index = 0; index < pieces.length; index++)
         if (!pieces[index].isFiller && pieces[index].skill != null)
-          _takeoverSkillKey(
+          _adoptionSkillKey(
             pieces[index].skill!.name,
             pieces[index].skill!.skillId,
           ): index,
@@ -1175,41 +1232,41 @@ class _BatchTakeoverStory extends StatelessWidget {
     final pending = orderedSkills
         .where(
           (skill) => !settledSkillKeys.contains(
-            _takeoverSkillKey(skill.name, skill.skillId),
+            _adoptionSkillKey(skill.name, skill.skillId),
           ),
         )
         .toList(growable: false);
-    final plannedPieceCount = pieces.isEmpty
-        ? eligibleCount +
-              _takeoverFillerCount(
-                eligibleCount,
-                trailingCount: _TakeoverPainPoint.values.length,
-              ) +
-              _TakeoverPainPoint.values.length
-        : pieces.length;
+    final initialPlannedPieceCount =
+        eligibleCount +
+        _adoptionFillerCount(
+          eligibleCount,
+          trailingCount: _AdoptionPainPoint.values.length,
+        ) +
+        _AdoptionPainPoint.values.length;
+    final plannedPieceCount = math.max(initialPlannedPieceCount, pieces.length);
     final remainingPainPoints = pieces.isEmpty
-        ? _TakeoverPainPoint.values
+        ? _AdoptionPainPoint.values
         : pieces
               .skip(settledCount)
               .map((piece) => piece.painPoint)
-              .whereType<_TakeoverPainPoint>()
+              .whereType<_AdoptionPainPoint>()
               .toList(growable: false);
-    final plannedIndexByPainPoint = <_TakeoverPainPoint, int>{
+    final plannedIndexByPainPoint = <_AdoptionPainPoint, int>{
       if (pieces.isEmpty)
-        for (var index = 0; index < _TakeoverPainPoint.values.length; index++)
-          _TakeoverPainPoint.values[index]:
-              plannedPieceCount - _TakeoverPainPoint.values.length + index
+        for (var index = 0; index < _AdoptionPainPoint.values.length; index++)
+          _AdoptionPainPoint.values[index]:
+              plannedPieceCount - _AdoptionPainPoint.values.length + index
       else
         for (var index = 0; index < pieces.length; index++)
           if (pieces[index].painPoint != null) pieces[index].painPoint!: index,
     };
     final content = completed
-        ? _TakeoverCompletedGameScreen(
+        ? _AdoptionCompletedGameScreen(
             key: const ValueKey('settlement'),
             result: result,
             eligibleCount: eligibleCount,
           )
-        : _TakeoverGameScreen(
+        : _AdoptionGameScreen(
             key: const ValueKey('game'),
             pieces: pieces,
             settledCount: settledCount,
@@ -1225,13 +1282,13 @@ class _BatchTakeoverStory extends StatelessWidget {
             plannedPieceCount: plannedPieceCount,
           );
     return Semantics(
-      key: const Key('batch-takeover-tetris-story'),
+      key: const Key('batch-adoption-tetris-story'),
       container: true,
-      label: context.l10n.batchTakeoverBeforeSemantics,
+      label: context.l10n.batchAdoptionBeforeSemantics,
       child: FittedBox(
         fit: BoxFit.contain,
         alignment: Alignment.center,
-        child: _TakeoverRecessedLcd(
+        child: _AdoptionRecessedLcd(
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: AnimatedSwitcher(
@@ -1249,14 +1306,14 @@ class _BatchTakeoverStory extends StatelessWidget {
   }
 }
 
-class _TakeoverCompletedGameScreen extends StatelessWidget {
-  const _TakeoverCompletedGameScreen({
+class _AdoptionCompletedGameScreen extends StatelessWidget {
+  const _AdoptionCompletedGameScreen({
     super.key,
     required this.result,
     required this.eligibleCount,
   });
 
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final int eligibleCount;
 
   @override
@@ -1264,7 +1321,7 @@ class _TakeoverCompletedGameScreen extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Expanded(
-        child: _TakeoverSettlementScreen(
+        child: _AdoptionSettlementScreen(
           result: result,
           eligibleCount: eligibleCount,
         ),
@@ -1272,7 +1329,7 @@ class _TakeoverCompletedGameScreen extends StatelessWidget {
       const SizedBox(width: 4),
       SizedBox(
         width: 122,
-        child: _TakeoverPendingQueue(
+        child: _AdoptionPendingQueue(
           skills: const [],
           painPoints: const [],
           plannedIndexBySkillKey: const {},
@@ -1287,8 +1344,8 @@ class _TakeoverCompletedGameScreen extends StatelessWidget {
   );
 }
 
-class _TakeoverGameScreen extends StatelessWidget {
-  const _TakeoverGameScreen({
+class _AdoptionGameScreen extends StatelessWidget {
+  const _AdoptionGameScreen({
     super.key,
     required this.pieces,
     required this.settledCount,
@@ -1304,17 +1361,17 @@ class _TakeoverGameScreen extends StatelessWidget {
     required this.plannedPieceCount,
   });
 
-  final List<_TakeoverVisualPiece> pieces;
+  final List<_AdoptionVisualPiece> pieces;
   final int settledCount;
   final bool clearing;
   final int eligibleCount;
   final int settledRealCount;
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final bool executing;
-  final List<_TakeoverIllustratedSkill> pending;
+  final List<_AdoptionIllustratedSkill> pending;
   final Map<String, int> plannedIndexBySkillKey;
-  final List<_TakeoverPainPoint> painPoints;
-  final Map<_TakeoverPainPoint, int> plannedIndexByPainPoint;
+  final List<_AdoptionPainPoint> painPoints;
+  final Map<_AdoptionPainPoint, int> plannedIndexByPainPoint;
   final int plannedPieceCount;
 
   @override
@@ -1322,7 +1379,7 @@ class _TakeoverGameScreen extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Expanded(
-        child: _TakeoverTetrisBoard(
+        child: _AdoptionTetrisBoard(
           pieces: pieces,
           settledCount: settledCount,
           clearing: clearing,
@@ -1335,7 +1392,7 @@ class _TakeoverGameScreen extends StatelessWidget {
       const SizedBox(width: 4),
       SizedBox(
         width: 122,
-        child: _TakeoverPendingQueue(
+        child: _AdoptionPendingQueue(
           skills: pending,
           painPoints: painPoints,
           plannedIndexBySkillKey: plannedIndexBySkillKey,
@@ -1350,35 +1407,35 @@ class _TakeoverGameScreen extends StatelessWidget {
   );
 }
 
-class _TakeoverSettlementScreen extends StatelessWidget {
-  const _TakeoverSettlementScreen({
+class _AdoptionSettlementScreen extends StatelessWidget {
+  const _AdoptionSettlementScreen({
     required this.result,
     required this.eligibleCount,
   });
 
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final int eligibleCount;
 
   @override
   Widget build(BuildContext context) {
-    final managed = result?.takenOver ?? 0;
-    final skipped = result?.skipped ?? 0;
-    final allClear = skipped == 0;
+    final managed = result?.adopted ?? 0;
+    final failed = result?.failed ?? 0;
+    final allClear = failed == 0;
     return Semantics(
-      key: const Key('batch-takeover-board-complete'),
+      key: const Key('batch-adoption-board-complete'),
       container: true,
-      label: context.l10n.batchTakeoverSummary(managed, skipped),
+      label: context.l10n.batchAdoptionFailureSummary(managed, failed),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: _takeoverLcdPanel,
-          border: Border.all(color: _takeoverLcdInk, width: 1.5),
+          color: _adoptionLcdPanel,
+          border: Border.all(color: _adoptionLcdInk, width: 1.5),
         ),
         child: Stack(
           children: [
             Positioned.fill(
               child: Opacity(
                 opacity: .24,
-                child: CustomPaint(painter: _TakeoverSettlementGridPainter()),
+                child: CustomPaint(painter: _AdoptionSettlementGridPainter()),
               ),
             ),
             Padding(
@@ -1387,42 +1444,42 @@ class _TakeoverSettlementScreen extends StatelessWidget {
                 children: [
                   Text(
                     allClear
-                        ? context.l10n.batchTakeoverBoardComplete
-                        : context.l10n.batchTakeoverBoardPartial,
+                        ? context.l10n.batchAdoptionBoardComplete
+                        : context.l10n.batchAdoptionBoardPartial,
                     style: context.skillsTypography.sectionTitle.copyWith(
-                      color: _takeoverLcdInk,
-                      fontFamily: 'TakeoverPixel',
+                      color: _adoptionLcdInk,
+                      fontFamily: 'AdoptionPixel',
                       fontSize: 22,
                       fontWeight: FontWeight.w400,
                       letterSpacing: 1.2,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Container(width: 84, height: 2, color: _takeoverLcdInk),
+                  Container(width: 84, height: 2, color: _adoptionLcdInk),
                   const Spacer(flex: 2),
-                  _TakeoverSettlementStat(
-                    label: context.l10n.batchTakeoverStatusManaged,
+                  _AdoptionSettlementStat(
+                    label: context.l10n.batchAdoptionStatusManaged,
                     value: managed,
                   ),
                   const SizedBox(height: 18),
-                  _TakeoverSettlementStat(
-                    label: context.l10n.batchTakeoverStatusSkipped,
-                    value: skipped,
+                  _AdoptionSettlementStat(
+                    label: context.l10n.batchAdoptionStatusFailed,
+                    value: failed,
                   ),
                   const SizedBox(height: 18),
-                  _TakeoverSettlementStat(
-                    label: context.l10n.batchTakeoverStatusTotal,
+                  _AdoptionSettlementStat(
+                    label: context.l10n.batchAdoptionStatusTotal,
                     value: eligibleCount,
                   ),
                   const SizedBox(height: 18),
                   Container(
                     height: 1,
-                    color: _takeoverLcdGrid.withValues(alpha: .72),
+                    color: _adoptionLcdGrid.withValues(alpha: .72),
                   ),
                   const SizedBox(height: 14),
-                  const _TakeoverBenefitSummary(),
+                  const _AdoptionBenefitSummary(),
                   const Spacer(),
-                  const _TakeoverClearedRowsTrace(),
+                  const _AdoptionClearedRowsTrace(),
                 ],
               ),
             ),
@@ -1433,21 +1490,21 @@ class _TakeoverSettlementScreen extends StatelessWidget {
   }
 }
 
-class _TakeoverBenefitSummary extends StatelessWidget {
-  const _TakeoverBenefitSummary();
+class _AdoptionBenefitSummary extends StatelessWidget {
+  const _AdoptionBenefitSummary();
 
   @override
   Widget build(BuildContext context) {
     final benefits = [
-      context.l10n.batchTakeoverBenefitLocation,
-      context.l10n.batchTakeoverBenefitFreshness,
-      context.l10n.batchTakeoverBenefitRecovery,
-      context.l10n.batchTakeoverBenefitVersions,
+      context.l10n.batchAdoptionBenefitLocation,
+      context.l10n.batchAdoptionBenefitFreshness,
+      context.l10n.batchAdoptionBenefitRecovery,
+      context.l10n.batchAdoptionBenefitVersions,
     ];
     return Column(
       children: [
         for (var index = 0; index < benefits.length; index++) ...[
-          _TakeoverBenefitRow(label: benefits[index]),
+          _AdoptionBenefitRow(label: benefits[index]),
           if (index < benefits.length - 1) const SizedBox(height: 8),
         ],
       ],
@@ -1455,8 +1512,8 @@ class _TakeoverBenefitSummary extends StatelessWidget {
   }
 }
 
-class _TakeoverBenefitRow extends StatelessWidget {
-  const _TakeoverBenefitRow({required this.label});
+class _AdoptionBenefitRow extends StatelessWidget {
+  const _AdoptionBenefitRow({required this.label});
 
   final String label;
 
@@ -1469,28 +1526,28 @@ class _TakeoverBenefitRow extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: context.skillsTypography.caption.copyWith(
-            color: _takeoverLcdInk,
-            fontFamily: 'TakeoverPixel',
+            color: _adoptionLcdInk,
+            fontFamily: 'AdoptionPixel',
             fontSize: 9,
             letterSpacing: .2,
           ),
         ),
       ),
       const SizedBox(width: 8),
-      const _TakeoverSettlementTrailingSlot(
+      const _AdoptionSettlementTrailingSlot(
         child: SizedBox(
-          key: Key('batch-takeover-benefit-check'),
+          key: Key('batch-adoption-benefit-check'),
           width: 12,
           height: 12,
-          child: CustomPaint(painter: _TakeoverPixelCheckPainter()),
+          child: CustomPaint(painter: _AdoptionPixelCheckPainter()),
         ),
       ),
     ],
   );
 }
 
-class _TakeoverSettlementTrailingSlot extends StatelessWidget {
-  const _TakeoverSettlementTrailingSlot({required this.child});
+class _AdoptionSettlementTrailingSlot extends StatelessWidget {
+  const _AdoptionSettlementTrailingSlot({required this.child});
 
   final Widget child;
 
@@ -1498,17 +1555,17 @@ class _TakeoverSettlementTrailingSlot extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 28,
     height: 12,
-    child: Align(alignment: Alignment.centerLeft, child: child),
+    child: Align(alignment: Alignment.centerRight, child: child),
   );
 }
 
-class _TakeoverPixelCheckPainter extends CustomPainter {
-  const _TakeoverPixelCheckPainter();
+class _AdoptionPixelCheckPainter extends CustomPainter {
+  const _AdoptionPixelCheckPainter();
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = _takeoverLcdInk
+      ..color = _adoptionLcdInk
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
@@ -1522,11 +1579,11 @@ class _TakeoverPixelCheckPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverPixelCheckPainter oldDelegate) => false;
+  bool shouldRepaint(_AdoptionPixelCheckPainter oldDelegate) => false;
 }
 
-class _TakeoverSettlementStat extends StatelessWidget {
-  const _TakeoverSettlementStat({required this.label, required this.value});
+class _AdoptionSettlementStat extends StatelessWidget {
+  const _AdoptionSettlementStat({required this.label, required this.value});
 
   final String label;
   final int value;
@@ -1538,26 +1595,26 @@ class _TakeoverSettlementStat extends StatelessWidget {
         child: Text(
           label.toUpperCase(),
           style: context.skillsTypography.caption.copyWith(
-            color: _takeoverLcdMutedInk,
-            fontFamily: 'TakeoverPixel',
+            color: _adoptionLcdMutedInk,
+            fontFamily: 'AdoptionPixel',
             fontSize: 9,
             letterSpacing: .4,
           ),
         ),
       ),
-      _TakeoverSettlementTrailingSlot(
-        child: _TakeoverLcdNumber(
+      _AdoptionSettlementTrailingSlot(
+        child: _AdoptionLcdNumber(
           '$value',
-          key: const Key('batch-takeover-stat-value'),
-          color: _takeoverLcdInk,
+          key: const Key('batch-adoption-stat-value'),
+          color: _adoptionLcdInk,
         ),
       ),
     ],
   );
 }
 
-class _TakeoverClearedRowsTrace extends StatelessWidget {
-  const _TakeoverClearedRowsTrace();
+class _AdoptionClearedRowsTrace extends StatelessWidget {
+  const _AdoptionClearedRowsTrace();
 
   @override
   Widget build(BuildContext context) => Opacity(
@@ -1567,7 +1624,7 @@ class _TakeoverClearedRowsTrace extends StatelessWidget {
         for (var row = 0; row < 2; row++)
           Row(
             children: [
-              for (var column = 0; column < _takeoverBoardColumns; column++)
+              for (var column = 0; column < _adoptionBoardColumns; column++)
                 Expanded(
                   child: AspectRatio(
                     aspectRatio: 1,
@@ -1575,7 +1632,7 @@ class _TakeoverClearedRowsTrace extends StatelessWidget {
                       padding: const EdgeInsets.all(2),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          border: Border.all(color: _takeoverLcdGrid),
+                          border: Border.all(color: _adoptionLcdGrid),
                         ),
                       ),
                     ),
@@ -1588,11 +1645,11 @@ class _TakeoverClearedRowsTrace extends StatelessWidget {
   );
 }
 
-class _TakeoverSettlementGridPainter extends CustomPainter {
+class _AdoptionSettlementGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = _takeoverLcdGrid
+      ..color = _adoptionLcdGrid
       ..strokeWidth = .6;
     const columns = 10;
     const rows = 12;
@@ -1607,11 +1664,11 @@ class _TakeoverSettlementGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverSettlementGridPainter oldDelegate) => false;
+  bool shouldRepaint(_AdoptionSettlementGridPainter oldDelegate) => false;
 }
 
-class _TakeoverRecessedLcd extends StatelessWidget {
-  const _TakeoverRecessedLcd({required this.child});
+class _AdoptionRecessedLcd extends StatelessWidget {
+  const _AdoptionRecessedLcd({required this.child});
 
   final Widget child;
 
@@ -1620,7 +1677,7 @@ class _TakeoverRecessedLcd extends StatelessWidget {
     width: 390,
     height: 450,
     child: CustomPaint(
-      painter: const _TakeoverRecessedLcdPainter(),
+      painter: const _AdoptionRecessedLcdPainter(),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(7, 7, 5, 6),
         child: child,
@@ -1629,8 +1686,8 @@ class _TakeoverRecessedLcd extends StatelessWidget {
   );
 }
 
-class _TakeoverRecessedLcdPainter extends CustomPainter {
-  const _TakeoverRecessedLcdPainter();
+class _AdoptionRecessedLcdPainter extends CustomPainter {
+  const _AdoptionRecessedLcdPainter();
 
   static const _innerInsets = EdgeInsets.fromLTRB(6, 6, 4, 5);
 
@@ -1705,7 +1762,7 @@ class _TakeoverRecessedLcdPainter extends CustomPainter {
       Rect.fromLTRB(inner.right, 0, size.width, size.height),
     );
 
-    canvas.drawRect(inner, Paint()..color = _takeoverLcdGlass);
+    canvas.drawRect(inner, Paint()..color = _adoptionLcdGlass);
     canvas.drawRect(
       inner.deflate(.5),
       Paint()
@@ -1725,12 +1782,12 @@ class _TakeoverRecessedLcdPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _TakeoverRecessedLcdPainter oldDelegate) =>
+  bool shouldRepaint(covariant _AdoptionRecessedLcdPainter oldDelegate) =>
       false;
 }
 
-class _TakeoverStatusPanel extends StatelessWidget {
-  const _TakeoverStatusPanel({
+class _AdoptionStatusPanel extends StatelessWidget {
+  const _AdoptionStatusPanel({
     required this.eligibleCount,
     required this.settledCount,
     required this.result,
@@ -1740,40 +1797,38 @@ class _TakeoverStatusPanel extends StatelessWidget {
 
   final int eligibleCount;
   final int settledCount;
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final bool executing;
   final bool completed;
 
   @override
   Widget build(BuildContext context) {
-    final managed = completed
-        ? result?.takenOver ?? settledCount
-        : settledCount;
-    final skipped = result?.skipped ?? 0;
-    final pending = math.max(0, eligibleCount - managed - skipped);
+    final managed = completed ? result?.adopted ?? settledCount : settledCount;
+    final failed = result?.failed ?? 0;
+    final pending = math.max(0, eligibleCount - managed - failed);
     return DecoratedBox(
-      key: const Key('batch-takeover-status-panel'),
+      key: const Key('batch-adoption-status-panel'),
       decoration: const BoxDecoration(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: _TakeoverStatusItem(
-              label: context.l10n.batchTakeoverPendingSection,
+            child: _AdoptionStatusItem(
+              label: context.l10n.batchAdoptionPendingSection,
               value: '$pending',
             ),
           ),
           Expanded(
-            child: _TakeoverStatusItem(
-              label: context.l10n.batchTakeoverStatusManaged,
+            child: _AdoptionStatusItem(
+              label: context.l10n.batchAdoptionStatusManaged,
               value: '$managed',
-              color: managed > 0 ? _takeoverLcdInk : null,
+              color: managed > 0 ? _adoptionLcdInk : null,
             ),
           ),
           Expanded(
-            child: _TakeoverStatusItem(
-              label: context.l10n.batchTakeoverStatusSkipped,
-              value: '$skipped',
+            child: _AdoptionStatusItem(
+              label: context.l10n.batchAdoptionStatusFailed,
+              value: '$failed',
             ),
           ),
         ],
@@ -1782,8 +1837,8 @@ class _TakeoverStatusPanel extends StatelessWidget {
   }
 }
 
-class _TakeoverStatusItem extends StatelessWidget {
-  const _TakeoverStatusItem({
+class _AdoptionStatusItem extends StatelessWidget {
+  const _AdoptionStatusItem({
     required this.label,
     required this.value,
     this.color,
@@ -1805,7 +1860,7 @@ class _TakeoverStatusItem extends StatelessWidget {
           softWrap: true,
           overflow: TextOverflow.ellipsis,
           style: context.skillsTypography.caption.copyWith(
-            color: _takeoverLcdMutedInk,
+            color: _adoptionLcdMutedInk,
             fontSize: 9,
             height: 1.05,
             fontFamily: 'Menlo',
@@ -1813,14 +1868,14 @@ class _TakeoverStatusItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        _TakeoverLcdNumber(value, color: color ?? _takeoverLcdInk),
+        _AdoptionLcdNumber(value, color: color ?? _adoptionLcdInk),
       ],
     );
   }
 }
 
-class _TakeoverLcdNumber extends StatelessWidget {
-  const _TakeoverLcdNumber(this.value, {super.key, required this.color});
+class _AdoptionLcdNumber extends StatelessWidget {
+  const _AdoptionLcdNumber(this.value, {super.key, required this.color});
 
   final String value;
   final Color color;
@@ -1830,13 +1885,13 @@ class _TakeoverLcdNumber extends StatelessWidget {
     label: value,
     child: CustomPaint(
       size: Size(value.length * 7.0, 12),
-      painter: _TakeoverLcdNumberPainter(value: value, color: color),
+      painter: _AdoptionLcdNumberPainter(value: value, color: color),
     ),
   );
 }
 
-class _TakeoverLcdNumberPainter extends CustomPainter {
-  const _TakeoverLcdNumberPainter({required this.value, required this.color});
+class _AdoptionLcdNumberPainter extends CustomPainter {
+  const _AdoptionLcdNumberPainter({required this.value, required this.color});
 
   static const _segments = <int, List<int>>{
     0: [0, 1, 2, 3, 4, 5],
@@ -1881,12 +1936,12 @@ class _TakeoverLcdNumberPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverLcdNumberPainter oldDelegate) =>
+  bool shouldRepaint(_AdoptionLcdNumberPainter oldDelegate) =>
       oldDelegate.value != value || oldDelegate.color != color;
 }
 
-class _TakeoverTetrisBoard extends StatelessWidget {
-  const _TakeoverTetrisBoard({
+class _AdoptionTetrisBoard extends StatelessWidget {
+  const _AdoptionTetrisBoard({
     required this.pieces,
     required this.settledCount,
     required this.clearing,
@@ -1896,26 +1951,26 @@ class _TakeoverTetrisBoard extends StatelessWidget {
     required this.executing,
   });
 
-  final List<_TakeoverVisualPiece> pieces;
+  final List<_AdoptionVisualPiece> pieces;
   final int settledCount;
   final bool clearing;
   final int eligibleCount;
   final int settledRealCount;
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final bool executing;
 
   @override
   Widget build(BuildContext context) {
     assert(
-      _takeoverTemplateIsExactCover(),
-      'Takeover templates must exactly cover their intended board strips.',
+      _adoptionTemplateIsExactCover(),
+      'Adoption templates must exactly cover their intended board strips.',
     );
     final referenceIndex = clearing && settledCount > 0
         ? settledCount - 1
         : settledCount;
-    final template = _takeoverTemplateAt(referenceIndex, pieces.length);
-    final templateRows = _takeoverTemplateRows(template);
-    final batchStart = _takeoverBatchStart(referenceIndex, pieces.length);
+    final template = _adoptionTemplateAt(referenceIndex, pieces.length);
+    final templateRows = _adoptionTemplateRows(template);
+    final batchStart = _adoptionBatchStart(referenceIndex, pieces.length);
     final visibleSettled = clearing
         ? template.length
         : settledCount >= pieces.length
@@ -1925,25 +1980,25 @@ class _TakeoverTetrisBoard extends StatelessWidget {
         ? settledCount
         : null;
     return Semantics(
-      key: const Key('batch-takeover-tetris-board'),
+      key: const Key('batch-adoption-tetris-board'),
       container: true,
-      label: context.l10n.batchTakeoverBoardSemantics,
+      label: context.l10n.batchAdoptionBoardSemantics,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: _takeoverLcdPanel,
-          border: Border.all(color: _takeoverLcdInk, width: 1.5),
+          color: _adoptionLcdPanel,
+          border: Border.all(color: _adoptionLcdInk, width: 1.5),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(0, 7, 0, 10),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final cell = math.min(
-                (constraints.maxWidth - 20) / _takeoverBoardColumns,
-                (constraints.maxHeight - 40) / _takeoverBoardRows,
+                (constraints.maxWidth - 20) / _adoptionBoardColumns,
+                (constraints.maxHeight - 40) / _adoptionBoardRows,
               );
               final boardSize = Size(
-                cell * _takeoverBoardColumns,
-                cell * _takeoverBoardRows,
+                cell * _adoptionBoardColumns,
+                cell * _adoptionBoardRows,
               );
               return Column(
                 children: [
@@ -1952,7 +2007,7 @@ class _TakeoverTetrisBoard extends StatelessWidget {
                     child: Center(
                       child: SizedBox(
                         width: boardSize.width,
-                        child: _TakeoverStatusPanel(
+                        child: _AdoptionStatusPanel(
                           eligibleCount: eligibleCount,
                           settledCount: settledRealCount,
                           result: result,
@@ -1969,12 +2024,12 @@ class _TakeoverTetrisBoard extends StatelessWidget {
                         size: boardSize,
                         child: Stack(
                           children: [
-                            const Positioned.fill(child: _TakeoverBoardGrid()),
+                            const Positioned.fill(child: _AdoptionBoardGrid()),
                             for (var index = 0; index < visibleSettled; index++)
-                              _TakeoverPlacedPiece(
+                              _AdoptionPlacedPiece(
                                 key: ValueKey('settled-${batchStart + index}'),
                                 piece: pieces.isEmpty
-                                    ? const _TakeoverVisualPiece(
+                                    ? const _AdoptionVisualPiece(
                                         skill: null,
                                         isFiller: true,
                                       )
@@ -1984,17 +2039,17 @@ class _TakeoverTetrisBoard extends StatelessWidget {
                                       )],
                                 plan: template[index],
                                 cellSize: cell,
-                                boardRows: _takeoverBoardRows,
+                                boardRows: _adoptionBoardRows,
                                 templateRows: templateRows,
                                 clearing: clearing,
                               ),
                             if (activeIndex != null)
-                              _TakeoverDroppingPiece(
+                              _AdoptionDroppingPiece(
                                 key: ValueKey('active-$activeIndex'),
                                 piece: pieces[activeIndex],
                                 plan: template[activeIndex - batchStart],
                                 cellSize: cell,
-                                boardRows: _takeoverBoardRows,
+                                boardRows: _adoptionBoardRows,
                                 templateRows: templateRows,
                                 duration: _activeDropDuration(activeIndex),
                               ),
@@ -2019,19 +2074,19 @@ class _TakeoverTetrisBoard extends StatelessWidget {
   }
 }
 
-class _TakeoverBoardGrid extends StatelessWidget {
-  const _TakeoverBoardGrid();
+class _AdoptionBoardGrid extends StatelessWidget {
+  const _AdoptionBoardGrid();
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-    painter: _TakeoverBoardGridPainter(
-      color: _takeoverLcdGrid.withValues(alpha: .58),
+    painter: _AdoptionBoardGridPainter(
+      color: _adoptionLcdGrid.withValues(alpha: .58),
     ),
   );
 }
 
-class _TakeoverBoardGridPainter extends CustomPainter {
-  const _TakeoverBoardGridPainter({required this.color});
+class _AdoptionBoardGridPainter extends CustomPainter {
+  const _AdoptionBoardGridPainter({required this.color});
 
   final Color color;
 
@@ -2040,16 +2095,16 @@ class _TakeoverBoardGridPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..strokeWidth = .6;
-    final cellWidth = size.width / _takeoverBoardColumns;
-    final cellHeight = size.height / _takeoverBoardRows;
-    for (var column = 0; column <= _takeoverBoardColumns; column++) {
+    final cellWidth = size.width / _adoptionBoardColumns;
+    final cellHeight = size.height / _adoptionBoardRows;
+    for (var column = 0; column <= _adoptionBoardColumns; column++) {
       canvas.drawLine(
         Offset(column * cellWidth, 0),
         Offset(column * cellWidth, size.height),
         paint,
       );
     }
-    for (var row = 0; row <= _takeoverBoardRows; row++) {
+    for (var row = 0; row <= _adoptionBoardRows; row++) {
       canvas.drawLine(
         Offset(0, row * cellHeight),
         Offset(size.width, row * cellHeight),
@@ -2059,12 +2114,12 @@ class _TakeoverBoardGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverBoardGridPainter oldDelegate) =>
+  bool shouldRepaint(_AdoptionBoardGridPainter oldDelegate) =>
       oldDelegate.color != color;
 }
 
-class _TakeoverDroppingPiece extends StatelessWidget {
-  const _TakeoverDroppingPiece({
+class _AdoptionDroppingPiece extends StatelessWidget {
+  const _AdoptionDroppingPiece({
     super.key,
     required this.piece,
     required this.plan,
@@ -2074,8 +2129,8 @@ class _TakeoverDroppingPiece extends StatelessWidget {
     required this.duration,
   });
 
-  final _TakeoverVisualPiece piece;
-  final _TakeoverPiecePlan plan;
+  final _AdoptionVisualPiece piece;
+  final _AdoptionPiecePlan plan;
   final double cellSize;
   final int boardRows;
   final int templateRows;
@@ -2100,8 +2155,8 @@ class _TakeoverDroppingPiece extends StatelessWidget {
           plan.cells.map((cell) => cell.column).reduce((a, b) => a + b) /
           plan.cells.length;
       final spawnColumnOffset = 4.5 - pivotColumn;
-      final initialQuarterTurns = _takeoverInitialQuarterTurns(plan.type);
-      return _TakeoverPieceCells(
+      final initialQuarterTurns = _adoptionInitialQuarterTurns(plan.type);
+      return _AdoptionPieceCells(
         piece: piece,
         plan: plan,
         cellSize: cellSize,
@@ -2114,14 +2169,14 @@ class _TakeoverDroppingPiece extends StatelessWidget {
   );
 }
 
-int _takeoverInitialQuarterTurns(_TakeoverPieceType type) => switch (type) {
-  _TakeoverPieceType.o => 0,
-  _TakeoverPieceType.i || _TakeoverPieceType.s || _TakeoverPieceType.j => 1,
-  _TakeoverPieceType.t || _TakeoverPieceType.z || _TakeoverPieceType.l => -1,
+int _adoptionInitialQuarterTurns(_AdoptionPieceType type) => switch (type) {
+  _AdoptionPieceType.o => 0,
+  _AdoptionPieceType.i || _AdoptionPieceType.s || _AdoptionPieceType.j => 1,
+  _AdoptionPieceType.t || _AdoptionPieceType.z || _AdoptionPieceType.l => -1,
 };
 
-class _TakeoverPlacedPiece extends StatelessWidget {
-  const _TakeoverPlacedPiece({
+class _AdoptionPlacedPiece extends StatelessWidget {
+  const _AdoptionPlacedPiece({
     super.key,
     required this.piece,
     required this.plan,
@@ -2131,8 +2186,8 @@ class _TakeoverPlacedPiece extends StatelessWidget {
     required this.clearing,
   });
 
-  final _TakeoverVisualPiece piece;
-  final _TakeoverPiecePlan plan;
+  final _AdoptionVisualPiece piece;
+  final _AdoptionPiecePlan plan;
   final double cellSize;
   final int boardRows;
   final int templateRows;
@@ -2142,7 +2197,7 @@ class _TakeoverPlacedPiece extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedOpacity(
     duration: const Duration(milliseconds: 160),
     opacity: clearing ? .22 : 1,
-    child: _TakeoverPieceCells(
+    child: _AdoptionPieceCells(
       piece: piece,
       plan: plan,
       cellSize: cellSize,
@@ -2151,8 +2206,8 @@ class _TakeoverPlacedPiece extends StatelessWidget {
   );
 }
 
-class _TakeoverPieceCells extends StatelessWidget {
-  const _TakeoverPieceCells({
+class _AdoptionPieceCells extends StatelessWidget {
+  const _AdoptionPieceCells({
     required this.piece,
     required this.plan,
     required this.cellSize,
@@ -2161,8 +2216,8 @@ class _TakeoverPieceCells extends StatelessWidget {
     this.rotationRadians = 0,
   });
 
-  final _TakeoverVisualPiece piece;
-  final _TakeoverPiecePlan plan;
+  final _AdoptionVisualPiece piece;
+  final _AdoptionPiecePlan plan;
   final double cellSize;
   final double rowOffset;
   final double columnOffset;
@@ -2207,17 +2262,17 @@ class _TakeoverPieceCells extends StatelessWidget {
                 width: cellSize - 2,
                 height: cellSize - 2,
                 child: isPainPoint
-                    ? _TakeoverLedCell(
-                        color: _takeoverPainPointColor(piece.painPoint!),
+                    ? _AdoptionLedCell(
+                        color: _adoptionPainPointColor(piece.painPoint!),
                         child: index == plan.coreCellIndex
-                            ? _TakeoverPieceIdentity(piece: piece)
+                            ? _AdoptionPieceIdentity(piece: piece)
                             : null,
                       )
                     : isAvatarCell
-                    ? _TakeoverPieceIdentity(piece: piece)
-                    : _TakeoverBlackCell(
+                    ? _AdoptionPieceIdentity(piece: piece)
+                    : _AdoptionBlackCell(
                         child: index == plan.coreCellIndex
-                            ? _TakeoverPieceIdentity(piece: piece)
+                            ? _AdoptionPieceIdentity(piece: piece)
                             : null,
                       ),
               );
@@ -2228,19 +2283,19 @@ class _TakeoverPieceCells extends StatelessWidget {
   }
 }
 
-class _TakeoverPieceIdentity extends StatelessWidget {
-  const _TakeoverPieceIdentity({required this.piece});
+class _AdoptionPieceIdentity extends StatelessWidget {
+  const _AdoptionPieceIdentity({required this.piece});
 
-  final _TakeoverVisualPiece piece;
+  final _AdoptionVisualPiece piece;
 
   @override
   Widget build(BuildContext context) {
     final painPoint = piece.painPoint;
     if (painPoint != null) {
       return CustomPaint(
-        painter: _TakeoverPainPointSymbolPainter(
+        painter: _AdoptionPainPointSymbolPainter(
           painPoint: painPoint,
-          color: _takeoverLcdInk,
+          color: _adoptionLcdInk,
         ),
       );
     }
@@ -2257,9 +2312,9 @@ class _TakeoverPieceIdentity extends StatelessWidget {
       builder: (context, constraints) {
         final size = math.min(constraints.maxWidth, constraints.maxHeight);
         return Center(
-          child: RepositoryAvatar(
+          child: PackageAvatar(
             source: skill.skillId,
-            imageUrl: _repositoryAvatarUrl(skill.skillId),
+            imageUrl: _packageAvatarUrl(skill.skillId),
             size: size,
             borderRadius: 0,
             backgroundColor: context.skillsColors.surfaceMuted,
@@ -2271,8 +2326,8 @@ class _TakeoverPieceIdentity extends StatelessWidget {
   }
 }
 
-class _TakeoverLedCell extends StatelessWidget {
-  const _TakeoverLedCell({required this.color, this.child});
+class _AdoptionLedCell extends StatelessWidget {
+  const _AdoptionLedCell({required this.color, this.child});
 
   final Color color;
   final Widget? child;
@@ -2302,13 +2357,13 @@ class _TakeoverLedCell extends StatelessWidget {
   );
 }
 
-class _TakeoverPainPointSymbolPainter extends CustomPainter {
-  const _TakeoverPainPointSymbolPainter({
+class _AdoptionPainPointSymbolPainter extends CustomPainter {
+  const _AdoptionPainPointSymbolPainter({
     required this.painPoint,
     required this.color,
   });
 
-  final _TakeoverPainPoint painPoint;
+  final _AdoptionPainPoint painPoint;
   final Color color;
 
   @override
@@ -2321,7 +2376,7 @@ class _TakeoverPainPointSymbolPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final unit = size.shortestSide / 6;
     switch (painPoint) {
-      case _TakeoverPainPoint.location:
+      case _AdoptionPainPoint.location:
         canvas.drawCircle(center, unit * 1.3, paint);
         canvas.drawLine(
           Offset(center.dx, unit * .2),
@@ -2333,7 +2388,7 @@ class _TakeoverPainPointSymbolPainter extends CustomPainter {
           Offset(center.dx, size.height - unit * 1.2),
           paint,
         );
-      case _TakeoverPainPoint.freshness:
+      case _AdoptionPainPoint.freshness:
         canvas.drawArc(
           Rect.fromCircle(center: center, radius: unit * 1.65),
           -.2,
@@ -2346,7 +2401,7 @@ class _TakeoverPainPointSymbolPainter extends CustomPainter {
           Offset(size.width - unit * .55, unit * 1.15),
           paint,
         );
-      case _TakeoverPainPoint.recovery:
+      case _AdoptionPainPoint.recovery:
         canvas.drawLine(
           Offset(unit * 1.2, size.height - unit * 1.2),
           Offset(size.width - unit * 1.2, unit * 1.2),
@@ -2357,7 +2412,7 @@ class _TakeoverPainPointSymbolPainter extends CustomPainter {
           unit * .7,
           paint,
         );
-      case _TakeoverPainPoint.versionDrift:
+      case _AdoptionPainPoint.versionDrift:
         canvas.drawLine(
           Offset(unit, center.dy),
           Offset(center.dx, center.dy),
@@ -2377,32 +2432,32 @@ class _TakeoverPainPointSymbolPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TakeoverPainPointSymbolPainter oldDelegate) =>
+  bool shouldRepaint(_AdoptionPainPointSymbolPainter oldDelegate) =>
       oldDelegate.painPoint != painPoint || oldDelegate.color != color;
 }
 
-class _TakeoverBlackCell extends StatelessWidget {
-  const _TakeoverBlackCell({this.child});
+class _AdoptionBlackCell extends StatelessWidget {
+  const _AdoptionBlackCell({this.child});
 
   final Widget? child;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      border: Border.all(color: _takeoverLcdInk, width: 1),
+      border: Border.all(color: _adoptionLcdInk, width: 1),
     ),
     child: Padding(
       padding: const EdgeInsets.all(2),
       child: ColoredBox(
-        color: _takeoverLcdInk,
+        color: _adoptionLcdInk,
         child: child == null ? null : Center(child: child),
       ),
     ),
   );
 }
 
-class _TakeoverPendingQueue extends StatefulWidget {
-  const _TakeoverPendingQueue({
+class _AdoptionPendingQueue extends StatefulWidget {
+  const _AdoptionPendingQueue({
     required this.skills,
     required this.painPoints,
     required this.plannedIndexBySkillKey,
@@ -2413,24 +2468,24 @@ class _TakeoverPendingQueue extends StatefulWidget {
     required this.showWaitingMessage,
   });
 
-  final List<_TakeoverIllustratedSkill> skills;
-  final List<_TakeoverPainPoint> painPoints;
+  final List<_AdoptionIllustratedSkill> skills;
+  final List<_AdoptionPainPoint> painPoints;
   final Map<String, int> plannedIndexBySkillKey;
-  final Map<_TakeoverPainPoint, int> plannedIndexByPainPoint;
+  final Map<_AdoptionPainPoint, int> plannedIndexByPainPoint;
   final int plannedPieceCount;
-  final BatchTakeoverResult? result;
+  final BatchAdoptionResult? result;
   final int fillerCount;
   final bool showWaitingMessage;
 
   @override
-  State<_TakeoverPendingQueue> createState() => _TakeoverPendingQueueState();
+  State<_AdoptionPendingQueue> createState() => _AdoptionPendingQueueState();
 }
 
-class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
+class _AdoptionPendingQueueState extends State<_AdoptionPendingQueue> {
   final ScrollController _controller = ScrollController();
 
   @override
-  void didUpdateWidget(_TakeoverPendingQueue oldWidget) {
+  void didUpdateWidget(_AdoptionPendingQueue oldWidget) {
     super.didUpdateWidget(oldWidget);
     final itemCount = widget.skills.length + widget.painPoints.length;
     final oldItemCount = oldWidget.skills.length + oldWidget.painPoints.length;
@@ -2456,8 +2511,8 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      key: const Key('batch-takeover-pending-queue'),
-      decoration: const BoxDecoration(color: _takeoverLcdGlass),
+      key: const Key('batch-adoption-pending-queue'),
+      decoration: const BoxDecoration(color: _adoptionLcdGlass),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Column(
@@ -2467,19 +2522,19 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
               children: [
                 Expanded(
                   child: Text(
-                    context.l10n.batchTakeoverNextLabel,
+                    context.l10n.batchAdoptionNextLabel,
                     style: context.skillsTypography.caption.copyWith(
-                      color: _takeoverLcdInk,
-                      fontFamily: 'TakeoverPixel',
+                      color: _adoptionLcdInk,
+                      fontFamily: 'AdoptionPixel',
                       fontSize: 10,
                       fontWeight: FontWeight.w400,
                       letterSpacing: .8,
                     ),
                   ),
                 ),
-                _TakeoverLcdNumber(
+                _AdoptionLcdNumber(
                   '${widget.skills.length + widget.painPoints.length}',
-                  color: _takeoverLcdMutedInk,
+                  color: _adoptionLcdMutedInk,
                 ),
               ],
             ),
@@ -2491,10 +2546,10 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
                       widget.showWaitingMessage
                   ? Center(
                       child: Text(
-                        context.l10n.batchTakeoverQueueWaiting,
+                        context.l10n.batchAdoptionQueueWaiting,
                         textAlign: TextAlign.center,
                         style: context.skillsTypography.caption.copyWith(
-                          color: _takeoverLcdMutedInk,
+                          color: _adoptionLcdMutedInk,
                         ),
                       ),
                     )
@@ -2505,7 +2560,7 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
                         context,
                       ).copyWith(scrollbars: false),
                       child: ListView.separated(
-                        key: const Key('batch-takeover-pending-list'),
+                        key: const Key('batch-adoption-pending-list'),
                         controller: _controller,
                         padding: EdgeInsets.zero,
                         itemCount:
@@ -2515,7 +2570,7 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
                           if (index >= widget.skills.length) {
                             final painPoint =
                                 widget.painPoints[index - widget.skills.length];
-                            return _TakeoverPainQueueItem(
+                            return _AdoptionPainQueueItem(
                               painPoint: painPoint,
                               planIndex:
                                   widget.plannedIndexByPainPoint[painPoint] ??
@@ -2524,17 +2579,17 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
                             );
                           }
                           final skill = widget.skills[index];
-                          return _TakeoverQueueItem(
+                          return _AdoptionQueueItem(
                             skill: skill,
                             planIndex:
-                                widget.plannedIndexBySkillKey[_takeoverSkillKey(
+                                widget.plannedIndexBySkillKey[_adoptionSkillKey(
                                   skill.name,
                                   skill.skillId,
                                 )] ??
-                                _takeoverStableIndex(skill) %
+                                _adoptionStableIndex(skill) %
                                     widget.plannedPieceCount,
                             plannedPieceCount: widget.plannedPieceCount,
-                            skipped: _isSkipped(skill),
+                            failureReason: _failureReason(skill),
                           );
                         },
                       ),
@@ -2546,106 +2601,105 @@ class _TakeoverPendingQueueState extends State<_TakeoverPendingQueue> {
     );
   }
 
-  bool _isSkipped(_TakeoverIllustratedSkill skill) =>
-      widget.result?.items.any(
-        (item) =>
-            item.status == BatchTakeoverItemStatus.skipped &&
-            _takeoverSkillKey(item.name, item.skillId) ==
-                _takeoverSkillKey(skill.name, skill.skillId),
-      ) ??
-      false;
+  String _failureReason(_AdoptionIllustratedSkill skill) =>
+      widget.result?.items
+          .where(
+            (item) =>
+                item.status == BatchAdoptionItemStatus.failed &&
+                _adoptionSkillKey(item.name, item.skillId) ==
+                    _adoptionSkillKey(skill.name, skill.skillId),
+          )
+          .firstOrNull
+          ?.reason ??
+      '';
 }
 
-class _TakeoverQueueItem extends StatelessWidget {
-  const _TakeoverQueueItem({
+class _AdoptionQueueItem extends StatelessWidget {
+  const _AdoptionQueueItem({
     required this.skill,
     required this.planIndex,
     required this.plannedPieceCount,
-    required this.skipped,
+    required this.failureReason,
   });
 
-  final _TakeoverIllustratedSkill skill;
+  final _AdoptionIllustratedSkill skill;
   final int planIndex;
   final int plannedPieceCount;
-  final bool skipped;
+  final String failureReason;
 
   @override
   Widget build(BuildContext context) {
-    final piece = _TakeoverVisualPiece(skill: skill, isFiller: false);
-    final template = _takeoverTemplateAt(planIndex, plannedPieceCount);
-    final batchStart = _takeoverBatchStart(planIndex, plannedPieceCount);
+    final piece = _AdoptionVisualPiece(skill: skill, isFiller: false);
+    final template = _adoptionTemplateAt(planIndex, plannedPieceCount);
+    final batchStart = _adoptionBatchStart(planIndex, plannedPieceCount);
     final plan = template[planIndex - batchStart];
-    return Semantics(
-      label: skipped
-          ? context.l10n.batchTakeoverItemSkipped(skill.name)
-          : context.l10n.batchTakeoverItemPending(skill.name),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: skipped ? Border.all(color: const Color(0xffef625b)) : null,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 34,
-                height: 30,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox(
-                    width: 80,
-                    height: 52,
-                    child: _TakeoverQueuePiece(piece: piece, plan: plan),
-                  ),
+    final failed = failureReason.isNotEmpty;
+    final content = Semantics(
+      label: failed
+          ? '${context.l10n.batchAdoptionItemFailed(skill.name)}: $failureReason'
+          : context.l10n.batchAdoptionItemPending(skill.name),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 34,
+              height: 30,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: 80,
+                  height: 52,
+                  child: _AdoptionQueuePiece(piece: piece, plan: plan),
                 ),
               ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  skill.name.replaceAll('-', ' '),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.skillsTypography.caption.copyWith(
-                    color: skipped ? const Color(0xffff837b) : _takeoverLcdInk,
-                    fontFamily: 'TakeoverPixel',
-                    fontSize: 9,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: .15,
-                    height: 1.2,
-                  ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                skill.name.replaceAll('-', ' '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: context.skillsTypography.caption.copyWith(
+                  color: failed ? _adoptionLcdMutedInk : _adoptionLcdInk,
+                  fontFamily: 'AdoptionPixel',
+                  fontSize: 9,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: .15,
+                  height: 1.2,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+    return failed ? Tooltip(message: failureReason, child: content) : content;
   }
 }
 
-class _TakeoverPainQueueItem extends StatelessWidget {
-  const _TakeoverPainQueueItem({
+class _AdoptionPainQueueItem extends StatelessWidget {
+  const _AdoptionPainQueueItem({
     required this.painPoint,
     required this.planIndex,
     required this.plannedPieceCount,
   });
 
-  final _TakeoverPainPoint painPoint;
+  final _AdoptionPainPoint painPoint;
   final int planIndex;
   final int plannedPieceCount;
 
   @override
   Widget build(BuildContext context) {
-    final piece = _TakeoverVisualPiece(
+    final piece = _AdoptionVisualPiece(
       skill: null,
       isFiller: false,
       painPoint: painPoint,
     );
-    final template = _takeoverTemplateAt(planIndex, plannedPieceCount);
-    final batchStart = _takeoverBatchStart(planIndex, plannedPieceCount);
+    final template = _adoptionTemplateAt(planIndex, plannedPieceCount);
+    final batchStart = _adoptionBatchStart(planIndex, plannedPieceCount);
     final plan = template[planIndex - batchStart];
-    final name = _takeoverPainPointName(context, painPoint);
+    final name = _adoptionPainPointName(context, painPoint);
     return Semantics(
       label: name,
       child: Padding(
@@ -2660,7 +2714,7 @@ class _TakeoverPainQueueItem extends StatelessWidget {
                 child: SizedBox(
                   width: 80,
                   height: 52,
-                  child: _TakeoverQueuePiece(piece: piece, plan: plan),
+                  child: _AdoptionQueuePiece(piece: piece, plan: plan),
                 ),
               ),
             ),
@@ -2671,8 +2725,8 @@ class _TakeoverPainQueueItem extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: context.skillsTypography.caption.copyWith(
-                  color: _takeoverLcdInk,
-                  fontFamily: 'TakeoverPixel',
+                  color: _adoptionLcdInk,
+                  fontFamily: 'AdoptionPixel',
                   fontSize: 9,
                   fontWeight: FontWeight.w400,
                   letterSpacing: .15,
@@ -2687,11 +2741,11 @@ class _TakeoverPainQueueItem extends StatelessWidget {
   }
 }
 
-class _TakeoverQueuePiece extends StatelessWidget {
-  const _TakeoverQueuePiece({required this.piece, required this.plan});
+class _AdoptionQueuePiece extends StatelessWidget {
+  const _AdoptionQueuePiece({required this.piece, required this.plan});
 
-  final _TakeoverVisualPiece piece;
-  final _TakeoverPiecePlan plan;
+  final _AdoptionVisualPiece piece;
+  final _AdoptionPiecePlan plan;
 
   @override
   Widget build(BuildContext context) {
@@ -2714,17 +2768,17 @@ class _TakeoverQueuePiece extends StatelessWidget {
                 width: cell - 2,
                 height: cell - 2,
                 child: isPainPoint
-                    ? _TakeoverLedCell(
-                        color: _takeoverPainPointColor(piece.painPoint!),
+                    ? _AdoptionLedCell(
+                        color: _adoptionPainPointColor(piece.painPoint!),
                         child: index == plan.coreCellIndex
-                            ? _TakeoverPieceIdentity(piece: piece)
+                            ? _AdoptionPieceIdentity(piece: piece)
                             : null,
                       )
                     : isAvatarCell
-                    ? _TakeoverPieceIdentity(piece: piece)
-                    : _TakeoverBlackCell(
+                    ? _AdoptionPieceIdentity(piece: piece)
+                    : _AdoptionBlackCell(
                         child: index == plan.coreCellIndex
-                            ? _TakeoverPieceIdentity(piece: piece)
+                            ? _AdoptionPieceIdentity(piece: piece)
                             : null,
                       ),
               );
@@ -2735,7 +2789,7 @@ class _TakeoverQueuePiece extends StatelessWidget {
   }
 }
 
-int _takeoverStableIndex(_TakeoverIllustratedSkill skill) {
+int _adoptionStableIndex(_AdoptionIllustratedSkill skill) {
   var value = 0;
   for (final unit in '${skill.skillId}\u0000${skill.name}'.codeUnits) {
     value = ((value * 31) + unit) & 0x7fffffff;
@@ -2743,12 +2797,12 @@ int _takeoverStableIndex(_TakeoverIllustratedSkill skill) {
   return value;
 }
 
-String _takeoverRepositoryIdentity(_TakeoverIllustratedSkill skill) {
+String _adoptionPackageIdentity(_AdoptionIllustratedSkill skill) {
   final skillId = skill.skillId.trim();
   if (skillId.isEmpty) return 'unresolved:${skill.name}';
   final separator = skillId.indexOf('/-/');
   return separator < 0 ? skillId : skillId.substring(0, separator);
 }
 
-String _takeoverSkillKey(String name, String skillId) =>
+String _adoptionSkillKey(String name, String skillId) =>
     '${skillId.trim()}\u0000${name.trim()}';

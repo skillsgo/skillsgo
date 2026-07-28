@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Skill discovery summaries, installation presenters, repository identity, trust/risk chips, hover state, and localized copy.
- * [OUTPUT]: Provides interactive Skill cards, repository avatars with optional caller-fixed fallback colors, and repository identity formatting.
+ * [INPUT]: Depends on Skill discovery summaries, installation presenters, Package identity, trust/risk chips, hover state, and localized copy.
+ * [OUTPUT]: Provides interactive Skill cards with a stable install entry, Package avatars with optional caller-fixed fallback colors, and Package identity formatting.
  * [POS]: Serves as the discovery-card segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,7 +29,6 @@ class _SkillCardState extends State<SkillCard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final installed = widget.skill.localTargetCount > 0;
     final radius = BorderRadius.circular(14);
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
@@ -70,7 +69,7 @@ class _SkillCardState extends State<SkillCard> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          RepositoryAvatar(
+                          PackageAvatar(
                             source: widget.skill.packagePath,
                             imageUrl: widget.skill.imageUrl,
                           ),
@@ -93,7 +92,7 @@ class _SkillCardState extends State<SkillCard> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  _repositoryLabel(widget.skill.packagePath),
+                                  _packageLabel(widget.skill.packagePath),
                                   textDirection: contentTextDirection(
                                     widget.skill.packagePath,
                                   ),
@@ -140,17 +139,11 @@ class _SkillCardState extends State<SkillCard> {
                           ),
                           const SizedBox(width: 8),
                           InstallLocationMenuAnchor(
-                            builder: (context, present) => PrimaryCapsuleButton(
-                              label: installed
-                                  ? l10n.installedCell
-                                  : l10n.install,
-                              height: 28,
-                              horizontalPadding: 9,
-                              labelStyle: context.skillsTypography.metadata,
-                              onPressed: installed
-                                  ? null
-                                  : () => widget.onInstall(present),
-                            ),
+                            builder: (context, present) =>
+                                PrimaryCapsuleButton.compact(
+                                  label: l10n.install,
+                                  onPressed: () => widget.onInstall(present),
+                                ),
                           ),
                         ],
                       ),
@@ -166,8 +159,8 @@ class _SkillCardState extends State<SkillCard> {
   }
 }
 
-class RepositoryAvatar extends StatefulWidget {
-  const RepositoryAvatar({
+class PackageAvatar extends StatefulWidget {
+  const PackageAvatar({
     super.key,
     required this.source,
     this.imageUrl,
@@ -184,14 +177,14 @@ class RepositoryAvatar extends StatefulWidget {
   final Color? fallbackForegroundColor;
 
   @override
-  State<RepositoryAvatar> createState() => _RepositoryAvatarState();
+  State<PackageAvatar> createState() => _PackageAvatarState();
 }
 
-class _RepositoryAvatarState extends State<RepositoryAvatar> {
+class _PackageAvatarState extends State<PackageAvatar> {
   bool imageFailed = false;
 
   @override
-  void didUpdateWidget(covariant RepositoryAvatar oldWidget) {
+  void didUpdateWidget(covariant PackageAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.source != widget.source ||
         oldWidget.imageUrl != widget.imageUrl) {
@@ -217,7 +210,7 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
         borderRadius: BorderRadius.circular(widget.borderRadius),
       ),
       child: imageUrl == null
-          ? _RepositoryAvatarFallback(
+          ? _PackageAvatarFallback(
               source: widget.source,
               size: widget.size,
               foregroundColor: widget.fallbackForegroundColor,
@@ -229,7 +222,7 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
               fit: BoxFit.cover,
               loadingBuilder: (context, child, progress) => progress == null
                   ? child
-                  : _RepositoryAvatarFallback(
+                  : _PackageAvatarFallback(
                       source: widget.source,
                       size: widget.size,
                       foregroundColor: widget.fallbackForegroundColor,
@@ -240,7 +233,7 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
                     setState(() => imageFailed = true);
                   }
                 });
-                return _RepositoryAvatarFallback(
+                return _PackageAvatarFallback(
                   source: widget.source,
                   size: widget.size,
                   foregroundColor: widget.fallbackForegroundColor,
@@ -251,8 +244,8 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
   }
 }
 
-class _RepositoryAvatarFallback extends StatelessWidget {
-  const _RepositoryAvatarFallback({
+class _PackageAvatarFallback extends StatelessWidget {
+  const _PackageAvatarFallback({
     required this.source,
     required this.size,
     this.foregroundColor,
@@ -263,9 +256,9 @@ class _RepositoryAvatarFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    _repositoryOwner(
+    _packageOwner(
       source,
-    ).substring(0, _repositoryOwner(source).length.clamp(0, 2)).toUpperCase(),
+    ).substring(0, _packageOwner(source).length.clamp(0, 2)).toUpperCase(),
     style: TextStyle(
       color:
           foregroundColor ?? Theme.of(context).colorScheme.onSecondaryContainer,
@@ -275,7 +268,7 @@ class _RepositoryAvatarFallback extends StatelessWidget {
   );
 }
 
-String _repositoryLabel(String source) {
+String _packageLabel(String source) {
   final parts = source.split('/').where((part) => part.isNotEmpty).toList();
   if (parts.length > 1 && parts.first.contains('.')) {
     return parts.skip(1).join('/');
@@ -283,7 +276,7 @@ String _repositoryLabel(String source) {
   return source;
 }
 
-String _repositoryOwner(String source) {
+String _packageOwner(String source) {
   final parts = source.split('/').where((part) => part.isNotEmpty).toList();
   if (parts.isEmpty) return '?';
   if (parts.length > 1 && parts.first.contains('.')) return parts[1];
