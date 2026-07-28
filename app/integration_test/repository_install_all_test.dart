@@ -110,9 +110,7 @@ void registerRepositoryInstallAllJourney() {
         isTrue,
       );
       expect(
-        File(
-          '$sandbox/test-agent/skills/$coordinate/skills/alpha/SKILL.md',
-        ).existsSync(),
+        File('$sandbox/test-agent/skills/alpha/SKILL.md').existsSync(),
         isTrue,
       );
     },
@@ -139,9 +137,7 @@ Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
 }
 
 Future<void> _pumpUntilInstalled(WidgetTester tester, String sandbox) async {
-  final installed = File(
-    '$sandbox/test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
-  );
+  final installed = File('$sandbox/test-agent/skills/alpha/SKILL.md');
   final deadline = DateTime.now().add(const Duration(minutes: 2));
   while (!installed.existsSync() && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));

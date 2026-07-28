@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
+import 'package:skillsgo/ui/native_components.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'support/journey_runtime.dart';
@@ -28,6 +30,10 @@ void registerAdoptionManagementJourney() {
     (tester) async {
       final runtime = await JourneyRuntime.start('adoption_management');
       addTearDown(runtime.close);
+      await runtime.gateway.discover(
+        DiscoveryCollection.search,
+        query: 'https://github.com/skillsgo/e2e-versioned-skills@v1.2.0',
+      );
       final sandbox = runtime.sandbox.path;
       final globalTarget = Directory(
         '$sandbox/test-agent/skills/user-existing',
@@ -82,13 +88,12 @@ void registerAdoptionManagementJourney() {
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
 
-      await _pumpUntilAdoptionCount(tester, 2);
-      await _pumpUntil(tester, _projectRailCount('adoption-project', 1));
-      expect(_projectRailCount('adoption-project', 1), findsOneWidget);
-
-      await tester.tap(_railButton(find.text('adoption-project')));
       await _pumpUntilAdoptionCount(tester, 1);
-      await _executeAdoption(tester, adopted: 1, skipped: 0);
+      await _pumpUntil(tester, find.text('adoption-project'));
+
+      await tester.tap(find.text('adoption-project'));
+      await _pumpUntilAdoptionCount(tester, 1);
+      await _executeAdoption(tester, adopted: 1, failed: 0);
       expect(File('${projectRoot.path}/skills.yaml').existsSync(), isTrue);
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
@@ -99,35 +104,39 @@ void registerAdoptionManagementJourney() {
       );
       expect(
         File(
-          '${projectRoot.path}/.test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+          '${projectRoot.path}/.test-agent/skills/alpha/SKILL.md',
         ).readAsBytesSync(),
         projectSkillBytes,
       );
       expect(projectTarget.existsSync(), isFalse);
-      await _pumpUntil(tester, _projectRailCount('adoption-project', 0));
-      expect(_projectRailCount('adoption-project', 0), findsOneWidget);
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const Key('library-adoption-review-enter')),
+      );
 
-      await tester.tap(_railButton(_globalRailLabel()));
+      await tester.tap(_globalRailLabel());
       await _pumpUntilAdoptionCount(tester, 1);
-      await _executeAdoption(tester, adopted: 1, skipped: 0);
-      await _pumpUntilAdoptionCount(tester, 0);
+      await _executeAdoption(tester, adopted: 1, failed: 0);
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const Key('library-adoption-review-enter')),
+      );
       expect(File('$sandbox/home/.agents/skills.yaml').existsSync(), isTrue);
       expect(
         File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
         isTrue,
       );
       expect(
-        File(
-          '$sandbox/test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
-        ).readAsBytesSync(),
+        File('$sandbox/test-agent/skills/alpha/SKILL.md').readAsBytesSync(),
         userSkillBytes,
       );
       expect(globalTarget.existsSync(), isFalse);
 
-      await tester.tap(_railButton(_allSkillsRailLabel()));
-      await _pumpUntilAdoptionCount(tester, 0);
-      expect(_adoptionCount(0), findsOneWidget);
-      expect(_projectRailCount('adoption-project', 0), findsOneWidget);
+      await tester.tap(find.text('adoption-project'));
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const Key('library-adoption-review-enter')),
+      );
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -149,60 +158,45 @@ void _writeJson(File file, Object value) {
 }
 
 Finder _adoptionCount(int count) => find.descendant(
-  of: find.byKey(const Key('library-batch-adoption')),
+  of: find.byKey(const Key('library-adoption-review-enter')),
   matching: find.byWidgetPredicate(
     (widget) =>
         widget is Text &&
-        (widget.data == 'Manage ($count)' || widget.data == '纳入管理（$count）'),
-  ),
-);
-
-Finder _projectRailCount(String projectName, int count) => find.descendant(
-  of: _railButton(find.text(projectName)),
-  matching: find.byWidgetPredicate(
-    (widget) => widget is Text && widget.data == '$count',
+        (widget.data == 'Let SkillsGo manage $count external skills' ||
+            widget.data == '将 $count 个外部技能交给 SkillsGo 管理'),
   ),
 );
 
 Finder _globalRailLabel() => find.byWidgetPredicate(
   (widget) =>
-      widget is Text && (widget.data == 'Global' || widget.data == '全局安装'),
-);
-
-Finder _allSkillsRailLabel() => find.byWidgetPredicate(
-  (widget) =>
       widget is Text &&
-      (widget.data == 'All Skills' || widget.data == '全部 Skills'),
+      (widget.data == 'Global Skills' || widget.data == '全局 Skills'),
 );
-
-Finder _railButton(Finder label) =>
-    find.ancestor(of: label, matching: find.byType(TextButton)).first;
 
 Future<void> _executeAdoption(
   WidgetTester tester, {
   required int adopted,
-  required int skipped,
+  required int failed,
 }) async {
-  final adoptionAction = find.descendant(
-    of: find.byKey(const Key('library-batch-adoption')),
-    matching: find.byType(OutlinedButton),
-  );
+  final adoptionAction = find.byKey(const Key('library-adoption-review-enter'));
   await _pumpUntil(tester, adoptionAction);
   await tester.ensureVisible(adoptionAction);
   await tester.tap(adoptionAction);
+  final confirmSelection = find.byKey(
+    const Key('library-adoption-review-confirm'),
+  );
+  await _pumpUntilEnabledPrimaryButton(tester, confirmSelection);
+  await tester.tap(confirmSelection);
   await _pumpUntil(tester, find.byKey(const Key('batch-adoption-dialog')));
   await tester.pumpAndSettle();
   expect(find.byKey(const Key('batch-adoption-tetris-story')), findsOneWidget);
-  final confirm = find.byKey(const Key('batch-adoption-confirm'));
-  expect(confirm, findsOneWidget);
-  await tester.tap(confirm);
   final completed = find.byKey(const Key('batch-adoption-board-complete'));
   await _pumpUntil(tester, completed);
   expect(
     tester.widget<Semantics>(completed).properties.label,
     anyOf(
-      '$adopted skills added to management, $skipped skipped.',
-      '已纳入管理 $adopted 个技能，跳过 $skipped 个。',
+      '$adopted skills added to management, $failed failed.',
+      '已纳入管理 $adopted 个技能，失败 $failed 个。',
     ),
   );
   final close = find.byKey(const Key('batch-adoption-close'));
@@ -214,6 +208,27 @@ Future<void> _executeAdoption(
 Future<void> _pumpUntilAdoptionCount(WidgetTester tester, int count) =>
     _pumpUntil(tester, _adoptionCount(count));
 
+Future<void> _pumpUntilEnabledPrimaryButton(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  while (DateTime.now().isBefore(deadline)) {
+    final buttons = tester.widgetList<PrimaryCapsuleButton>(finder);
+    if (buttons.isNotEmpty && buttons.first.onPressed != null) return;
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(tester.widget<PrimaryCapsuleButton>(finder).onPressed, isNotNull);
+}
+
+Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  while (finder.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(finder, findsNothing);
+}
+
 Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
   final deadline = DateTime.now().add(const Duration(seconds: 45));
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
@@ -222,7 +237,7 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
   final adoptionLabels = tester
       .widgetList<Text>(
         find.descendant(
-          of: find.byKey(const Key('library-batch-adoption')),
+          of: find.byKey(const Key('library-adoption-review-enter')),
           matching: find.byType(Text),
         ),
       )

@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
+import 'package:skillsgo/ui/native_components.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'support/journey_runtime.dart';
@@ -57,21 +58,19 @@ void registerCatalogUpdateCheckJourney() {
         _textEither('Install all skills to', '安装所有技能到'),
         timeout: const Duration(seconds: 30),
       );
-      final installLabels = _textEither('Install all skills', '安装所有技能');
-      final installFinder = find
-          .ancestor(of: installLabels.last, matching: find.byType(FilledButton))
-          .first;
-      await _pumpUntilEnabledButton(tester, installFinder);
-      final install = tester.widget<FilledButton>(installFinder);
+      final installFinder = find.byKey(
+        const ValueKey('install-location-submit'),
+      );
+      await _pumpUntilEnabledPrimaryButton(tester, installFinder);
+      final install = tester.widget<PrimaryCapsuleButton>(installFinder);
       expect(install.onPressed, isNotNull);
       install.onPressed!();
       await tester.pump();
       const repository = 'github.com/skillsgo/e2e-versioned-skills';
-      const oldCoordinate = '$repository@v1.2.0';
       const newCoordinate = '$repository@v1.3.0';
       await _pumpUntilFile(
         tester,
-        File('$sandbox/test-agent/skills/$oldCoordinate/skills/alpha/SKILL.md'),
+        File('$sandbox/test-agent/skills/alpha/SKILL.md'),
       );
       await _pumpUntilGone(
         tester,
@@ -104,9 +103,15 @@ void registerCatalogUpdateCheckJourney() {
         client.close(force: true);
       }
 
-      await tester.tap(
-        find.byKey(const ValueKey('primary-destination-library')),
+      final libraryDestination = find.byKey(
+        const ValueKey('primary-destination-library'),
       );
+      await _pumpUntil(
+        tester,
+        libraryDestination.hitTestable(),
+        timeout: const Duration(seconds: 10),
+      );
+      await tester.tap(libraryDestination.hitTestable());
       await _pumpUntil(
         tester,
         find.byKey(const Key('library-update-filter')),
@@ -131,43 +136,17 @@ void registerCatalogUpdateCheckJourney() {
       final updateSelected = find.byKey(const Key('library-update-selected'));
       await _pumpUntilEnabledButton(tester, updateSelected);
       await tester.tap(updateSelected);
-      await _pumpUntil(
+      final alpha = File('$sandbox/test-agent/skills/alpha/SKILL.md');
+      await _pumpUntilFileContains(
         tester,
-        _textEither('Select targets to update', '选择要更新的目标'),
-        timeout: const Duration(seconds: 45),
-      );
-      await tester.tap(_textEither('Update selected targets', '更新所选目标'));
-      await _pumpUntil(
-        tester,
-        _textEither('Update results', '更新结果'),
-        timeout: const Duration(minutes: 2),
-      );
-
-      final technicalDetails = _textEither('Technical details', '技术详情');
-      if (technicalDetails.evaluate().isNotEmpty) {
-        await tester.ensureVisible(technicalDetails.first);
-        await tester.tap(technicalDetails.first);
-        await tester.pumpAndSettle();
-      }
-      final resultText = tester
-          .widgetList<Text>(find.byType(Text))
-          .map((widget) => widget.data)
-          .whereType<String>()
-          .join(' | ');
-
-      final alpha = File(
-        '$sandbox/test-agent/skills/$newCoordinate/skills/alpha/SKILL.md',
+        alpha,
+        'Version 1.3.0 fixture content.',
       );
       expect(
         alpha.readAsStringSync(),
         contains('Version 1.3.0 fixture content.'),
-        reason: resultText,
       );
-      expect(
-        manifest.readAsStringSync(),
-        contains('v1.3.0'),
-        reason: resultText,
-      );
+      expect(manifest.readAsStringSync(), contains('v1.3.0'));
       expect(
         File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
         isTrue,
@@ -179,12 +158,6 @@ void registerCatalogUpdateCheckJourney() {
         isTrue,
       );
 
-      await tester.tap(_textEither('Close', '关闭'));
-      await _pumpUntilGone(
-        tester,
-        _textEither('Close', '关闭'),
-        timeout: const Duration(seconds: 30),
-      );
       await _pumpUntilGone(
         tester,
         find.text('alpha'),
@@ -214,6 +187,22 @@ Future<void> _pumpUntilFile(WidgetTester tester, File file) async {
   );
 }
 
+Future<void> _pumpUntilFileContains(
+  WidgetTester tester,
+  File file,
+  String expected,
+) async {
+  final deadline = DateTime.now().add(const Duration(minutes: 2));
+  while (DateTime.now().isBefore(deadline)) {
+    if (file.existsSync() && file.readAsStringSync().contains(expected)) return;
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(
+    file.existsSync() ? file.readAsStringSync() : null,
+    contains(expected),
+  );
+}
+
 Future<void> _pumpUntilEnabledButton(WidgetTester tester, Finder finder) async {
   final deadline = DateTime.now().add(const Duration(seconds: 30));
   while (DateTime.now().isBefore(deadline)) {
@@ -222,6 +211,19 @@ Future<void> _pumpUntilEnabledButton(WidgetTester tester, Finder finder) async {
     await tester.pump(const Duration(milliseconds: 250));
   }
   expect(tester.widget<FilledButton>(finder).onPressed, isNotNull);
+}
+
+Future<void> _pumpUntilEnabledPrimaryButton(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 30));
+  while (DateTime.now().isBefore(deadline)) {
+    final buttons = tester.widgetList<PrimaryCapsuleButton>(finder);
+    if (buttons.isNotEmpty && buttons.first.onPressed != null) return;
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(tester.widget<PrimaryCapsuleButton>(finder).onPressed, isNotNull);
 }
 
 Future<void> _pumpUntil(
