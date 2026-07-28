@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on canonical Package Paths, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Package h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
+ * [INPUT]: Depends on canonical Package Paths, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Package h1 Sums, strict YAML nodes, and recoverable metadata transactions.
  * [OUTPUT]: Provides strict skills.yaml/skills-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
  * [POS]: Serves as the portable Package dependency intent and integrity boundary for Workspace and Global scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -140,7 +140,7 @@ func LoadDependencyLock(root string) (DependencyLock, error) {
 func LoadWorkspaceState(root string) (manifest WorkspaceManifest, lock DependencyLock, found bool, err error) {
 	manifest = WorkspaceManifest{Dependencies: map[string]PackageDependency{}}
 	lock = DependencyLock{Dependencies: map[string]LockedPackage{}}
-	err = withWorkspaceMetadataLock(root, func() error {
+	err = withWorkspaceMetadataRecovery(root, func() error {
 		loadedManifest, manifestErr := LoadWorkspaceManifest(root)
 		loadedLock, lockErr := LoadDependencyLock(root)
 		switch {
@@ -218,7 +218,7 @@ func WriteWorkspaceState(root string, manifest WorkspaceManifest, lock Dependenc
 	if _, err := ParseDependencyLock(DependencyLockName, lockBytes); err != nil {
 		return err
 	}
-	return withWorkspaceMetadataLock(root, func() error {
+	return withWorkspaceMetadataRecovery(root, func() error {
 		if err := os.MkdirAll(root, 0o700); err != nil {
 			return err
 		}

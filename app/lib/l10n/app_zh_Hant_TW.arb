@@ -189,6 +189,7 @@
   "allAgents": "所有智慧體",
   "allProjects": "所有專案",
   "specificProject": "指定專案",
+  "libraryGlobalScope": "全域 Skills",
   "globalScope": "全域性安裝",
   "addProject": "新增專案",
   "relocateProject": "重新定位",
@@ -272,7 +273,6 @@
   "update": "更新",
   "backToLibrary": "返回已安裝技能",
   "remove": "移除",
-  "manageTargets": "管理範圍",
   "skillsSelected": "已選擇 {count} 項",
   "@skillsSelected": {
     "placeholders": {
@@ -284,8 +284,6 @@
   "clearSelection": "清除選擇",
   "selectCurrentResults": "選擇當前結果",
   "clearCurrentResultSelection": "清除當前結果選擇",
-  "manageTargetsTitle": "管理安裝目標",
-  "manageTargetsDescription": "為每個目標選擇精確操作；未選擇的目標不會改變。",
   "targetActionsSelected": "已選擇 {selected}/{total} 個目標",
   "@targetActionsSelected": {
     "placeholders": {
@@ -298,7 +296,6 @@
     }
   },
   "confirmRemoveTarget": "確認移除",
-  "applyTargetActions": "執行所選操作",
   "managementProgressTitle": "正在執行目標操作",
   "managementResultsTitle": "目標操作結果",
   "managementResultSummary": "{succeeded} 個成功，{failed} 個失敗",
@@ -312,7 +309,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "所選專案操作將更新 skills.yaml 和 skills-lock.yaml。",
   "targetContentPreserved": "目標當前內容會被保留。",
   "localReadFailed": "無法讀取此技能",
   "localReadFailedMessage": "SkillsGo 無法讀取這個已安裝的技能。請確認其資料夾存在且可以訪問，然後重試。",
@@ -544,7 +540,6 @@
   "noInstalledAgentsMessage": "你仍可繼續瀏覽該技能，但當前沒有可用安裝目標。請先安裝一個受支援的智慧體，然後重新偵測。",
   "clearCustomPath": "清除自定義路徑",
   "privacyProvenance": "隱私與來源說明",
-  "privacySummary": "你的搜尋記錄不會被儲存，SkillsGo 也不會保留命令日誌。",
   "language": "語言",
   "translatedContent": "已翻譯",
   "translatedFrom": "翻譯自{language}",
@@ -634,19 +629,19 @@
   "installedCell": "已安裝",
   "unsupportedCell": "不可用",
   "confirmInstall": "確認安裝",
-  "installAllRepositorySkills": "安裝此來源的全部技能（{count}）",
+  "installAllPackageSkills": "安裝此來源的全部技能（{count}）",
   "installAllSkillsTo": "安裝所有技能到",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "安裝來自 {repository} 的全部技能（{count}）",
-  "@installRepositorySkills": {
+  "installPackageSkills": "安裝來自 {packagePath} 的全部技能（{count}）",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -867,142 +862,147 @@
       }
     }
   },
-  "batchTakeoverAction": "納入 SkillsGo 管理",
+  "batchAdoptionAction": "納入 SkillsGo 管理",
   "handExternalSkillsToSkillsGoManagementCount": "將 {count} 個外部技能交給 SkillsGo 管理",
   "@handExternalSkillsToSkillsGoManagementCount": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "confirmSkillsGoManagementCount": "確認由 SkillsGo 管理（{count}）",
-  "@confirmSkillsGoManagementCount": {"placeholders": {"count": {"type": "int"}}},
+  "confirmSkillsGoManagementCount": "確認由 SkillsGo 管理（{selected}/{total}）",
+  "@confirmSkillsGoManagementCount": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
   "skillColumnLabel": "技能",
-  "repositorySourceColumnLabel": "來源",
+  "packageSourceColumnLabel": "來源",
   "versionColumnLabel": "版本",
-  "repositoryMatching": "正在比對來源…",
+  "packageMatching": "正在比對來源…",
   "sourceMatchUnavailable": "來源比對暫時無法使用",
   "noSourceMatches": "沒有相符的來源",
-  "sourceMatchPercent": "相符度 {percent}%",
+  "sourceMatchPercent": "匹配 {percent}%",
   "@sourceMatchPercent": {"placeholders": {"percent": {"type": "int"}}},
-  "versionPendingSelection": "等待選擇 Source",
-  "batchTakeoverActionCount": "納入管理（{count}）",
-  "@batchTakeoverActionCount": {
+  "versionPendingSelection": "先選擇來源",
+  "batchAdoptionActionCount": "納入管理（{count}）",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "正在檢查可納入的技能…",
-  "batchTakeoverRetry": "重新檢查可納入技能",
-  "batchTakeoverEligibleCount": "{count} 個可納入管理",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "正在檢查可納入的技能…",
+  "batchAdoptionRetry": "重新檢查可納入技能",
+  "batchAdoptionEligibleCount": "{count} 個可納入管理",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "正在納入管理…",
-  "batchTakeoverTitle": "將現有技能納入 SkillsGo 管理？",
-  "batchTakeoverDescription": "SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。",
-  "batchTakeoverStoryTitle": "把散落的技能，整理成一個清晰的 Library",
-  "batchTakeoverStoryDescription": "SkillsGo 在當前位置發現 {count} 個可以納入管理的現有技能。",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "匯入中…",
+  "batchAdoptionTitle": "將現有技能納入 SkillsGo 管理？",
+  "batchAdoptionDescription": "SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。",
+  "batchAdoptionStoryTitle": "把散落的技能，整理成一個清晰的 Library",
+  "batchAdoptionStoryDescription": "SkillsGo 在當前位置發現 {count} 個可以納入管理的現有技能。",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "納入管理前，現有技能裝在哪裡、是不是最新、損壞後如何恢復，以及不同專案間的版本是否一致，都缺少清晰狀態。",
-  "batchTakeoverPainLocation": "不知道裝在哪",
-  "batchTakeoverPainFreshness": "不知道是不是最新",
-  "batchTakeoverPainRecovery": "壞了無法恢復",
-  "batchTakeoverPainVersionDrift": "多個專案版本不一致",
-  "batchTakeoverFolderTitle": "現有 Skills",
-  "batchTakeoverFolderSubtitle": "狀態不清晰",
-  "batchTakeoverAfterLabel": "納入後",
-  "batchTakeoverAfterTitle": "一個清晰的 Library",
-  "batchTakeoverLibraryTitle": "SkillsGo Library",
-  "batchTakeoverBenefitLocation": "位置清晰",
-  "batchTakeoverBenefitFreshness": "更新可見",
-  "batchTakeoverBenefitRecovery": "隨時恢復",
-  "batchTakeoverBenefitVersions": "版本明確",
-  "batchTakeoverManagedSection": "SkillsGo 管理中",
-  "batchTakeoverPendingSection": "待納入",
-  "batchTakeoverItemManaged": "{name} 已納入 SkillsGo 管理",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "納入管理前，現有技能裝在哪裡、是不是最新、損壞後如何恢復，以及不同專案間的版本是否一致，都缺少清晰狀態。",
+  "batchAdoptionPainLocation": "不知道裝在哪",
+  "batchAdoptionPainFreshness": "不知道是不是最新",
+  "batchAdoptionPainRecovery": "壞了無法恢復",
+  "batchAdoptionPainVersionDrift": "多個專案版本不一致",
+  "batchAdoptionFolderTitle": "現有 Skills",
+  "batchAdoptionFolderSubtitle": "狀態不清晰",
+  "batchAdoptionAfterLabel": "納入後",
+  "batchAdoptionAfterTitle": "一個清晰的 Library",
+  "batchAdoptionLibraryTitle": "SkillsGo Library",
+  "batchAdoptionBenefitLocation": "位置清晰",
+  "batchAdoptionBenefitFreshness": "更新可見",
+  "batchAdoptionBenefitRecovery": "隨時恢復",
+  "batchAdoptionBenefitVersions": "版本明確",
+  "batchAdoptionManagedSection": "SkillsGo 管理中",
+  "batchAdoptionPendingSection": "待納入",
+  "batchAdoptionItemManaged": "{name} 已納入 SkillsGo 管理",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} 未能納入管理",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} 未能納入管理",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} 等待納入管理",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemFailed": "{name} 接管失敗",
+  "@batchAdoptionItemFailed": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "batchAdoptionItemPending": "{name} 等待納入管理",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "納入管理後，{count} 個技能會整理到同一個 Library 中，並顯示清晰的管理狀態。",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "納入管理後，{count} 個技能會整理到同一個 Library 中，並顯示清晰的管理狀態。",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "另外 {count} 個",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "另外 {count} 個",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "將這些現有技能納入 SkillsGo 管理。",
-  "batchTakeoverTransitionLabel": "整理",
-  "batchTakeoverStatusTitle": "納入狀態",
-  "batchTakeoverStatusManaged": "已納入",
-  "batchTakeoverStatusProgress": "正在整理",
-  "batchTakeoverStatusSkipped": "已跳過",
-  "batchTakeoverStatusFilesStay": "技能檔案保留在原來的位置",
-  "batchTakeoverBoardSemantics": "技能會排列成完整的行並由 SkillsGo 建立管理記錄，原檔案不會移動。",
-  "batchTakeoverBoardComplete": "全部整理",
-  "batchTakeoverBoardPartial": "整理完成",
-  "batchTakeoverStatusTotal": "總計",
-  "batchTakeoverQueueComplete": "沒有待納入的技能",
-  "batchTakeoverQueueWaiting": "驗證完成後，技能會從這裡開始整理",
-  "batchTakeoverNextLabel": "NEXT",
-  "batchTakeoverFillerCount": "使用 {count} 個 SkillsGo 整理塊補全最後幾行",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "將這些現有技能納入 SkillsGo 管理。",
+  "batchAdoptionTransitionLabel": "整理",
+  "batchAdoptionStatusTitle": "納入狀態",
+  "batchAdoptionStatusManaged": "已納入",
+  "batchAdoptionStatusProgress": "正在整理",
+  "batchAdoptionStatusSkipped": "已跳過",
+  "batchAdoptionStatusFailed": "失敗",
+  "batchAdoptionStatusFilesStay": "技能檔案保留在原來的位置",
+  "batchAdoptionBoardSemantics": "技能會排列成完整的行並由 SkillsGo 建立管理記錄，原檔案不會移動。",
+  "batchAdoptionBoardComplete": "全部整理",
+  "batchAdoptionBoardPartial": "整理完成",
+  "batchAdoptionStatusTotal": "總計",
+  "batchAdoptionQueueComplete": "沒有待納入的技能",
+  "batchAdoptionQueueWaiting": "驗證完成後，技能會從這裡開始整理",
+  "batchAdoptionNextLabel": "NEXT",
+  "batchAdoptionFillerCount": "使用 {count} 個 SkillsGo 整理塊補全最後幾行",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "原檔案、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。",
-  "batchTakeoverLaterHint": "暫時跳過後，仍可隨時在 Library 點選「納入管理」。",
-  "batchTakeoverSkip": "暫時跳過",
-  "batchTakeoverConfirm": "納入管理",
-  "batchTakeoverExecutionRetry": "重試納入",
-  "batchTakeoverResultTitle": "已納入管理",
-  "batchTakeoverSummary": "已納入管理 {takenOver} 個技能，跳過 {skipped} 個。",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "原檔案、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。",
+  "batchAdoptionLaterHint": "暫時跳過後，仍可隨時在 Library 點選「納入管理」。",
+  "batchAdoptionSkip": "暫時跳過",
+  "batchAdoptionConfirm": "納入管理",
+  "batchAdoptionExecutionRetry": "重試納入",
+  "batchAdoptionResultTitle": "已納入管理",
+  "batchAdoptionSummary": "已納入管理 {adopted} 個技能，跳過 {skipped} 個。",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1010,12 +1010,19 @@
       }
     }
   },
-  "batchTakeoverClose": "關閉",
+  "batchAdoptionFailureSummary": "已納入管理 {adopted} 個技能，失敗 {failed} 個。",
+  "@batchAdoptionFailureSummary": {
+    "placeholders": {
+      "adopted": {"type": "int"},
+      "failed": {"type": "int"}
+    }
+  },
+  "batchAdoptionClose": "關閉",
   "installMoreTargets": "安裝到更多位置",
-  "detailRepository": "來源",
+  "detailPackageSource": "包來源",
   "detailStars": "星標",
   "detailUpdated": "最近更新",
-  "detailArchiveSize": "ZIP 大小",
+  "detailArchiveSize": "包大小",
   "pathLabel": "專案路徑",
   "copyProjectPath": "複製專案路徑",
   "projectPathCopied": "專案路徑已複製",

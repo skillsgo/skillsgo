@@ -317,7 +317,6 @@
   "update": "अद्यतन करें",
   "backToLibrary": "लाइब्रेरी को लौटें",
   "remove": "हटाओ",
-  "manageTargets": "दायरा प्रबंधित करें",
   "skillsSelected": "{count} चयनित",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "स्पष्ट चयन",
   "selectCurrentResults": "वर्तमान परिणाम चुनें",
   "clearCurrentResultSelection": "वर्तमान परिणाम चयन साफ़ करें",
-  "manageTargetsTitle": "स्थापना लक्ष्य प्रबंधित करें",
-  "manageTargetsDescription": "प्रत्येक लक्ष्य के लिए एक सटीक कार्रवाई चुनें. अचयनित लक्ष्य नहीं बदलेंगे.",
   "targetActionsSelected": "{total} लक्ष्यों में से {selected} चयनित",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "हटाने की पुष्टि करें",
-  "applyTargetActions": "चयनित क्रियाएँ लागू करें",
   "managementProgressTitle": "लक्ष्य क्रियाएँ लागू करना",
   "managementResultsTitle": "लक्ष्य कार्रवाई परिणाम",
   "managementResultSummary": "{succeeded} सफल हुआ, {failed} विफल रहा",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "चयनित प्रोजेक्ट क्रियाएँ skills.yaml और skills-lock.yaml को अद्यतन करेंगी।",
   "targetContentPreserved": "वर्तमान लक्ष्य सामग्री संरक्षित की जाएगी.",
   "localReadFailed": "यह Skill नहीं पढ़ सकता",
   "localReadFailedMessage": "SkillsGo इस स्थापित कौशल को नहीं पढ़ सका। जांचें कि उसका फ़ोल्डर उपलब्ध और पहुंच योग्य है, फिर पुनः प्रयास करें।",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "आप इस Skill को ब्राउज़ करना जारी रख सकते हैं, लेकिन अभी तक कोई इंस्टॉलेशन लक्ष्य नहीं है। समर्थित Agent स्थापित करें, फिर दोबारा डिटेक्शन चलाएँ।",
   "clearCustomPath": "कस्टम पथ साफ़ करें",
   "privacyProvenance": "गोपनीयता और उद्गम",
-  "privacySummary": "आपकी खोजें सहेजी नहीं गई हैं, और SkillsGo कमांड लॉग नहीं रखता है।",
   "language": "भाषा",
   "translatedContent": "अनुवादित",
   "translatedFrom": "{language} से अनुवादित",
@@ -686,19 +680,19 @@
   "installedCell": "स्थापित",
   "unsupportedCell": "अनुपलब्ध",
   "confirmInstall": "स्थापना की पुष्टि करें",
-  "installAllRepositorySkills": "सभी रिपॉजिटरी कौशल स्थापित करें ({count})",
+  "installAllPackageSkills": "सभी रिपॉजिटरी कौशल स्थापित करें ({count})",
   "installAllSkillsTo": "सभी कौशल स्थापित करें",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "सभी {repository} कौशल स्थापित करें ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "सभी {packagePath} कौशल स्थापित करें ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "मौजूदा कौशल प्रबंधित करें",
-  "batchTakeoverActionCount": "प्रबंधित करें ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "मौजूदा कौशल प्रबंधित करें",
+  "batchAdoptionActionCount": "प्रबंधित करें ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "मौजूदा कौशल की जाँच हो रही है...",
-  "batchTakeoverRetry": "प्रबंधनीय कौशल फिर से जाँचें",
-  "batchTakeoverEligibleCount": "{count} को प्रबंधित किया जा सकता है",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "मौजूदा कौशल की जाँच हो रही है...",
+  "batchAdoptionRetry": "प्रबंधनीय कौशल फिर से जाँचें",
+  "batchAdoptionEligibleCount": "{count} को प्रबंधित किया जा सकता है",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "प्रबंधन में कौशल जोड़ना...",
-  "batchTakeoverTitle": "SkillsGo के साथ मौजूदा कौशल प्रबंधित करें?",
-  "batchTakeoverDescription": "SkillsGo कौशल फ़ाइलों को स्थानांतरित किए बिना, ओवरराइट किए या अपलोड किए बिना स्थानीय प्रबंधन रिकॉर्ड जोड़ देगा। असमर्थित या परिवर्तित आइटम छोड़ दिए जाएंगे.",
-  "batchTakeoverStoryTitle": "बिखरे हुए कौशल को एक स्पष्ट पुस्तकालय में बदलें",
-  "batchTakeoverStoryDescription": "SkillsGo को इस स्थान पर {count, plural, =1{1 मौजूदा Skill} other{{count} मौजूदा Skills}} मिलीं जिन्हें वह प्रबंधित कर सकता है।",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "प्रबंधन में कौशल जोड़ना...",
+  "batchAdoptionTitle": "SkillsGo के साथ मौजूदा कौशल प्रबंधित करें?",
+  "batchAdoptionDescription": "SkillsGo कौशल फ़ाइलों को स्थानांतरित किए बिना, ओवरराइट किए या अपलोड किए बिना स्थानीय प्रबंधन रिकॉर्ड जोड़ देगा। असमर्थित या परिवर्तित आइटम छोड़ दिए जाएंगे.",
+  "batchAdoptionStoryTitle": "बिखरे हुए कौशल को एक स्पष्ट पुस्तकालय में बदलें",
+  "batchAdoptionStoryDescription": "SkillsGo को इस स्थान पर {count, plural, =1{1 मौजूदा Skill} other{{count} मौजूदा Skills}} मिलीं जिन्हें वह प्रबंधित कर सकता है।",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "प्रबंधन से पहले, यह स्पष्ट नहीं है कि मौजूदा कौशल कहां स्थापित किए गए हैं, क्या वे वर्तमान हैं, उन्हें कैसे पुनर्प्राप्त किया जाए, या क्या परियोजनाएं समान संस्करण का उपयोग करती हैं।",
-  "batchTakeoverPainLocation": "अज्ञात इंस्टॉल स्थान",
-  "batchTakeoverPainFreshness": "अज्ञात अद्यतन स्थिति",
-  "batchTakeoverPainRecovery": "टूटने पर कोई पुनर्प्राप्ति नहीं",
-  "batchTakeoverPainVersionDrift": "सभी परियोजनाओं में विभिन्न संस्करण",
-  "batchTakeoverFolderTitle": "मौजूदा Skills",
-  "batchTakeoverFolderSubtitle": "अस्पष्ट स्थिति",
-  "batchTakeoverAfterLabel": "बाद में",
-  "batchTakeoverAfterTitle": "एक स्पष्ट पुस्तकालय",
-  "batchTakeoverLibraryTitle": "SkillsGo लाइब्रेरी",
-  "batchTakeoverBenefitLocation": "स्थान साफ़ करें",
-  "batchTakeoverBenefitFreshness": "अद्यतन दृश्यमान",
-  "batchTakeoverBenefitRecovery": "आसान पुनर्प्राप्ति",
-  "batchTakeoverBenefitVersions": "संस्करण स्पष्ट",
-  "batchTakeoverManagedSection": "SkillsGo द्वारा प्रबंधित",
-  "batchTakeoverPendingSection": "लंबित",
-  "batchTakeoverItemManaged": "{name} का प्रबंधन SkillsGo द्वारा किया जाता है",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "प्रबंधन से पहले, यह स्पष्ट नहीं है कि मौजूदा कौशल कहां स्थापित किए गए हैं, क्या वे वर्तमान हैं, उन्हें कैसे पुनर्प्राप्त किया जाए, या क्या परियोजनाएं समान संस्करण का उपयोग करती हैं।",
+  "batchAdoptionPainLocation": "अज्ञात इंस्टॉल स्थान",
+  "batchAdoptionPainFreshness": "अज्ञात अद्यतन स्थिति",
+  "batchAdoptionPainRecovery": "टूटने पर कोई पुनर्प्राप्ति नहीं",
+  "batchAdoptionPainVersionDrift": "सभी परियोजनाओं में विभिन्न संस्करण",
+  "batchAdoptionFolderTitle": "मौजूदा Skills",
+  "batchAdoptionFolderSubtitle": "अस्पष्ट स्थिति",
+  "batchAdoptionAfterLabel": "बाद में",
+  "batchAdoptionAfterTitle": "एक स्पष्ट पुस्तकालय",
+  "batchAdoptionLibraryTitle": "SkillsGo लाइब्रेरी",
+  "batchAdoptionBenefitLocation": "स्थान साफ़ करें",
+  "batchAdoptionBenefitFreshness": "अद्यतन दृश्यमान",
+  "batchAdoptionBenefitRecovery": "आसान पुनर्प्राप्ति",
+  "batchAdoptionBenefitVersions": "संस्करण स्पष्ट",
+  "batchAdoptionManagedSection": "SkillsGo द्वारा प्रबंधित",
+  "batchAdoptionPendingSection": "लंबित",
+  "batchAdoptionItemManaged": "{name} का प्रबंधन SkillsGo द्वारा किया जाता है",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} को प्रबंधन में नहीं जोड़ा जा सका",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} को प्रबंधन में नहीं जोड़ा जा सका",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} प्रबंधित होने की प्रतीक्षा कर रहा है",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} प्रबंधित होने की प्रतीक्षा कर रहा है",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "प्रबंधन के बाद, {count, plural, =1{1 Skill} other{{count} Skills}} स्पष्ट प्रबंधित स्थिति वाली एक Library में व्यवस्थित हैं।",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "प्रबंधन के बाद, {count, plural, =1{1 Skill} other{{count} Skills}} स्पष्ट प्रबंधित स्थिति वाली एक Library में व्यवस्थित हैं।",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} और अधिक",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} और अधिक",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "इन मौजूदा कौशलों को SkillsGo प्रबंधन में जोड़ें।",
-  "batchTakeoverTransitionLabel": "व्यवस्थित करें",
-  "batchTakeoverStatusTitle": "प्रबंधन की स्थिति",
-  "batchTakeoverStatusManaged": "प्रबंधित",
-  "batchTakeoverStatusProgress": "आयोजन",
-  "batchTakeoverStatusSkipped": "छोड़ दिया गया",
-  "batchTakeoverStatusFilesStay": "Skill फ़ाइलें अपने मूल स्थान पर रहती हैं",
-  "batchTakeoverBoardSemantics": "Skills को पूरी पंक्तियों में व्यवस्थित किया गया है और उनकी फ़ाइलों को स्थानांतरित किए बिना SkillsGo द्वारा रिकॉर्ड किया गया है।",
-  "batchTakeoverBoardComplete": "सब साफ़",
-  "batchTakeoverBoardPartial": "पूर्ण",
-  "batchTakeoverStatusTotal": "कुल",
-  "batchTakeoverQueueComplete": "कोई कौशल इंतजार नहीं कर रहा है",
-  "batchTakeoverQueueWaiting": "सत्यापन के बाद Skills यहाँ दिखाई देंगे",
-  "batchTakeoverNextLabel": "अगला",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo आयोजक ब्लॉक} other{{count} SkillsGo आयोजक ब्लॉक}} अंतिम पंक्तियाँ पूरी करते हैं।",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "इन मौजूदा कौशलों को SkillsGo प्रबंधन में जोड़ें।",
+  "batchAdoptionTransitionLabel": "व्यवस्थित करें",
+  "batchAdoptionStatusTitle": "प्रबंधन की स्थिति",
+  "batchAdoptionStatusManaged": "प्रबंधित",
+  "batchAdoptionStatusProgress": "आयोजन",
+  "batchAdoptionStatusSkipped": "छोड़ दिया गया",
+  "batchAdoptionStatusFilesStay": "Skill फ़ाइलें अपने मूल स्थान पर रहती हैं",
+  "batchAdoptionBoardSemantics": "Skills को पूरी पंक्तियों में व्यवस्थित किया गया है और उनकी फ़ाइलों को स्थानांतरित किए बिना SkillsGo द्वारा रिकॉर्ड किया गया है।",
+  "batchAdoptionBoardComplete": "सब साफ़",
+  "batchAdoptionBoardPartial": "पूर्ण",
+  "batchAdoptionStatusTotal": "कुल",
+  "batchAdoptionQueueComplete": "कोई कौशल इंतजार नहीं कर रहा है",
+  "batchAdoptionQueueWaiting": "सत्यापन के बाद Skills यहाँ दिखाई देंगे",
+  "batchAdoptionNextLabel": "अगला",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo आयोजक ब्लॉक} other{{count} SkillsGo आयोजक ब्लॉक}} अंतिम पंक्तियाँ पूरी करते हैं।",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "आपकी फ़ाइलें, पथ और वर्तमान वर्कफ़्लो बिल्कुल वहीं रहते हैं जहाँ वे हैं। SkillsGo केवल अपने स्थानीय प्रबंधन रिकॉर्ड को पूरा करता है।",
-  "batchTakeoverLaterHint": "यदि आप छोड़ते हैं, तो आप किसी भी समय लाइब्रेरी से मौजूदा कौशल प्रबंधित करें का उपयोग कर सकते हैं।",
-  "batchTakeoverSkip": "अभी नहीं",
-  "batchTakeoverConfirm": "प्रबंधन में जोड़ें",
-  "batchTakeoverExecutionRetry": "पुनः प्रयास करें",
-  "batchTakeoverResultTitle": "Skills को प्रबंधन में जोड़ा गया",
-  "batchTakeoverSummary": "{takenOver} कौशल को प्रबंधन में जोड़ा गया, {skipped} को छोड़ दिया गया।",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "आपकी फ़ाइलें, पथ और वर्तमान वर्कफ़्लो बिल्कुल वहीं रहते हैं जहाँ वे हैं। SkillsGo केवल अपने स्थानीय प्रबंधन रिकॉर्ड को पूरा करता है।",
+  "batchAdoptionLaterHint": "यदि आप छोड़ते हैं, तो आप किसी भी समय लाइब्रेरी से मौजूदा कौशल प्रबंधित करें का उपयोग कर सकते हैं।",
+  "batchAdoptionSkip": "अभी नहीं",
+  "batchAdoptionConfirm": "प्रबंधन में जोड़ें",
+  "batchAdoptionExecutionRetry": "पुनः प्रयास करें",
+  "batchAdoptionResultTitle": "Skills को प्रबंधन में जोड़ा गया",
+  "batchAdoptionSummary": "{adopted} कौशल को प्रबंधन में जोड़ा गया, {skipped} को छोड़ दिया गया।",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "बंद करें",
+  "batchAdoptionClose": "बंद करें",
   "installMoreTargets": "अधिक स्थानों पर स्थापित करें",
-  "detailRepository": "भण्डार",
+  "detailPackageSource": "पैकेज स्रोत",
   "detailStars": "सितारे",
   "detailUpdated": "अद्यतन किया गया",
-  "detailArchiveSize": "ZIP आकार",
+  "detailArchiveSize": "पैकेज का आकार",
   "pathLabel": "प्रोजेक्ट पथ",
   "copyProjectPath": "प्रोजेक्ट पथ कॉपी करें",
   "projectPathCopied": "प्रोजेक्ट पथ की प्रतिलिपि बनाई गई",

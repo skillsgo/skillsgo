@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Installed-detail provenance, Hub enrichment resilience, and local install-more behavior.
+ * [INPUT]: Uses SkillsGoApp, branded Package avatars, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies Installed-detail package identity, provenance without decorative-animation stalls, Hub enrichment resilience, and local install-more behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/ui/brand.dart';
 
 import 'support/fake_skills_gateway.dart';
 
@@ -18,6 +19,9 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1500, 900));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
 
     Future<void> open(InstalledSkill entry, {UpdateState? updateState}) async {
       await tester.pumpWidget(const SizedBox.shrink());
@@ -55,6 +59,10 @@ void main() {
       targets: [target],
     );
     await open(hub);
+    final heroAvatar = tester.widget<PackageAvatar>(
+      find.byKey(const Key('installed-detail-skill-avatar')),
+    );
+    expect(heroAvatar.imageUrl, 'https://github.com/test.png?size=232');
     expect(find.text('Update'), findsOneWidget);
     expect(find.text('Install in more locations'), findsOneWidget);
     await tester.tap(find.byTooltip('Show target details'));

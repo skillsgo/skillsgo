@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Find reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies current-language single/bounded-chunk Find, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
+ * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -60,6 +60,7 @@ void main() {
     expect(results.single.metricKind, isNull);
     expect(results.single.description, 'Build adaptive Flutter layouts.');
     expect(results.single.localTargetCount, 2);
+    expect(results.single.localVersions, ['v1.2.3']);
     expect(page.pagination.nextPage, 1);
     expect(runner.calls.first.arguments, [
       'find',
@@ -170,7 +171,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"candidates":[[{"packagePath":"github.com/example/skills","version":"v1.2.3","path":"skills/ask-matt","name":"ask-matt","description":"Route requests."}]]}',
+              '{"candidates":[[{"packagePath":"github.com/example/skills","versions":["v1.2.3","v1.1.0"],"path":"skills/ask-matt","name":"ask-matt","description":"Route requests.","imageUrl":"https://github.com/example.png?size=256"}]]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -184,20 +185,23 @@ void main() {
 
       expect(runner.calls, hasLength(1));
       expect(runner.lastArguments, [
-        'find',
+        'hub',
+        'find-candidates',
         '--input',
         '-',
         '--hub',
         'https://hub.skillsgo.ai',
-        '--lang',
-        'en',
         '--output',
         'json',
       ]);
       expect(jsonDecode(runner.lastStdin!)['queries'], [
         {'name': 'ask-matt'},
       ]);
-      expect(results.single.single.latestVersion, 'v1.2.3');
+      expect(results.single.single.versions, ['v1.2.3', 'v1.1.0']);
+      expect(
+        results.single.single.imageUrl,
+        'https://github.com/example.png?size=256',
+      );
     },
   );
 

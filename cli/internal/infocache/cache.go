@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on canonical resource identity, immutable version and kind, exact protocol bytes, and filesystem atomicity.
  * [OUTPUT]: Provides identity-checked immutable Info get/put operations with per-entry singleflight and crash-safe publication.
- * [POS]: Serves as the local exact-metadata cache between Workspace restoration and Hub protocol access.
+ * [POS]: Serves as the user-level disposable exact-metadata cache shared by every installation scope between Workspace restoration and Hub protocol access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package infocache
@@ -31,7 +31,9 @@ type entry struct {
 
 var entryLocks sync.Map
 
-func DefaultRoot(home string) string { return filepath.Join(home, ".skillsgo", "info") }
+func DefaultRoot(home string) string {
+	return filepath.Join(home, ".skillsgo", "cache", "info")
+}
 
 func (c Cache) Get(resource, version, kind string) ([]byte, error) {
 	path := c.path(resource, version, kind)

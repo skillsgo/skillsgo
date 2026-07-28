@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart asynchronous primitives.
- * [OUTPUT]: Provides shared status enums, update availability, App preferences, CLI process contracts, command results, and typed Skills failures.
+ * [OUTPUT]: Provides shared status enums, update availability, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
  * [POS]: Serves as the cross-journey system vocabulary used by focused App domain modules and infrastructure adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,10 +42,6 @@ enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
 enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
 
 enum InstallationProgressState { started, finished }
-
-enum UpdatePlanAction { update, current, pinned, failed }
-
-enum UpdateTargetOutcome { succeeded, skipped, failed }
 
 enum TargetManagementAction { remove }
 
@@ -135,6 +131,52 @@ class ReminderSettings {
         updateAvailable: updateAvailable ?? this.updateAvailable,
         securityAdvisory: securityAdvisory ?? this.securityAdvisory,
       );
+}
+
+class DiagnosticLogInfo {
+  const DiagnosticLogInfo({
+    required this.directory,
+    required this.totalBytes,
+    this.retentionDays = 7,
+    this.maximumBytes = 50 * 1024 * 1024,
+  });
+
+  final String directory;
+  final int totalBytes;
+  final int retentionDays;
+  final int maximumBytes;
+}
+
+enum DiagnosticLogLevel {
+  debug('DEBUG'),
+  info('INFO'),
+  warning('WARN'),
+  error('ERROR');
+
+  const DiagnosticLogLevel(this.label);
+  final String label;
+}
+
+class DiagnosticLogEntry {
+  const DiagnosticLogEntry({
+    required this.time,
+    required this.level,
+    required this.category,
+    required this.event,
+    required this.formatted,
+    this.data = const {},
+    this.error,
+    this.stackTrace,
+  });
+
+  final DateTime time;
+  final DiagnosticLogLevel level;
+  final String category;
+  final String event;
+  final String formatted;
+  final Map<String, Object?> data;
+  final String? error;
+  final String? stackTrace;
 }
 
 class CliStatus {

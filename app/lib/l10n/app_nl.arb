@@ -317,7 +317,6 @@
   "update": "Update",
   "backToLibrary": "Terug naar Bibliotheek",
   "remove": "Verwijderen",
-  "manageTargets": "Beheer bereik",
   "skillsSelected": "{count} geselecteerd",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Duidelijke selectie",
   "selectCurrentResults": "Select huidige resultaten",
   "clearCurrentResultSelection": "Wis huidige resultaatselectie",
-  "manageTargetsTitle": "Beheer installatiedoelen",
-  "manageTargetsDescription": "Kies een exacte actie voor elk doelwit. Niet-geselecteerde doelen veranderen niet.",
   "targetActionsSelected": "{selected} van {total} doelen geselecteerd",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Bevestig verwijderen",
-  "applyTargetActions": "Pas geselecteerde acties toe",
   "managementProgressTitle": "Doelacties toepassen",
   "managementResultsTitle": "Doelactieresultaten",
   "managementResultSummary": "{succeeded} geslaagd, {failed} mislukt",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Geselecteerde projectacties zullen skills.yaml en skills-lock.yaml bijwerken.",
   "targetContentPreserved": "De huidige doelinhoud blijft behouden.",
   "localReadFailed": "Kan deze Skill niet lezen",
   "localReadFailedMessage": "SkillsGo kon deze geïnstalleerde skill niet lezen. Controleer of de folder beschikbaar en toegankelijk is en probeer het vervolgens opnieuw.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "U kunt door deze Skill blijven bladeren, maar er is nog geen installatiedoel. Installeer een ondersteunde Agent en voer de detectie opnieuw uit.",
   "clearCustomPath": "Aangepast pad wissen",
   "privacyProvenance": "Privacy & herkomst",
-  "privacySummary": "Uw zoekopdrachten worden niet opgeslagen en SkillsGo houdt geen opdrachtlogboeken bij.",
   "language": "Taal",
   "translatedContent": "Vertaald",
   "translatedFrom": "Vertaald vanuit {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Geïnstalleerd",
   "unsupportedCell": "Niet beschikbaar",
   "confirmInstall": "Bevestig de installatie",
-  "installAllRepositorySkills": "Installeer alle repository skills ({count})",
+  "installAllPackageSkills": "Installeer alle repository skills ({count})",
   "installAllSkillsTo": "Installeer alle skills op",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Installeer alle {repository} skills ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Installeer alle {packagePath} skills ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Beheer bestaande skills",
-  "batchTakeoverActionCount": "Beheren ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Beheer bestaande skills",
+  "batchAdoptionActionCount": "Beheren ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Bestaande skills controleren…",
-  "batchTakeoverRetry": "Controleer de beheersbare skills opnieuw",
-  "batchTakeoverEligibleCount": "{count} kan worden beheerd",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Bestaande skills controleren…",
+  "batchAdoptionRetry": "Controleer de beheersbare skills opnieuw",
+  "batchAdoptionEligibleCount": "{count} kan worden beheerd",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "skills toevoegen aan beheer...",
-  "batchTakeoverTitle": "Bestaande skills beheren met SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo voegt lokale beheerrecords toe zonder skill-bestanden te verplaatsen, overschrijven of uploaden. Niet-ondersteunde of gewijzigde items worden overgeslagen.",
-  "batchTakeoverStoryTitle": "Verander verspreide skills in één overzichtelijke bibliotheek",
-  "batchTakeoverStoryDescription": "SkillsGo heeft {count, plural, =1{1 bestaande skill} other{{count} bestaande skills}} gevonden die hij op deze locatie kan beheren.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "skills toevoegen aan beheer...",
+  "batchAdoptionTitle": "Bestaande skills beheren met SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo voegt lokale beheerrecords toe zonder skill-bestanden te verplaatsen, overschrijven of uploaden. Niet-ondersteunde of gewijzigde items worden overgeslagen.",
+  "batchAdoptionStoryTitle": "Verander verspreide skills in één overzichtelijke bibliotheek",
+  "batchAdoptionStoryDescription": "SkillsGo heeft {count, plural, =1{1 bestaande skill} other{{count} bestaande skills}} gevonden die hij op deze locatie kan beheren.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Voor het management is het onduidelijk waar bestaande skills zijn geïnstalleerd, of ze actueel zijn, hoe ze kunnen worden hersteld en of projecten dezelfde versie gebruiken.",
-  "batchTakeoverPainLocation": "Onbekende installatielocatie",
-  "batchTakeoverPainFreshness": "Onbekende updatestatus",
-  "batchTakeoverPainRecovery": "Geen herstel bij breuk",
-  "batchTakeoverPainVersionDrift": "Verschillende versies voor projecten",
-  "batchTakeoverFolderTitle": "Bestaande Skills",
-  "batchTakeoverFolderSubtitle": "Onduidelijke status",
-  "batchTakeoverAfterLabel": "NA",
-  "batchTakeoverAfterTitle": "Eén duidelijke bibliotheek",
-  "batchTakeoverLibraryTitle": "SkillsGo-bibliotheek",
-  "batchTakeoverBenefitLocation": "Duidelijke locaties",
-  "batchTakeoverBenefitFreshness": "Updates zichtbaar",
-  "batchTakeoverBenefitRecovery": "Gemakkelijk herstel",
-  "batchTakeoverBenefitVersions": "Versies duidelijk",
-  "batchTakeoverManagedSection": "Beheerd door SkillsGo",
-  "batchTakeoverPendingSection": "In behandeling",
-  "batchTakeoverItemManaged": "{name} wordt beheerd door SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Voor het management is het onduidelijk waar bestaande skills zijn geïnstalleerd, of ze actueel zijn, hoe ze kunnen worden hersteld en of projecten dezelfde versie gebruiken.",
+  "batchAdoptionPainLocation": "Onbekende installatielocatie",
+  "batchAdoptionPainFreshness": "Onbekende updatestatus",
+  "batchAdoptionPainRecovery": "Geen herstel bij breuk",
+  "batchAdoptionPainVersionDrift": "Verschillende versies voor projecten",
+  "batchAdoptionFolderTitle": "Bestaande Skills",
+  "batchAdoptionFolderSubtitle": "Onduidelijke status",
+  "batchAdoptionAfterLabel": "NA",
+  "batchAdoptionAfterTitle": "Eén duidelijke bibliotheek",
+  "batchAdoptionLibraryTitle": "SkillsGo-bibliotheek",
+  "batchAdoptionBenefitLocation": "Duidelijke locaties",
+  "batchAdoptionBenefitFreshness": "Updates zichtbaar",
+  "batchAdoptionBenefitRecovery": "Gemakkelijk herstel",
+  "batchAdoptionBenefitVersions": "Versies duidelijk",
+  "batchAdoptionManagedSection": "Beheerd door SkillsGo",
+  "batchAdoptionPendingSection": "In behandeling",
+  "batchAdoptionItemManaged": "{name} wordt beheerd door SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} kan niet worden toegevoegd aan het beheer",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} kan niet worden toegevoegd aan het beheer",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} wacht op beheer",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} wacht op beheer",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Na beheer is {count, plural, =1{1 skill is} other{{count} skills zijn}} georganiseerd in één bibliotheek met een duidelijke beheerde status.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Na beheer is {count, plural, =1{1 skill is} other{{count} skills zijn}} georganiseerd in één bibliotheek met een duidelijke beheerde status.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} meer",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} meer",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Voeg deze bestaande skills toe aan het SkillsGo-beheer.",
-  "batchTakeoverTransitionLabel": "ORGANISEREN",
-  "batchTakeoverStatusTitle": "Beheerstatus",
-  "batchTakeoverStatusManaged": "Beheerd",
-  "batchTakeoverStatusProgress": "Organiseren",
-  "batchTakeoverStatusSkipped": "Overgeslagen",
-  "batchTakeoverStatusFilesStay": "Skill-bestanden blijven op hun oorspronkelijke locatie",
-  "batchTakeoverBoardSemantics": "Skills worden in volledige rijen gerangschikt en opgenomen door SkillsGo zonder de bestanden te verplaatsen.",
-  "batchTakeoverBoardComplete": "ALLES DUIDELIJK",
-  "batchTakeoverBoardPartial": "COMPLEET",
-  "batchTakeoverStatusTotal": "Totaal",
-  "batchTakeoverQueueComplete": "Er wachten geen skills",
-  "batchTakeoverQueueWaiting": "Na verificatie worden de Skills hier weergegeven",
-  "batchTakeoverNextLabel": "VOLGENDE",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo organisatorblok} other{{count} SkillsGo organisatorblokken}} voltooi de laatste rijen",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Voeg deze bestaande skills toe aan het SkillsGo-beheer.",
+  "batchAdoptionTransitionLabel": "ORGANISEREN",
+  "batchAdoptionStatusTitle": "Beheerstatus",
+  "batchAdoptionStatusManaged": "Beheerd",
+  "batchAdoptionStatusProgress": "Organiseren",
+  "batchAdoptionStatusSkipped": "Overgeslagen",
+  "batchAdoptionStatusFilesStay": "Skill-bestanden blijven op hun oorspronkelijke locatie",
+  "batchAdoptionBoardSemantics": "Skills worden in volledige rijen gerangschikt en opgenomen door SkillsGo zonder de bestanden te verplaatsen.",
+  "batchAdoptionBoardComplete": "ALLES DUIDELIJK",
+  "batchAdoptionBoardPartial": "COMPLEET",
+  "batchAdoptionStatusTotal": "Totaal",
+  "batchAdoptionQueueComplete": "Er wachten geen skills",
+  "batchAdoptionQueueWaiting": "Na verificatie worden de Skills hier weergegeven",
+  "batchAdoptionNextLabel": "VOLGENDE",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo organisatorblok} other{{count} SkillsGo organisatorblokken}} voltooi de laatste rijen",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Uw bestanden, paden en huidige workflows blijven precies waar ze zijn. SkillsGo vult alleen de lokale managementadministratie in.",
-  "batchTakeoverLaterHint": "Als u dit overslaat, kunt u op elk gewenst moment Bestaande skills vanuit Bibliotheek beheren gebruiken.",
-  "batchTakeoverSkip": "Niet nu",
-  "batchTakeoverConfirm": "Voeg toe aan beheer",
-  "batchTakeoverExecutionRetry": "Opnieuw proberen",
-  "batchTakeoverResultTitle": "Skills toegevoegd aan beheer",
-  "batchTakeoverSummary": "{takenOver} skills toegevoegd aan beheer, {skipped} overgeslagen.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Uw bestanden, paden en huidige workflows blijven precies waar ze zijn. SkillsGo vult alleen de lokale managementadministratie in.",
+  "batchAdoptionLaterHint": "Als u dit overslaat, kunt u op elk gewenst moment Bestaande skills vanuit Bibliotheek beheren gebruiken.",
+  "batchAdoptionSkip": "Niet nu",
+  "batchAdoptionConfirm": "Voeg toe aan beheer",
+  "batchAdoptionExecutionRetry": "Opnieuw proberen",
+  "batchAdoptionResultTitle": "Skills toegevoegd aan beheer",
+  "batchAdoptionSummary": "{adopted} skills toegevoegd aan beheer, {skipped} overgeslagen.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Sluiten",
+  "batchAdoptionClose": "Sluiten",
   "installMoreTargets": "Installeer op meer locaties",
-  "detailRepository": "Opslagplaats",
+  "detailPackageSource": "Pakketbron",
   "detailStars": "Sterren",
   "detailUpdated": "Bijgewerkt",
-  "detailArchiveSize": "ZIP-formaat",
+  "detailArchiveSize": "Pakketgrootte",
   "pathLabel": "Projectpad",
   "copyProjectPath": "Kopieer het projectpad",
   "projectPathCopied": "Projectpad gekopieerd",

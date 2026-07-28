@@ -25,7 +25,7 @@ func TestJ21PreserveSkillResources(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(result.output), &installed))
 
 	relative := filepath.Join("references", "guide.md")
-	target := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "resourceful", relative)
+	target := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, relative)
 	storeFile := containerPathOnHost(t, sandboxRoot, installed.PackageDir, "skills", "resourceful", relative)
 	require.FileExists(t, target)
 	require.FileExists(t, storeFile)

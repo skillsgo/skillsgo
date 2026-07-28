@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Hub, project, Repository installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute, localized Cobra help, and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/Global install ensure, explicitly confirmed Repository add/update/remove, grouped Hub reads, Catalog update checks, installed-Skill listing/inspection, and Repository-backed adoption for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, Hub, project, Package installation, target-operation, source, i18n, and terminal UI modules.
+ * [OUTPUT]: Provides command.Execute, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/Global install ensure, explicitly confirmed Package add/update/remove, grouped Hub reads, Catalog update checks, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -85,7 +85,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newShowCommand(), newFindCommand(), newHubCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newRepositoryUpdateCommand(catalog))
+	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newShowCommand(), newFindCommand(), newHubCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newPackageUpdateCommand(catalog))
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
 	root.InitDefaultVersionFlag()
@@ -236,7 +236,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			results, installErr := ensureRepositoryScope(cmd.Context(), root, global, catalog, client)
+			results, installErr := ensurePackageScope(cmd.Context(), root, global, catalog, client)
 			if output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
@@ -319,7 +319,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 				return fmt.Errorf("--global cannot be combined with --project")
 			}
 			if len(exact.projects) > 1 {
-				return fmt.Errorf("Repository removal accepts one --project")
+				return fmt.Errorf("Package removal accepts one --project")
 			}
 			projectRoot := ""
 			if len(exact.projects) == 1 {
@@ -339,7 +339,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 				names[strings.ToLower(name)] = true
 			}
 			_ = names
-			return fmt.Errorf("未找到匹配的 Repository Skill")
+			return fmt.Errorf("未找到匹配的 Package Skill")
 		},
 	}
 	cmd.Flags().BoolVarP(&options.global, "global", "g", false, appi18n.Pick("Remove from Global Scope", "从全局安装范围移除"))
@@ -351,15 +351,15 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 }
 
 type addOptions struct {
-	global, yes                 bool
-	agents, skills, skillPaths  []string
-	output, hubURL, projectRoot string
+	global, yes, dryRun, replaceConflicts bool
+	agents, skills, skillPaths            []string
+	output, hubURL, projectRoot           string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	options := addOptions{}
 	cmd := &cobra.Command{
-		Use:     "add <module>",
+		Use:     "add <package>",
 		Short:   appi18n.Pick("Add Skills from a Package", "从 Package 添加 Skill"),
 		Aliases: []string{"a"},
 		Args:    cobra.ExactArgs(1),
@@ -421,6 +421,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
   # 从其他 Hub 读取 Package
   skillsgo add mattpocock/skills --hub https://hub.example.com`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateProductOutput(options.output); err != nil {
+				return err
+			}
 			if options.global && options.projectRoot != "" {
 				return fmt.Errorf("--global and --project are mutually exclusive")
 			}
@@ -467,18 +470,19 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 				return err
 			}
 			if len(options.skills) > 0 || len(options.skillPaths) > 0 {
-				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, cwd, options)
+				return addSelectedPackageSkills(cmd, catalog, reference, agentIDs, scope, cwd, options)
 			}
-			return addWholeRepository(cmd, catalog, reference, agentIDs, scope, cwd, options)
+			return addWholePackage(cmd, catalog, reference, agentIDs, scope, cwd, options)
 		},
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&options.global, "global", "g", false, appi18n.T("flag.global.add"))
-	flags.StringVar(&options.projectRoot, "project", "", appi18n.Pick("Install into an explicit Workspace root", "安装到显式工作区根目录"))
+	flags.StringVarP(&options.projectRoot, "project", "p", "", appi18n.Pick("Install into an explicit Workspace root", "安装到显式工作区根目录"))
 	flags.StringArrayVarP(&options.agents, "agent", "a", nil, appi18n.T("flag.agent.add"))
 	flags.StringArrayVarP(&options.skills, "skill", "s", nil, appi18n.T("flag.skill"))
 	flags.StringArrayVar(&options.skillPaths, "skill-path", nil, appi18n.Pick("Exact Package-relative Skill path (repeatable)", "精确的 Package 相对 Skill 路径（可重复）"))
 	flags.BoolVarP(&options.yes, "yes", "y", false, appi18n.T("flag.yes"))
+	flags.BoolVar(&options.dryRun, "dry-run", false, appi18n.Pick("Preview the Package version impact without changing files", "预览 Package 版本影响且不更改文件"))
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))
 	defaultHub := defaultHubURL()
 	flags.StringVar(&options.hubURL, "hub", defaultHub, appi18n.T("flag.hub"))

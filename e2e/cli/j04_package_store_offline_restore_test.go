@@ -53,8 +53,8 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 
 	var restored []struct {
 		PackagePath string `json:"packagePath"`
-		Version    string `json:"version"`
-		Status     string `json:"status"`
+		Version     string `json:"version"`
+		Status      string `json:"status"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
@@ -62,7 +62,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	require.FileExists(t, moduleSkill)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)

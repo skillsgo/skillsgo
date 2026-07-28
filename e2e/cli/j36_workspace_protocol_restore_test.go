@@ -63,7 +63,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
 	for _, projection := range installed.Projections {
-		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
+		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "SKILL.md"))
 	}
 
 	manifestAfter, err := os.ReadFile(manifestPath)

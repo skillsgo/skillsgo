@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the menu contracts, overlay positioning, focus/keyboard state, animation, and async request presentation.
- * [OUTPUT]: Provides the public anchored menu widget and overlay lifecycle that presents one Installation Request surface at a time.
+ * [INPUT]: Depends on the menu contracts, full-width responsive toast overlay, focus/keyboard state, animation, and async request presentation.
+ * [OUTPUT]: Provides the public anchored menu widget and overlay lifecycle that presents one Installation Request surface at a time, preserves the selection when a destructive confirmation is cancelled, and exposes interactive responsive operation feedback.
  * [POS]: Serves as the overlay and focus owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -61,25 +61,11 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
         left: 0,
         right: 0,
         height: 320,
-        child: IgnorePointer(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: SizedBox.expand(
-                child: Material(
-                  color: Colors.transparent,
-                  child: StackedToastInteraction(
-                    controller: toastController,
-                    style: const StackedToastStyle(
-                      horizontalPadding: 12,
-                      topMargin: 16,
-                      maxStackedItems: 3,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        child: Material(
+          color: Colors.transparent,
+          child: StackedToastInteraction(
+            controller: toastController,
+            style: const StackedToastStyle(topMargin: 16, maxStackedItems: 3),
           ),
         ),
       ),
@@ -126,6 +112,7 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
       controller.close();
       return;
     }
+    if (outcome.cancelled) return;
     toastController.show(
       StackedToastItem(
         id: 'install-error-${DateTime.now().microsecondsSinceEpoch}',
@@ -201,13 +188,13 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
                             onSubmit: _complete,
                           )
                         : _InstallLocationCard(
+                            summary: current.summary!,
                             gateway: current.gateway!,
                             catalog: current.catalog!,
                             detail: current.detail!,
                             moduleSkills: current.moduleSkills!,
                             moduleSkillsFuture: current.moduleSkillsFuture,
                             preferredAction: current.preferredAction,
-                            existingTargets: current.existingTargets!,
                             initialProjects: current.projects!,
                             onProjectAdded: current.onProjectAdded!,
                             onSubmit: _complete,

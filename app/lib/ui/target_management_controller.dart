@@ -67,7 +67,10 @@ class TargetManagementOperationController
         onProgress: (event) {
           if (!ref.mounted) return;
           state = state.copyWith(
-            progress: {...state.progress, updateTargetKey(event.target): event},
+            progress: {
+              ...state.progress,
+              installationTargetKey(event.target): event,
+            },
           );
         },
       );

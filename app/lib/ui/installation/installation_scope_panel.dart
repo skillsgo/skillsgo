@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation targets, Added Projects, localized Agent labels, target health chips, and expandable Material presentation.
- * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries.
+ * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries with reduced-motion-safe detail expansion.
  * [POS]: Serves as the installed-target scope summary segment of detail journeys.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -109,6 +109,26 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
         accessState: ProjectAccessState.accessible,
       );
     }
+    final targetDetails = expanded
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(start: 36, top: 6),
+            child: Column(
+              children: [
+                for (final target in group.targets)
+                  _InstallationTargetDetail(
+                    target: target,
+                    onRemove: widget.onManageTarget == null
+                        ? null
+                        : () => widget.onManageTarget!(
+                            target,
+                            TargetManagementAction.remove,
+                          ),
+                  ),
+              ],
+            ),
+          )
+        : const SizedBox.shrink();
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Column(
@@ -226,35 +246,15 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
               ),
             ),
           ),
-          AnimatedSize(
-            alignment: AlignmentDirectional.topStart,
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            child: expanded
-                ? Padding(
-                    padding: const EdgeInsetsDirectional.only(
-                      start: 36,
-                      top: 6,
-                    ),
-                    child: Column(
-                      children: [
-                        for (final target in group.targets)
-                          _InstallationTargetDetail(
-                            target: target,
-                            onRemove: widget.onManageTarget == null
-                                ? null
-                                : () => widget.onManageTarget!(
-                                    target,
-                                    TargetManagementAction.remove,
-                                  ),
-                          ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          if (disableAnimations)
+            targetDetails
+          else
+            AnimatedSize(
+              alignment: AlignmentDirectional.topStart,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: targetDetails,
+            ),
         ],
       ),
     );
@@ -327,7 +327,7 @@ Future<TargetManagementExecution> executeInlineTargetAction({
   }
   final item = matching.first;
   final actions = <String, TargetManagementAction>{
-    updateTargetKey(item.target): action,
+    installationTargetKey(item.target): action,
   };
   final execution = await gateway.executeTargetManagement(
     plan.selectActions(actions),

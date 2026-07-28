@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the deterministic multi-Skill collection Repository, released whole-Repository add, and a conflicting coordinate Projection target.
+ * [INPUT]: Depends on the deterministic multi-Skill collection Package, released whole-Package add, and a conflicting canonical Skill target.
  * [OUTPUT]: Provides black-box coverage that a failed whole-Repository add preserves the external path and rolls back Package Store, Projection, YAML, and Lock publication.
  * [POS]: Serves as the Repository publication installation-atomicity journey across Hub, CLI, and Workspace state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,13 +19,13 @@ func TestJ46RepositoryAddIsAtomic(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
-	externalTarget := filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate)
+	externalTarget := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
 	require.NoError(t, os.MkdirAll(externalTarget, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(externalTarget, "external.txt"), []byte("keep\n"), 0o600))
 
 	result := execCLI(t, ctx, container,
 		"add", "https://fixtures.test/group/subgroup/collection@v1.0.0",
-		"--agent", "codex", "--yes", "--output", "json",
+		"--agent", "codex", "--output", "json",
 	)
 	require.NotEqual(t, 0, result.exitCode, result.output)
 

@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, immutable Package Version Skill, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -11,6 +11,13 @@ RETURNING *;
 
 -- name: PackageByPath :one
 SELECT * FROM packages WHERE path = sqlc.arg(package_path);
+
+-- name: CurrentPackageVersionForUpdate :one
+SELECT COALESCE(mv.version, '')::text
+FROM packages m
+LEFT JOIN versions mv ON mv.id=m.current_version_id
+WHERE m.id=sqlc.arg(package_id)
+FOR UPDATE OF m;
 
 -- name: UpdatePackageSourceMetadata :execrows
 UPDATE packages SET description = sqlc.arg(description), description_digest = sqlc.arg(description_digest), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
@@ -69,12 +76,12 @@ WHERE m.path=sqlc.arg(package_path) AND mvs.name=sqlc.arg(name)
 ORDER BY mvs.path
 LIMIT 1;
 
--- name: SkillPublishedVersions :many
+-- name: SkillPublishedVersionsByPath :many
 SELECT DISTINCT mv.version
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(package_path) AND mvs.name=sqlc.arg(name)
+WHERE m.path=sqlc.arg(package_path) AND mvs.path=sqlc.arg(path)
 ORDER BY mv.version;
 
 -- name: PackagePublicationCommit :one

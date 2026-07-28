@@ -42,7 +42,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	targetPath := containerPathOnHost(t, sandboxRoot, oldInstalled.Projections[0].Path, "skills", "head", "SKILL.md")
+	targetPath := containerPathOnHost(t, sandboxRoot, oldInstalled.Projections[0].Path, "SKILL.md")
 	require.FileExists(t, targetPath)
 	beforeContent, err := os.ReadFile(targetPath)
 	require.NoError(t, err)
@@ -53,13 +53,13 @@ func TestJ07UpdateMovable(t *testing.T) {
 	update := execCLI(t, ctx, container, "update", repository+"@main", "--yes", "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
 	var refreshed struct {
-		ToVersion string `json:"toVersion"`
+		ToVersion  string `json:"toVersion"`
 		PackageDir string `json:"packageDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(update.output), &refreshed), update.output)
 	require.NotEqual(t, oldInstalled.Version, refreshed.ToVersion)
 
-	newTargetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@"+refreshed.ToVersion, "skills", "head", "SKILL.md")
+	newTargetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "movable-head-skill", "SKILL.md")
 	require.FileExists(t, newTargetPath)
 	afterContent, err := os.ReadFile(newTargetPath)
 	require.NoError(t, err)

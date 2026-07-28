@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI arguments and responses, temporary local Skill trees, file pickers, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies hostile-argument safety, direct installation, local detail, External inspection, and exact Batch Takeover planning plus named scope-bound execution results.
+ * [INPUT]: Uses controlled CLI arguments and responses, temporary local Skill trees, file pickers, the App logger, and the production SkillsGateway adapter.
+ * [OUTPUT]: Specifies hostile-argument safety, direct selected-version installation, local detail, External inspection, reviewed adoption request/result contracts, and App-side protocol failure logging.
  * [POS]: Serves as the Installation Request and local Skill contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/logging/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -17,6 +18,65 @@ import 'support/fake_process_runner.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('installation logs an App protocol error when decoding fails', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'skillsgo-install-log-',
+    );
+    await appLogger.dispose();
+    await appLogger.initialize(directory: directory);
+    addTearDown(() async {
+      await appLogger.dispose();
+      await directory.delete(recursive: true);
+    });
+    final runner = FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout: '{"schemaVersion":1,"phase":"unexpected"}',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+    );
+
+    await expectLater(
+      gateway.installTargets(
+        const SkillSummary(
+          packagePath: 'github.com/example/skills',
+          installName: 'demo',
+          name: 'demo',
+          path: 'skills/demo',
+          latestVersion: 'v1',
+        ),
+        'v1',
+        const [
+          InstallationTargetSelection(
+            scope: InstallationScope.global,
+            agent: 'codex',
+          ),
+        ],
+      ),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidResponse,
+        ),
+      ),
+    );
+    await appLogger.flush();
+
+    final event = appLogger.recent().singleWhere(
+      (entry) => entry.event == 'response_decode_failed',
+    );
+    expect(event.level, DiagnosticLogLevel.error);
+    expect(event.category, 'gateway.protocol');
+    expect(event.data['operation'], 'install_package_members');
+    expect(event.data['responsePreview'], contains('"phase": "unexpected"'));
+    expect(event.error, contains('FormatException'));
+    expect(event.stackTrace, isNotEmpty);
+  });
 
   test('hostile write inputs remain exact arguments without a shell', () async {
     final runner = FakeProcessRunner();
@@ -31,23 +91,6 @@ void main() {
       path: r'nested/test;$(touch nope)',
       installs: 0,
     );
-    const installed = InstalledSkill(
-      inventoryKey: r'hub:github.com/a/b:Test ; $(touch nope)',
-      name: r'Test ; $(touch nope)',
-      path: r'/tmp/Test ; $(touch nope)',
-      agents: ['codex'],
-      targetCount: 1,
-      packagePath: r'github.com/a/b',
-      targets: [
-        SkillInstallationTarget(
-          agent: 'codex',
-          scope: InstallationScope.global,
-          path: r'/tmp/Test ; $(touch nope)',
-          version: 'v1',
-        ),
-      ],
-    );
-
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
@@ -78,13 +121,6 @@ void main() {
       '--hub',
       'https://hub.skillsgo.ai',
     ]);
-    final callsBeforeUpdatePlan = runner.calls.length;
-    await gateway.preflightUpdate(
-      installed,
-      installed.targets,
-      toVersion: 'v2',
-    );
-    expect(runner.calls, hasLength(callsBeforeUpdatePlan));
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
@@ -197,13 +233,13 @@ void main() {
   );
 
   test(
-    'Repository installation submits all exact paths in one CLI call',
+    'Package installation accepts repeated Agent projections from declared members',
     () async {
       final runner = FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"package-install","packagePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"packageDir":"/tmp/packages","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
+              '{"schemaVersion":1,"phase":"package-install","packagePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["existing/member","skills/alpha","nested/beta"],"agents":["codex"],"packageDir":"/tmp/packages","projections":[{"agents":["codex"],"path":"/tmp/alpha"},{"agents":["codex"],"path":"/tmp/beta"},{"agents":["codex"],"path":"/tmp/existing"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -235,6 +271,11 @@ void main() {
       ], confirmRisk: true);
 
       expect(executions, hasLength(2));
+      expect(executions.every((execution) => execution.hasSuccess), isTrue);
+      expect(
+        executions.every((execution) => execution.results.isEmpty),
+        isTrue,
+      );
       expect(runner.calls, hasLength(1));
       expect(runner.lastArguments, [
         'add',
@@ -368,7 +409,7 @@ void main() {
       expect(detail.path, directory.path);
       expect(detail.content, '# External instructions');
       await expectLater(
-        gateway.preflightUpdate(external, external.targets),
+        gateway.updatePackage(external, toVersion: 'v2'),
         throwsA(isA<SkillsException>()),
       );
       expect(runner.calls, isEmpty);
@@ -378,12 +419,107 @@ void main() {
     },
   );
 
-  test('Batch Takeover Plan parses exact User and Workspace counts', () async {
+  test(
+    'Adoption sends reviewed mapping through stdin and parses results',
+    () async {
+      final runner = FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"results":[{"inventoryKey":"external:demo","status":"adopted"},{"inventoryKey":"external:project-demo","status":"failed","reason":"install failed"}]}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+        hubBaseUrl: 'https://must-not-be-used.example',
+      );
+
+      final result = await gateway.adopt(const [
+        AdoptionRequestItem(
+          inventoryKey: 'external:demo',
+          name: 'demo',
+          packagePath: 'github.com/acme/skills',
+          version: 'v1.2.3',
+          skillPath: 'skills/demo',
+          targets: [
+            AdoptionTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/tmp/demo',
+            ),
+          ],
+        ),
+        AdoptionRequestItem(
+          inventoryKey: 'external:project-demo',
+          name: 'project-demo',
+          packagePath: 'github.com/acme/skills',
+          version: 'v1.2.3',
+          skillPath: 'skills/project-demo',
+          targets: [
+            AdoptionTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/tmp/Workspace With Spaces',
+              path: '/tmp/Workspace With Spaces/.claude/skills/project-demo',
+            ),
+          ],
+        ),
+      ]);
+
+      expect(result.adopted, 1);
+      expect(result.failed, 1);
+      expect(result.items.last.status, BatchAdoptionItemStatus.failed);
+      expect(result.items.last.reason, 'install failed');
+      expect(runner.lastArguments, [
+        'adopt',
+        '--input',
+        '-',
+        '--output',
+        'json',
+        '--hub',
+        'https://must-not-be-used.example',
+      ]);
+      expect(jsonDecode(runner.lastStdin!), {
+        'schemaVersion': 1,
+        'items': [
+          {
+            'inventoryKey': 'external:demo',
+            'name': 'demo',
+            'packagePath': 'github.com/acme/skills',
+            'version': 'v1.2.3',
+            'skillPath': 'skills/demo',
+            'targets': [
+              {'agent': 'codex', 'scope': 'global', 'path': '/tmp/demo'},
+            ],
+          },
+          {
+            'inventoryKey': 'external:project-demo',
+            'name': 'project-demo',
+            'packagePath': 'github.com/acme/skills',
+            'version': 'v1.2.3',
+            'skillPath': 'skills/project-demo',
+            'targets': [
+              {
+                'agent': 'claude-code',
+                'scope': 'project',
+                'projectRoot': '/tmp/Workspace With Spaces',
+                'path':
+                    '/tmp/Workspace With Spaces/.claude/skills/project-demo',
+              },
+            ],
+          },
+        ],
+      });
+    },
+  );
+
+  test('Adoption rejects duplicate result identities', () async {
     final runner = FakeProcessRunner()
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":4,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"global":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"global"}]}',
+            '{"schemaVersion":1,"results":[{"inventoryKey":"external:demo","status":"adopted"},{"inventoryKey":"external:demo","status":"adopted"}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -392,79 +528,30 @@ void main() {
       hubBaseUrl: 'https://must-not-be-used.example',
     );
 
-    final result = await gateway.planBatchTakeover(
-      projectRoots: const [
-        '/tmp//Workspace With Spaces',
-        '/tmp/Second Workspace',
-      ],
-    );
-
-    expect(result.id, 'plan-123');
-    expect(result.allEligibleCount, 4);
-    expect(result.globalEligibleCount, 1);
-    expect(result.previews.single.skillId, 'github.com/acme/skills/-/demo');
-    expect(result.eligibleForProject('/tmp/Workspace With Spaces'), 2);
-    expect(result.eligibleForProject('/tmp/Second Workspace'), 1);
-    expect(runner.lastArguments, [
-      'adopt',
-      '--global',
-      '--project',
-      '/tmp/Workspace With Spaces',
-      '--project',
-      '/tmp/Second Workspace',
-      '--hub',
-      'https://must-not-be-used.example',
-      '--output',
-      'json',
-    ]);
-  });
-
-  test('Batch Takeover executes one Plan for an explicit scope', () async {
-    final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout:
-            '{"schemaVersion":4,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"global","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
-        stderr: '',
-      );
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/bin/skillsgo',
-      hubBaseUrl: 'https://must-not-be-used.example',
-    );
-
-    final result = await gateway.executeBatchTakeover(
-      const BatchTakeoverPlan(
-        id: 'plan-123',
-        allEligibleCount: 4,
-        globalEligibleCount: 1,
-        eligibleCountByProjectRoot: {
-          '/tmp/Workspace With Spaces': 2,
-          '/tmp/Second Workspace': 1,
-        },
+    await expectLater(
+      gateway.adopt(const [
+        AdoptionRequestItem(
+          inventoryKey: 'external:demo',
+          name: 'demo',
+          packagePath: 'github.com/acme/skills',
+          version: 'v1.2.3',
+          skillPath: 'skills/demo',
+          targets: [
+            AdoptionTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/tmp/demo',
+            ),
+          ],
+        ),
+      ]),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidResponse,
+        ),
       ),
-      BatchTakeoverScope.all,
     );
-
-    expect(result.takenOver, 2);
-    expect(result.skipped, 1);
-    expect(result.items.map((item) => (item.name, item.status)), [
-      ('demo', BatchTakeoverItemStatus.takenOver),
-      ('project-demo', BatchTakeoverItemStatus.takenOver),
-      ('missing-demo', BatchTakeoverItemStatus.skipped),
-    ]);
-    expect(runner.lastArguments, [
-      'adopt',
-      '--global',
-      '--project',
-      '/tmp/Workspace With Spaces',
-      '--project',
-      '/tmp/Second Workspace',
-      '--hub',
-      'https://must-not-be-used.example',
-      '--yes',
-      '--output',
-      'json',
-    ]);
   });
 }

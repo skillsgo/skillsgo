@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses shared controls and state from FakeSkillsGatewayCore plus domain gateway models.
- * [OUTPUT]: Provides target management and batch takeover behavior.
+ * [OUTPUT]: Provides target management and batch adoption behavior.
  * [POS]: Serves as one capability facet of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,7 +50,7 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
   }) async {
     managementTargetHistory.add({
       for (final item in plan.targets)
-        updateTargetKey(item.target): item.action!,
+        installationTargetKey(item.target): item.action!,
     });
     var sequence = 0;
     final results = <TargetManagementResult>[];
@@ -70,6 +70,7 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
         target: item.target,
         name: item.name,
         skillId: item.skillId,
+        packagePath: item.packagePath,
         version: item.version,
         action: item.action!,
         outcome: TargetManagementOutcome.succeeded,
@@ -90,13 +91,13 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
     }
     final actions = {
       for (final item in plan.targets)
-        updateTargetKey(item.target): item.action!,
+        installationTargetKey(item.target): item.action!,
     };
     libraryEntries = libraryEntries
         ?.map((skill) {
           final remaining = <SkillInstallationTarget>[];
           for (final target in skill.targets) {
-            final key = installedUpdateTargetKey(target);
+            final key = installedTargetKey(target);
             final action = actions[key];
             if (action == TargetManagementAction.remove) {
               continue;

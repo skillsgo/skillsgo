@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on LibraryScreen state, SkillsGateway operations, reviewed update/management dialogs, the localized Batch Takeover story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, feature-gated Adoption Review entry and exit, one-time automatic takeover introduction, representative illustration data, inline-console plan-authorized legacy Batch Takeover execution, update, target-management, and detail-transition actions.
+ * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package updates, inline removal state, the localized Adoption story, reminders, and navigation animation.
+ * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, direct Package update with inventory refresh, inline-confirmed removal, and detail transitions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,20 +32,21 @@ extension _LibraryActions on _LibraryScreenState {
       selectedSkillKeys.removeAll(removedSkillKeys);
       selectedAgents.removeAll(removedAgents);
       if (resetLocation) {
-        selectedLocation = _LibraryLocationRoute.all;
+        selectedLocation = _LibraryLocationRoute.global;
       }
     });
   }
 
   List<InstalledSkill> get _selectedSkills {
     final selected = selectedSkillKeys;
-    return (skills ?? const <InstalledSkill>[])
+    return _locationAndAgentProjectedSkills
         .where((skill) => selected.contains(_librarySelectionKey(skill)))
         .toList(growable: false);
   }
 
   void _toggleSkillSelection(InstalledSkill skill, bool selected) {
     updateState(() {
+      removalConfirming = false;
       final key = _librarySelectionKey(skill);
       if (selected) {
         selectedSkillKeys.add(key);
@@ -60,6 +61,7 @@ extension _LibraryActions on _LibraryScreenState {
     bool selected,
   ) {
     updateState(() {
+      removalConfirming = false;
       final visibleKeys = visibleSkills.map(_librarySelectionKey);
       if (selected) {
         selectedSkillKeys.addAll(visibleKeys);
@@ -70,26 +72,80 @@ extension _LibraryActions on _LibraryScreenState {
   }
 
   Future<void> _updateSelectedSkills() async {
+    updateState(() => removalConfirming = false);
     final selected = _selectedSkills
         .where(
           (skill) =>
               updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
         )
         .toList(growable: false);
+    final packages = <String, ({InstalledSkill skill, String toVersion})>{};
     for (final skill in selected) {
-      if (!mounted) return;
-      await update(skill);
+      final availability = updates[libraryUpdateKey(skill)]!;
+      final key = '${skill.packagePath}\u0000${availability.toVersion}';
+      final current = packages[key];
+      if (current == null) {
+        packages[key] = (skill: skill, toVersion: availability.toVersion);
+        continue;
+      }
+      final targets = <String, SkillInstallationTarget>{
+        for (final target in current.skill.targets)
+          installedTargetKey(target): target,
+        for (final target in skill.targets) installedTargetKey(target): target,
+      };
+      packages[key] = (
+        skill: current.skill.withTargets(targets.values.toList()),
+        toVersion: availability.toVersion,
+      );
     }
-    if (mounted) updateState(selectedSkillKeys.clear);
+    if (packages.isEmpty) return;
+    updateState(
+      () => operatingSkills.addAll(selected.map((skill) => skill.name)),
+    );
+    updateState(() => result = null);
+    try {
+      for (final package in packages.values) {
+        if (!mounted) return;
+        await widget.gateway.updatePackage(
+          package.skill,
+          toVersion: package.toVersion,
+        );
+      }
+      await load();
+      await checkUpdates();
+      if (mounted) updateState(selectedSkillKeys.clear);
+    } catch (caught) {
+      result = exceptionResult(caught);
+      try {
+        await load();
+        await checkUpdates();
+      } on Object {
+        // Preserve the original mutation failure; refresh is best effort.
+      }
+    } finally {
+      if (mounted) {
+        updateState(
+          () => operatingSkills.removeAll(selected.map((skill) => skill.name)),
+        );
+      }
+    }
   }
 
-  Future<void> _manageSelectedSkills() async {
+  void _requestSelectedRemoval() => updateState(() => removalConfirming = true);
+
+  void _cancelSelectedRemoval() => updateState(() => removalConfirming = false);
+
+  Future<void> _confirmSelectedRemoval() async {
     final selected = _selectedSkills;
-    for (final skill in selected) {
-      if (!mounted) return;
-      await manage(skill);
-    }
-    if (mounted) updateState(selectedSkillKeys.clear);
+    updateState(() {
+      removalConfirming = false;
+      removalFinishedTargets = 0;
+      removalTotalTargets = selected.fold(
+        0,
+        (total, skill) => total + skill.targets.length,
+      );
+    });
+    await _removeSkills(selected);
   }
 
   AddedProject? get _selectedProject {
@@ -127,49 +183,13 @@ extension _LibraryActions on _LibraryScreenState {
             addedProjects.length == 1 &&
                 projects.any((item) => item.id == addedProjects.single.id)
             ? _LibraryLocationRoute.project(addedProjects.single.id)
-            : _LibraryLocationRoute.all;
+            : _LibraryLocationRoute.global;
       });
     } on Object catch (caught) {
       if (mounted) updateState(() => actionError = caught);
     } finally {
       if (mounted) updateState(() => addingProject = false);
     }
-  }
-
-  Future<void> _initializeTakeoverPrompt() async {
-    try {
-      final seen = await widget.gateway.loadBatchTakeoverPromptSeen();
-      if (!mounted) return;
-      updateState(() {
-        takeoverPromptSeen = seen;
-        takeoverPromptPreferenceLoaded = true;
-      });
-    } on Object {
-      if (!mounted) return;
-      updateState(() {
-        takeoverPromptSeen = true;
-        takeoverPromptPreferenceLoaded = true;
-      });
-    }
-  }
-
-  void _scheduleAutomaticTakeoverPrompt(int? eligible) {
-    if (_adoptionReviewUIEnabled ||
-        !TickerMode.valuesOf(context).enabled ||
-        !takeoverPromptPreferenceLoaded ||
-        takeoverPromptSeen ||
-        takeoverPromptScheduled ||
-        takingOver ||
-        selectedDetailSkill != null ||
-        eligible == null ||
-        eligible == 0) {
-      return;
-    }
-    takeoverPromptScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      unawaited(_executeBatchTakeover(automatic: true));
-    });
   }
 
   void _enterAdoptionReview() {
@@ -185,98 +205,84 @@ extension _LibraryActions on _LibraryScreenState {
     updateState(() => adoptionReviewVisible = false);
   }
 
-  Future<void> _markTakeoverPromptSeen() async {
-    if (takeoverPromptSeen) return;
-    updateState(() => takeoverPromptSeen = true);
-    try {
-      await widget.gateway.markBatchTakeoverPromptSeen();
-    } on Object {
-      // The explicit takeover decision must not depend on preference storage.
-    }
-  }
-
-  Future<void> _executeBatchTakeover({bool automatic = false}) async {
-    if (takingOver || takeoverConsoleVisible) return;
-    final plan = takeoverPlan;
-    final scope = _currentTakeoverScope;
-    final eligible = _currentTakeoverEligible;
-    if (plan == null || scope == null || eligible == null) {
-      if (automatic) takeoverPromptScheduled = false;
-      return;
-    }
-    if (automatic && eligible == 0) {
-      takeoverPromptScheduled = false;
-      return;
-    }
+  void _openAdoptionAdoptionConsole(List<_AdoptionReviewSelection> selections) {
+    if (selections.isEmpty || adopting || adoptionConsoleVisible) return;
     updateState(() {
-      takeoverConsoleVisible = true;
-      takeoverConsoleAutomatic = automatic;
-      activeTakeoverPlan = plan;
-      activeTakeoverScope = scope;
-      activeTakeoverEligible = eligible;
-      activeTakeoverPreviews = _takeoverPreviews;
-      takeoverExecutionAttempts = 0;
+      adoptionConsoleVisible = true;
+      activeAdoptionSelections = selections;
+      activeAdoptionEligible = selections.length;
+      activeAdoptionPreviews = [
+        for (final selection in selections)
+          BatchAdoptionPreview(
+            name: selection.installed.name,
+            skillId:
+                '${selection.candidate.packagePath}:${selection.candidate.path}',
+            scope:
+                selection.installed.targets.firstOrNull?.scope ??
+                InstallationScope.global,
+            projectRoot:
+                selection.installed.targets.firstOrNull?.projectRoot ?? '',
+          ),
+      ];
     });
   }
 
-  Future<BatchTakeoverResult> _confirmActiveBatchTakeover() async {
-    var plan = activeTakeoverPlan;
-    final scope = activeTakeoverScope;
-    if (plan == null || scope == null) {
-      throw StateError('The active Batch Takeover plan is unavailable.');
+  Future<BatchAdoptionResult> _confirmActiveAdoption() async {
+    final selections = activeAdoptionSelections;
+    if (selections.isEmpty) {
+      throw StateError('The reviewed Adoption selection is unavailable.');
     }
-    if (takeoverExecutionAttempts > 0) {
-      plan = await widget.gateway.planBatchTakeover(
-        projectRoots: projects
-            .where((project) => project.isAccessible)
-            .map((project) => project.path)
-            .toList(growable: false),
-      );
-      activeTakeoverPlan = plan;
-    }
-    takeoverExecutionAttempts++;
     updateState(() {
-      takingOver = true;
+      adopting = true;
       actionError = null;
     });
     try {
-      final result = await widget.gateway.executeBatchTakeover(plan, scope);
-      await load();
+      if (selections.any((selection) => selection.installed.targets.isEmpty)) {
+        throw StateError(
+          'Every reviewed External Skill must retain its installation targets.',
+        );
+      }
+      final result = await widget.gateway.adopt([
+        for (final selection in selections)
+          AdoptionRequestItem(
+            inventoryKey: selection.installed.inventoryKey,
+            name: selection.installed.name,
+            packagePath: selection.candidate.packagePath,
+            version: selection.version,
+            skillPath: selection.candidate.path,
+            targets: [
+              for (final target in selection.installed.targets)
+                AdoptionTarget(
+                  agent: target.agent,
+                  scope: target.scope,
+                  projectRoot: target.projectRoot,
+                  path: target.path,
+                ),
+            ],
+          ),
+      ]);
+      unawaited(_refreshAfterActiveAdoption());
       return result;
     } finally {
-      if (mounted) updateState(() => takingOver = false);
+      if (mounted) updateState(() => adopting = false);
     }
   }
 
-  Future<void> _finishBatchTakeover(_BatchTakeoverDialogOutcome outcome) async {
-    final automatic = takeoverConsoleAutomatic;
-    updateState(() {
-      takeoverConsoleVisible = false;
-      takeoverConsoleAutomatic = false;
-      activeTakeoverPlan = null;
-      activeTakeoverScope = null;
-      activeTakeoverEligible = 0;
-      activeTakeoverPreviews = const [];
-      takeoverExecutionAttempts = 0;
-    });
-    if (automatic) await _markTakeoverPromptSeen();
-    takeoverPromptScheduled = false;
+  Future<void> _refreshAfterActiveAdoption() async {
+    try {
+      await load();
+    } on Object catch (caught) {
+      if (mounted) updateState(() => actionError = caught);
+    }
   }
 
-  List<BatchTakeoverPreview> get _takeoverPreviews {
-    final location = selectedLocation;
-    final plan = takeoverPlan;
-    if (plan == null) return const [];
-    return plan.previews
-        .where((preview) {
-          if (location.kind == _LibraryLocationKind.all) return true;
-          if (location.kind == _LibraryLocationKind.global) {
-            return preview.scope == InstallationScope.global;
-          }
-          return _selectedProject != null &&
-              preview.projectRoot == _selectedProject!.path;
-        })
-        .toList(growable: false);
+  Future<void> _finishBatchAdoption(_BatchAdoptionDialogOutcome outcome) async {
+    updateState(() {
+      adoptionConsoleVisible = false;
+      activeAdoptionEligible = 0;
+      activeAdoptionPreviews = const [];
+      activeAdoptionSelections = const [];
+    });
   }
 
   Future<void> checkUpdates() async {
@@ -314,57 +320,70 @@ extension _LibraryActions on _LibraryScreenState {
     if (settings.updateAvailable) await checkUpdates();
   }
 
-  Future<void> update(InstalledSkill skill) async {
-    if (operatingSkills.contains(skill.name)) return;
-    updateState(() => operatingSkills.add(skill.name));
+  Future<void> _removeSkills(List<InstalledSkill> selected) async {
+    if (selected.isEmpty ||
+        selected.any((skill) => operatingSkills.contains(skill.name))) {
+      return;
+    }
+    updateState(
+      () => operatingSkills.addAll(selected.map((skill) => skill.name)),
+    );
     updateState(() => result = null);
     try {
-      final plan = await widget.gateway.preflightUpdate(
-        skill,
-        skill.targets,
-        toVersion: updates[libraryUpdateKey(skill)]?.toVersion,
+      final plans = await Future.wait([
+        for (final skill in selected)
+          widget.gateway.preflightTargetManagement(skill, skill.targets),
+      ]);
+      final targets = [for (final plan in plans) ...plan.targets];
+      final plan = TargetManagementPlan(
+        targets: List.unmodifiable(targets),
+        summary: TargetManagementPlanSummary(removable: targets.length),
       );
-      if (!mounted) return;
-      final execution = await showSkillsDialog<UpdateExecution>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) =>
-            UpdatePlanDialog(gateway: widget.gateway, skill: skill, plan: plan),
+      final selectedPlan = plan.selectActions({
+        for (final item in plan.targets)
+          installationTargetKey(item.target): TargetManagementAction.remove,
+      });
+      final execution = await widget.gateway.executeTargetManagement(
+        selectedPlan,
+        onProgress: (progress) {
+          if (!mounted ||
+              progress.state != InstallationProgressState.finished) {
+            return;
+          }
+          updateState(() => removalFinishedTargets++);
+        },
       );
-      if (execution != null && execution.summary.succeeded > 0) {
+      if (execution.summary.succeeded > 0) {
+        final succeeded = <String>{};
+        for (final skill in selected) {
+          final relatedResults = execution.results
+              .where(
+                (result) =>
+                    result.name == skill.name &&
+                    result.packagePath == skill.packagePath,
+              )
+              .toList(growable: false);
+          if (relatedResults.isNotEmpty &&
+              relatedResults.every(
+                (result) => result.outcome == TargetManagementOutcome.succeeded,
+              )) {
+            succeeded.add(_librarySelectionKey(skill));
+          }
+        }
+        updateState(() => selectedSkillKeys.removeAll(succeeded));
         await load();
         await checkUpdates();
       }
     } catch (caught) {
       result = exceptionResult(caught);
     }
-    if (mounted) updateState(() => operatingSkills.remove(skill.name));
-  }
-
-  Future<void> manage(InstalledSkill skill) async {
-    if (operatingSkills.contains(skill.name)) return;
-    updateState(() => operatingSkills.add(skill.name));
-    updateState(() => result = null);
-    try {
-      final plan = await widget.gateway.preflightTargetManagement(
-        skill,
-        skill.targets,
-      );
-      if (!mounted) return;
-      final execution = await showSkillsDialog<TargetManagementExecution>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) =>
-            TargetManagementDialog(gateway: widget.gateway, plan: plan),
-      );
-      if (execution != null && execution.summary.succeeded > 0) {
-        await load();
-        await checkUpdates();
-      }
-    } catch (caught) {
-      result = exceptionResult(caught);
+    if (mounted) {
+      updateState(() {
+        operatingSkills.removeAll(selected.map((skill) => skill.name));
+        removalFinishedTargets = 0;
+        removalTotalTargets = 0;
+      });
     }
-    if (mounted) updateState(() => operatingSkills.remove(skill.name));
   }
 
   Future<void> _openDetail(InstalledSkill skill) async {
@@ -428,44 +447,49 @@ extension _LibraryActions on _LibraryScreenState {
         .join(' ');
   }
 
-  List<InstalledSkill> get _visibleSkills {
+  List<InstalledSkill> get _locationAndAgentProjectedSkills {
     final current = skills ?? const <InstalledSkill>[];
-    final visible = <InstalledSkill>[];
+    final projected = <InstalledSkill>[];
     for (final skill in current) {
-      if (updatesOnly &&
-          updates[libraryUpdateKey(skill)]?.state != UpdateState.available) {
-        continue;
-      }
-      if (selectedAgents.isNotEmpty &&
-          !skill.targets.any(
-            (target) => selectedAgents.contains(target.agent),
-          )) {
-        continue;
-      }
-      if (selectedLocation.kind == _LibraryLocationKind.global &&
-          !skill.targets.any(
-            (target) => target.scope == InstallationScope.global,
-          )) {
-        continue;
-      }
       final project = _selectedProject;
-      if (project != null &&
-          !skill.targets.any((target) => target.projectRoot == project.path)) {
+      final visibleTargets = skill.targets
+          .where((target) {
+            final matchesLocation = project == null
+                ? target.scope == InstallationScope.global
+                : target.scope == InstallationScope.project &&
+                      target.projectRoot == project.path;
+            final matchesAgent =
+                selectedAgents.isEmpty || selectedAgents.contains(target.agent);
+            return matchesLocation && matchesAgent;
+          })
+          .toList(growable: false);
+      if (visibleTargets.isEmpty) continue;
+      projected.add(skill.withTargets(visibleTargets));
+    }
+    return projected;
+  }
+
+  List<InstalledSkill> get _visibleSkills {
+    final visible = <InstalledSkill>[];
+    for (final visibleSkill in _locationAndAgentProjectedSkills) {
+      if (updatesOnly &&
+          updates[libraryUpdateKey(visibleSkill)]?.state !=
+              UpdateState.available) {
         continue;
       }
       final query = librarySearchController.text.trim().toLowerCase();
       if (query.isNotEmpty) {
         final searchable = [
-          skill.name,
-          skill.description,
-          skill.packagePath,
-          ...skill.agents,
-          ...skill.projects,
-          ...skill.versions,
+          visibleSkill.name,
+          visibleSkill.description,
+          visibleSkill.packagePath,
+          ...visibleSkill.agents,
+          ...visibleSkill.projects,
+          ...visibleSkill.versions,
         ].join('\n').toLowerCase();
         if (!searchable.contains(query)) continue;
       }
-      visible.add(skill);
+      visible.add(visibleSkill);
     }
     return visible;
   }

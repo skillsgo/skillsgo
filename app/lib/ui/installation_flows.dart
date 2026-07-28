@@ -26,7 +26,6 @@ import 'project_identity_icon.dart';
 import 'skill_markdown_view.dart';
 import 'target_management_controller.dart';
 import 'ui_support.dart';
-import 'update_operation_controller.dart';
 
 part 'installation/detail_primitives.dart';
 part 'installation/installation_scope_panel.dart';
@@ -34,4 +33,3 @@ part 'installation/installation_target_detail.dart';
 part 'installation/remote_detail_core.dart';
 part 'installation/remote_detail_rendering.dart';
 part 'installation/target_management_dialog.dart';
-part 'installation/update_plan_dialog.dart';

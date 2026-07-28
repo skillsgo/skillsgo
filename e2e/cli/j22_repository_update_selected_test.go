@@ -27,7 +27,7 @@ func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 	require.Equal(t, 0, seed.exitCode, seed.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(seed.output), &installed), seed.output)
-	sibling := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "beta", "SKILL.md")
+	sibling := filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md")
 	beforeTarget, err := os.ReadFile(sibling)
 	require.NoError(t, err)
 	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
@@ -35,8 +35,7 @@ func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 
 	result := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--yes", "--output", "json")
 	require.Equal(t, 0, result.exitCode, result.output)
-	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
-	afterTarget, err := os.ReadFile(filepath.Join(newProjection, "skills", "beta", "SKILL.md"))
+	afterTarget, err := os.ReadFile(sibling)
 	require.NoError(t, err)
 	afterSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)

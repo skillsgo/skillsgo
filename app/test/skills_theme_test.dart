@@ -106,6 +106,8 @@ void main() {
           typography.body,
           typography.bodySecondary,
           typography.label,
+          typography.navigationLabel,
+          typography.compactControlLabel,
           typography.metadata,
           typography.caption,
           typography.code,
@@ -120,6 +122,11 @@ void main() {
         expect(theme.textTheme.bodyLarge, typography.body);
         expect(theme.textTheme.bodySmall, typography.metadata);
         expect(theme.textTheme.labelLarge, typography.label);
+        expect(typography.navigationLabel.fontSize, 14);
+        expect(typography.navigationLabel.height, 1);
+        expect(typography.compactControlLabel.fontSize, 12);
+        expect(typography.compactControlLabel.height, 1);
+        expect(typography.compactControlLabel.fontWeight, FontWeight.w600);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -140,6 +147,9 @@ void main() {
       expect(components.cardBorder, isNot(components.cardRest));
       expect(components.overlay, isNot(components.overlayBackdrop));
       expect(components.focusRingWidth, 2);
+      expect(components.navigationLabelOpticalOffsetY, -1);
+      expect(components.navigationStrokeLabelOpticalOffsetY, 0);
+      expect(components.navigationStrokeIconOpticalOffsetY, -1);
       expect(components.statusSuccess, isNot(components.statusDanger));
       expect(
         _contrastRatio(
@@ -249,6 +259,53 @@ void main() {
         DefaultTextStyle.of(tester.element(find.text('Disabled'))).style.color,
         components.controlForegroundDisabled,
       );
+    });
+
+    testWidgets('$brightness compact capsules own exact control geometry', (
+      tester,
+    ) async {
+      final theme = buildSkillsTheme(
+        const Color(0xFF3FCF8E),
+        brightness: brightness,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: PrimaryCapsuleButton.compact(label: '降级', onPressed: () {}),
+          ),
+        ),
+      );
+
+      expect(tester.getSize(find.byType(FilledButton)).height, 28);
+      final label = tester.widget<Text>(find.text('降级'));
+      expect(label.style?.height, 1);
+      expect(label.style?.fontWeight, FontWeight.w600);
+      expect(label.textHeightBehavior?.applyHeightToFirstAscent, isFalse);
+      expect(label.textHeightBehavior?.applyHeightToLastDescent, isFalse);
+    });
+
+    testWidgets('$brightness regular capsules retain a minimum height', (
+      tester,
+    ) async {
+      final theme = buildSkillsTheme(
+        const Color(0xFF3FCF8E),
+        brightness: brightness,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: PrimaryCapsuleButton(
+              label: 'Action',
+              labelWidget: const SizedBox(height: 60, child: Text('Action')),
+              onPressed: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.getSize(find.byType(FilledButton)).height, 60);
     });
   }
 }

@@ -27,7 +27,7 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	require.Equal(t, 0, valid.exitCode, valid.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(valid.output), &installed), valid.output)
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
@@ -44,7 +44,7 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.NotEqual(t, 0, invalid.exitCode, invalid.output)
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "invalid"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "invalid"))
 	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LocalDetailScreen state, shared detail primitives, InstallationScopePanel, localized action controls, and Markdown presentation.
- * [OUTPUT]: Provides local detail action bar, toolbar, artifact context, installation scope, operation feedback, and document rendering.
+ * [OUTPUT]: Provides local detail action bar, package-avatar-aware toolbar, artifact context, installation scope, operation feedback, and document rendering.
  * [POS]: Serves as the private rendering implementation of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,7 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
         SecondaryCapsuleButton(
           label: context.l10n.remove,
           icon: HugeIcons.strokeRoundedDelete02,
-          onPressed: managing ? null : manage,
+          onPressed: managing ? null : remove,
         ),
       ] else ...[
         if (skill.provenance == LibraryProvenance.hub &&
@@ -148,8 +148,9 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            RepositoryAvatar(
+                            PackageAvatar(
                               source: source,
+                              imageUrl: _packageAvatarUrl(skill.packagePath),
                               size: 26,
                               borderRadius: 7,
                             ),

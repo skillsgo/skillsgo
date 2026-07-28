@@ -317,7 +317,6 @@
   "update": "Aktualisieren",
   "backToLibrary": "Zurück zur Bibliothek",
   "remove": "Entfernen",
-  "manageTargets": "Umfang verwalten",
   "skillsSelected": "{count} ausgewählt",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Klare Auswahl",
   "selectCurrentResults": "Select aktuelle Ergebnisse",
   "clearCurrentResultSelection": "Aktuelle Ergebnisauswahl löschen",
-  "manageTargetsTitle": "Installationsziele verwalten",
-  "manageTargetsDescription": "Wählen Sie für jedes Ziel eine genaue Aktion. Nicht ausgewählte Ziele ändern sich nicht.",
   "targetActionsSelected": "{selected} von {total}-Zielen ausgewählt",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Bestätigen Sie das Entfernen",
-  "applyTargetActions": "Ausgewählte Aktionen anwenden",
   "managementProgressTitle": "Anwenden von Zielaktionen",
   "managementResultsTitle": "Gezielte Aktionsergebnisse",
   "managementResultSummary": "{succeeded} war erfolgreich, {failed} ist fehlgeschlagen",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Ausgewählte Projektaktionen aktualisieren skills.yaml und skills-lock.yaml.",
   "targetContentPreserved": "Der aktuelle Zielinhalt bleibt erhalten.",
   "localReadFailed": "Kann dies Skill nicht lesen",
   "localReadFailedMessage": "SkillsGo konnte diesen installierten skill nicht lesen. Überprüfen Sie, ob folder verfügbar und zugänglich ist, und versuchen Sie es dann erneut.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Sie können dieses Skill weiter durchsuchen, es gibt jedoch noch kein Installationsziel. Installieren Sie einen unterstützten Agent und führen Sie dann die Erkennung erneut aus.",
   "clearCustomPath": "Benutzerdefinierten Pfad löschen",
   "privacyProvenance": "Datenschutz und Herkunft",
-  "privacySummary": "Ihre Suchanfragen werden nicht gespeichert und SkillsGo führt keine Befehlsprotokolle.",
   "language": "Sprache",
   "translatedContent": "Übersetzt",
   "translatedFrom": "Übersetzt aus {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Installiert",
   "unsupportedCell": "Nicht verfügbar",
   "confirmInstall": "Bestätigen Sie die Installation",
-  "installAllRepositorySkills": "Installieren Sie das gesamte Repository skills ({count}).",
+  "installAllPackageSkills": "Installieren Sie das gesamte Repository skills ({count}).",
   "installAllSkillsTo": "Installieren Sie alle skills auf",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Alle installieren {repository} skills ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Alle installieren {packagePath} skills ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Vorhandenes skills verwalten",
-  "batchTakeoverActionCount": "Verwalten ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Vorhandenes skills verwalten",
+  "batchAdoptionActionCount": "Verwalten ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Vorhandenes skills prüfen…",
-  "batchTakeoverRetry": "Überprüfen Sie noch einmal das beherrschbare skills",
-  "batchTakeoverEligibleCount": "{count} kann verwaltet werden",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Vorhandenes skills prüfen…",
+  "batchAdoptionRetry": "Überprüfen Sie noch einmal das beherrschbare skills",
+  "batchAdoptionEligibleCount": "{count} kann verwaltet werden",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "skills zum Management hinzufügen…",
-  "batchTakeoverTitle": "Vorhandenes skills mit SkillsGo verwalten?",
-  "batchTakeoverDescription": "SkillsGo fügt lokale Verwaltungsdatensätze hinzu, ohne skill-Dateien zu verschieben, zu überschreiben oder hochzuladen. Nicht unterstützte oder geänderte Elemente werden übersprungen.",
-  "batchTakeoverStoryTitle": "Verwandeln Sie verstreute skills in eine übersichtliche Bibliothek",
-  "batchTakeoverStoryDescription": "SkillsGo hat {count, plural, =1{1 vorhanden skill} other{{count} vorhanden skills}} gefunden, das es an diesem Standort verwalten kann.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "skills zum Management hinzufügen…",
+  "batchAdoptionTitle": "Vorhandenes skills mit SkillsGo verwalten?",
+  "batchAdoptionDescription": "SkillsGo fügt lokale Verwaltungsdatensätze hinzu, ohne skill-Dateien zu verschieben, zu überschreiben oder hochzuladen. Nicht unterstützte oder geänderte Elemente werden übersprungen.",
+  "batchAdoptionStoryTitle": "Verwandeln Sie verstreute skills in eine übersichtliche Bibliothek",
+  "batchAdoptionStoryDescription": "SkillsGo hat {count, plural, =1{1 vorhanden skill} other{{count} vorhanden skills}} gefunden, das es an diesem Standort verwalten kann.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Vor der Verwaltung ist unklar, wo vorhandene skills installiert sind, ob sie aktuell sind, wie sie wiederhergestellt werden können oder ob Projekte dieselbe Version verwenden.",
-  "batchTakeoverPainLocation": "Unbekannter Installationsort",
-  "batchTakeoverPainFreshness": "Unbekannter Update-Status",
-  "batchTakeoverPainRecovery": "Keine Wiederherstellung bei Defekt",
-  "batchTakeoverPainVersionDrift": "Unterschiedliche Versionen über Projekte hinweg",
-  "batchTakeoverFolderTitle": "Vorhanden Skills",
-  "batchTakeoverFolderSubtitle": "Unklarer Status",
-  "batchTakeoverAfterLabel": "NACH",
-  "batchTakeoverAfterTitle": "Eine übersichtliche Bibliothek",
-  "batchTakeoverLibraryTitle": "SkillsGo-Bibliothek",
-  "batchTakeoverBenefitLocation": "Klare Standorte",
-  "batchTakeoverBenefitFreshness": "Updates sichtbar",
-  "batchTakeoverBenefitRecovery": "Einfache Wiederherstellung",
-  "batchTakeoverBenefitVersions": "Versionen klar",
-  "batchTakeoverManagedSection": "Verwaltet von SkillsGo",
-  "batchTakeoverPendingSection": "Ausstehend",
-  "batchTakeoverItemManaged": "{name} wird von SkillsGo verwaltet",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Vor der Verwaltung ist unklar, wo vorhandene skills installiert sind, ob sie aktuell sind, wie sie wiederhergestellt werden können oder ob Projekte dieselbe Version verwenden.",
+  "batchAdoptionPainLocation": "Unbekannter Installationsort",
+  "batchAdoptionPainFreshness": "Unbekannter Update-Status",
+  "batchAdoptionPainRecovery": "Keine Wiederherstellung bei Defekt",
+  "batchAdoptionPainVersionDrift": "Unterschiedliche Versionen über Projekte hinweg",
+  "batchAdoptionFolderTitle": "Vorhanden Skills",
+  "batchAdoptionFolderSubtitle": "Unklarer Status",
+  "batchAdoptionAfterLabel": "NACH",
+  "batchAdoptionAfterTitle": "Eine übersichtliche Bibliothek",
+  "batchAdoptionLibraryTitle": "SkillsGo-Bibliothek",
+  "batchAdoptionBenefitLocation": "Klare Standorte",
+  "batchAdoptionBenefitFreshness": "Updates sichtbar",
+  "batchAdoptionBenefitRecovery": "Einfache Wiederherstellung",
+  "batchAdoptionBenefitVersions": "Versionen klar",
+  "batchAdoptionManagedSection": "Verwaltet von SkillsGo",
+  "batchAdoptionPendingSection": "Ausstehend",
+  "batchAdoptionItemManaged": "{name} wird von SkillsGo verwaltet",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} konnte nicht zur Verwaltung hinzugefügt werden",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} konnte nicht zur Verwaltung hinzugefügt werden",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} wartet darauf, verwaltet zu werden",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} wartet darauf, verwaltet zu werden",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Nach der Verwaltung sind {count, plural, =1{1 skill ist} other{{count} skills}} in einer Bibliothek mit einem klaren verwalteten Status organisiert.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Nach der Verwaltung sind {count, plural, =1{1 skill ist} other{{count} skills}} in einer Bibliothek mit einem klaren verwalteten Status organisiert.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} mehr",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} mehr",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Fügen Sie diese vorhandenen skills zur SkillsGo-Verwaltung hinzu.",
-  "batchTakeoverTransitionLabel": "ORGANISIEREN",
-  "batchTakeoverStatusTitle": "Verwaltungsstatus",
-  "batchTakeoverStatusManaged": "Verwaltet",
-  "batchTakeoverStatusProgress": "Organisieren",
-  "batchTakeoverStatusSkipped": "Übersprungen",
-  "batchTakeoverStatusFilesStay": "Skill-Dateien bleiben an ihrem ursprünglichen Speicherort",
-  "batchTakeoverBoardSemantics": "Skills werden in komplette Zeilen geordnet und von SkillsGo aufgezeichnet, ohne ihre Dateien zu verschieben.",
-  "batchTakeoverBoardComplete": "ALLES KLAR",
-  "batchTakeoverBoardPartial": "VOLLSTÄNDIG",
-  "batchTakeoverStatusTotal": "Gesamt",
-  "batchTakeoverQueueComplete": "Es warten keine skills",
-  "batchTakeoverQueueWaiting": "Nach der Überprüfung werden die Skills hier angezeigt",
-  "batchTakeoverNextLabel": "NÄCHSTE",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo Organizer-Block} other{{count} SkillsGo Organizer-Blöcke}} vervollständigen die letzten Reihen",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Fügen Sie diese vorhandenen skills zur SkillsGo-Verwaltung hinzu.",
+  "batchAdoptionTransitionLabel": "ORGANISIEREN",
+  "batchAdoptionStatusTitle": "Verwaltungsstatus",
+  "batchAdoptionStatusManaged": "Verwaltet",
+  "batchAdoptionStatusProgress": "Organisieren",
+  "batchAdoptionStatusSkipped": "Übersprungen",
+  "batchAdoptionStatusFilesStay": "Skill-Dateien bleiben an ihrem ursprünglichen Speicherort",
+  "batchAdoptionBoardSemantics": "Skills werden in komplette Zeilen geordnet und von SkillsGo aufgezeichnet, ohne ihre Dateien zu verschieben.",
+  "batchAdoptionBoardComplete": "ALLES KLAR",
+  "batchAdoptionBoardPartial": "VOLLSTÄNDIG",
+  "batchAdoptionStatusTotal": "Gesamt",
+  "batchAdoptionQueueComplete": "Es warten keine skills",
+  "batchAdoptionQueueWaiting": "Nach der Überprüfung werden die Skills hier angezeigt",
+  "batchAdoptionNextLabel": "NÄCHSTE",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo Organizer-Block} other{{count} SkillsGo Organizer-Blöcke}} vervollständigen die letzten Reihen",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Ihre Dateien, Pfade und aktuellen Arbeitsabläufe bleiben genau dort, wo sie sind. SkillsGo vervollständigt nur seine lokalen Verwaltungsdatensätze.",
-  "batchTakeoverLaterHint": "Wenn Sie überspringen, können Sie jederzeit „Vorhandenes skills aus Bibliothek verwalten“ verwenden.",
-  "batchTakeoverSkip": "Nicht jetzt",
-  "batchTakeoverConfirm": "Zur Verwaltung hinzufügen",
-  "batchTakeoverExecutionRetry": "Wiederholen",
-  "batchTakeoverResultTitle": "Skills zur Verwaltung hinzugefügt",
-  "batchTakeoverSummary": "{takenOver} skills zur Verwaltung hinzugefügt, {skipped} übersprungen.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Ihre Dateien, Pfade und aktuellen Arbeitsabläufe bleiben genau dort, wo sie sind. SkillsGo vervollständigt nur seine lokalen Verwaltungsdatensätze.",
+  "batchAdoptionLaterHint": "Wenn Sie überspringen, können Sie jederzeit „Vorhandenes skills aus Bibliothek verwalten“ verwenden.",
+  "batchAdoptionSkip": "Nicht jetzt",
+  "batchAdoptionConfirm": "Zur Verwaltung hinzufügen",
+  "batchAdoptionExecutionRetry": "Wiederholen",
+  "batchAdoptionResultTitle": "Skills zur Verwaltung hinzugefügt",
+  "batchAdoptionSummary": "{adopted} skills zur Verwaltung hinzugefügt, {skipped} übersprungen.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Schließen",
+  "batchAdoptionClose": "Schließen",
   "installMoreTargets": "An mehreren Standorten installieren",
-  "detailRepository": "Repository",
+  "detailPackageSource": "Paketquelle",
   "detailStars": "Sterne",
   "detailUpdated": "Aktualisiert",
-  "detailArchiveSize": "ZIP-Größe",
+  "detailArchiveSize": "Paketgröße",
   "pathLabel": "Projektpfad",
   "copyProjectPath": "Projektpfad kopieren",
   "projectPathCopied": "Projektpfad kopiert",

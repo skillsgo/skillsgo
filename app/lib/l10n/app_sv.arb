@@ -317,7 +317,6 @@
   "update": "Uppdatera",
   "backToLibrary": "Tillbaka till biblioteket",
   "remove": "Ta bort",
-  "manageTargets": "Hantera omfattning",
   "skillsSelected": "{count} valt",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Rensa val",
   "selectCurrentResults": "Select aktuella resultat",
   "clearCurrentResultSelection": "Rensa aktuellt resultatval",
-  "manageTargetsTitle": "Hantera installationsmål",
-  "manageTargetsDescription": "Välj en exakt åtgärd för varje mål. Omarkerade mål kommer inte att ändras.",
   "targetActionsSelected": "{selected} av {total} mål valda",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Bekräfta borttagning",
-  "applyTargetActions": "Tillämpa valda åtgärder",
   "managementProgressTitle": "Tillämpa målåtgärder",
   "managementResultsTitle": "Mål åtgärdsresultat",
   "managementResultSummary": "{succeeded} lyckades, {failed} misslyckades",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Utvalda projektåtgärder kommer att uppdatera skills.yaml och skills-lock.yaml.",
   "targetContentPreserved": "Aktuellt målinnehåll kommer att bevaras.",
   "localReadFailed": "Kan inte läsa detta Skill",
   "localReadFailedMessage": "SkillsGo kunde inte läsa denna installerade skill. Kontrollera att dess folder är tillgänglig och tillgänglig och försök sedan igen.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Du kan fortsätta bläddra i denna Skill, men det finns inget installationsmål än. Installera en Agent som stöds och kör sedan upptäckt igen.",
   "clearCustomPath": "Rensa anpassad sökväg",
   "privacyProvenance": "Sekretess och härkomst",
-  "privacySummary": "Dina sökningar sparas inte och SkillsGo för inte kommandologgar.",
   "language": "Språk",
   "translatedContent": "Översatt",
   "translatedFrom": "Översatt från {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Installerad",
   "unsupportedCell": "Inte tillgänglig",
   "confirmInstall": "Bekräfta installationen",
-  "installAllRepositorySkills": "Installera hela arkivet skills ({count})",
+  "installAllPackageSkills": "Installera hela arkivet skills ({count})",
   "installAllSkillsTo": "Installera alla skills till",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Installera alla {repository} skills ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Installera alla {packagePath} skills ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Hantera befintliga skills",
-  "batchTakeoverActionCount": "Hantera ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Hantera befintliga skills",
+  "batchAdoptionActionCount": "Hantera ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Kontrollerar befintliga skills...",
-  "batchTakeoverRetry": "Kontrollera hanterbara skills igen",
-  "batchTakeoverEligibleCount": "{count} kan hanteras",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Kontrollerar befintliga skills...",
+  "batchAdoptionRetry": "Kontrollera hanterbara skills igen",
+  "batchAdoptionEligibleCount": "{count} kan hanteras",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Lägger till skills i hanteringen...",
-  "batchTakeoverTitle": "Hantera befintliga skills med SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo kommer att lägga till lokala hanteringsposter utan att flytta, skriva över eller ladda upp skill-filer. Objekt som inte stöds eller ändras kommer att hoppas över.",
-  "batchTakeoverStoryTitle": "Förvandla spridda skills till ett enkelt bibliotek",
-  "batchTakeoverStoryDescription": "SkillsGo hittade {count, plural, =1{1 befintlig skill} other{{count} befintlig skills}} som den kan hantera på den här platsen.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Lägger till skills i hanteringen...",
+  "batchAdoptionTitle": "Hantera befintliga skills med SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo kommer att lägga till lokala hanteringsposter utan att flytta, skriva över eller ladda upp skill-filer. Objekt som inte stöds eller ändras kommer att hoppas över.",
+  "batchAdoptionStoryTitle": "Förvandla spridda skills till ett enkelt bibliotek",
+  "batchAdoptionStoryDescription": "SkillsGo hittade {count, plural, =1{1 befintlig skill} other{{count} befintlig skills}} som den kan hantera på den här platsen.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Före hanteringen är det oklart var befintliga skills är installerade, om de är aktuella, hur man återställer dem eller om projekt använder samma version.",
-  "batchTakeoverPainLocation": "Okänd installationsplats",
-  "batchTakeoverPainFreshness": "Okänd uppdateringsstatus",
-  "batchTakeoverPainRecovery": "Ingen återhämtning när den är bruten",
-  "batchTakeoverPainVersionDrift": "Olika versioner över projekt",
-  "batchTakeoverFolderTitle": "Befintlig Skills",
-  "batchTakeoverFolderSubtitle": "Oklart status",
-  "batchTakeoverAfterLabel": "EFTER",
-  "batchTakeoverAfterTitle": "Ett tydligt bibliotek",
-  "batchTakeoverLibraryTitle": "SkillsGo bibliotek",
-  "batchTakeoverBenefitLocation": "Rensa platser",
-  "batchTakeoverBenefitFreshness": "Uppdateringar synliga",
-  "batchTakeoverBenefitRecovery": "Enkel återhämtning",
-  "batchTakeoverBenefitVersions": "Versioner tydliga",
-  "batchTakeoverManagedSection": "Drivs av SkillsGo",
-  "batchTakeoverPendingSection": "I avvaktan på",
-  "batchTakeoverItemManaged": "{name} hanteras av SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Före hanteringen är det oklart var befintliga skills är installerade, om de är aktuella, hur man återställer dem eller om projekt använder samma version.",
+  "batchAdoptionPainLocation": "Okänd installationsplats",
+  "batchAdoptionPainFreshness": "Okänd uppdateringsstatus",
+  "batchAdoptionPainRecovery": "Ingen återhämtning när den är bruten",
+  "batchAdoptionPainVersionDrift": "Olika versioner över projekt",
+  "batchAdoptionFolderTitle": "Befintlig Skills",
+  "batchAdoptionFolderSubtitle": "Oklart status",
+  "batchAdoptionAfterLabel": "EFTER",
+  "batchAdoptionAfterTitle": "Ett tydligt bibliotek",
+  "batchAdoptionLibraryTitle": "SkillsGo bibliotek",
+  "batchAdoptionBenefitLocation": "Rensa platser",
+  "batchAdoptionBenefitFreshness": "Uppdateringar synliga",
+  "batchAdoptionBenefitRecovery": "Enkel återhämtning",
+  "batchAdoptionBenefitVersions": "Versioner tydliga",
+  "batchAdoptionManagedSection": "Drivs av SkillsGo",
+  "batchAdoptionPendingSection": "I avvaktan på",
+  "batchAdoptionItemManaged": "{name} hanteras av SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} kunde inte läggas till i hanteringen",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} kunde inte läggas till i hanteringen",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} väntar på att bli hanterad",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} väntar på att bli hanterad",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Efter hantering, {count, plural, =1{1 skill är} other{{count} skills är}} organiserade i ett bibliotek med en tydlig hanterad status.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Efter hantering, {count, plural, =1{1 skill är} other{{count} skills är}} organiserade i ett bibliotek med en tydlig hanterad status.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} mer",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} mer",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Lägg till dessa befintliga skills till SkillsGo-hantering.",
-  "batchTakeoverTransitionLabel": "ORGANISERA",
-  "batchTakeoverStatusTitle": "Ledningsstatus",
-  "batchTakeoverStatusManaged": "Hanterade",
-  "batchTakeoverStatusProgress": "Organisera",
-  "batchTakeoverStatusSkipped": "Hoppade över",
-  "batchTakeoverStatusFilesStay": "Skill-filer stannar på sina ursprungliga platser",
-  "batchTakeoverBoardSemantics": "Skills är ordnade i kompletta rader och spelas in av SkillsGo utan att flytta sina filer.",
-  "batchTakeoverBoardComplete": "FARAN ÖVER",
-  "batchTakeoverBoardPartial": "KOMPLETT",
-  "batchTakeoverStatusTotal": "Total",
-  "batchTakeoverQueueComplete": "Inga skills väntar",
-  "batchTakeoverQueueWaiting": "Efter verifieringen visas Skills här",
-  "batchTakeoverNextLabel": "NÄSTA",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo arrangörsblock} other{{count} SkillsGo arrangörsblock}} slutför de sista raderna",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Lägg till dessa befintliga skills till SkillsGo-hantering.",
+  "batchAdoptionTransitionLabel": "ORGANISERA",
+  "batchAdoptionStatusTitle": "Ledningsstatus",
+  "batchAdoptionStatusManaged": "Hanterade",
+  "batchAdoptionStatusProgress": "Organisera",
+  "batchAdoptionStatusSkipped": "Hoppade över",
+  "batchAdoptionStatusFilesStay": "Skill-filer stannar på sina ursprungliga platser",
+  "batchAdoptionBoardSemantics": "Skills är ordnade i kompletta rader och spelas in av SkillsGo utan att flytta sina filer.",
+  "batchAdoptionBoardComplete": "FARAN ÖVER",
+  "batchAdoptionBoardPartial": "KOMPLETT",
+  "batchAdoptionStatusTotal": "Total",
+  "batchAdoptionQueueComplete": "Inga skills väntar",
+  "batchAdoptionQueueWaiting": "Efter verifieringen visas Skills här",
+  "batchAdoptionNextLabel": "NÄSTA",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 SkillsGo arrangörsblock} other{{count} SkillsGo arrangörsblock}} slutför de sista raderna",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Dina filer, sökvägar och nuvarande arbetsflöden stannar precis där de är. SkillsGo kompletterar endast sina lokala förvaltningsposter.",
-  "batchTakeoverLaterHint": "Om du hoppar över kan du när som helst använda Hantera befintliga skills från biblioteket.",
-  "batchTakeoverSkip": "Inte nu",
-  "batchTakeoverConfirm": "Lägg till i hanteringen",
-  "batchTakeoverExecutionRetry": "Försöka igen",
-  "batchTakeoverResultTitle": "Skills har lagts till i ledningen",
-  "batchTakeoverSummary": "{takenOver} skills lades till i ledningen, {skipped} hoppade över.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Dina filer, sökvägar och nuvarande arbetsflöden stannar precis där de är. SkillsGo kompletterar endast sina lokala förvaltningsposter.",
+  "batchAdoptionLaterHint": "Om du hoppar över kan du när som helst använda Hantera befintliga skills från biblioteket.",
+  "batchAdoptionSkip": "Inte nu",
+  "batchAdoptionConfirm": "Lägg till i hanteringen",
+  "batchAdoptionExecutionRetry": "Försöka igen",
+  "batchAdoptionResultTitle": "Skills har lagts till i ledningen",
+  "batchAdoptionSummary": "{adopted} skills lades till i ledningen, {skipped} hoppade över.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Stäng",
+  "batchAdoptionClose": "Stäng",
   "installMoreTargets": "Installera på fler platser",
-  "detailRepository": "Förvar",
+  "detailPackageSource": "Paketkälla",
   "detailStars": "Stjärnor",
   "detailUpdated": "Uppdaterad",
-  "detailArchiveSize": "ZIP-storlek",
+  "detailArchiveSize": "Paketstorlek",
   "pathLabel": "Projektväg",
   "copyProjectPath": "Kopiera projektsökväg",
   "projectPathCopied": "Projektsökvägen kopierad",

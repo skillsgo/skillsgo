@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, digest-addressed global localization state, immutable publication, Package Info, shared pgx transactions, discovery projections, and source cache state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, zero-minimum PostgreSQL pooling, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, Package Info, shared pgx transactions, discovery projections, and source cache state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -27,8 +26,7 @@ import (
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
-	"golang.org/x/mod/module"
-	"golang.org/x/mod/semver"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 func skillResourceID(packagePath, name string) string { return packagePath + ":" + name }
@@ -38,6 +36,11 @@ type Catalog struct {
 	queries *catalogsqlc.Queries
 }
 
+const (
+	maxConnIdleTime   = 2 * time.Minute
+	healthCheckPeriod = 30 * time.Second
+)
+
 func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if cfg.Schema == "" {
 		cfg.Schema = config.DefaultDatabaseSchema
@@ -45,18 +48,9 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if !config.ValidDatabaseSchema(cfg.Schema) {
 		return nil, fmt.Errorf("invalid metadata database schema %q", cfg.Schema)
 	}
-	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
+	poolConfig, err := newPoolConfig(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
-	}
-	searchPath := cfg.Schema
-	if cfg.Schema != config.DefaultDatabaseSchema {
-		searchPath += "," + config.DefaultDatabaseSchema
-	}
-	poolConfig.ConnConfig.RuntimeParams["search_path"] = searchPath
-	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
-	if cfg.ConnMaxLifetime > 0 {
-		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
+		return nil, err
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -72,6 +66,26 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
+	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
+	}
+	searchPath := cfg.Schema
+	if cfg.Schema != config.DefaultDatabaseSchema {
+		searchPath += "," + config.DefaultDatabaseSchema
+	}
+	poolConfig.ConnConfig.RuntimeParams["search_path"] = searchPath
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MinConns = 0
+	poolConfig.MaxConnIdleTime = maxConnIdleTime
+	poolConfig.HealthCheckPeriod = healthCheckPeriod
+	if cfg.ConnMaxLifetime > 0 {
+		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
+	}
+	return poolConfig, nil
 }
 
 func (c *Catalog) Close() error {
@@ -321,7 +335,7 @@ func ValidatePackageVersion(packagePath string, version PackageVersion, skills [
 	if len(skills) == 0 {
 		return fmt.Errorf("Package publication requires at least one Skill")
 	}
-	if !semver.IsValid(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" ||
+	if !protocolversion.IsImmutable(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" ||
 		!protocolartifact.ValidSum(version.Sum) || version.ArchiveSize <= 0 || version.CommitTime.IsZero() {
 		return fmt.Errorf("Package publication requires matching immutable artifact identity")
 	}
@@ -384,8 +398,11 @@ func (c *Catalog) publishPackageVersionWithVisibility(ctx context.Context, packa
 			return fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
 		}
 		if visibility == CurrentPublication {
-			now := time.Now().UTC()
-			if err := q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{PackagePath: packagePath, Version: version.Version, UpdatedAt: now}); err != nil {
+			module, err := q.PackageByPath(ctx, packagePath)
+			if err != nil {
+				return err
+			}
+			if err := promoteCurrentPackageVersion(ctx, q, module.ID, packagePath, version.Version, time.Now().UTC()); err != nil {
 				return err
 			}
 		}
@@ -399,13 +416,18 @@ func (c *Catalog) publishPackageVersionWithVisibility(ctx context.Context, packa
 	if err != nil {
 		return err
 	}
-	if err := recordPackageVersion(ctx, q, module.ID, version, visibility == CurrentPublication, skills, now); err != nil {
+	if err := recordPackageVersion(ctx, q, module.ID, version, skills, now); err != nil {
 		return err
+	}
+	if visibility == CurrentPublication {
+		if err := promoteCurrentPackageVersion(ctx, q, module.ID, packagePath, version.Version, now); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }
 
-func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, makeCurrent bool, skills []Skill, createdAt time.Time) error {
+func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, skills []Skill, createdAt time.Time) error {
 	versionRowID, err := q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: moduleRowID,
 		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
 		Sum: version.Sum, ArchiveSize: version.ArchiveSize, CommitTime: version.CommitTime, CreatedAt: createdAt})
@@ -424,12 +446,22 @@ func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRow
 			return err
 		}
 	}
-	if makeCurrent {
-		err = q.SetCurrentVersion(ctx, catalogsqlc.SetCurrentVersionParams{
-			ID: moduleRowID, CurrentVersionID: pgtype.Int8{Int64: versionRowID, Valid: true}, UpdatedAt: createdAt,
-		})
-	}
 	return nil
+}
+
+func promoteCurrentPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, packagePath, candidateVersion string, updatedAt time.Time) error {
+	currentVersion, err := q.CurrentPackageVersionForUpdate(ctx, moduleRowID)
+	if err != nil {
+		return err
+	}
+	if !protocolversion.HasHigherPriority(candidateVersion, currentVersion) {
+		return nil
+	}
+	return q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{
+		PackagePath: packagePath,
+		Version:     candidateVersion,
+		UpdatedAt:   updatedAt,
+	})
 }
 
 // PackageVersionInfo deterministically builds one standalone Package Info document.
@@ -605,20 +637,14 @@ func (c *Catalog) SkillsByPathCoordinates(ctx context.Context, coordinates []pro
 	return items, nil
 }
 
-// SkillPublishedVersions returns Package Release versions containing one Skill.
-func (c *Catalog) SkillPublishedVersions(ctx context.Context, packagePath, name string) ([]string, error) {
-	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{PackagePath: packagePath, Name: name})
+// SkillPublishedVersionsByPath returns valid immutable Package versions
+// containing one exact Skill path, ordered stable, prerelease, then pseudo.
+func (c *Catalog) SkillPublishedVersionsByPath(ctx context.Context, packagePath, path string) ([]string, error) {
+	versions, err := c.queries.SkillPublishedVersionsByPath(ctx, catalogsqlc.SkillPublishedVersionsByPathParams{PackagePath: packagePath, Path: path})
 	if err != nil {
 		return nil, err
 	}
-	filtered := versions[:0]
-	for _, version := range versions {
-		if semver.IsValid(version) && !module.IsPseudoVersion(version) {
-			filtered = append(filtered, version)
-		}
-	}
-	sort.Slice(filtered, func(i, j int) bool { return semver.Compare(filtered[i], filtered[j]) < 0 })
-	return filtered, nil
+	return protocolversion.OrderedImmutableVersions(versions), nil
 }
 
 // CurrentSkill returns the immutable Skill snapshot selected by the Package's

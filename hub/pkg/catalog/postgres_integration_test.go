@@ -38,7 +38,7 @@ func TestPostgresCatalog(t *testing.T) {
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	c, err := Open(ctx, config.DatabaseConfig{
-		DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2,
+		DSN: dsn, MaxOpenConns: 5,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
@@ -79,7 +79,7 @@ func TestPostgresCatalog(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, coordinates, 1)
 	require.Equal(t, "one", coordinates[0].Path)
-	versions, err := c.SkillPublishedVersions(ctx, duplicatePackage, "shared")
+	versions, err := c.SkillPublishedVersionsByPath(ctx, duplicatePackage, "one")
 	require.NoError(t, err)
 	require.Equal(t, []string{"v1.0.0"}, versions)
 }

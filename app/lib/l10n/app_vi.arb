@@ -317,7 +317,6 @@
   "update": "cập nhật",
   "backToLibrary": "Quay lại Thư viện",
   "remove": "Xóa",
-  "manageTargets": "Quản lý phạm vi",
   "skillsSelected": "đã chọn {count}",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Xóa lựa chọn",
   "selectCurrentResults": "Chọn kết quả hiện tại",
   "clearCurrentResultSelection": "Xóa lựa chọn kết quả hiện tại",
-  "manageTargetsTitle": "Quản lý mục tiêu cài đặt",
-  "manageTargetsDescription": "Chọn một hành động chính xác cho từng mục tiêu. Các mục tiêu không được chọn sẽ không thay đổi.",
   "targetActionsSelected": "Đã chọn {selected} trong số {total} mục tiêu",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Xác nhận xóa",
-  "applyTargetActions": "Áp dụng các hành động đã chọn",
   "managementProgressTitle": "Áp dụng các hành động mục tiêu",
   "managementResultsTitle": "Kết quả hành động mục tiêu",
   "managementResultSummary": "{succeeded} đã thành công, {failed} không thành công",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Các hành động dự án được chọn sẽ cập nhật skills.yaml và skills-lock.yaml.",
   "targetContentPreserved": "Nội dung mục tiêu hiện tại sẽ được giữ nguyên.",
   "localReadFailed": "Không thể đọc kỹ năng này",
   "localReadFailedMessage": "SkillsGo không thể đọc được kỹ năng đã cài đặt này. Kiểm tra xem thư mục của nó có sẵn và có thể truy cập được không, sau đó thử lại.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Bạn có thể tiếp tục duyệt Kỹ năng này nhưng chưa có mục tiêu cài đặt. Cài đặt Tác nhân được hỗ trợ, sau đó chạy lại tính năng phát hiện.",
   "clearCustomPath": "Xóa đường dẫn tùy chỉnh",
   "privacyProvenance": "Quyền riêng tư và xuất xứ",
-  "privacySummary": "Các tìm kiếm của bạn không được lưu và SkillsGo không lưu giữ nhật ký lệnh.",
   "language": "Ngôn ngữ",
   "translatedContent": "Đã dịch",
   "translatedFrom": "Được dịch từ {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Đã cài đặt",
   "unsupportedCell": "Không có sẵn",
   "confirmInstall": "Xác nhận cài đặt",
-  "installAllRepositorySkills": "Cài đặt tất cả các kỹ năng kho lưu trữ ({count})",
+  "installAllPackageSkills": "Cài đặt tất cả các kỹ năng kho lưu trữ ({count})",
   "installAllSkillsTo": "Cài đặt tất cả các kỹ năng để",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Cài đặt tất cả kỹ năng {repository} ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Cài đặt tất cả kỹ năng {packagePath} ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Quản lý các kỹ năng hiện có",
-  "batchTakeoverActionCount": "Quản lý ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Quản lý các kỹ năng hiện có",
+  "batchAdoptionActionCount": "Quản lý ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Kiểm tra các kỹ năng hiện có…",
-  "batchTakeoverRetry": "Kiểm tra lại kỹ năng quản lý",
-  "batchTakeoverEligibleCount": "{count} có thể được quản lý",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Kiểm tra các kỹ năng hiện có…",
+  "batchAdoptionRetry": "Kiểm tra lại kỹ năng quản lý",
+  "batchAdoptionEligibleCount": "{count} có thể được quản lý",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Bổ sung kỹ năng quản lý…",
-  "batchTakeoverTitle": "Quản lý các kỹ năng hiện có với SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo sẽ thêm hồ sơ quản lý cục bộ mà không cần di chuyển, ghi đè hoặc tải lên tệp kỹ năng. Các mục không được hỗ trợ hoặc thay đổi sẽ bị bỏ qua.",
-  "batchTakeoverStoryTitle": "Biến các kỹ năng rải rác thành một Thư viện rõ ràng",
-  "batchTakeoverStoryDescription": "SkillsGo đã tìm thấy {count, plural, =1{1 kỹ năng hiện có} other{{count} kỹ năng hiện có}} mà nó có thể quản lý ở vị trí này.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Bổ sung kỹ năng quản lý…",
+  "batchAdoptionTitle": "Quản lý các kỹ năng hiện có với SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo sẽ thêm hồ sơ quản lý cục bộ mà không cần di chuyển, ghi đè hoặc tải lên tệp kỹ năng. Các mục không được hỗ trợ hoặc thay đổi sẽ bị bỏ qua.",
+  "batchAdoptionStoryTitle": "Biến các kỹ năng rải rác thành một Thư viện rõ ràng",
+  "batchAdoptionStoryDescription": "SkillsGo đã tìm thấy {count, plural, =1{1 kỹ năng hiện có} other{{count} kỹ năng hiện có}} mà nó có thể quản lý ở vị trí này.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Trước khi quản lý, không rõ các kỹ năng hiện có được cài đặt ở đâu, liệu chúng có hiện hành hay không, cách khôi phục chúng hoặc liệu các dự án có sử dụng cùng một phiên bản hay không.",
-  "batchTakeoverPainLocation": "Vị trí cài đặt không xác định",
-  "batchTakeoverPainFreshness": "Trạng thái cập nhật không xác định",
-  "batchTakeoverPainRecovery": "Không phục hồi được khi bị hỏng",
-  "batchTakeoverPainVersionDrift": "Các phiên bản khác nhau giữa các dự án",
-  "batchTakeoverFolderTitle": "Kỹ năng hiện có",
-  "batchTakeoverFolderSubtitle": "Trạng thái không rõ ràng",
-  "batchTakeoverAfterLabel": "SAU",
-  "batchTakeoverAfterTitle": "Một thư viện rõ ràng",
-  "batchTakeoverLibraryTitle": "Thư viện SkillsGo",
-  "batchTakeoverBenefitLocation": "Xóa vị trí",
-  "batchTakeoverBenefitFreshness": "Cập nhật hiển thị",
-  "batchTakeoverBenefitRecovery": "Phục hồi dễ dàng",
-  "batchTakeoverBenefitVersions": "Phiên bản rõ ràng",
-  "batchTakeoverManagedSection": "Được quản lý bởi SkillsGo",
-  "batchTakeoverPendingSection": "Đang chờ xử lý",
-  "batchTakeoverItemManaged": "{name} do SkillsGo quản lý",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Trước khi quản lý, không rõ các kỹ năng hiện có được cài đặt ở đâu, liệu chúng có hiện hành hay không, cách khôi phục chúng hoặc liệu các dự án có sử dụng cùng một phiên bản hay không.",
+  "batchAdoptionPainLocation": "Vị trí cài đặt không xác định",
+  "batchAdoptionPainFreshness": "Trạng thái cập nhật không xác định",
+  "batchAdoptionPainRecovery": "Không phục hồi được khi bị hỏng",
+  "batchAdoptionPainVersionDrift": "Các phiên bản khác nhau giữa các dự án",
+  "batchAdoptionFolderTitle": "Kỹ năng hiện có",
+  "batchAdoptionFolderSubtitle": "Trạng thái không rõ ràng",
+  "batchAdoptionAfterLabel": "SAU",
+  "batchAdoptionAfterTitle": "Một thư viện rõ ràng",
+  "batchAdoptionLibraryTitle": "Thư viện SkillsGo",
+  "batchAdoptionBenefitLocation": "Xóa vị trí",
+  "batchAdoptionBenefitFreshness": "Cập nhật hiển thị",
+  "batchAdoptionBenefitRecovery": "Phục hồi dễ dàng",
+  "batchAdoptionBenefitVersions": "Phiên bản rõ ràng",
+  "batchAdoptionManagedSection": "Được quản lý bởi SkillsGo",
+  "batchAdoptionPendingSection": "Đang chờ xử lý",
+  "batchAdoptionItemManaged": "{name} do SkillsGo quản lý",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "Không thể thêm {name} vào quản lý",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "Không thể thêm {name} vào quản lý",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} đang chờ được quản lý",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} đang chờ được quản lý",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Sau khi quản lý, {count, plural, =1{1 kỹ năng là} other{{count} kỹ năng}} được sắp xếp trong một Thư viện với trạng thái được quản lý rõ ràng.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Sau khi quản lý, {count, plural, =1{1 kỹ năng là} other{{count} kỹ năng}} được sắp xếp trong một Thư viện với trạng thái được quản lý rõ ràng.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} khác",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} khác",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Thêm những kỹ năng hiện có này vào quản lý SkillsGo.",
-  "batchTakeoverTransitionLabel": "TỔ CHỨC",
-  "batchTakeoverStatusTitle": "Tình trạng quản lý",
-  "batchTakeoverStatusManaged": "Được quản lý",
-  "batchTakeoverStatusProgress": "Tổ chức",
-  "batchTakeoverStatusSkipped": "Đã bỏ qua",
-  "batchTakeoverStatusFilesStay": "Các tệp kỹ năng vẫn ở vị trí ban đầu",
-  "batchTakeoverBoardSemantics": "Các kỹ năng được sắp xếp thành các hàng hoàn chỉnh và được SkillsGo ghi lại mà không cần di chuyển tập tin của chúng.",
-  "batchTakeoverBoardComplete": "TẤT CẢ RÕ RÀNG",
-  "batchTakeoverBoardPartial": "HOÀN THÀNH",
-  "batchTakeoverStatusTotal": "Tổng cộng",
-  "batchTakeoverQueueComplete": "Không có kỹ năng đang chờ đợi",
-  "batchTakeoverQueueWaiting": "Kỹ năng sẽ chuyển đến đây sau khi xác minh",
-  "batchTakeoverNextLabel": "TIẾP THEO",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 khối tổ chức SkillsGo} other{{count} khối tổ chức SkillsGo}} hoàn thành các hàng cuối cùng",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Thêm những kỹ năng hiện có này vào quản lý SkillsGo.",
+  "batchAdoptionTransitionLabel": "TỔ CHỨC",
+  "batchAdoptionStatusTitle": "Tình trạng quản lý",
+  "batchAdoptionStatusManaged": "Được quản lý",
+  "batchAdoptionStatusProgress": "Tổ chức",
+  "batchAdoptionStatusSkipped": "Đã bỏ qua",
+  "batchAdoptionStatusFilesStay": "Các tệp kỹ năng vẫn ở vị trí ban đầu",
+  "batchAdoptionBoardSemantics": "Các kỹ năng được sắp xếp thành các hàng hoàn chỉnh và được SkillsGo ghi lại mà không cần di chuyển tập tin của chúng.",
+  "batchAdoptionBoardComplete": "TẤT CẢ RÕ RÀNG",
+  "batchAdoptionBoardPartial": "HOÀN THÀNH",
+  "batchAdoptionStatusTotal": "Tổng cộng",
+  "batchAdoptionQueueComplete": "Không có kỹ năng đang chờ đợi",
+  "batchAdoptionQueueWaiting": "Kỹ năng sẽ chuyển đến đây sau khi xác minh",
+  "batchAdoptionNextLabel": "TIẾP THEO",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 khối tổ chức SkillsGo} other{{count} khối tổ chức SkillsGo}} hoàn thành các hàng cuối cùng",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "Các tệp, đường dẫn và quy trình làm việc hiện tại của bạn vẫn giữ nguyên vị trí của chúng. SkillsGo chỉ hoàn thành bản ghi quản lý cục bộ của mình.",
-  "batchTakeoverLaterHint": "Nếu bỏ qua, bạn có thể sử dụng Quản lý các kỹ năng hiện có từ Thư viện bất cứ lúc nào.",
-  "batchTakeoverSkip": "Không phải bây giờ",
-  "batchTakeoverConfirm": "Thêm vào quản lý",
-  "batchTakeoverExecutionRetry": "Thử lại",
-  "batchTakeoverResultTitle": "Kỹ năng bổ sung vào quản lý",
-  "batchTakeoverSummary": "Đã thêm kỹ năng {takenOver} vào quản lý, {skipped} bị bỏ qua.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "Các tệp, đường dẫn và quy trình làm việc hiện tại của bạn vẫn giữ nguyên vị trí của chúng. SkillsGo chỉ hoàn thành bản ghi quản lý cục bộ của mình.",
+  "batchAdoptionLaterHint": "Nếu bỏ qua, bạn có thể sử dụng Quản lý các kỹ năng hiện có từ Thư viện bất cứ lúc nào.",
+  "batchAdoptionSkip": "Không phải bây giờ",
+  "batchAdoptionConfirm": "Thêm vào quản lý",
+  "batchAdoptionExecutionRetry": "Thử lại",
+  "batchAdoptionResultTitle": "Kỹ năng bổ sung vào quản lý",
+  "batchAdoptionSummary": "Đã thêm kỹ năng {adopted} vào quản lý, {skipped} bị bỏ qua.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Đóng",
+  "batchAdoptionClose": "Đóng",
   "installMoreTargets": "Cài đặt ở nhiều vị trí hơn",
-  "detailRepository": "Kho lưu trữ",
+  "detailPackageSource": "Nguồn gói",
   "detailStars": "Ngôi sao",
   "detailUpdated": "Đã cập nhật",
-  "detailArchiveSize": "Kích thước ZIP",
+  "detailArchiveSize": "Kích thước gói",
   "pathLabel": "Đường dẫn dự án",
   "copyProjectPath": "Sao chép đường dẫn dự án",
   "projectPathCopied": "Đã sao chép đường dẫn dự án",

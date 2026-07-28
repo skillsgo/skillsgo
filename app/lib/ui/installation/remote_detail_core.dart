@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, gateway, operation controller, detail state, and navigation callbacks.
- * [OUTPUT]: Provides the public RemoteDetailScreen plus loading, inline source switching, install, target-management, lifecycle, and root build behavior.
+ * [OUTPUT]: Provides the public RemoteDetailScreen plus loading, inline source switching, install, exact-removal, lifecycle, and root build behavior.
  * [POS]: Serves as the state-owning core of the remote Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -159,6 +159,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
     if (!mounted) return;
     await present(
       InstallLocationMenuRequest(
+        summary: widget.skill,
         gateway: widget.gateway,
         catalog: catalog,
         detail: detail!,

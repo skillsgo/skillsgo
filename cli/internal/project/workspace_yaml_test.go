@@ -67,6 +67,7 @@ func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 	}}
 	require.NoError(t, WriteWorkspaceState(root, manifest, lock))
+	require.NoFileExists(t, filepath.Join(root, ".skillsgo.metadata.lock"))
 
 	loadedManifest, err := LoadWorkspaceManifest(root)
 	require.NoError(t, err)
@@ -92,6 +93,7 @@ func TestLoadWorkspaceStateRecoversInterruptedFirstPublicationBeforeRead(t *test
 
 	manifest, lock, found, err := LoadWorkspaceState(root)
 	require.NoError(t, err)
+	require.NoFileExists(t, filepath.Join(root, ".skillsgo.metadata.lock"))
 	require.False(t, found)
 	require.Empty(t, manifest.Dependencies)
 	require.Empty(t, lock.Dependencies)

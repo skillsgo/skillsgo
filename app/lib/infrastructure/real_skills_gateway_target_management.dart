@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, target codecs, reviewed Target Operation Plans, and progress callbacks.
- * [OUTPUT]: Provides managed Repository-member and External Installation removal planning, execution, target results, and progress translation.
+ * [OUTPUT]: Provides managed Package-member and External Installation removal planning, execution, target results, and progress translation.
  * [POS]: Serves as the Target Operation Plan capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -136,7 +136,7 @@ mixin _RealSkillsGatewayTargetManagement
         requested.isEmpty ||
         requested.any((target) => target.version.isEmpty)) {
       throw const SkillsException(
-        'Managed removal requires exact Repository-backed targets.',
+        'Managed removal requires exact Package-backed targets.',
         kind: SkillsFailureKind.validation,
       );
     }
@@ -149,7 +149,7 @@ mixin _RealSkillsGatewayTargetManagement
     if (bindings.isEmpty ||
         bindings.any((target) => target.health != InstallationHealth.healthy)) {
       throw const SkillsException(
-        'Locally modified Repository Projections must be resolved by the user.',
+        'Locally modified Package Projections must be resolved by the user.',
         kind: SkillsFailureKind.invalidLocalData,
       );
     }
@@ -217,7 +217,8 @@ mixin _RealSkillsGatewayTargetManagement
       for (final item in plan.targets)
         results.singleWhere(
           (result) =>
-              updateTargetKey(result.target) == updateTargetKey(item.target),
+              installationTargetKey(result.target) ==
+              installationTargetKey(item.target),
         ),
     ];
     return TargetManagementExecution(
@@ -241,7 +242,9 @@ mixin _RealSkillsGatewayTargetManagement
   }) async {
     final groups = <String, List<TargetManagementPlanItem>>{};
     for (final item in plan.targets) {
-      final key = '${item.target.scope.name}\u0000${item.target.projectRoot}';
+      final key =
+          '${item.packagePath}\u0000${item.name}\u0000'
+          '${item.target.scope.name}\u0000${item.target.projectRoot}';
       groups.putIfAbsent(key, () => []).add(item);
     }
     final results = <TargetManagementResult>[];
@@ -278,7 +281,7 @@ mixin _RealSkillsGatewayTargetManagement
       if (raw['skills'] is! List ||
           !(raw['skills'] as List).contains(first.name)) {
         throw const SkillsException(
-          'The SkillsGo CLI returned invalid Repository removal JSON.',
+          'The SkillsGo CLI returned invalid Package removal JSON.',
           kind: SkillsFailureKind.invalidResponse,
         );
       }
@@ -345,7 +348,7 @@ mixin _RealSkillsGatewayTargetManagement
     }
     arguments.addAll(['--yes', '--output', 'ndjson']);
     final expected = {
-      for (final item in plan.targets) updateTargetKey(item.target): item,
+      for (final item in plan.targets) installationTargetKey(item.target): item,
     };
     final states = <String, InstallationProgressState>{};
     final terminal = <String, TargetManagementResult>{};
@@ -365,7 +368,7 @@ mixin _RealSkillsGatewayTargetManagement
             throw const FormatException();
           }
           final target = _installationPlanTarget(raw['target']);
-          final key = updateTargetKey(target);
+          final key = installationTargetKey(target);
           final item = expected[key];
           if (item == null ||
               raw['name'] != item.name ||
@@ -425,7 +428,7 @@ mixin _RealSkillsGatewayTargetManagement
           _targetManagementResult(rawResults[index], plan.targets[index]),
       ];
       for (final result in results) {
-        final streamed = terminal[updateTargetKey(result.target)];
+        final streamed = terminal[installationTargetKey(result.target)];
         if (streamed == null ||
             streamed.outcome != result.outcome ||
             streamed.error?.code != result.error?.code ||

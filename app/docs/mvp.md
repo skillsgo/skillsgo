@@ -59,7 +59,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Scanning the whole disk for projects.
 - Automatically publishing Local Skills to a Hub.
 - Silently making Skill versions uniform across projects.
-- Updating or repairing an External Installation. Exact-path removal and supported-lock-backed Batch Takeover remain available.
+- Updating or repairing an External Installation. Exact-path removal and supported-lock-backed Batch Adoption remain available.
 - Pretending that mutations across multiple filesystem locations are one global transaction.
 
 ## Integration Boundaries

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the released CLI and Hub, one exact Repository member, Workspace declarations, Package Store, and coordinate Projection.
+ * [INPUT]: Depends on the released CLI and Hub, one exact Package member, Workspace declarations, Package Store, and direct Agent Skill link.
  * [OUTPUT]: Provides black-box coverage for `why` evidence plus healthy and locally modified `verify` results.
  * [POS]: Serves as the Repository dependency explanation and local integrity-inspection journey across Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -33,8 +33,8 @@ func TestJ47WhyAndVerifyRepositoryInstallation(t *testing.T) {
 	var explanation struct {
 		Entries []struct {
 			PackagePath string `json:"packagePath"`
-			Name       string `json:"name"`
-			Targets    []any  `json:"targets"`
+			Name        string `json:"name"`
+			Targets     []any  `json:"targets"`
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(why.output), &explanation), why.output)
@@ -51,7 +51,7 @@ func TestJ47WhyAndVerifyRepositoryInstallation(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(verified.output), &report), verified.output)
 	require.True(t, report.Healthy)
 
-	target := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md")
+	target := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md")
 	require.NoError(t, os.WriteFile(target, []byte("modified\n"), 0o600))
 	modified := execCLI(t, ctx, container, "verify", "--project", scenarioContainerPath(t, "project"), "--output", "json")
 	require.NotEqual(t, 0, modified.exitCode, modified.output)

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on unified InstalledSkill entries, repository identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
- * [OUTPUT]: Provides grouping data, deterministic repository grouping, compact source identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
- * [POS]: Serves as the repository grouping segment of the unified Library journey.
+ * [INPUT]: Depends on unified InstalledSkill entries, Package identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
+ * [OUTPUT]: Provides grouping data, deterministic Package grouping, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
+ * [POS]: Serves as the Package grouping segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
@@ -34,12 +34,12 @@ List<_InstalledSkillGroupData> _groupInstalledSkills(
   }
   final compactNameCounts = <String, int>{};
   for (final source in managed.keys) {
-    final compact = _compactRepositorySource(source).toLowerCase();
+    final compact = _compactPackagePath(source).toLowerCase();
     compactNameCounts.update(compact, (count) => count + 1, ifAbsent: () => 1);
   }
   final groups =
       managed.entries.map((entry) {
-        final compact = _compactRepositorySource(entry.key);
+        final compact = _compactPackagePath(entry.key);
         final hasCollision = compactNameCounts[compact.toLowerCase()]! > 1;
         return _InstalledSkillGroupData(
           source: entry.key,
@@ -61,7 +61,7 @@ List<_InstalledSkillGroupData> _groupInstalledSkills(
   return groups;
 }
 
-String _compactRepositorySource(String source) {
+String _compactPackagePath(String source) {
   final parts = source.split('/').where((part) => part.isNotEmpty).toList();
   if (parts.length > 1 && parts.first.contains('.')) {
     return parts.skip(1).join('/');
@@ -113,9 +113,9 @@ class _InstalledSkillGroup extends StatelessWidget {
         SizedBox(
           width: 44,
           child: Center(
-            child: RepositoryAvatar(
+            child: PackageAvatar(
               source: group.source,
-              imageUrl: _repositoryAvatarUrl(group.source),
+              imageUrl: _packageAvatarUrl(group.source),
               size: 42,
               borderRadius: 13,
             ),
@@ -169,14 +169,14 @@ class _InstalledSkillGroup extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       SizedBox(
-                        height: 48,
+                        height: 42,
                         child: PrimaryCapsuleButton(
                           key: const Key('library-adoption-review-enter'),
                           label: context.l10n
                               .handExternalSkillsToSkillsGoManagementCount(
                                 group.skills.length,
                               ),
-                          height: 48,
+                          height: 42,
                           horizontalPadding: 18,
                           labelWidget: ShimmerText(
                             text: context.l10n
@@ -303,10 +303,10 @@ class _IdleMagicSelectionIconState extends State<_IdleMagicSelectionIcon>
   );
 }
 
-String? _repositoryAvatarUrl(String source) {
+String? _packageAvatarUrl(String source, {int imageSize = 84}) {
   final parts = source.split('/').where((part) => part.isNotEmpty).toList();
   if (parts.length < 3 || parts.first.toLowerCase() != 'github.com') {
     return null;
   }
-  return 'https://github.com/${Uri.encodeComponent(parts[1])}.png?size=84';
+  return 'https://github.com/${Uri.encodeComponent(parts[1])}.png?size=$imageSize';
 }

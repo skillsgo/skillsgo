@@ -46,7 +46,7 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	require.Contains(t, string(sumBytes), "sum: h1:")
 
 	targetRoot := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
-	require.FileExists(t, filepath.Join(targetRoot, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(targetRoot, "SKILL.md"))
 	require.NoError(t, os.RemoveAll(targetRoot))
 	restore := execCLI(t, ctx, container,
 		"install",
@@ -54,5 +54,5 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, restore.exitCode, restore.output)
-	require.FileExists(t, filepath.Join(targetRoot, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(targetRoot, "SKILL.md"))
 }

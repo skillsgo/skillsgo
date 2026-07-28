@@ -1,48 +1,48 @@
 /*
  * [INPUT]: Depends on reviewed Target Operation Plans, Riverpod execution state, progress callbacks, and localized confirmation/results UI.
- * [OUTPUT]: Provides the public exact-path removal selection, execution, progress, and result dialog.
- * [POS]: Serves as the Target Operation Plan journey inside the Installation module.
+ * [OUTPUT]: Provides the public Material confirmation for compact Skill-first exact-path removal, expandable details, execution progress, and results.
+ * [POS]: Serves as the removal confirmation journey inside the Installation module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../installation_flows.dart';
 
-class TargetManagementDialog extends ConsumerStatefulWidget {
-  const TargetManagementDialog({
+class RemoveTargetsDialog extends ConsumerStatefulWidget {
+  const RemoveTargetsDialog({
     super.key,
     required this.gateway,
     required this.plan,
-    this.initialAction,
   });
 
   final SkillsGateway gateway;
   final TargetManagementPlan plan;
-  final TargetManagementAction? initialAction;
 
   @override
-  ConsumerState<TargetManagementDialog> createState() =>
-      TargetManagementDialogState();
+  ConsumerState<RemoveTargetsDialog> createState() =>
+      RemoveTargetsDialogState();
 }
 
-class TargetManagementDialogState
-    extends ConsumerState<TargetManagementDialog> {
+class RemoveTargetsDialogState extends ConsumerState<RemoveTargetsDialog> {
   final selectedActions = <String, TargetManagementAction>{};
+  bool showDetails = false;
 
   @override
   void initState() {
     super.initState();
-    final action = widget.initialAction;
-    if (action == null) return;
     for (final item in widget.plan.targets) {
-      if (!item.allowedActions.contains(action)) continue;
-      selectedActions[updateTargetKey(item.target)] = action;
+      if (!item.allowedActions.contains(TargetManagementAction.remove)) {
+        continue;
+      }
+      selectedActions[installationTargetKey(item.target)] =
+          TargetManagementAction.remove;
       for (final binding in item.affectedBindings) {
-        selectedActions[updateTargetKey(binding)] = action;
+        selectedActions[installationTargetKey(binding)] =
+            TargetManagementAction.remove;
       }
     }
   }
 
   String get operationKey => widget.plan.targets
-      .map((item) => updateTargetKey(item.target))
+      .map((item) => installationTargetKey(item.target))
       .join('\u0000');
 
   TargetManagementOperationState get operation =>
@@ -56,33 +56,28 @@ class TargetManagementDialogState
 
   bool get operating => operation.operating;
 
+  List<({String key, String name, List<TargetManagementPlanItem> items})>
+  get skillGroups {
+    final grouped = <String, List<TargetManagementPlanItem>>{};
+    for (final item in widget.plan.targets) {
+      final identity =
+          '${item.packagePath}\u0000${item.skillId}\u0000${item.name}';
+      grouped.putIfAbsent(identity, () => []).add(item);
+    }
+    return [
+      for (final entry in grouped.entries)
+        (
+          key: entry.key,
+          name: entry.value.first.name,
+          items: List.unmodifiable(entry.value),
+        ),
+    ];
+  }
+
   TargetManagementPlan get selectedPlan =>
       widget.plan.selectActions(selectedActions);
 
   int get finishedCount => operation.finishedCount;
-
-  void _selectAction(
-    TargetManagementPlanItem item,
-    TargetManagementAction action,
-  ) {
-    setState(() {
-      final key = updateTargetKey(item.target);
-      if (selectedActions[key] == action) {
-        selectedActions.remove(key);
-        for (final binding in item.affectedBindings) {
-          selectedActions.remove(updateTargetKey(binding));
-        }
-        return;
-      }
-      if (item.affectedBindings.isEmpty) {
-        selectedActions[key] = action;
-      } else {
-        for (final binding in item.affectedBindings) {
-          selectedActions[updateTargetKey(binding)] = action;
-        }
-      }
-    });
-  }
 
   Future<void> _execute() async {
     final plan = selectedPlan;
@@ -93,7 +88,7 @@ class TargetManagementDialogState
 
   Widget _applyButton(BuildContext context) {
     final enabled = !operating && selectedActions.isNotEmpty;
-    final child = Text(context.l10n.applyTargetActions);
+    final child = Text(context.l10n.remove);
     return SkillsButton.destructive(
       enabled: enabled,
       onPressed: _execute,
@@ -105,23 +100,45 @@ class TargetManagementDialogState
   Widget build(BuildContext context) {
     ref.watch(targetManagementOperationProvider(operationKey));
     final result = execution;
-    return SkillsDialog(
-      constraints: const BoxConstraints(maxWidth: 860, maxHeight: 740),
-      title: Text(
-        operating
-            ? context.l10n.managementProgressTitle
-            : result == null
-            ? context.l10n.manageTargetsTitle
-            : context.l10n.managementResultsTitle,
+    final title = operating
+        ? context.l10n.managementProgressTitle
+        : result == null
+        ? context.l10n.confirmRemoveTarget
+        : context.l10n.managementResultsTitle;
+    final description = result == null
+        ? _selectionDescription()
+        : Text(
+            context.l10n.managementResultSummary(
+              result.summary.succeeded,
+              result.summary.failed,
+            ),
+          );
+    return AlertDialog(
+      key: const ValueKey('remove-targets-dialog'),
+      backgroundColor: context.skillsComponents.overlay,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      constraints: const BoxConstraints(maxWidth: 560, maxHeight: 540),
+      titlePadding: const EdgeInsetsDirectional.fromSTEB(24, 22, 24, 0),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title),
+          const SizedBox(height: 6),
+          DefaultTextStyle.merge(
+            style: context.skillsTypography.bodySecondary,
+            child: description,
+          ),
+        ],
       ),
-      description: Text(
-        result == null
-            ? context.l10n.manageTargetsDescription
-            : context.l10n.managementResultSummary(
-                result.summary.succeeded,
-                result.summary.failed,
-              ),
+      contentPadding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 0),
+      content: SizedBox(
+        width: 500,
+        child: result == null ? _selection() : _results(result),
       ),
+      actionsPadding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 20),
+      actionsAlignment: MainAxisAlignment.end,
+      buttonPadding: EdgeInsets.zero,
       actions: [
         if (result == null) ...[
           SkillsButton.outline(
@@ -136,39 +153,76 @@ class TargetManagementDialogState
             child: Text(context.l10n.closeUpdatePlan),
           ),
       ],
-      child: SizedBox(
-        height: 530,
-        child: result == null ? _selection() : _results(result),
-      ),
     );
   }
 
+  Widget _selectionDescription() => Row(
+    children: [
+      Flexible(
+        child: Text(
+          context.l10n.removeSkillsDescription,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      const SizedBox(width: 8),
+      TextButton(
+        key: const ValueKey('remove-targets-toggle-details'),
+        onPressed: operating
+            ? null
+            : () => setState(() => showDetails = !showDetails),
+        style: TextButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.primary,
+          textStyle: context.skillsTypography.compactControlLabel,
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
+        child: Text(
+          showDetails
+              ? context.l10n.hideRemovalDetails
+              : context.l10n.viewRemovalDetails,
+        ),
+      ),
+    ],
+  );
+
   Widget _selection() {
     final plan = selectedPlan;
-    final changesWorkspace = plan.targets.any(
-      (item) => item.workspaceMetadataChange,
+    final groups = skillGroups;
+    final detailRows = groups.fold<int>(
+      0,
+      (total, group) => total + group.items.length,
     );
+    final diagnosticRows = showDetails
+        ? groups.fold<int>(
+            0,
+            (total, group) =>
+                total +
+                group.items.where((item) => item.diagnostic.isNotEmpty).length,
+          )
+        : 0;
+    final listHeight =
+        (groups.length * 44 +
+                (showDetails ? detailRows * 22 : 0) +
+                diagnosticRows * 28)
+            .clamp(44, 264)
+            .toDouble();
+    final animationDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SkillsCard(
-          width: double.infinity,
-          title: Text(
-            context.l10n.targetActionsSelected(
-              selectedActions.length,
-              widget.plan.targets.length,
-            ),
+        if (operating)
+          SkillsProgress(
+            value: plan.targets.isEmpty
+                ? 0
+                : finishedCount / plan.targets.length,
+            semanticsLabel: context.l10n.managementProgressTitle,
           ),
-          description: Text(context.l10n.manageTargetsDescription),
-          footer: operating
-              ? SkillsProgress(
-                  value: plan.targets.isEmpty
-                      ? 0
-                      : finishedCount / plan.targets.length,
-                  semanticsLabel: context.l10n.managementProgressTitle,
-                )
-              : null,
-        ),
         if (error != null) ...[
           const SizedBox(height: 10),
           Text(
@@ -176,62 +230,84 @@ class TargetManagementDialogState
             style: TextStyle(color: context.skillsComponents.statusDanger),
           ),
         ],
-        const SizedBox(height: 12),
-        Expanded(
-          child: GlassCard(
+        if (operating || error != null) const SizedBox(height: 10),
+        AnimatedContainer(
+          duration: animationDuration,
+          curve: Curves.easeOutCubic,
+          height: listHeight,
+          child: Scrollbar(
             child: ListView.separated(
-              itemCount: widget.plan.targets.length,
-              separatorBuilder: (_, _) => SkillsSeparator.horizontal(
-                color: Theme.of(context).colorScheme.outlineVariant,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemCount: groups.length,
+              separatorBuilder: (_, _) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: SkillsSeparator.horizontal(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
               itemBuilder: (context, index) {
-                final item = widget.plan.targets[index];
-                final key = updateTargetKey(item.target);
-                final selected = selectedActions[key];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  child: Row(
+                final group = groups[index];
+                final details = Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    start: 12,
+                    top: 3,
+                    bottom: 7,
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _targetLabel(context, item.target),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                      for (final item in group.items) ...[
+                        Tooltip(
+                          message: item.target.path,
+                          child: Text(
+                            item.target.path,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.skillsTypography.caption.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        if (item.diagnostic.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3, bottom: 4),
+                            child: Text(
+                              item.diagnostic,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.skillsTypography.caption.copyWith(
+                                color: context.skillsComponents.statusAttention,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item.target.path,
-                              style: context.skillsTypography.caption,
+                          )
+                        else
+                          const SizedBox(height: 7),
+                      ],
+                    ],
+                  ),
+                );
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 43,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            group.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.skillsTypography.body.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
-                            if (item.diagnostic.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                item.diagnostic,
-                                style: TextStyle(
-                                  color:
-                                      context.skillsComponents.statusAttention,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      installationHealthChip(context, item.health),
-                      const SizedBox(width: 10),
-                      SkillsCheckbox(
-                        value: selected == TargetManagementAction.remove,
-                        enabled: !operating,
-                        onChanged: (_) =>
-                            _selectAction(item, TargetManagementAction.remove),
-                        label: Text(context.l10n.remove),
-                      ),
+                      if (showDetails) details,
                     ],
                   ),
                 );
@@ -239,21 +315,18 @@ class TargetManagementDialogState
             ),
           ),
         ),
-        if (changesWorkspace) ...[
-          const SizedBox(height: 10),
-          Text(
-            context.l10n.workspaceOwnershipChanges,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 16, 0),
+          child: SkillsSeparator.horizontal(
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
-        ],
+        ),
       ],
     );
   }
 
-  Widget _results(TargetManagementExecution execution) => GlassCard(
+  Widget _results(TargetManagementExecution execution) => SizedBox(
+    height: (execution.results.length * 64).clamp(64, 280).toDouble(),
     child: ListView.separated(
       itemCount: execution.results.length,
       separatorBuilder: (_, _) => SkillsSeparator.horizontal(

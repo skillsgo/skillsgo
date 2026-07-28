@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, local/remote Skill identity, gateway operations, update state, and detail navigation.
- * [OUTPUT]: Provides the public LocalDetailScreen plus loading, refresh, update, target-management, install-more, and root rendering behavior.
+ * [OUTPUT]: Provides the public LocalDetailScreen plus package-avatar identity, loading, refresh, update, exact removal, install-more, and root rendering behavior.
  * [POS]: Serves as the state-owning core of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,14 +12,14 @@ class LocalDetailScreen extends ConsumerStatefulWidget {
     required this.gateway,
     required this.skill,
     required this.projects,
-    required this.initialUpdateState,
+    required this.initialUpdate,
     required this.onBack,
     required this.onRemoved,
   });
   final SkillsGateway gateway;
   final InstalledSkill skill;
   final List<AddedProject> projects;
-  final UpdateState initialUpdateState;
+  final UpdateAvailability initialUpdate;
   final VoidCallback onBack;
   final Future<void> Function() onRemoved;
   @override
@@ -31,7 +31,8 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   late InstalledSkill skill;
   SkillDetail? detail;
   SkillDetail? remoteIdentity;
-  late UpdateState updateState;
+  late UpdateAvailability updateAvailability;
+  UpdateState get updateState => updateAvailability.state;
   Object? error;
   bool managing = false;
   bool updating = false;
@@ -42,7 +43,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     super.initState();
     detailScrollController.addListener(_detailScrollChanged);
     skill = widget.skill;
-    updateState = widget.initialUpdateState;
+    updateAvailability = widget.initialUpdate;
     unawaited(load());
     if (skill.provenance == LibraryProvenance.hub &&
         updateState != UpdateState.available &&
@@ -65,16 +66,29 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
 
   Future<void> _checkUpdateState() async {
     if (skill.provenance != LibraryProvenance.hub) return;
-    if (mounted) setState(() => updateState = UpdateState.checking);
+    if (mounted) {
+      setState(
+        () => updateAvailability = const UpdateAvailability(
+          state: UpdateState.checking,
+        ),
+      );
+    }
     try {
       final states = await widget.gateway.checkUpdates([skill]);
       if (!mounted) return;
-      setState(
-        () => updateState =
-            states[libraryUpdateKey(skill)]?.state ?? UpdateState.failed,
-      );
+      setState(() {
+        updateAvailability =
+            states[libraryUpdateKey(skill)] ??
+            const UpdateAvailability(state: UpdateState.failed);
+      });
     } on Object {
-      if (mounted) setState(() => updateState = UpdateState.failed);
+      if (mounted) {
+        setState(
+          () => updateAvailability = const UpdateAvailability(
+            state: UpdateState.failed,
+          ),
+        );
+      }
     }
   }
 
@@ -115,10 +129,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     }
   }
 
-  Future<void> manage([
-    SkillInstallationTarget? target,
-    TargetManagementAction? initialAction,
-  ]) async {
+  Future<void> remove([SkillInstallationTarget? target]) async {
     if (managing) return;
     setState(() {
       managing = true;
@@ -133,11 +144,8 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       final execution = await showSkillsDialog<TargetManagementExecution>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => TargetManagementDialog(
-          gateway: widget.gateway,
-          plan: plan,
-          initialAction: initialAction,
-        ),
+        builder: (context) =>
+            RemoveTargetsDialog(gateway: widget.gateway, plan: plan),
       );
       if (execution != null && execution.summary.succeeded > 0) {
         await _refreshManagedSkill(removeWhenMissing: true);
@@ -177,19 +185,18 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       result = null;
     });
     try {
-      final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
-      if (!mounted) return;
-      final execution = await showSkillsDialog<UpdateExecution>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) =>
-            UpdatePlanDialog(gateway: widget.gateway, skill: skill, plan: plan),
+      await widget.gateway.updatePackage(
+        skill,
+        toVersion: updateAvailability.toVersion,
       );
-      if (execution != null && execution.summary.succeeded > 0) {
-        await _refreshManagedSkill(checkUpdateState: true);
-      }
+      await _refreshManagedSkill(checkUpdateState: true);
     } catch (caught) {
       result = exceptionResult(caught);
+      try {
+        await _refreshManagedSkill(checkUpdateState: true);
+      } on Object {
+        // Preserve the original mutation failure; refresh is best effort.
+      }
     }
     if (mounted) setState(() => updating = false);
   }
@@ -234,14 +241,15 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
         latestVersion: currentDetail.version,
         description: currentDetail.description,
         localTargetCount: skill.targetCount,
+        localVersions: skill.versions,
       );
       await present(
         InstallLocationMenuRequest(
+          summary: summary,
           gateway: widget.gateway,
           catalog: values[0] as AgentCatalog,
           detail: currentDetail,
           projects: projects,
-          existingTargets: skill.targets,
           onProjectAdded: (project) {
             projects = [...projects, project];
           },
@@ -306,6 +314,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
                   ? skill.packagePath
                   : skill.name,
               description: remoteIdentity?.description ?? skill.description,
+              imageUrl: _packageAvatarUrl(skill.packagePath, imageSize: 232),
               avatarKey: const Key('installed-detail-skill-avatar'),
               actions: _actions(),
             ),

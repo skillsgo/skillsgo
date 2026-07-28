@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared installation enums and failure vocabulary.
- * [OUTPUT]: Provides mode-free Repository Projection targets, selections, manifest changes, target results, execution summaries, and target identity keys.
+ * [OUTPUT]: Provides mode-free Package Projection targets, selections, manifest changes, target results, execution summaries, and target identity keys.
  * [POS]: Serves as the focused Installation Request model module shared by UI journeys, CLI decoding, updates, and target management.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

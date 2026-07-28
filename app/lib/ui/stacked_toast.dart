@@ -1,8 +1,8 @@
 /*
  * Derived from Portal Labs Stacked Toast Interaction, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
- * [INPUT]: Depends on Flutter Material animation, physics, semantics, and haptic APIs plus HugeIcons rendering.
- * [OUTPUT]: Provides a controller-driven, animated stack of compact SkillsGo-styled success, warning, information, and error toasts.
+ * [INPUT]: Depends on Flutter Material layout, animation, physics, semantics, and haptic APIs plus HugeIcons rendering.
+ * [OUTPUT]: Provides a controller-driven, responsive animated stack of compact SkillsGo-styled success, warning, information, and error toasts.
  * [POS]: Serves as the vendored transient-feedback component shared by App UI operation surfaces.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,9 @@ class StackedToastStyle {
     this.stackOffset = 9,
     this.stackScaleFactor = .035,
     this.topMargin = 10,
+    this.desktopBreakpoint = 720,
+    this.desktopMaxWidth = 440,
+    this.desktopRightMargin = 24,
     this.spring,
   });
 
@@ -50,6 +53,9 @@ class StackedToastStyle {
   final double stackOffset;
   final double stackScaleFactor;
   final double topMargin;
+  final double desktopBreakpoint;
+  final double desktopMaxWidth;
+  final double desktopRightMargin;
   final SpringDescription? spring;
 }
 
@@ -120,34 +126,40 @@ class _StackedToastInteractionState extends State<StackedToastInteraction> {
   Widget build(BuildContext context) {
     final topPadding =
         MediaQuery.paddingOf(context).top + widget.style.topMargin;
-    return Stack(
-      alignment: Alignment.topCenter,
-      clipBehavior: Clip.none,
-      children: [
-        ...activeToasts
-            .asMap()
-            .entries
-            .map((entry) {
-              final index = entry.key;
-              final toast = entry.value;
-              final exiting = exitingToastIds.contains(toast.id);
-              if (index >= widget.style.maxStackedItems && !exiting) {
-                return const SizedBox.shrink();
-              }
-              return _AnimatedToastCard(
-                key: ValueKey(toast.id),
-                toast: toast,
-                index: index,
-                exiting: exiting,
-                style: widget.style,
-                duration: widget.animationDuration,
-                topPadding: topPadding,
-                onClose: () => _removeToast(toast.id),
-              );
-            })
-            .toList()
-            .reversed,
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= widget.style.desktopBreakpoint;
+        return Stack(
+          alignment: desktop ? Alignment.topRight : Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            ...activeToasts
+                .asMap()
+                .entries
+                .map((entry) {
+                  final index = entry.key;
+                  final toast = entry.value;
+                  final exiting = exitingToastIds.contains(toast.id);
+                  if (index >= widget.style.maxStackedItems && !exiting) {
+                    return const SizedBox.shrink();
+                  }
+                  return _AnimatedToastCard(
+                    key: ValueKey(toast.id),
+                    toast: toast,
+                    index: index,
+                    exiting: exiting,
+                    style: widget.style,
+                    duration: widget.animationDuration,
+                    topPadding: topPadding,
+                    desktop: desktop,
+                    onClose: () => _removeToast(toast.id),
+                  );
+                })
+                .toList()
+                .reversed,
+          ],
+        );
+      },
     );
   }
 }
@@ -161,6 +173,7 @@ class _AnimatedToastCard extends StatefulWidget {
     required this.style,
     required this.duration,
     required this.topPadding,
+    required this.desktop,
     required this.onClose,
   });
 
@@ -170,6 +183,7 @@ class _AnimatedToastCard extends StatefulWidget {
   final StackedToastStyle style;
   final Duration duration;
   final double topPadding;
+  final bool desktop;
   final VoidCallback onClose;
 
   @override
@@ -226,8 +240,11 @@ class _AnimatedToastCardState extends State<_AnimatedToastCard>
       final opacity = progress * (1 - widget.index * .14).clamp(0, 1);
       return Positioned(
         top: widget.topPadding + offset,
-        left: widget.style.horizontalPadding,
-        right: widget.style.horizontalPadding,
+        left: widget.desktop ? null : widget.style.horizontalPadding,
+        right: widget.desktop
+            ? widget.style.desktopRightMargin
+            : widget.style.horizontalPadding,
+        width: widget.desktop ? widget.style.desktopMaxWidth : null,
         child: GestureDetector(
           onVerticalDragEnd: (details) {
             if (front && (details.primaryVelocity ?? 0) < -100) {
@@ -268,6 +285,7 @@ class _ToastContent extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final semantics = _semantics(scheme);
     return Material(
+      key: ValueKey('stacked-toast-${toast.id}'),
       color: scheme.surfaceContainerHigh,
       elevation: 0,
       borderRadius: BorderRadius.circular(18),

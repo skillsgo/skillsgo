@@ -301,35 +301,35 @@ Status: implemented against an unreachable Hub with released CLI JSON stdout and
 
 ### J39 — Keep a successful installation group when another group fails
 
-As an App or automation user installing to independent targets, I want one target failure to leave another committed Installation Target Group intact and report both outcomes.
+As an App or automation user restoring independent Package dependencies, I want one Package failure to leave another successful restoration intact, preserve declaration bytes, and allow the same install command to converge after I repair the failed Package.
 
-Status: implemented with schema 3, one committed Codex Project target, one failed Codex Global target, nested `installation.target_failed`, and non-zero process status by `j39_installation_partial_failure_test.go`.
+Status: implemented with two locked Packages, one restored Projection, one Local Modification failure, non-zero per-Package results, unchanged YAML/Lock bytes, and a successful offline retry by `j39_installation_partial_failure_test.go`.
 
 ## Existing Installation Management Journeys
 
-### J40 — Manage an existing locked Skill without rewriting user files
+### J40 — Adopt a skills.sh-style Global installation
 
-As a user who installed a Skill through a compatible lockfile, I want SkillsGo to verify it against an immutable Repository Artifact, install ordinary managed state, and recoverably retire the External copy.
+As a user who installed one canonical Global Skill through skills.sh and exposes it to several Agents with relative symlinks, I want reviewed adoption to replace the complete External topology with one ordinary SkillsGo Package dependency.
 
-Preflight reports one eligible Skill without writing Package Store, YAML, or Lock state. Confirmation verifies exact bytes against a published Repository member, writes the Global Package Store and coordinate Projection, moves the superseded external copy to recoverable trash, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
+The released CLI receives the App-reviewed stdin JSON mapping, retires the canonical directory and every final-component Agent symlink, writes Global YAML, Lock, Store, and each requested Agent Projection, and exposes only healthy managed inventory.
 
-Status: implemented through the released CLI and observable filesystem state by `j40_takeover_existing_skill_test.go`.
+Status: implemented through the released CLI and observable filesystem state by `j40_adoption_existing_skill_test.go`.
 
-### J41 — Preserve edits made after takeover confirmation
+### J41 — Adopt Project links without deleting a user clone
 
-As a user whose editor or Agent changes a Skill while takeover is starting, I want the confirmed plan to reject only that stale candidate so that newer local work is never overwritten or recorded under the wrong digest.
+As a user who keeps a cloned Skill Repository under a Project and exposes one member through a canonical symlink plus a chained Agent symlink, I want SkillsGo to retire only the discovery links and preserve my clone.
 
-Two candidates are confirmed, one changes before execution, and the result commits the unchanged Skill while skipping the edited Skill with `target-changed`. The edited bytes remain intact, its management metadata remains absent, and the next scan reports exactly that one eligible Skill.
+The Project clone and Git metadata remain byte-for-byte available while ordinary Project YAML, Lock, Store, and requested Agent Projections are created.
 
-Status: implemented through the released CLI and observable filesystem state by `j41_takeover_changed_skill_test.go`.
+Status: implemented through the released CLI and observable filesystem state by `j41_adoption_changed_skill_test.go`.
 
-### J42 — Recover takeover after an unexpected process exit
+### J42 — Restore or reject unsafe External topology
 
-As a user whose App or machine stops during takeover, I want the next operation to recover the interrupted metadata transaction so that no partial management state hides or corrupts my existing Skill.
+As a user whose reviewed adoption cannot prepare the selected Package, I want every canonical directory and relative Agent symlink to remain exactly in place; if a reviewed link is already broken, I want it rejected without mutation.
 
-The journey sends `SIGKILL` after the paired YAML/Lock transaction journal appears, then verifies that the next inventory read recovers before exposing state, the next scan still reports one eligible Skill, and a retry commits complete Package Store, Projection, YAML, and Lock state. The journal is removed and the final scan reports zero eligible Skills.
+The unavailable-version case reports a preparation failure without ever moving bytes or links and publishes no YAML, Lock, or Store. The broken-link case returns one failed result and leaves the broken link unchanged.
 
-Status: implemented with a real released-CLI process interruption by `j42_takeover_interrupted_commit_test.go`.
+Status: implemented through released-CLI failure and filesystem evidence by `j42_adoption_interrupted_commit_test.go`.
 
 ### J43 — Re-resolve a movable query after the default branch advances
 
@@ -378,6 +378,78 @@ As a user connected to a Cloud-mode Hub, I want a successful CLI installation to
 The journey starts real CLI and Hub processes plus a separate public-contract Cloud Mock process, verifies `hub info`, installs an immutable fixture Skill, and observes exactly one post-commit event containing the Skill coordinate, version, scope, and Agent.
 
 Status: implemented through released CLI and Hub processes plus the external Cloud Mock boundary by `j48_cloud_install_reporting_test.go`.
+
+### J49 — Keep External Skills in place throughout Package preparation
+
+As a user adopting a skills.sh-style canonical Skill and Agent symlinks, I want the CLI to finish Package download, verification, and preparation before it moves any External path, so interruption during slow preparation leaves my installation untouched and retryable.
+
+The journey runs adoption against a deterministically slow Package source, observes that the canonical directory and Agent symlink remain in place while no YAML, Lock, Store, or recovery state exists, kills the released CLI, and retries the same public stdin JSON request. Retry completes the ordinary Package transaction and publishes complete Global YAML, Lock, Store, and Projection state.
+
+Status: implemented with a real released-CLI SIGKILL and retry by `j49_adoption_interrupted_recovery_test.go`.
+
+### J50 — Retire an External duplicate beside an existing managed coordinate
+
+As a user who already has the selected Package member managed but still has an old External copy at a base Agent path, I want reviewed adoption to retire the duplicate idempotently without disturbing the managed installation; an unrelated invalid Project target must fail independently.
+
+The journey installs the Global coordinate normally, creates an External duplicate plus a broken Project link, then submits both in one reviewed request. The Global result is adopted, the broken Project result is failed with its reason, Global YAML, Lock, Store, and Projection remain healthy, and no Project state is published.
+
+Status: implemented through released CLI and filesystem evidence by `j50_adoption_existing_managed_partial_test.go`.
+
+### J51 — Add for Agents that share one physical Skill root
+
+As a user whose Agent Skill directory is symlinked to the universal `.agents/skills` directory, I want ordinary add to preserve both Agent intents while executing one physical Projection transaction.
+
+The journey installs one exact member for Claude Code and Zed, appends another member, repeats the same add idempotently, and rejects a conflicting Package version. YAML retains both Agents and both members, Lock remains stable across repetition and conflict, and one physical Projection remains healthy through both paths.
+
+Status: implemented through released CLI, Hub, machine JSON, and filesystem evidence by `j51_add_shared_physical_agent_root_test.go`.
+
+### J52 — Apply a selected Package version when members disappear
+
+As a user switching one installed Package to another immutable version, I want the selected version applied directly even when it omits previously selected Skills, because selecting the Package coordinate is already the authoritative replacement intent.
+
+The optional dry-run reports current and target Package versions plus missing exact Skill paths without changing YAML, Lock, Store, or Projection state. Ordinary `add` retires the old Project Package Store and Projection while leaving the independently managed Global Scope unchanged; an explicit forward Global `update` applies the same natural member-removal rule. A subsequent `update` downgrade is rejected with `add` guidance, while the equivalent explicit `add` downgrade succeeds without a second missing-Skill authorization flag.
+
+Status: implemented through the released CLI, Hub, machine JSON, and Project/Global filesystem evidence by `j52_package_version_missing_skill_confirmation_test.go`.
+
+### J53 — Roll back a failed Package-version switch
+
+As a user who selected a replacement Package version, I still want the entire switch to fail safely when the old Projection contains a Local Modification.
+
+The old YAML, Lock, Package Store, modified Projection bytes, and selected version remain intact, while no target-version Store or Projection is published.
+
+Status: implemented through the released CLI, Hub, and observable rollback state by `j53_package_version_switch_rollback_test.go`.
+
+### J54 — Recover adoption interrupted after managed installation
+
+As a user whose adoption process stopped after Package state was published but before the staged External copy reached Trash, I want retry to distinguish the managed Projection from my durable backup, restore the External topology, and safely repeat the reviewed adoption.
+
+The journey constructs the exact durable crash state, including Global Package state, a managed Projection at the original path, and the untouched recovery backup. Retrying the public stdin JSON request restores the External copy over the managed link, completes ordinary add, clears recovery staging, and leaves healthy Global YAML, Lock, Store, and Projection state.
+
+Status: implemented through the released CLI and observable recovery/installation state by `j54_adoption_post_install_recovery_test.go`.
+
+### J55 — Confirm and repeat an add over conflicting External state
+
+As a user adding one exact Package member where an External directory already occupies the desired Agent path, I want add to preserve it until I explicitly confirm replacement and then remain safe to repeat.
+
+The unconfirmed command publishes no YAML, Lock, Store, or Projection and retains the External bytes. `--yes` atomically publishes ordinary managed Package state, and repeating the same confirmed command converges on the same healthy declaration and Projection.
+
+Status: implemented through the released CLI, Hub, and observable filesystem state by `j55_add_confirmed_reconcile_retry_test.go`.
+
+### J56 — Reconcile desired state during a same-version update
+
+As a user updating a Package to the version already declared, I want update to repair missing desired state rather than treating the version comparison as the operation.
+
+The journey deletes one managed Projection, executes an exact same-version update, observes an `updated` result and restored Projection, and proves that canonical YAML and Lock bytes remain unchanged.
+
+Status: implemented through the released CLI, Hub, machine JSON, and filesystem evidence by `j56_same_version_update_reconcile_test.go`.
+
+### J57 — Isolate independent Package groups during adoption
+
+As a user adopting several reviewed External Skills from different Packages, I want one unavailable Package to leave its External copy untouched without rolling back another Package that is ready to commit.
+
+The valid group publishes Global YAML, Lock, Store, and Projection state. The unavailable group reports a preparation failure, retains its original bytes, and contributes no dependency declaration.
+
+Status: implemented through the released CLI, Hub, stdin JSON protocol, and filesystem evidence by `j57_adopt_multi_package_isolation_test.go`.
 
 ## GitHub Issue #27 User-Story Coverage Index
 

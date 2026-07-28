@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the leased shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
- * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, per-Tag commit identities, and their stable-first latest immutable revision.
+ * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, bounded top-twenty Tag or no-Tag default-branch backfill revisions with commit identities, and stable-first latest immutable revisions.
  * [POS]: Serves as the upstream version-listing adapter between Git source resolution and the Hub download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,6 +29,8 @@ type vcsLister struct {
 	mu           sync.Mutex
 	catalogs     map[string]tagCatalog
 }
+
+const maxRepositoryBackfillVersions = 20
 
 type tagCatalog struct {
 	expires  time.Time
@@ -73,6 +75,45 @@ func (l *vcsLister) ListRepositoryTags(ctx context.Context, packagePath string) 
 		return nil, err
 	}
 	return canonicalRepositoryTags(ctx, repoDir)
+}
+
+func (l *vcsLister) ListRepositoryBackfillVersions(ctx context.Context, packagePath string) ([]RepositoryTag, error) {
+	tags, err := l.ListRepositoryTags(ctx, packagePath)
+	if err != nil {
+		return tags, err
+	}
+	if len(tags) > 0 {
+		if len(tags) > maxRepositoryBackfillVersions {
+			tags = tags[len(tags)-maxRepositoryBackfillVersions:]
+		}
+		return tags, nil
+	}
+	repoDir, err := l.repositories.repositoryDir(packagePath)
+	if err != nil {
+		return nil, err
+	}
+	defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
+	if err != nil {
+		return nil, err
+	}
+	output, err := gitOutput(ctx, repoDir, "rev-list", fmt.Sprintf("--max-count=%d", maxRepositoryBackfillVersions), defaultRef)
+	if err != nil {
+		return nil, err
+	}
+	commits := strings.Fields(output)
+	versions := make([]RepositoryTag, 0, len(commits))
+	for _, commitSHA := range commits {
+		commitTime, err := gitCommitTime(ctx, repoDir, commitSHA)
+		if err != nil {
+			return nil, err
+		}
+		version, err := pseudoVersionForCommit(ctx, repoDir, commitSHA, commitTime)
+		if err != nil {
+			return nil, err
+		}
+		versions = append(versions, RepositoryTag{Version: version, CommitSHA: commitSHA})
+	}
+	return versions, nil
 }
 
 type listSFResp struct {

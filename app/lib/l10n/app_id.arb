@@ -317,7 +317,6 @@
   "update": "Pembaruan",
   "backToLibrary": "Kembali ke Perpustakaan",
   "remove": "Hapus",
-  "manageTargets": "Kelola cakupan",
   "skillsSelected": "{count} dipilih",
   "@skillsSelected": {
     "placeholders": {
@@ -329,8 +328,6 @@
   "clearSelection": "Hapus pilihan",
   "selectCurrentResults": "Pilih hasil saat ini",
   "clearCurrentResultSelection": "Hapus pilihan hasil saat ini",
-  "manageTargetsTitle": "Kelola target instalasi",
-  "manageTargetsDescription": "Pilih tindakan yang tepat untuk setiap target. Target yang tidak dipilih tidak akan berubah.",
   "targetActionsSelected": "{selected} dari {total} target dipilih",
   "@targetActionsSelected": {
     "placeholders": {
@@ -343,7 +340,6 @@
     }
   },
   "confirmRemoveTarget": "Konfirmasikan penghapusan",
-  "applyTargetActions": "Terapkan tindakan yang dipilih",
   "managementProgressTitle": "Menerapkan tindakan yang ditargetkan",
   "managementResultsTitle": "Hasil tindakan yang ditargetkan",
   "managementResultSummary": "{succeeded} berhasil, {failed} gagal",
@@ -357,7 +353,6 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Tindakan proyek yang dipilih akan memperbarui skills.yaml dan skills-lock.yaml.",
   "targetContentPreserved": "Konten target saat ini akan dipertahankan.",
   "localReadFailed": "Tidak dapat membaca Skill ini",
   "localReadFailedMessage": "SkillsGo tidak dapat membaca skill yang terpasang ini. Periksa apakah foldernya tersedia dan dapat diakses, lalu coba lagi.",
@@ -589,7 +584,6 @@
   "noInstalledAgentsMessage": "Anda tetap dapat menelusuri Skill ini, tetapi belum ada target pemasangan. Instal Agent yang didukung, lalu jalankan deteksi lagi.",
   "clearCustomPath": "Hapus jalur khusus",
   "privacyProvenance": "Privasi & asal",
-  "privacySummary": "Pencarian Anda tidak disimpan, dan SkillsGo tidak menyimpan log perintah.",
   "language": "Bahasa",
   "translatedContent": "Diterjemahkan",
   "translatedFrom": "Diterjemahkan dari {language}",
@@ -686,19 +680,19 @@
   "installedCell": "Dipasang",
   "unsupportedCell": "Tidak tersedia",
   "confirmInstall": "Konfirmasi Instalasi",
-  "installAllRepositorySkills": "Instal semua keterampilan repositori ({count})",
+  "installAllPackageSkills": "Instal semua keterampilan repositori ({count})",
   "installAllSkillsTo": "Instal semua keterampilan untuk",
-  "@installAllRepositorySkills": {
+  "@installAllPackageSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "installRepositorySkills": "Instal semua keterampilan {repository} ({count})",
-  "@installRepositorySkills": {
+  "installPackageSkills": "Instal semua keterampilan {packagePath} ({count})",
+  "@installPackageSkills": {
     "placeholders": {
-      "repository": {
+      "packagePath": {
         "type": "String"
       },
       "count": {
@@ -919,125 +913,125 @@
       }
     }
   },
-  "batchTakeoverAction": "Kelola keterampilan yang ada",
-  "batchTakeoverActionCount": "Kelola ({count})",
-  "@batchTakeoverActionCount": {
+  "batchAdoptionAction": "Kelola keterampilan yang ada",
+  "batchAdoptionActionCount": "Kelola ({count})",
+  "@batchAdoptionActionCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverChecking": "Memeriksa keterampilan yang ada…",
-  "batchTakeoverRetry": "Periksa kembali keterampilan yang dapat dikelola",
-  "batchTakeoverEligibleCount": "{count} dapat dikelola",
-  "@batchTakeoverEligibleCount": {
+  "batchAdoptionChecking": "Memeriksa keterampilan yang ada…",
+  "batchAdoptionRetry": "Periksa kembali keterampilan yang dapat dikelola",
+  "batchAdoptionEligibleCount": "{count} dapat dikelola",
+  "@batchAdoptionEligibleCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPending": "Menambah keterampilan pada manajemen…",
-  "batchTakeoverTitle": "Kelola keterampilan yang ada dengan SkillsGo?",
-  "batchTakeoverDescription": "SkillsGo akan menambahkan catatan manajemen lokal tanpa memindahkan, menimpa, atau mengunggah file keterampilan. Item yang tidak didukung atau diubah akan dilewati.",
-  "batchTakeoverStoryTitle": "Ubah keterampilan yang tersebar menjadi satu Perpustakaan yang jelas",
-  "batchTakeoverStoryDescription": "SkillsGo menemukan {count, plural, =1{1 keterampilan yang ada} other{{count} keterampilan yang ada}} yang dapat dikelola di lokasi ini.",
-  "@batchTakeoverStoryDescription": {
+  "batchAdoptionPending": "Menambah keterampilan pada manajemen…",
+  "batchAdoptionTitle": "Kelola keterampilan yang ada dengan SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo akan menambahkan catatan manajemen lokal tanpa memindahkan, menimpa, atau mengunggah file keterampilan. Item yang tidak didukung atau diubah akan dilewati.",
+  "batchAdoptionStoryTitle": "Ubah keterampilan yang tersebar menjadi satu Perpustakaan yang jelas",
+  "batchAdoptionStoryDescription": "SkillsGo menemukan {count, plural, =1{1 keterampilan yang ada} other{{count} keterampilan yang ada}} yang dapat dikelola di lokasi ini.",
+  "@batchAdoptionStoryDescription": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverBeforeSemantics": "Sebelum dikelola, tidak jelas di mana keterampilan yang ada diterapkan, apakah keterampilan tersebut terkini, bagaimana cara memulihkannya, atau apakah proyek menggunakan versi yang sama.",
-  "batchTakeoverPainLocation": "Lokasi pemasangan tidak diketahui",
-  "batchTakeoverPainFreshness": "Status pembaruan tidak diketahui",
-  "batchTakeoverPainRecovery": "Tidak ada pemulihan saat rusak",
-  "batchTakeoverPainVersionDrift": "Versi berbeda di seluruh proyek",
-  "batchTakeoverFolderTitle": "Keterampilan yang Ada",
-  "batchTakeoverFolderSubtitle": "Statusnya tidak jelas",
-  "batchTakeoverAfterLabel": "SETELAH",
-  "batchTakeoverAfterTitle": "Satu Perpustakaan yang jelas",
-  "batchTakeoverLibraryTitle": "Pustaka SkillsGo",
-  "batchTakeoverBenefitLocation": "Hapus lokasi",
-  "batchTakeoverBenefitFreshness": "Pembaruan terlihat",
-  "batchTakeoverBenefitRecovery": "Pemulihan mudah",
-  "batchTakeoverBenefitVersions": "Versi jelas",
-  "batchTakeoverManagedSection": "Dikelola oleh SkillsGo",
-  "batchTakeoverPendingSection": "Tertunda",
-  "batchTakeoverItemManaged": "{name} dikelola oleh SkillsGo",
-  "@batchTakeoverItemManaged": {
+  "batchAdoptionBeforeSemantics": "Sebelum dikelola, tidak jelas di mana keterampilan yang ada diterapkan, apakah keterampilan tersebut terkini, bagaimana cara memulihkannya, atau apakah proyek menggunakan versi yang sama.",
+  "batchAdoptionPainLocation": "Lokasi pemasangan tidak diketahui",
+  "batchAdoptionPainFreshness": "Status pembaruan tidak diketahui",
+  "batchAdoptionPainRecovery": "Tidak ada pemulihan saat rusak",
+  "batchAdoptionPainVersionDrift": "Versi berbeda di seluruh proyek",
+  "batchAdoptionFolderTitle": "Keterampilan yang Ada",
+  "batchAdoptionFolderSubtitle": "Statusnya tidak jelas",
+  "batchAdoptionAfterLabel": "SETELAH",
+  "batchAdoptionAfterTitle": "Satu Perpustakaan yang jelas",
+  "batchAdoptionLibraryTitle": "Pustaka SkillsGo",
+  "batchAdoptionBenefitLocation": "Hapus lokasi",
+  "batchAdoptionBenefitFreshness": "Pembaruan terlihat",
+  "batchAdoptionBenefitRecovery": "Pemulihan mudah",
+  "batchAdoptionBenefitVersions": "Versi jelas",
+  "batchAdoptionManagedSection": "Dikelola oleh SkillsGo",
+  "batchAdoptionPendingSection": "Tertunda",
+  "batchAdoptionItemManaged": "{name} dikelola oleh SkillsGo",
+  "@batchAdoptionItemManaged": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemSkipped": "{name} tidak dapat ditambahkan ke pengelolaan",
-  "@batchTakeoverItemSkipped": {
+  "batchAdoptionItemSkipped": "{name} tidak dapat ditambahkan ke pengelolaan",
+  "@batchAdoptionItemSkipped": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverItemPending": "{name} menunggu untuk dikelola",
-  "@batchTakeoverItemPending": {
+  "batchAdoptionItemPending": "{name} menunggu untuk dikelola",
+  "@batchAdoptionItemPending": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "batchTakeoverAfterSemantics": "Setelah pengelolaan, {count, plural, =1{1 keterampilan adalah} other{{count} keterampilan adalah}} diatur dalam satu Perpustakaan dengan status terkelola yang jelas.",
-  "@batchTakeoverAfterSemantics": {
+  "batchAdoptionAfterSemantics": "Setelah pengelolaan, {count, plural, =1{1 keterampilan adalah} other{{count} keterampilan adalah}} diatur dalam satu Perpustakaan dengan status terkelola yang jelas.",
+  "@batchAdoptionAfterSemantics": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverMoreSkills": "+{count} lagi",
-  "@batchTakeoverMoreSkills": {
+  "batchAdoptionMoreSkills": "+{count} lagi",
+  "@batchAdoptionMoreSkills": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverTransitionSemantics": "Tambahkan keterampilan yang ada ini ke manajemen SkillsGo.",
-  "batchTakeoverTransitionLabel": "ORGANISASI",
-  "batchTakeoverStatusTitle": "Status manajemen",
-  "batchTakeoverStatusManaged": "Dikelola",
-  "batchTakeoverStatusProgress": "Pengorganisasian",
-  "batchTakeoverStatusSkipped": "Dilewati",
-  "batchTakeoverStatusFilesStay": "File keterampilan tetap berada di lokasi aslinya",
-  "batchTakeoverBoardSemantics": "Keterampilan disusun menjadi baris lengkap dan dicatat oleh SkillsGo tanpa memindahkan filenya.",
-  "batchTakeoverBoardComplete": "SEMUA JELAS",
-  "batchTakeoverBoardPartial": "LENGKAP",
-  "batchTakeoverStatusTotal": "Jumlah",
-  "batchTakeoverQueueComplete": "Tidak ada keterampilan yang menunggu",
-  "batchTakeoverQueueWaiting": "Keterampilan akan dipindahkan ke sini setelah verifikasi",
-  "batchTakeoverNextLabel": "BERIKUTNYA",
-  "batchTakeoverFillerCount": "{count, plural, =1{1 blok penyelenggara SkillsGo} other{{count} blok penyelenggara SkillsGo}} selesaikan baris terakhir",
-  "@batchTakeoverFillerCount": {
+  "batchAdoptionTransitionSemantics": "Tambahkan keterampilan yang ada ini ke manajemen SkillsGo.",
+  "batchAdoptionTransitionLabel": "ORGANISASI",
+  "batchAdoptionStatusTitle": "Status manajemen",
+  "batchAdoptionStatusManaged": "Dikelola",
+  "batchAdoptionStatusProgress": "Pengorganisasian",
+  "batchAdoptionStatusSkipped": "Dilewati",
+  "batchAdoptionStatusFilesStay": "File keterampilan tetap berada di lokasi aslinya",
+  "batchAdoptionBoardSemantics": "Keterampilan disusun menjadi baris lengkap dan dicatat oleh SkillsGo tanpa memindahkan filenya.",
+  "batchAdoptionBoardComplete": "SEMUA JELAS",
+  "batchAdoptionBoardPartial": "LENGKAP",
+  "batchAdoptionStatusTotal": "Jumlah",
+  "batchAdoptionQueueComplete": "Tidak ada keterampilan yang menunggu",
+  "batchAdoptionQueueWaiting": "Keterampilan akan dipindahkan ke sini setelah verifikasi",
+  "batchAdoptionNextLabel": "BERIKUTNYA",
+  "batchAdoptionFillerCount": "{count, plural, =1{1 blok penyelenggara SkillsGo} other{{count} blok penyelenggara SkillsGo}} selesaikan baris terakhir",
+  "@batchAdoptionFillerCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "batchTakeoverPreservation": "File, jalur, dan alur kerja Anda saat ini tetap berada di tempatnya. SkillsGo hanya melengkapi catatan manajemen lokalnya.",
-  "batchTakeoverLaterHint": "Jika Anda melewatkannya, Anda dapat menggunakan Kelola keterampilan yang ada dari Perpustakaan kapan saja.",
-  "batchTakeoverSkip": "Tidak sekarang",
-  "batchTakeoverConfirm": "Tambahkan ke manajemen",
-  "batchTakeoverExecutionRetry": "Coba lagi",
-  "batchTakeoverResultTitle": "Keterampilan ditambahkan ke manajemen",
-  "batchTakeoverSummary": "Keterampilan {takenOver} ditambahkan ke manajemen, {skipped} dilewati.",
-  "@batchTakeoverSummary": {
+  "batchAdoptionPreservation": "File, jalur, dan alur kerja Anda saat ini tetap berada di tempatnya. SkillsGo hanya melengkapi catatan manajemen lokalnya.",
+  "batchAdoptionLaterHint": "Jika Anda melewatkannya, Anda dapat menggunakan Kelola keterampilan yang ada dari Perpustakaan kapan saja.",
+  "batchAdoptionSkip": "Tidak sekarang",
+  "batchAdoptionConfirm": "Tambahkan ke manajemen",
+  "batchAdoptionExecutionRetry": "Coba lagi",
+  "batchAdoptionResultTitle": "Keterampilan ditambahkan ke manajemen",
+  "batchAdoptionSummary": "Keterampilan {adopted} ditambahkan ke manajemen, {skipped} dilewati.",
+  "@batchAdoptionSummary": {
     "placeholders": {
-      "takenOver": {
+      "adopted": {
         "type": "int"
       },
       "skipped": {
@@ -1045,12 +1039,12 @@
       }
     }
   },
-  "batchTakeoverClose": "Tutup",
+  "batchAdoptionClose": "Tutup",
   "installMoreTargets": "Instal di lebih banyak lokasi",
-  "detailRepository": "Gudang",
+  "detailPackageSource": "Sumber paket",
   "detailStars": "Bintang",
   "detailUpdated": "Diperbarui",
-  "detailArchiveSize": "Ukuran ZIP",
+  "detailArchiveSize": "Ukuran paket",
   "pathLabel": "Jalur proyek",
   "copyProjectPath": "Salin jalur proyek",
   "projectPathCopied": "Jalur proyek disalin",

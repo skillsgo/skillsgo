@@ -196,7 +196,6 @@ func defaultConfig() *Config {
 			DSN:             "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
 			Schema:          DefaultDatabaseSchema,
 			MaxOpenConns:    10,
-			MaxIdleConns:    5,
 			ConnMaxLifetime: 1800,
 		},
 		TaskQueue: &TaskQueueConfig{MaxWorkers: 10},
@@ -332,9 +331,6 @@ func envOverride(config *Config) error {
 	}
 	if config.Database.MaxOpenConns == 0 {
 		config.Database.MaxOpenConns = 10
-	}
-	if config.Database.MaxIdleConns == 0 {
-		config.Database.MaxIdleConns = 5
 	}
 	if config.Database.ConnMaxLifetime == 0 {
 		config.Database.ConnMaxLifetime = 1800
