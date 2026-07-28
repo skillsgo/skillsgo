@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, bounded Package ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, version-scoped discovery/source-language candidate/update reads, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed batch Package update reads, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -74,9 +74,8 @@ type skillsResponse struct {
 
 type SkillCoordinate = protocolapi.SkillCoordinate
 
-type CatalogUpdateItem = protocolapi.CatalogUpdateCheckItem
-
-type catalogUpdateResponse = protocolapi.CatalogUpdateCheckResponse
+type PackageUpdateItem = protocolapi.PackageUpdateCheckItem
+type packageUpdateResponse = protocolapi.PackageUpdateCheckResponse
 
 type Client struct {
 	baseURL string
@@ -335,15 +334,16 @@ func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
 	return document, nil
 }
 
-func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) ([]CatalogUpdateItem, error) {
-	requestBody, err := json.Marshal(struct {
-		SchemaVersion int               `json:"schemaVersion"`
-		Skills        []SkillCoordinate `json:"skills"`
-	}{SchemaVersion: 1, Skills: skills})
+func (c *Client) PackageUpdates(ctx context.Context, packagePaths []string) ([]PackageUpdateItem, error) {
+	coordinates := make([]protocolapi.PackageCoordinate, 0, len(packagePaths))
+	for _, packagePath := range packagePaths {
+		coordinates = append(coordinates, protocolapi.PackageCoordinate{PackagePath: packagePath})
+	}
+	requestBody, err := json.Marshal(protocolapi.PackageUpdateCheckRequest{SchemaVersion: protocolapi.SchemaVersion, Packages: coordinates})
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/check-update", bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/packages/check-update", bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
@@ -360,18 +360,33 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 	if response.StatusCode != http.StatusOK {
 		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
 	}
-	var decoded catalogUpdateResponse
-	if json.Unmarshal(body, &decoded) != nil || len(decoded.Items) != len(skills) {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
+	var decoded packageUpdateResponse
+	if json.Unmarshal(body, &decoded) != nil || len(decoded.Packages) != len(packagePaths) {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Package update response")}
 	}
-	for index, item := range decoded.Items {
-		if item.PackagePath != skills[index].PackagePath || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
-			(item.Status == "available" && item.LatestVersion == "") ||
-			(item.LatestVersion != "" && !protocolversion.IsImmutable(item.LatestVersion)) {
-			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update item")}
+	for index, item := range decoded.Packages {
+		if item.PackagePath != packagePaths[index] || (item.Status != protocolapi.UpdateAvailable && item.Status != protocolapi.UpdateUnsupported) {
+			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Package update item")}
+		}
+		if item.Status == protocolapi.UpdateUnsupported {
+			if item.LatestVersion != "" || item.Sum != "" || len(item.Skills) != 0 {
+				return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an inconsistent unsupported Package update item")}
+			}
+			continue
+		}
+		if !protocolversion.IsImmutable(item.LatestVersion) || !protocolartifact.ValidSum(item.Sum) || len(item.Skills) == 0 {
+			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an incomplete Package update item")}
+		}
+		seenPaths := map[string]bool{}
+		for _, member := range item.Skills {
+			validPath := member.Path == "." || protocolartifact.ValidRelativePath(member.Path)
+			if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenPaths[member.Path] {
+				return nil, &ProtocolError{Err: fmt.Errorf("Hub returned inconsistent Package update membership")}
+			}
+			seenPaths[member.Path] = true
 		}
 	}
-	return decoded.Items, nil
+	return decoded.Packages, nil
 }
 
 func (c *Client) versionEndpoint(packagePath, revision string, archive bool) string {

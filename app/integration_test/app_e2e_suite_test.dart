@@ -6,7 +6,7 @@
  */
 import 'package:integration_test/integration_test.dart';
 
-import 'catalog_update_check_test.dart' as catalog_update;
+import 'package_update_check_test.dart' as package_update;
 import 'machine_failure_recovery_test.dart' as machine_failure;
 import 'repository_install_all_test.dart' as repository_install;
 import 'adoption_management_test.dart' as adoption;
@@ -14,7 +14,7 @@ import 'adoption_management_test.dart' as adoption;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   repository_install.registerRepositoryInstallAllJourney();
-  catalog_update.registerCatalogUpdateCheckJourney();
+  package_update.registerPackageUpdatePreviewJourney();
   adoption.registerAdoptionManagementJourney();
   machine_failure.registerMachineFailureRecoveryJourney();
 }

@@ -59,17 +59,16 @@ var exampleBatchRequest = map[string]any{
 
 var exampleBatchResponse = map[string]any{"skills": []any{exampleSkill}}
 
-var exampleUpdateRequest = protocolapi.CatalogUpdateCheckRequest{
+var examplePackageUpdateRequest = protocolapi.PackageUpdateCheckRequest{
 	SchemaVersion: 1,
-	Skills: []protocolapi.SkillCoordinate{{
-		PackagePath: examplePackagePath,
-		Name:        "grill-me",
-	}},
+	Packages:      []protocolapi.PackageCoordinate{{PackagePath: examplePackagePath}},
 }
 
-var exampleUpdateFailure = map[string]any{
-	"error": "update check failed",
-	"code":  "resolution_failed",
+var examplePackageUpdateResponse = protocolapi.PackageUpdateCheckResponse{
+	Packages: []protocolapi.PackageUpdateCheckItem{{
+		PackagePath: examplePackagePath, LatestVersion: exampleVersion, Sum: examplePackageSum,
+		Skills: []protocolapi.PackageSkill{{Name: "grill-me", Path: "skills/productivity/grill-me"}}, Status: protocolapi.UpdateAvailable,
+	}},
 }
 
 var examplePackageVersions = protocolapi.PackageVersionsResponse{

@@ -30,6 +30,11 @@ void main() {
         ),
         ProcessOutput(
           exitCode: 0,
+          stdout: '{"schemaVersion":1,"phase":"project-list","projects":[]}',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
           stdout:
               '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
@@ -62,20 +67,25 @@ void main() {
     expect(results.single.localTargetCount, 2);
     expect(results.single.localVersions, ['v1.2.3']);
     expect(page.pagination.nextPage, 1);
-    expect(runner.calls.first.arguments, [
-      'find',
-      'responsive',
-      '--hub',
-      'https://hub.skillsgo.ai',
-      '--lang',
-      'en',
-      '--page',
-      '0',
-      '--per-page',
-      '20',
-      '--output',
-      'json',
-    ]);
+    expect(
+      runner.calls
+          .firstWhere((call) => call.arguments.first == 'find')
+          .arguments,
+      [
+        'find',
+        'responsive',
+        '--hub',
+        'https://hub.skillsgo.ai',
+        '--lang',
+        'en',
+        '--page',
+        '0',
+        '--per-page',
+        '20',
+        '--output',
+        'json',
+      ],
+    );
 
     final installed = await gateway.listInstalled();
     expect(installed.single.agents, ['codex']);

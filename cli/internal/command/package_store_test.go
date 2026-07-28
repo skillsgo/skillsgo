@@ -446,7 +446,24 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 		require.NoError(t, err)
 		releases[version] = release{archive: archive, info: info, sum: sum}
 	}
+	packageCheckRequests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/api/v1/packages/check-update" {
+			packageCheckRequests++
+			var check protocolapi.PackageUpdateCheckRequest
+			require.NoError(t, json.NewDecoder(request.Body).Decode(&check))
+			response := protocolapi.PackageUpdateCheckResponse{Packages: make([]protocolapi.PackageUpdateCheckItem, 0, len(check.Packages))}
+			for _, coordinate := range check.Packages {
+				if coordinate.PackagePath != packagePath {
+					response.Packages = append(response.Packages, protocolapi.PackageUpdateCheckItem{PackagePath: coordinate.PackagePath, Skills: []protocolapi.PackageSkill{}, Status: protocolapi.UpdateUnsupported})
+					continue
+				}
+				response.Packages = append(response.Packages, protocolapi.PackageUpdateCheckItem{PackagePath: packagePath, LatestVersion: newVersion,
+					Sum: releases[newVersion].sum, Skills: []protocolapi.PackageSkill{{Name: "alpha", Path: "skills/alpha"}, {Name: "beta", Path: "skills/beta"}}, Status: protocolapi.UpdateAvailable})
+			}
+			require.NoError(t, json.NewEncoder(writer).Encode(response))
+			return
+		}
 		if request.URL.Path == "/api/v1/"+packagePath+"/versions/latest" {
 			_, _ = writer.Write(releases[newVersion].info)
 			return
@@ -481,6 +498,16 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(projection, "SKILL.md"), []byte("local edit"), 0o644))
 	output.Reset()
+	require.NoError(t, Execute([]string{"update", packagePath, "--project", workspace, "--dry-run", "--hub", server.URL, "--output", "json"}, &output, &output))
+	var preview packageUpdateReport
+	require.NoError(t, json.Unmarshal(output.Bytes(), &preview))
+	require.Equal(t, "package-update-preview", preview.Phase)
+	require.Equal(t, "update_available", preview.Status)
+	require.Equal(t, oldVersion, preview.FromVersion)
+	require.Equal(t, newVersion, preview.ToVersion)
+	require.NoDirExists(t, newPackage)
+
+	output.Reset()
 	updateErr := Execute([]string{"update", packagePath + "@" + newVersion, "--project", workspace, "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
 	require.ErrorContains(t, updateErr, "Local Modification")
 	require.DirExists(t, oldPackage)
@@ -512,8 +539,8 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(contents), newVersion)
 
-	// Updating an already-current Package still runs the shared reconcile path
-	// and restores a missing Projection without changing declaration bytes.
+	// Updating an already-current Package is read-only and does not repair
+	// projections; repair belongs to an explicit desired-state operation.
 	manifestBeforeSameVersion, err := os.ReadFile(filepath.Join(workspace, project.WorkspaceManifestName))
 	require.NoError(t, err)
 	lockBeforeSameVersion, err := os.ReadFile(filepath.Join(workspace, project.DependencyLockName))
@@ -522,10 +549,10 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	output.Reset()
 	require.NoError(t, Execute([]string{"update", packagePath + "@" + newVersion, "--project", workspace, "--yes", "--hub", server.URL, "--output", "json"}, &output, &output))
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
-	require.Equal(t, "updated", report.Status)
+	require.Equal(t, "up_to_date", report.Status)
 	require.Equal(t, newVersion, report.FromVersion)
 	require.Equal(t, newVersion, report.ToVersion)
-	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(projection, "SKILL.md"))
 	require.Equal(t, manifestBeforeSameVersion, mustReadCommandTestFile(t, filepath.Join(workspace, project.WorkspaceManifestName)))
 	require.Equal(t, lockBeforeSameVersion, mustReadCommandTestFile(t, filepath.Join(workspace, project.DependencyLockName)))
 
@@ -539,9 +566,18 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	manifest.Dependencies[missingPackage] = project.PackageDependency{Version: "v1.0.0", Skills: []string{"missing"}, Agents: []string{"codex"}}
 	lock.Dependencies[missingPackage] = project.LockedPackage{Version: "v1.0.0", Sum: releases[newVersion].sum}
 	require.NoError(t, project.WriteWorkspaceState(workspace, manifest, lock))
+	output.Reset()
+	require.NoError(t, Execute([]string{"project", "add", workspace, "--output", "json"}, &output, &output))
+	packageCheckRequests = 0
+	output.Reset()
+	require.Error(t, Execute([]string{"update", "--all", "--dry-run", "--hub", server.URL, "--output", "json"}, &output, &output))
+	var allPreview packageUpdatesReport
+	require.NoError(t, json.Unmarshal(output.Bytes(), &allPreview))
+	require.Len(t, allPreview.Updates, 2)
+	require.Equal(t, 1, packageCheckRequests)
 
 	output.Reset()
-	batchErr := Execute([]string{"update", "--all", "--project", workspace, "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
+	batchErr := Execute([]string{"update", "--project", workspace, "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
 	require.Error(t, batchErr)
 	var batch packageUpdatesReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &batch))
@@ -550,7 +586,7 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	require.Equal(t, "failed", batch.Updates[0].Status)
 	require.NotEmpty(t, batch.Updates[0].Error)
 	require.Equal(t, packagePath, batch.Updates[1].PackagePath)
-	require.Equal(t, "updated", batch.Updates[1].Status)
+	require.Equal(t, "up_to_date", batch.Updates[1].Status)
 }
 
 func mustReadCommandTestFile(t *testing.T, path string) []byte {
@@ -576,7 +612,7 @@ func TestPackageUpdatePublicArguments(t *testing.T) {
 	output.Reset()
 
 	err = Execute([]string{"update", "owner/Package", "--all", "--yes"}, &output, &output)
-	require.ErrorContains(t, err, "specify one Package or --all")
+	require.ErrorContains(t, err, "--all cannot be combined")
 	output.Reset()
 
 	err = Execute([]string{"update", "owner/Package", "--output", "json"}, &output, &output)

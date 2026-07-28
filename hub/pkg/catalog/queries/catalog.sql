@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -11,6 +11,26 @@ RETURNING *;
 
 -- name: PackageByPath :one
 SELECT * FROM packages WHERE path = sqlc.arg(package_path);
+
+-- name: CurrentPackagesByPaths :many
+WITH requested AS (
+    SELECT package_path, ordinal
+    FROM unnest(sqlc.arg(package_paths)::text[]) WITH ORDINALITY AS input(package_path, ordinal)
+)
+SELECT input.package_path::text AS package_path,
+       COALESCE(mv.version, '')::text AS latest_version,
+       COALESCE(mv.sum, '')::text AS sum,
+       COALESCE(
+           jsonb_agg(jsonb_build_object('name', mvs.name, 'path', mvs.path) ORDER BY mvs.path)
+               FILTER (WHERE mvs.id IS NOT NULL),
+           '[]'::jsonb
+       )::jsonb AS skills
+FROM requested input
+LEFT JOIN packages m ON m.path=input.package_path
+LEFT JOIN versions mv ON mv.id=m.current_version_id
+LEFT JOIN skills mvs ON mvs.version_id=mv.id
+GROUP BY input.ordinal, input.package_path, mv.version, mv.sum
+ORDER BY input.ordinal;
 
 -- name: CurrentPackageVersionForUpdate :one
 SELECT COALESCE(mv.version, '')::text

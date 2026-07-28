@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Package artifact and metadata resolution, and request validation.
- * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Package-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Catalog-backed batch Package update checks, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/jackc/pgx/v5"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
@@ -54,22 +52,13 @@ type skillBatchResponse struct {
 
 type discoverySkill = protocolapi.FindSkill
 
-type catalogUpdateCheckRequest = protocolapi.CatalogUpdateCheckRequest
-type catalogUpdateCheckItem = protocolapi.CatalogUpdateCheckItem
-type catalogUpdateCheckResponse = protocolapi.CatalogUpdateCheckResponse
+type packageUpdateCheckRequest = protocolapi.PackageUpdateCheckRequest
+type packageUpdateCheckItem = protocolapi.PackageUpdateCheckItem
+type packageUpdateCheckResponse = protocolapi.PackageUpdateCheckResponse
 
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)
 	Zip(context.Context, string, string) (storage.SizeReadCloser, error)
-}
-
-type updateArtifactReader interface {
-	artifactReader
-	List(context.Context, string) ([]string, error)
-}
-
-type moduleUpdateCandidates struct {
-	latest map[string]string
 }
 
 type errorResponse struct {
@@ -90,7 +79,42 @@ func registerCatalogAPIRoutes(
 	r.Get("/api/v1/skills/find", findSkillsHandler(metadata, repositories))
 	r.Post("/api/v1/skills/find-candidates", findSkillsBatchHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata, repositories))
-	r.Post("/api/v1/skills/check-update", catalogUpdateCheckHandler(metadata, artifacts))
+	r.Post("/api/v1/packages/check-update", packageUpdateCheckHandler(metadata))
+}
+
+func packageUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		var request packageUpdateCheckRequest
+		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&request); err != nil || request.SchemaVersion != protocolapi.SchemaVersion || len(request.Packages) == 0 || len(request.Packages) > 1000 {
+			return writeAPIError(c, fiber.StatusBadRequest, "packages must contain 1 to 1000 unique canonical Package Paths")
+		}
+		paths := make([]string, 0, len(request.Packages))
+		seen := make(map[string]bool, len(request.Packages))
+		for _, coordinate := range request.Packages {
+			if !coordinate.Valid() || seen[coordinate.PackagePath] {
+				return writeAPIError(c, fiber.StatusBadRequest, "packages must contain 1 to 1000 unique canonical Package Paths")
+			}
+			seen[coordinate.PackagePath] = true
+			paths = append(paths, coordinate.PackagePath)
+		}
+		current, err := metadata.CurrentPackages(c.Context(), paths)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.package_update_check", fiber.StatusInternalServerError, "internal_error", "Package update check failed", err)
+		}
+		response := packageUpdateCheckResponse{Packages: make([]packageUpdateCheckItem, 0, len(current))}
+		for _, item := range current {
+			status := protocolapi.UpdateAvailable
+			if item.LatestVersion == "" {
+				status = protocolapi.UpdateUnsupported
+			}
+			response.Packages = append(response.Packages, packageUpdateCheckItem{
+				PackagePath: item.PackagePath, LatestVersion: item.LatestVersion, Sum: item.Sum, Skills: item.Skills, Status: status,
+			})
+		}
+		return writeJSON(c, fiber.StatusOK, response)
+	}
 }
 
 func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadataReader) fiber.Handler {
@@ -125,101 +149,6 @@ func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadat
 		projection.LocalizePaths(c.Context(), lang, cards)
 		return writeJSON(c, fiber.StatusOK, skillBatchResponse{Skills: cards})
 	}
-}
-
-func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactReader) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		var request catalogUpdateCheckRequest
-		if err := json.Unmarshal(c.Body(), &request); err != nil || request.SchemaVersion != 1 || len(request.Skills) > 1000 {
-			return writeAPIError(c, fiber.StatusBadRequest, "invalid update-check request")
-		}
-		seen := make(map[string]bool, len(request.Skills))
-		available := make(map[string]bool, len(request.Skills))
-		for _, coordinate := range request.Skills {
-			key := coordinate.Key()
-			if !coordinate.Valid() || seen[key] {
-				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill coordinate")
-			}
-			seen[key] = true
-			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.PackagePath, coordinate.Name)
-			if err == nil {
-				available[key] = true
-			} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusInternalServerError, "internal_error", "update check failed", err)
-			}
-		}
-		resolver, ok := artifacts.(updateArtifactReader)
-		if !ok {
-			return writeInternalAPIError(c, "catalog.update_check", fiber.StatusServiceUnavailable, "resolver_unavailable", "update check unavailable", fmt.Errorf("artifact resolver does not support version listing"))
-		}
-		resolvedPackages := map[string]moduleUpdateCandidates{}
-		for _, coordinate := range request.Skills {
-			key := coordinate.Key()
-			if !available[key] {
-				continue
-			}
-			if _, done := resolvedPackages[coordinate.PackagePath]; done {
-				continue
-			}
-			candidates, resolveErr := resolvePackageUpdateCandidates(c.Context(), resolver, coordinate.PackagePath)
-			if resolveErr != nil {
-				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusBadGateway, "resolution_failed", "update check failed", resolveErr)
-			}
-			resolvedPackages[coordinate.PackagePath] = candidates
-		}
-		response := catalogUpdateCheckResponse{Items: make([]catalogUpdateCheckItem, 0, len(request.Skills))}
-		for _, coordinate := range request.Skills {
-			key := coordinate.Key()
-			if !available[key] {
-				response.Items = append(response.Items, catalogUpdateCheckItem{PackagePath: coordinate.PackagePath, Name: coordinate.Name, Status: "unsupported"})
-				continue
-			}
-			candidates := resolvedPackages[coordinate.PackagePath]
-			latestVersion, latestOK := candidates.latest[coordinate.Name]
-			if !latestOK {
-				response.Items = append(response.Items, catalogUpdateCheckItem{PackagePath: coordinate.PackagePath, Name: coordinate.Name, Status: "unsupported"})
-				continue
-			}
-			response.Items = append(response.Items, catalogUpdateCheckItem{
-				PackagePath: coordinate.PackagePath, Name: coordinate.Name, LatestVersion: latestVersion, Status: "available",
-			})
-		}
-		return writeJSON(c, fiber.StatusOK, response)
-	}
-}
-
-func resolvePackageUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, packagePath string) (moduleUpdateCandidates, error) {
-	result := moduleUpdateCandidates{latest: map[string]string{}}
-	versions, err := artifacts.List(ctx, packagePath)
-	if err != nil {
-		return result, err
-	}
-	latest := protocolversion.LatestCanonicalPublished(versions)
-	if latest == "" {
-		return result, nil
-	}
-	latestInfo, err := artifacts.Info(ctx, packagePath, latest)
-	if err != nil {
-		return result, err
-	}
-	if err := collectPackageMemberVersions(latestInfo, result.latest); err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-func collectPackageMemberVersions(encoded []byte, target map[string]string) error {
-	var module protocolapi.PackageInfo
-	if err := json.Unmarshal(encoded, &module); err != nil || module.PackagePath == "" || module.Version == "" {
-		return fmt.Errorf("invalid Package Info returned during update resolution")
-	}
-	for _, member := range module.Skills {
-		if member.Name == "" || member.Path == "" {
-			return fmt.Errorf("invalid Package Skill returned during update resolution")
-		}
-		target[member.Name] = module.Version
-	}
-	return nil
 }
 
 func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMetadataReader) fiber.Handler {

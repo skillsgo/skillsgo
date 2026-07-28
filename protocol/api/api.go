@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, name-query and exact-path Skill coordinates, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, canonical Skill and Package coordinates, and package-level update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -122,16 +122,28 @@ func (coordinate SkillPathCoordinate) Key() string {
 	return coordinate.PackagePath + "\x00" + coordinate.Path
 }
 
-type CatalogUpdateCheckRequest struct {
-	SchemaVersion int               `json:"schemaVersion"`
-	Skills        []SkillCoordinate `json:"skills"`
+type PackageCoordinate struct {
+	PackagePath string `json:"packagePath"`
 }
-type CatalogUpdateCheckItem struct {
-	PackagePath   string `json:"packagePath"`
-	Name          string `json:"name"`
-	LatestVersion string `json:"latestVersion,omitempty"`
-	Status        string `json:"status"`
+
+func (coordinate PackageCoordinate) Valid() bool {
+	parsed, err := packageidentity.ParsePath(coordinate.PackagePath)
+	return err == nil && parsed.String() == coordinate.PackagePath
 }
-type CatalogUpdateCheckResponse struct {
-	Items []CatalogUpdateCheckItem `json:"items"`
+
+type PackageUpdateCheckRequest struct {
+	SchemaVersion int                 `json:"schemaVersion"`
+	Packages      []PackageCoordinate `json:"packages"`
+}
+
+type PackageUpdateCheckItem struct {
+	PackagePath   string         `json:"packagePath"`
+	LatestVersion string         `json:"latestVersion,omitempty"`
+	Sum           string         `json:"sum,omitempty"`
+	Skills        []PackageSkill `json:"skills"`
+	Status        string         `json:"status"`
+}
+
+type PackageUpdateCheckResponse struct {
+	Packages []PackageUpdateCheckItem `json:"packages"`
 }

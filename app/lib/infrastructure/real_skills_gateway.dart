@@ -1,13 +1,12 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart' as file_selector;
@@ -49,11 +48,10 @@ const _languageKey = 'language';
 const _updateReminderKey = 'reminder_update_available';
 const _securityReminderKey = 'reminder_security_advisory';
 const _allowCriticalOverrideKey = 'allow_critical_risk_override';
-const _addedProjectsKey = 'added_projects_v1';
 const _onboardingCompletedKey = 'onboarding_completed_v1';
 const _onboardingStepKey = 'onboarding_step_v1';
 const _startupHandshakeSchemaVersion = 1;
-const _appProtocolVersion = 15;
+const _appProtocolVersion = 16;
 
 Uri _originUri(String origin) {
   final value = origin.trim();

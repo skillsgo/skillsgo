@@ -78,7 +78,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       if (!mounted) return;
       setState(() {
         updateAvailability =
-            states[libraryUpdateKey(skill)] ??
+            states[libraryScopeUpdateKey(skill)] ??
             const UpdateAvailability(state: UpdateState.failed);
       });
     } on Object {

@@ -81,12 +81,12 @@ func TestPackageVersionSkillTranslationProvenanceJSONContract(t *testing.T) {
 	}
 }
 
-func TestCatalogUpdateJSONContract(t *testing.T) {
-	request := CatalogUpdateCheckRequest{SchemaVersion: SchemaVersion, Skills: []SkillCoordinate{{PackagePath: "github.com/o/r", Name: "demo"}}}
+func TestPackageUpdateJSONContract(t *testing.T) {
+	request := PackageUpdateCheckRequest{SchemaVersion: SchemaVersion, Packages: []PackageCoordinate{{PackagePath: "github.com/o/r"}}}
 	if _, err := json.Marshal(request); err != nil {
 		t.Fatal(err)
 	}
-	updates := CatalogUpdateCheckResponse{Items: []CatalogUpdateCheckItem{{PackagePath: request.Skills[0].PackagePath, Name: request.Skills[0].Name, LatestVersion: "v1.1.0", Status: UpdateAvailable}, {PackagePath: "example.com/o/r", Name: "missing", Status: UpdateUnsupported}}}
+	updates := PackageUpdateCheckResponse{Packages: []PackageUpdateCheckItem{{PackagePath: request.Packages[0].PackagePath, LatestVersion: "v1.1.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []PackageSkill{{Name: "demo", Path: "demo"}}, Status: UpdateAvailable}, {PackagePath: "example.com/o/r", Skills: []PackageSkill{}, Status: UpdateUnsupported}}}
 	updateJSON, err := json.Marshal(updates)
 	if err != nil {
 		t.Fatal(err)

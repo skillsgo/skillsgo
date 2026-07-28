@@ -77,8 +77,8 @@ The success, skipped, conflict, or failure outcome for one target in a multi-tar
 _Avoid_: global transaction result, all-or-nothing install
 
 **Package Update**:
-The App's direct request for the CLI to move one declared Package in each installed Scope to an explicit immutable version. The CLI preserves that Scope's selected Skills and Agents, owns validation and atomic mutation, and the App refreshes Library inventory after success without reconstructing a target-level plan.
-_Avoid_: App-owned update plan, per-Skill version, projection-derived success, localized-output parsing
+The App's direct request from one visible Package card for the CLI to move that one declared Package in the selected Scope to an explicit immutable version. The CLI preserves that Scope's available selected Skills and Agents, owns validation and atomic mutation, and the App refreshes Library inventory after success without reconstructing a target-level plan. Multi-Package preview and execution remain CLI capabilities rather than App interactions.
+_Avoid_: App-owned update plan, App batch update, per-Skill version, projection-derived success, localized-output parsing
 
 **Target Operation Plan**:
 A reviewed, state-bound exact-path removal of healthy External Installations. Unselected targets do not change, and modified managed Package Projections are never overwritten automatically.

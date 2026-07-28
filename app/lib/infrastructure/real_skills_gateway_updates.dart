@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on installed Package scope identity, an explicit immutable target version, CLI Package update, and Catalog update checks.
- * [OUTPUT]: Provides direct Package-level update commands followed by identity-only receipt validation, plus one latest-only Catalog batch update check.
- * [POS]: Serves as the thin Package Update capability inside RealSkillsGateway without reproducing CLI planning or target execution rules.
+ * [INPUT]: Depends on installed Package scope identity, an explicit immutable target version, CLI Package update, and mutation-free scope Package previews.
+ * [OUTPUT]: Provides direct Package-level update commands followed by identity-only receipt validation, plus Scope-by-Package previews without Skill-level compatibility projection or Hub requests.
+ * [POS]: Serves as the thin Package Update capability inside RealSkillsGateway while leaving preview and execution rules in the CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
@@ -87,101 +87,81 @@ mixin _RealSkillsGatewayUpdates
   Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
-    final states = {
-      for (final skill in skills)
-        _installedSkillUpdateKey(skill): const UpdateAvailability(
-          state: UpdateState.unsupported,
-        ),
-    };
-    final candidates =
-        <
-          ({String key, String packagePath, String name, List<String> versions})
-        >[];
+    final states = <String, UpdateAvailability>{};
+    final scopes = <String, SkillInstallationTarget>{};
     for (final skill in skills) {
       if (skill.provenance != LibraryProvenance.hub ||
           skill.packagePath.isEmpty) {
         continue;
       }
-      final versions =
-          skill.targets
-              .map((target) => target.version.trim())
-              .where((version) => version.isNotEmpty)
-              .toSet()
-              .toList(growable: false)
-            ..sort();
-      if (versions.isEmpty) continue;
-      candidates.add((
-        key: _installedSkillUpdateKey(skill),
-        packagePath: skill.packagePath,
-        name: skill.name,
-        versions: versions,
-      ));
+      for (final target in skill.targets) {
+        if (target.version.trim().isEmpty ||
+            (target.scope == InstallationScope.project &&
+                target.projectRoot.trim().isEmpty)) {
+          continue;
+        }
+        scopes['${target.scope.name}\u0000${target.projectRoot}'] = target;
+      }
     }
-    if (candidates.isEmpty) return states;
+    if (scopes.isEmpty) return states;
 
     await _ensureHubOrigin();
-    final arguments = <String>[
-      'hub',
-      'check-update',
-      '--output',
-      'json',
-      '--hub',
-      _hubOrigin,
-      for (final candidate in candidates) ...[
-        '--installed',
-        jsonEncode({
-          'key': candidate.key,
-          'packagePath': candidate.packagePath,
-          'name': candidate.name,
-          'versions': candidate.versions,
-        }),
-      ],
-    ];
-    final command = await _runCli(arguments);
-    if (!command.succeeded) throw _commandFailure(command);
     try {
+      final command = await _runCli([
+        'update',
+        '--all',
+        '--dry-run',
+        '--output',
+        'json',
+        '--hub',
+        _hubOrigin,
+      ]);
+      if (!command.succeeded && command.output.stdout.trim().isEmpty) {
+        throw _commandFailure(command);
+      }
       final decoded = _decodeMachineDocument(
         command.output.stdout,
-        phase: 'update-check',
+        phase: 'package-update-preview',
       );
-      if (decoded['items'] is! List ||
-          (decoded['items'] as List).length != candidates.length) {
-        throw const FormatException();
-      }
-      final expected = {for (final candidate in candidates) candidate.key};
-      for (final raw in decoded['items'] as List) {
+      if (decoded['updates'] is! List) throw const FormatException();
+      for (final raw in decoded['updates'] as List) {
         if (raw is! Map<String, dynamic> ||
-            raw['key'] is! String ||
             raw['packagePath'] is! String ||
-            raw['name'] is! String ||
-            raw['versions'] is! List ||
+            raw['scope'] is! String ||
             raw['status'] is! String ||
-            !expected.remove(raw['key'])) {
+            raw['toVersion'] is! String ||
+            raw['selectedSkillCount'] is! int ||
+            raw['removedSkills'] is! List) {
           throw const FormatException();
         }
-        final latestVersion = raw['latestVersion'];
-        final latestStatus = raw['latestStatus'];
-        if ((latestVersion != null && latestVersion is! String) ||
-            (latestStatus != null && latestStatus is! String)) {
-          throw const FormatException();
-        }
-        final toVersion = latestStatus == 'update_available'
-            ? latestVersion as String? ?? ''
-            : '';
-        states[raw['key'] as String] = UpdateAvailability(
+        final scope = switch (raw['scope']) {
+          'global' => InstallationScope.global,
+          'project' => InstallationScope.project,
+          _ => throw const FormatException(),
+        };
+        final projectRoot = raw['projectRoot'] as String? ?? '';
+        final removed = (raw['removedSkills'] as List).cast<String>();
+        states[packageScopeUpdateKey(
+          raw['packagePath'] as String,
+          scope,
+          projectRoot,
+        )] = UpdateAvailability(
           state: switch (raw['status']) {
-            'current' => UpdateState.upToDate,
+            'up_to_date' => UpdateState.upToDate,
             'update_available' => UpdateState.available,
-            'unsupported' => UpdateState.unsupported,
+            'blocked' || 'failed' => UpdateState.failed,
             _ => throw const FormatException(),
           },
-          toVersion: toVersion,
+          toVersion: raw['status'] == 'update_available'
+              ? raw['toVersion'] as String
+              : '',
+          selectedSkillCount: raw['selectedSkillCount'] as int,
+          removedSkills: removed,
         );
       }
-      if (expected.isNotEmpty) throw const FormatException();
     } on FormatException {
       throw const SkillsException(
-        'The SkillsGo CLI returned invalid Update Check JSON.',
+        'The SkillsGo CLI returned invalid Package Update Preview JSON.',
         kind: SkillsFailureKind.invalidResponse,
       );
     }

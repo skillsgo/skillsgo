@@ -44,13 +44,11 @@ func documentSkillOperations(api huma.API) {
 		schemaFor[protocolapi.FindCandidatesRequest](api), exampleFindCandidatesRequest, schemaFor[protocolapi.FindCandidatesResponse](api), exampleFindCandidatesResponse)
 	addJSONOperation(api, http.MethodPost, "/api/v1/skills/batch", "hydrateSkillsBatch", "Hydrate Skill cards", "skills",
 		schemaFor[skillBatchRequest](api), exampleBatchRequest, schemaFor[skillBatchResponse](api), exampleBatchResponse)
-	update := addJSONOperation(api, http.MethodPost, "/api/v1/skills/check-update", "checkSkillUpdates", "Check Skill updates", "skills",
-		schemaFor[protocolapi.CatalogUpdateCheckRequest](api), exampleUpdateRequest, schemaFor[protocolapi.CatalogUpdateCheckResponse](api), nil)
-	update.Responses["500"] = jsonResponseExample("The real mattpocock/skills request currently fails during head resolution.", schemaFor[errorResponse](api), exampleUpdateFailure)
-
 }
 
 func documentPackageOperations(api huma.API) {
+	addJSONOperation(api, http.MethodPost, "/api/v1/packages/check-update", "checkPackageUpdates", "Check Package updates", "packages",
+		schemaFor[protocolapi.PackageUpdateCheckRequest](api), examplePackageUpdateRequest, schemaFor[protocolapi.PackageUpdateCheckResponse](api), examplePackageUpdateResponse)
 	packagePath := pathParameter("packagePath", "Canonical Package Path.", examplePackagePath)
 	version := pathParameter("version", "Version or Go-compatible Version Query: canonical version, prefix, comparison, latest, branch, tag, or commit. Movable queries are resolved without caching.", "latest")
 	immutableVersion := pathParameter("version", "Exact immutable semantic or pseudo-version.", exampleVersion)

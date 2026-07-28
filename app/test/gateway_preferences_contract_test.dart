@@ -14,6 +14,94 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
 
+class _ManagedProjectsRunner implements ProcessRunner {
+  _ManagedProjectsRunner({this.fallback});
+
+  final ProcessRunner? fallback;
+  final projects = <String, ({String id, String name, String root})>{};
+  var nextID = 1;
+
+  @override
+  Future<ProcessOutput> run(
+    String executable,
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  }) async {
+    if (arguments.length >= 2 && arguments.first == 'project') {
+      final action = arguments[1];
+      if (action == 'add') {
+        final root = await _canonical(arguments[2]);
+        projects.putIfAbsent(
+          root,
+          () => (
+            id: 'project-${nextID++}',
+            name: root.split(Platform.pathSeparator).last,
+            root: root,
+          ),
+        );
+        return _document('project-add', [projects[root]!]);
+      }
+      if (action == 'remove') {
+        final value = arguments[2];
+        projects.removeWhere(
+          (_, project) => project.id == value || project.root == value,
+        );
+        return _document('project-remove', const []);
+      }
+      if (action == 'move') {
+        final id = arguments[2];
+        final root = await _canonical(arguments[3]);
+        final existing = projects.values.singleWhere(
+          (project) => project.id == id,
+        );
+        projects.remove(existing.root);
+        final moved = (
+          id: 'project-${nextID++}',
+          name: root.split(Platform.pathSeparator).last,
+          root: root,
+        );
+        projects[root] = moved;
+        return _document('project-move', [moved]);
+      }
+      if (action == 'list') {
+        return _document('project-list', projects.values.toList());
+      }
+    }
+    return fallback?.run(
+          executable,
+          arguments,
+          stdin: stdin,
+          onStdoutLine: onStdoutLine,
+        ) ??
+        const ProcessOutput(exitCode: 1, stdout: '', stderr: 'unexpected');
+  }
+
+  Future<String> _canonical(String path) async {
+    try {
+      return await Directory(path).resolveSymbolicLinks();
+    } on FileSystemException {
+      return Directory(path).absolute.path;
+    }
+  }
+
+  ProcessOutput _document(
+    String phase,
+    List<({String id, String name, String root})> values,
+  ) => ProcessOutput(
+    exitCode: 0,
+    stdout: jsonEncode({
+      'schemaVersion': 1,
+      'phase': phase,
+      'projects': [
+        for (final project in values)
+          {'id': project.id, 'name': project.name, 'root': project.root},
+      ],
+    }),
+    stderr: '',
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -132,7 +220,10 @@ void main() {
         return (state: ProjectAccessState.accessible, diagnostic: null);
       }
 
+      final runner = _ManagedProjectsRunner();
       final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
         directoryPathsPicker: ({initialDirectory}) async => [
           original.path,
           second.path,
@@ -149,6 +240,8 @@ void main() {
       expect(inspected, isNot(contains(unselected.path)));
 
       final restarted = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
         directoryPicker: ({initialDirectory}) async {
           expect(initialDirectory, added.first.path);
           return relocated.path;
@@ -163,21 +256,9 @@ void main() {
       );
       final moved = await restarted.relocateProject(added.first.id);
       final canonicalRelocatedPath = await relocated.resolveSymbolicLinks();
-      expect(moved!.id, added.first.id);
+      expect(moved!.id, isNotEmpty);
       expect(moved.path, canonicalRelocatedPath);
-      final savedProjects =
-          jsonDecode(
-                (await SharedPreferences.getInstance()).getString(
-                  'added_projects_v1',
-                )!,
-              )
-              as List<dynamic>;
-      expect(
-        (savedProjects.first as Map<String, dynamic>)['path'],
-        canonicalRelocatedPath,
-      );
-
-      await restarted.removeProject(added.first.id);
+      await restarted.removeProject(moved.id);
       expect(
         (await restarted.loadAddedProjects()).map((project) => project.path),
         [added[1].path],
@@ -207,6 +288,8 @@ void main() {
       final file = File('${root.path}/not-a-project.txt');
       await file.writeAsString('not a directory');
       final gateway = RealSkillsGateway(
+        processRunner: _ManagedProjectsRunner(),
+        initialCliPath: '/bin/skillsgo',
         directoryPathsPicker: ({initialDirectory}) async => [file.path],
       );
 
@@ -229,7 +312,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":15,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":16,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -266,10 +349,14 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'onboarding_completed_v1': true,
       'onboarding_step_v1': OnboardingStep.projects.name,
-      'added_projects_v1': '[{"id":"one","name":"One","path":"/one"}]',
       'theme_mode': AppThemeMode.dark.name,
     });
-    final gateway = RealSkillsGateway();
+    final runner = _ManagedProjectsRunner();
+    runner.projects['/one'] = (id: 'one', name: 'One', root: '/one');
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
 
     await gateway.resetOnboarding();
 
@@ -303,6 +390,8 @@ void main() {
       ),
     };
     final gateway = RealSkillsGateway(
+      processRunner: _ManagedProjectsRunner(),
+      initialCliPath: '/bin/skillsgo',
       directoryPathsPicker: ({initialDirectory}) async => selections,
       projectPathInspector: (path) async => states[path]!,
     );
@@ -336,16 +425,8 @@ void main() {
       await File(
         '${skillDirectory.path}/SKILL.md',
       ).writeAsString('# Offline Skill');
-      SharedPreferences.setMockInitialValues({
-        'added_projects_v1': jsonEncode([
-          {
-            'id': 'offline-project',
-            'name': 'Offline Project',
-            'path': project.path,
-          },
-        ]),
-      });
-      final runner = FakeProcessRunner()
+      SharedPreferences.setMockInitialValues({});
+      final fallback = FakeProcessRunner()
         ..responses.addAll([
           ProcessOutput(
             exitCode: 0,
@@ -385,6 +466,12 @@ void main() {
             stderr: '',
           ),
         ]);
+      final runner = _ManagedProjectsRunner(fallback: fallback);
+      runner.projects[project.path] = (
+        id: 'offline-project',
+        name: 'Offline Project',
+        root: project.path,
+      );
       final gateway = RealSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
@@ -394,7 +481,7 @@ void main() {
       final inventory = await gateway.listInstalled(projects: projects);
       final agents = await gateway.inspectAgents();
       final detail = await gateway.loadLocalDetail(inventory.single);
-      await gateway.removeProject('offline-project');
+      await gateway.removeProject(projects.single.id);
 
       expect(projects.single.name, 'Offline Project');
       expect(inventory.single.provenance, LibraryProvenance.external);

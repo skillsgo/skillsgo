@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Library selection identity, selected entries, removal/update callbacks, motion preferences, and scope toggle state.
- * [OUTPUT]: Provides scope grouping, a stable selection bar with an inline two-click removal action, source labels, and All/Updates toggle.
+ * [OUTPUT]: Provides scope grouping, a removal-only stable selection bar, source labels, and All/Updates toggle.
  * [POS]: Serves as the multi-selection and scope-control segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -183,22 +183,18 @@ class _LibrarySelectionBar extends StatelessWidget {
   const _LibrarySelectionBar({
     super.key,
     required this.selectedCount,
-    required this.updateableCount,
     required this.operating,
     required this.confirmingRemoval,
     required this.onClear,
-    required this.onUpdate,
     required this.onRequestRemove,
     required this.onCancelRemove,
     required this.onConfirmRemove,
   });
 
   final int selectedCount;
-  final int updateableCount;
   final bool operating;
   final bool confirmingRemoval;
   final VoidCallback onClear;
-  final VoidCallback onUpdate;
   final VoidCallback onRequestRemove;
   final VoidCallback onCancelRemove;
   final VoidCallback onConfirmRemove;
@@ -255,29 +251,6 @@ class _LibrarySelectionBar extends StatelessWidget {
                 height: 22,
                 child: VerticalDivider(
                   color: scheme.onInverseSurface.withValues(alpha: .18),
-                ),
-              ),
-              FilledButton.tonalIcon(
-                key: const Key('library-update-selected'),
-                onPressed: operating || updateableCount == 0 ? null : onUpdate,
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
-                  size: 17,
-                  strokeWidth: 1.8,
-                ),
-                label: Text(context.l10n.update),
-                style: FilledButton.styleFrom(
-                  backgroundColor: scheme.primary,
-                  foregroundColor: scheme.onPrimary,
-                  disabledBackgroundColor: scheme.onInverseSurface.withValues(
-                    alpha: .12,
-                  ),
-                  disabledForegroundColor: scheme.onInverseSurface.withValues(
-                    alpha: .38,
-                  ),
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 13),
-                  visualDensity: VisualDensity.compact,
                 ),
               ),
               TextButton(

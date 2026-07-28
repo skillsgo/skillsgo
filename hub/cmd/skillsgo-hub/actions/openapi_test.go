@@ -70,7 +70,7 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 		{http.MethodGet, "/api/v1/skills/find"},
 		{http.MethodPost, "/api/v1/skills/find-candidates"},
 		{http.MethodPost, "/api/v1/skills/batch"},
-		{http.MethodPost, "/api/v1/skills/check-update"},
+		{http.MethodPost, "/api/v1/packages/check-update"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}/skills"},
@@ -120,16 +120,13 @@ func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
 	require.Equal(t, "skills/productivity/grill-me", detailExample["path"])
 	require.Contains(t, detailExample["content"], "name: grill-me")
 
-	for _, route := range []string{"/api/v1/skills/find-candidates", "/api/v1/skills/batch", "/api/v1/skills/check-update"} {
+	for _, route := range []string{"/api/v1/skills/find-candidates", "/api/v1/skills/batch", "/api/v1/packages/check-update"} {
 		operation := operationDocument(t, paths, route, "post")
 		request := operation["requestBody"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["example"]
 		encoded, err := json.Marshal(request)
 		require.NoError(t, err)
 		require.Contains(t, string(encoded), examplePackagePath)
 	}
-	updateFailure := responseExample(t, operationDocument(t, paths, "/api/v1/skills/check-update", "post"), "500")
-	require.Equal(t, "resolution_failed", updateFailure["code"])
-
 	version := operationDocument(t, paths, "/api/v1/{packagePath}/versions/{version}", "get")
 	require.Equal(t, "latest", parameterDocument(t, version["parameters"].([]any), "version")["example"])
 	versionExample := responseExample(t, version, "200")

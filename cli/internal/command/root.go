@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, project, Package installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/Global install ensure, explicitly confirmed Package add/update/remove, grouped Hub reads, Catalog update checks, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, Managed Workspace registration, conflict-safe Workspace/Global install ensure, Package preview/update/remove, grouped Hub reads, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -85,7 +85,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newShowCommand(), newFindCommand(), newHubCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newPackageUpdateCommand(catalog))
+	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newShowCommand(), newFindCommand(), newHubCommand(), newProjectCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newPackageUpdateCommand(catalog))
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
 	root.InitDefaultVersionFlag()
