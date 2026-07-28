@@ -22,12 +22,14 @@ func TestFindJSONContract(t *testing.T) {
 	if string(document) != `{"queries":[{"name":"ask-matt"},{"name":"demo","packagePath":"github.com/o/r"}],"limit":10,"lang":"zh-CN"}` {
 		t.Fatalf("unexpected Find request %s", document)
 	}
-	response := FindCandidatesResponse{Candidates: [][]SkillCandidate{{}}}
+	response := FindCandidatesResponse{Candidates: [][]SkillCandidate{
+		{{PackagePath: "github.com/o/r", Versions: []string{"v1.1.0", "v1.0.0"}, Name: "demo", Path: "skills/demo"}},
+	}}
 	document, err = json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(document) != `{"candidates":[[]]}` {
+	if string(document) != `{"candidates":[[{"packagePath":"github.com/o/r","versions":["v1.1.0","v1.0.0"],"name":"demo","path":"skills/demo","description":""}]]}` {
 		t.Fatalf("unexpected Find response %s", document)
 	}
 }

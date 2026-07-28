@@ -84,6 +84,21 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 	return result.RowsAffected(), nil
 }
 
+const currentPackageVersionForUpdate = `-- name: CurrentPackageVersionForUpdate :one
+SELECT COALESCE(mv.version, '')::text
+FROM packages m
+LEFT JOIN versions mv ON mv.id=m.current_version_id
+WHERE m.id=$1
+FOR UPDATE OF m
+`
+
+func (q *Queries) CurrentPackageVersionForUpdate(ctx context.Context, packageID int64) (string, error) {
+	row := q.db.QueryRow(ctx, currentPackageVersionForUpdate, packageID)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const currentSkill = `-- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
        mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
@@ -1019,22 +1034,22 @@ func (q *Queries) SkillLocalizedDescription(ctx context.Context, arg SkillLocali
 	return text_content, err
 }
 
-const skillPublishedVersions = `-- name: SkillPublishedVersions :many
+const skillPublishedVersionsByPath = `-- name: SkillPublishedVersionsByPath :many
 SELECT DISTINCT mv.version
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=$1 AND mvs.name=$2
+WHERE m.path=$1 AND mvs.path=$2
 ORDER BY mv.version
 `
 
-type SkillPublishedVersionsParams struct {
+type SkillPublishedVersionsByPathParams struct {
 	PackagePath string `json:"package_path"`
-	Name        string `json:"name"`
+	Path        string `json:"path"`
 }
 
-func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, skillPublishedVersions, arg.PackagePath, arg.Name)
+func (q *Queries) SkillPublishedVersionsByPath(ctx context.Context, arg SkillPublishedVersionsByPathParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, skillPublishedVersionsByPath, arg.PackagePath, arg.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -1471,7 +1486,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, immutable Package Version Skill, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

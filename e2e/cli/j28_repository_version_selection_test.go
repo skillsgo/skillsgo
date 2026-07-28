@@ -45,7 +45,7 @@ func TestJ28RepositoryVersionSelection(t *testing.T) {
 			require.Equal(t, 0, result.exitCode, result.output)
 			var resolved struct {
 				PackagePath string `json:"packagePath"`
-				Version    string `json:"version"`
+				Version     string `json:"version"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(result.output), &resolved), result.output)
 			require.NotEmpty(t, resolved.PackagePath)
@@ -104,7 +104,7 @@ func TestJ28SkillsGoOwnedRepositoryCoversGoVersionQueries(t *testing.T) {
 			require.Equal(t, 0, result.exitCode, result.output)
 			var resolved struct {
 				PackagePath string `json:"packagePath"`
-				Version    string `json:"version"`
+				Version     string `json:"version"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(result.output), &resolved), result.output)
 			require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", resolved.PackagePath)

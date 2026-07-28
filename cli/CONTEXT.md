@@ -49,7 +49,7 @@ The authoritative filesystem copy of a verified Package Artifact within one inst
 _Avoid_: shared Store, Agent Skill directory, mutable working copy
 
 **Package Projection**:
-The deterministic installation view generated for one Scope, Agent, and Package Version. It preserves the Package layout and safe internal symlinks but retains `SKILL.md` only for selected members, so shared runtime files remain available without exposing unselected Skills.
+The deterministic Agent-visible entry generated for one selected Skill and physical Managed Skill Root. Its stable path is `<managed-root>/<canonical-skill-name>` and it is a relative symlink to that member inside the same Scope's verified immutable Package Store, preserving Package-relative resources without exposing Package coordinates as Agent Skill names. A Package coordinate directory is Store state, never an Agent-visible projection.
 _Avoid_: external symlink, independent Skill artifact, editable fork
 
 **Global Scope**:
@@ -73,7 +73,7 @@ The generated strict-YAML `skills-lock.yaml` record whose `dependencies` mapping
 _Avoid_: `skillsgo.sum`, editable manifest, installation receipt
 
 **Immutable Info Cache**:
-The user-local cache of exact Package Info response bytes. Cache entries are identity checked and crash-safe; Dependency Lock verifies Package artifact identity, while a checksum without cached content cannot restore anything offline.
+The disposable user-level `~/.skillsgo/cache/info` cache of exact Package Info response bytes, shared by Project and Global Scopes. Cache entries are identity checked and crash-safe. Dependency Lock verifies Package artifact identity, while a checksum without cached content cannot restore anything offline.
 _Avoid_: mutable resolution cache, membership database, Workspace state
 
 **Global Declaration Root**:
@@ -81,16 +81,16 @@ The `~/.agents` directory that owns Global Scope `skills.yaml` and `skills-lock.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
 **Global State Root**:
-The `~/.skillsgo` directory that owns Global Scope Package Stores, immutable Info, ephemeral plans, and other SkillsGo-private state.
+The `~/.skillsgo` directory that owns Global Scope Package Stores, the cross-scope disposable cache, ephemeral plans, and other SkillsGo-private state.
 _Avoid_: Global Declaration Root, Agent configuration root
 
-**Batch Takeover**:
-The state-bound execution of user-reviewed External Skill mappings. A skills.sh record supplies only a canonical Package Path, a manual installation uses a user-selected Hub Skill candidate, and neither path treats local content hashes or byte equality as execution authority; the selected immutable Package Artifact is installed through the ordinary managed transaction.
-_Avoid_: Tree-SHA matching, automatic candidate choice, legacy Store compatibility, implicit local import
+**Batch Adoption**:
+The state-bound execution of App-reviewed External Skill mappings. Each item carries an exact Package Path, immutable Version, Skill Path, and existing Installation Targets. The user's confirmation authorizes replacement of conflicting Package Store and Package Projection paths in the selected scope. The CLI fully prepares the ordinary Package add change set before touching External paths, then commits Package state and External retirement through the same mutation Plan; any pre-publication failure rolls everything back, while successful commit hands superseded copies to Trash during final cleanup.
+_Avoid_: Tree-SHA authority, automatic candidate choice, separate adoption Store, subprocess recursion, pre-download External movement, implicit local import
 
 **Recovery Area**:
-The CLI-owned temporary location that retains one superseded External Skill directory for 30 days after successful adoption. Recovery is per Skill, refuses to overwrite an occupied original path, and is not a Package Store, cache, or installation source.
-_Avoid_: permanent backup, system Trash guarantee, mutable Skill Store
+The CLI-owned rollback location used only for External paths that are not direct Package Projection replacements during adoption. Its durable mapping preserves original directory and symlink paths across process interruption. A retry restores unfinished retirement before new adoption; a failed mutation restores the original topology; successful commit moves the recovery directory to the operating-system Trash during final cleanup.
+_Avoid_: permanent backup, Package Store, cache, installation source, post-commit Package compensation
 
 **External Removal**:
 The explicit, state-bound deletion of one exact External Installation discovered under a known Agent Skill directory. It never creates a receipt, changes a Workspace declaration, or infers source ownership.
@@ -98,19 +98,19 @@ _Avoid_: name-only deletion, implicit adoption, managed uninstall
 
 **Local Skill Artifact**:
 A previously designed private per-Skill import artifact. It is outside the Package-Package Store first release and requires a separate future decision because the first release distributes and locks only Package Artifacts.
-_Avoid_: Package Artifact, first-release dependency, takeover fallback
+_Avoid_: Package Artifact, first-release dependency, adoption fallback
 
 **Active Skill Binding**:
-The rule that one physical Agent target path can expose only one selected Skill at a time, even when multiple Repository Projections could produce the same discovered name. SkillsGo never invents a suffix to make colliding names coexist.
+The rule that one physical Agent target path can expose only one selected Skill at a time, even when multiple Package Projections could produce the same discovered name. SkillsGo never invents a suffix to make colliding names coexist.
 _Avoid_: automatic rename, same-path coexistence
 
 **Local Modification**:
-A difference between a Package Projection and the deterministic view derived from its authoritative Scope Package Store and selected members. Version-one install reports the conflict and never overwrites or absorbs the changed files; the user decides how to preserve or remove them.
+A difference between a Package Projection and the deterministic view derived from its authoritative Scope Package Store and selected members. Ordinary unconfirmed add, update, remove, and restore report the conflict and never overwrite or absorb changed files. An add executed with `--yes` and a reviewed Batch Adoption are explicit user authorizations for transactional replacement with rollback protection.
 _Avoid_: fork, automatically merged change, silent repair
 
-**Update Plan**:
-A state-bound operation that replaces one declared Package coordinate within one Scope. It preserves the dependency's selected Skill selectors and Agents, resolves those selectors against the candidate Package Publication, previews the YAML version change, verifies the existing Package Store and every Projection against the old immutable baseline, and refuses missing selectors or Local Modifications. Because version belongs to the Package, selecting one Library member updates the complete declared Package dependency and all of its selected-member Projections atomically.
-_Avoid_: per-Skill artifact update, target-by-target partial Repository versions, implicit overwrite, localized-output parsing
+**Package Reconcile**:
+The shared desired-state engine beneath add, update, install, and adopt-through-add. Command adapters resolve user intent into current and desired immutable Package coordinates, selected Skills, Agents, Scope Projections, and optional declaration state; the reconciler prepares one Plan for Store, Projection, immutable Info, Manifest, and Lock changes. Apply commits that Plan atomically, while dry-run validates and discards the same prepared Plan. Update preserves the complete declared Package selection, install restores the exact locked declaration, and adopt appends External retirement to the same prepared Plan.
+_Avoid_: command recursion, per-Skill version, duplicated transaction assembly, implicit overwrite, localized-output parsing
 
 **Package Member Removal**:
 A state-bound Package transaction that removes one selected member from a declared dependency, updates the Workspace Manifest, regenerates the Dependency Lock, Scope Package Store, and every affected Package Projection, and leaves unrelated Package members selected. Local Modifications reject the transaction without overwrite.

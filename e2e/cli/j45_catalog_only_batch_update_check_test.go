@@ -28,10 +28,10 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	arguments := []string{"hub", "check-update", "--output", "json"}
 	for index := range 80 {
 		candidate, err := json.Marshal(map[string]any{
-			"key":        fmt.Sprintf("installed-%02d", index),
+			"key":         fmt.Sprintf("installed-%02d", index),
 			"packagePath": packagePath,
-			"name":       "alpha",
-			"versions":   []string{"v1.2.0"},
+			"name":        "alpha",
+			"versions":    []string{"v1.2.0"},
 		})
 		require.NoError(t, err)
 		arguments = append(arguments, "--installed", string(candidate))

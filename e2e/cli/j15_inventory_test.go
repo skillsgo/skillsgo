@@ -44,11 +44,11 @@ func TestJ15Inventory(t *testing.T) {
 	var report struct {
 		SchemaVersion int `json:"schemaVersion"`
 		Entries       []struct {
-			Name       string `json:"name"`
+			Name        string `json:"name"`
 			PackagePath string `json:"packagePath"`
-			Provenance string `json:"provenance"`
-			Health     string `json:"health"`
-			Targets    []struct {
+			Provenance  string `json:"provenance"`
+			Health      string `json:"health"`
+			Targets     []struct {
 				Path string `json:"path"`
 			} `json:"targets"`
 		} `json:"entries"`
@@ -57,9 +57,9 @@ func TestJ15Inventory(t *testing.T) {
 	require.Equal(t, 7, report.SchemaVersion)
 	entries := make(map[string]struct {
 		PackagePath string
-		Provenance string
-		Health     string
-		Path       string
+		Provenance  string
+		Health      string
+		Path        string
 	})
 	for _, entry := range report.Entries {
 		if len(entry.Targets) == 0 {
@@ -67,9 +67,9 @@ func TestJ15Inventory(t *testing.T) {
 		}
 		entries[entry.Name] = struct {
 			PackagePath string
-			Provenance string
-			Health     string
-			Path       string
+			Provenance  string
+			Health      string
+			Path        string
 		}{entry.PackagePath, entry.Provenance, entry.Health, entry.Targets[0].Path}
 	}
 	require.Equal(t, "external", entries["ask-matt"].Provenance)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
- * [OUTPUT]: Specifies App-facing keyword Find fallback, selector-preserving explicit-source Find, canonical Package Version Skill detail, and grouped Hub reads through CLI-owned requests.
+ * [OUTPUT]: Specifies App-facing keyword Find fallback, immutable-resolution-preserving explicit-source Find, canonical Package Version Skill detail, and grouped source-language Hub candidate reads through CLI-owned requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,9 +73,9 @@ func TestFindCanonicalizesExplicitPackageVariantsBeforeProductFind(t *testing.T)
 	for _, test := range tests {
 		t.Run(test.input, func(t *testing.T) {
 			info := commandTestPackageInfo(t, test.packagePath, version, commit, infoTestMembers(test.packagePath, version, commit)...)
-			var requestPaths []string
+			var requestURIs []string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				requestPaths = append(requestPaths, r.URL.Path)
+				requestURIs = append(requestURIs, r.URL.RequestURI())
 				w.Header().Set("Content-Type", "application/json")
 				if strings.HasPrefix(r.URL.Path, "/api/v1/"+test.packagePath+"/versions/") {
 					_, _ = w.Write(info)
@@ -88,8 +89,9 @@ func TestFindCanonicalizesExplicitPackageVariantsBeforeProductFind(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(requestPaths) != 2 || requestPaths[0] != "/api/v1/"+test.packagePath+"/versions/"+test.selector || requestPaths[1] != "/api/v1/skills/find" {
-				t.Fatalf("unexpected request paths: %v", requestPaths)
+			if len(requestURIs) != 2 || requestURIs[0] != "/api/v1/"+test.packagePath+"/versions/"+url.PathEscape(test.selector) ||
+				requestURIs[1] != "/api/v1/skills/find?packagePath="+url.QueryEscape(test.packagePath)+"&page=0&perPage=20&q="+url.QueryEscape(test.packagePath)+"&version="+version {
+				t.Fatalf("unexpected request URIs: %v", requestURIs)
 			}
 		})
 	}
@@ -129,13 +131,13 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	defer server.Close()
 	t.Setenv("SKILLSGO_HUB_URL", server.URL)
 	inputPath := filepath.Join(t.TempDir(), "find.json")
-	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh_hans_cn"}`), 0o600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(`{"queries":[{"name":"ask-matt"}],"limit":10}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, args := range [][]string{
 		{"find", "responsive layout", "--page", "1", "--per-page", "4", "--output", "json"},
-		{"find", "--input", inputPath, "--output", "json"},
+		{"hub", "find-candidates", "--input", inputPath, "--output", "json"},
 		{"hub", "info", "--output", "json"},
 		{"hub", "check", "--output", "json"},
 	} {
@@ -150,7 +152,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	}
 	if len(requests) != 4 ||
 		requests[0] != "GET /api/v1/skills/find?page=1&perPage=4&q=responsive+layout" ||
-		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10,"lang":"zh-Hans-CN"}` ||
+		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10}` ||
 		requests[2] != "GET /info" ||
 		!strings.HasPrefix(requests[3], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)

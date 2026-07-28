@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifacts with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifacts with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -639,4 +640,58 @@ func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testin
 	require.NoError(t, err)
 	require.Equal(t, revision.Version, resolved.Version)
 	require.Equal(t, resolved.CommitSHA, resolved.Ref)
+}
+
+func TestRepositoryBackfillListerUsesUpToTwentyVersionsWithoutMixingTagsAndCommits(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+
+	versions, err := lister.ListRepositoryBackfillVersions(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	require.Equal(t, "v1.0.0", versions[0].Version)
+
+	runGit(t, f.work, "tag", "-d", "v1.0.0")
+	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
+	for index := 0; index < 22; index++ {
+		f.writeSkill(t, ".", "repo", fmt.Sprintf("backfill commit %d", index))
+		f.commit(t, fmt.Sprintf("backfill commit %d", index))
+	}
+	runGit(t, f.work, "push", "origin", "HEAD")
+	concrete := lister.(*vcsLister)
+	concrete.mu.Lock()
+	concrete.catalogs = map[string]tagCatalog{}
+	concrete.mu.Unlock()
+
+	versions, err = lister.ListRepositoryBackfillVersions(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Len(t, versions, maxRepositoryBackfillVersions)
+	for _, version := range versions {
+		require.True(t, module.IsPseudoVersion(version.Version), version.Version)
+	}
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
+	require.NoError(t, err)
+	wantCommits := strings.Fields(runGit(t, repositoryDir, "rev-list", "--max-count=20", "refs/remotes/origin/HEAD"))
+	actualCommits := make([]string, 0, len(versions))
+	for _, version := range versions {
+		actualCommits = append(actualCommits, version.CommitSHA)
+	}
+	require.Equal(t, wantCommits, actualCommits)
+}
+
+func TestRepositoryBackfillListerKeepsOnlyHighestTwentySemanticTags(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	for index := 1; index <= 25; index++ {
+		tag := fmt.Sprintf("v1.0.%d", index)
+		runGit(t, f.work, "tag", tag)
+		runGit(t, f.work, "push", "origin", tag)
+	}
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	versions, err := lister.ListRepositoryBackfillVersions(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Len(t, versions, maxRepositoryBackfillVersions)
+	require.Equal(t, "v1.0.6", versions[0].Version)
+	require.Equal(t, "v1.0.25", versions[len(versions)-1].Version)
 }

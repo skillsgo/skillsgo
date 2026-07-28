@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Package Info, immutable Package Version Skill content with translation provenance, name-query and exact-path Skill coordinates, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, name-query and exact-path Skill coordinates, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -82,11 +82,12 @@ type FindSkill struct {
 }
 
 type SkillCandidate struct {
-	PackagePath string `json:"packagePath"`
-	Version     string `json:"version"`
-	Name        string `json:"name"`
-	Path        string `json:"path"`
-	Description string `json:"description"`
+	PackagePath string   `json:"packagePath"`
+	Versions    []string `json:"versions"`
+	Name        string   `json:"name"`
+	Path        string   `json:"path"`
+	Description string   `json:"description"`
+	ImageURL    *string  `json:"imageUrl,omitempty"`
 }
 
 type FindCandidatesResponse struct {

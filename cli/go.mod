@@ -1,4 +1,4 @@
-// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, operating-system file locking, terminal detection, and test libraries.
+// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, and test libraries.
 // [OUTPUT]: Defines the reproducible SkillsGo CLI module dependency graph.
 // [POS]: Serves as the F2 build manifest for the CLI workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,7 +11,6 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/gofrs/flock v0.13.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/spf13/cobra v1.10.2

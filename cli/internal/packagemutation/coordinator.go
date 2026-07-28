@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on prepared Repository filesystem transactions plus caller-owned immutable-cache and Workspace-state publication operations.
- * [OUTPUT]: Provides one ordered Repository mutation commit state machine with reverse rollback and post-commit cleanup.
+ * [INPUT]: Depends on prepared Package filesystem transactions plus caller-owned immutable-cache and Workspace-state publication operations.
+ * [OUTPUT]: Provides one ordered Package mutation state machine with preview discard, commit-time reverse rollback, and post-commit cleanup.
  * [POS]: Serves as the deep transaction coordinator between command intent and Scope Package Store/project persistence adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package repositorymutation
+package packagemutation
 
 import (
 	"errors"
@@ -41,12 +41,25 @@ type WorkspaceState struct {
 	Lock     project.DependencyLock
 }
 
+// Discard releases every prepared filesystem transaction without publishing
+// immutable metadata or Workspace state. Preview executors use it after they
+// have inspected the exact Plan that an apply executor would commit.
+func (plan Plan) Discard() error {
+	failures := make([]error, 0)
+	for index := len(plan.Transactions) - 1; index >= 0; index-- {
+		if err := plan.Transactions[index].Rollback(); err != nil {
+			failures = append(failures, fmt.Errorf("discard Package transaction %d: %w", index, err))
+		}
+	}
+	return errors.Join(failures...)
+}
+
 func (plan Plan) Commit() error {
 	rollback := func(cause error) error {
 		failures := []error{cause}
 		for index := len(plan.Transactions) - 1; index >= 0; index-- {
 			if err := plan.Transactions[index].Rollback(); err != nil {
-				failures = append(failures, fmt.Errorf("rollback Repository transaction %d: %w", index, err))
+				failures = append(failures, fmt.Errorf("rollback Package transaction %d: %w", index, err))
 			}
 		}
 		return errors.Join(failures...)
@@ -58,19 +71,19 @@ func (plan Plan) Commit() error {
 	}
 	for _, info := range plan.ImmutableInfo {
 		if err := info.Cache.Put(info.PackagePath, info.Version, info.Kind, info.Bytes); err != nil {
-			return rollback(fmt.Errorf("persist immutable Repository Info: %w", err))
+			return rollback(fmt.Errorf("persist immutable Package Info: %w", err))
 		}
 	}
 	if plan.Workspace != nil {
 		if err := project.WriteWorkspaceState(plan.Workspace.Root, plan.Workspace.Manifest, plan.Workspace.Lock); err != nil {
-			return rollback(fmt.Errorf("persist Workspace Repository state: %w", err))
+			return rollback(fmt.Errorf("persist Workspace Package state: %w", err))
 		}
 	}
 	for _, transaction := range plan.Transactions {
 		if err := transaction.Finalize(); err != nil {
 			operation := plan.Operation
 			if operation == "" {
-				operation = "Repository mutation"
+				operation = "Package mutation"
 			}
 			return fmt.Errorf("%s committed but transaction cleanup failed: %w", operation, err)
 		}

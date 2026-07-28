@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary directories and exact JSON bytes.
- * [OUTPUT]: Specifies immutable cache identity, corruption rejection, and concurrent idempotent publication.
+ * [OUTPUT]: Specifies the user cache location, immutable cache identity, corruption rejection, and concurrent idempotent publication.
  * [POS]: Serves as focused verification for the immutable Info Cache filesystem boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,5 +51,12 @@ func TestCacheRejectsIncompleteOrCorruptEntry(t *testing.T) {
 	}
 	if _, err := cache.Get("github.com/example/repo", "v1.2.3", "package.info"); err == nil {
 		t.Fatal("corrupt entry was accepted")
+	}
+}
+
+func TestDefaultRootIsUserLevelCache(t *testing.T) {
+	home := t.TempDir()
+	if DefaultRoot(home) != filepath.Join(home, ".skillsgo", "cache", "info") {
+		t.Fatalf("DefaultRoot = %s", DefaultRoot(home))
 	}
 }

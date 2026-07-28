@@ -39,6 +39,10 @@ func TestPublicCommandsProvideExamples(t *testing.T) {
 		require.Contains(t, add.Example, expected)
 	}
 	require.Nil(t, add.Flags().Lookup("list"))
+	require.Equal(t, "p", add.Flags().Lookup("project").Shorthand)
+	update, _, err := root.Find([]string{"update"})
+	require.NoError(t, err)
+	require.Equal(t, "p", update.Flags().Lookup("project").Shorthand)
 	checkUpdate, remaining, err := root.Find([]string{"hub", "check-update"})
 	require.NoError(t, err)
 	require.Equal(t, "check-update", checkUpdate.Name())

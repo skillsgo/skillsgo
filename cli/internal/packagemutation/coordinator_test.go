@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Uses the Repository mutation interface with deterministic transaction doubles and invalid durable-write roots.
- * [OUTPUT]: Specifies ordered multi-transaction commit, reverse rollback, durable-write failure handling, and post-publication cleanup errors.
- * [POS]: Serves as state-machine contract coverage for the commit coordinator shared by Repository commands.
+ * [INPUT]: Uses the Package mutation interface with deterministic transaction doubles and invalid durable-write roots.
+ * [OUTPUT]: Specifies ordered multi-transaction commit, preview discard, reverse rollback, durable-write failure handling, and post-publication cleanup errors.
+ * [POS]: Serves as state-machine contract coverage for the commit coordinator shared by Package commands.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package repositorymutation
+package packagemutation
 
 import (
 	"fmt"
@@ -38,8 +38,26 @@ func TestRollbackFailureIsReportedWithOriginalFailure(t *testing.T) {
 	log := []string{}
 	transaction := &recordedTransaction{name: "packages", log: &log, commitErr: fmt.Errorf("commit failed"), rollbackErr: fmt.Errorf("restore failed")}
 	err := (Plan{Transactions: []Transaction{transaction}}).Commit()
-	if err == nil || !containsAll(err.Error(), "commit failed", "rollback Repository transaction 0", "restore failed") {
+	if err == nil || !containsAll(err.Error(), "commit failed", "rollback Package transaction 0", "restore failed") {
 		t.Fatalf("rollback diagnostics lost: %v", err)
+	}
+}
+
+func TestDiscardRollsBackPreparedTransactionsWithoutCommit(t *testing.T) {
+	log := []string{}
+	first := &recordedTransaction{name: "first", log: &log}
+	second := &recordedTransaction{name: "second", log: &log}
+	requireNoError(t, (Plan{Transactions: []Transaction{first, second}}).Discard())
+	want := []string{"rollback:second", "rollback:first"}
+	if fmt.Sprint(log) != fmt.Sprint(want) {
+		t.Fatalf("unexpected discard order: got %v want %v", log, want)
+	}
+}
+
+func requireNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -90,8 +108,8 @@ func TestWorkspacePublicationFailureRollsBackCommittedFilesystem(t *testing.T) {
 func TestFinalizeFailureDoesNotRollBackPublishedMutation(t *testing.T) {
 	log := []string{}
 	transaction := &recordedTransaction{name: "packages", log: &log, finalizeErr: fmt.Errorf("cleanup")}
-	err := (Plan{Transactions: []Transaction{transaction}, Operation: "Repository add"}).Commit()
-	if err == nil || err.Error() != "Repository add committed but transaction cleanup failed: cleanup" {
+	err := (Plan{Transactions: []Transaction{transaction}, Operation: "Package add"}).Commit()
+	if err == nil || err.Error() != "Package add committed but transaction cleanup failed: cleanup" {
 		t.Fatalf("unexpected finalize result: %v", err)
 	}
 	want := []string{"commit:packages", "finalize:packages"}

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
- * [OUTPUT]: Specifies public Skill Find, candidate lookup, ordered batch hydration, Repository-fresh update checks, removed legacy routes, and correlated redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public current and immutable-version Skill Find with localized Package-summary fallback, candidate lookup, ordered batch hydration, Repository-fresh update checks, removed legacy routes, and correlated redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,7 +48,7 @@ func openActionTestCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()
 	ctx := t.Context()
 	dsn := actionTestPostgresDSN(t)
-	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{DSN: dsn, MaxOpenConns: 5})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 	return metadata
@@ -189,6 +189,14 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 		Version: "v0.0.0-test", Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree",
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: int64(len(defaultCatalogRepositoryArchive())), CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{*skill}, catalog.CurrentPublication))
+	const packageDescription = "Skills for Real Engineers."
+	require.NoError(t, c.UpdatePackageSourceMetadata(
+		t.Context(), "github.com/mattpocock/skills", packageDescription, 0, "", nil, nil,
+	))
+	require.NoError(t, c.UpsertLocalizedDescription(t.Context(), catalog.LocalizedDescription{
+		ResourceKind: catalog.LocalizedPackage, SourceDigest: catalog.DescriptionDigest(packageDescription),
+		Lang: "zh-Hans-CN", ResultKind: catalog.LocalizationTranslated, Description: "真实工程师的技能。", PromptVersion: "description-v1",
+	}))
 
 	for _, path := range []string{
 		"/api/v1/skills/find?q=engineering",
@@ -223,11 +231,41 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.NoError(t, json.NewDecoder(packageFind.Body).Decode(&packageResponse))
 	require.NotNil(t, packageResponse.Package)
 	require.Equal(t, "github.com/mattpocock/skills", packageResponse.Package.PackagePath)
+	require.Equal(t, packageDescription, packageResponse.Package.Description)
 	require.Equal(t, "v0.0.0-test", packageResponse.Package.LatestVersion)
 	require.Len(t, packageResponse.Skills, 1)
 
+	localizedPackageFind := httptest.NewRecorder()
+	serveFiber(t, r, localizedPackageFind, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=github.com%2Fmattpocock%2Fskills&packagePath=github.com%2Fmattpocock%2Fskills&lang=zh-Hans-CN", nil))
+	require.Equal(t, http.StatusOK, localizedPackageFind.Code)
+	var localizedPackageResponse skillsResponse
+	require.NoError(t, json.NewDecoder(localizedPackageFind.Body).Decode(&localizedPackageResponse))
+	require.Equal(t, "真实工程师的技能。", localizedPackageResponse.Package.Description)
+
+	historicalVersion := "v1.0.0"
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
+		Version: historicalVersion, Ref: "refs/tags/v1.0.0", CommitSHA: "commit-historical", TreeSHA: "historical-tree",
+		Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", ArchiveSize: 42, CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+	}, []catalog.Skill{{PackagePath: "github.com/mattpocock/skills", Path: "skills/retired", Name: "retired", Description: "Historical member"}}, catalog.HistoricalPublication))
+	versionedFind := httptest.NewRecorder()
+	serveFiber(t, r, versionedFind, httptest.NewRequest(http.MethodGet,
+		"/api/v1/skills/find?q=github.com%2Fmattpocock%2Fskills&packagePath=github.com%2Fmattpocock%2Fskills&version=v1.0.0&lang=zh-Hans-CN", nil))
+	require.Equal(t, http.StatusOK, versionedFind.Code)
+	var versionedResponse skillsResponse
+	require.NoError(t, json.NewDecoder(versionedFind.Body).Decode(&versionedResponse))
+	require.Equal(t, historicalVersion, versionedResponse.Package.LatestVersion)
+	require.Equal(t, "真实工程师的技能。", versionedResponse.Package.Description)
+	require.True(t, time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC).Equal(versionedResponse.Package.UpdatedAt))
+	require.Len(t, versionedResponse.Skills, 1)
+	require.Equal(t, "retired", versionedResponse.Skills[0].Name)
+	require.Equal(t, historicalVersion, versionedResponse.Skills[0].LatestVersion)
+
+	invalidVersionedFind := httptest.NewRecorder()
+	serveFiber(t, r, invalidVersionedFind, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired&version=v1.0.0", nil))
+	require.Equal(t, http.StatusBadRequest, invalidVersionedFind.Code)
+
 	findBatch := httptest.NewRecorder()
-	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10,"lang":"en"}`))
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")
 	serveFiber(t, r, findBatch, findBatchRequest)
 	require.Equal(t, http.StatusOK, findBatch.Code)
@@ -236,7 +274,8 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, batchResponse.Candidates, 2)
 	require.Len(t, batchResponse.Candidates[0], 1)
 	require.Len(t, batchResponse.Candidates[1], 1)
-	require.Equal(t, "v0.0.0-test", batchResponse.Candidates[1][0].Version)
+	require.Equal(t, []string{"v0.0.0-test"}, batchResponse.Candidates[1][0].Versions)
+	require.Equal(t, "https://github.com/mattpocock.png?size=256", *batchResponse.Candidates[1][0].ImageURL)
 	require.Len(t, response.Skills, 1)
 	require.NotNil(t, response.Skills[0].ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)

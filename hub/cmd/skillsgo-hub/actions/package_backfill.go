@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Package Publisher, upstream Tag commit catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker with heartbeat and stale-Run reconciliation.
+ * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Package Publisher, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions, with heartbeat and stale-Run reconciliation.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
-	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -52,7 +51,7 @@ type packageBackfillService struct {
 }
 
 type repositoryVersionLister interface {
-	ListRepositoryTags(context.Context, string) ([]skill.RepositoryTag, error)
+	ListRepositoryBackfillVersions(context.Context, string) ([]skill.RepositoryTag, error)
 }
 
 func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
@@ -117,7 +116,7 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 	if !active || run.Status == catalog.BackfillComplete || run.Status == catalog.BackfillCompleteWithErrors {
 		return nil
 	}
-	tags, err := s.lister.ListRepositoryTags(ctx, args.PackagePath)
+	versions, err := s.lister.ListRepositoryBackfillVersions(ctx, args.PackagePath)
 	diagnostics := make([]string, 0)
 	errorCount := 0
 	if err != nil {
@@ -126,9 +125,9 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 		diagnostics = append(diagnostics, diagnostic)
 		s.logFailure(ctx, args, "", diagnostic)
 	} else {
-		tags = canonicalSemanticTags(tags)
-		for _, tag := range tags {
-			version := tag.Version
+		versions = canonicalBackfillVersions(versions)
+		for _, candidate := range versions {
+			version := candidate.Version
 			if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
 				return err
 			}
@@ -141,7 +140,7 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 				continue
 			}
 			if publicationErr == nil {
-				if tag.CommitSHA != commitSHA {
+				if candidate.CommitSHA != commitSHA {
 					errorCount++
 					diagnostic := backfillDiagnostic(version, "immutable_conflict")
 					diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
@@ -169,13 +168,13 @@ func (s *packageBackfillService) logFailure(_ context.Context, args packageBackf
 	}).Warnf("Package Backfill version failed: %s", diagnostic)
 }
 
-func canonicalSemanticTags(tags []skill.RepositoryTag) []skill.RepositoryTag {
-	set := make(map[string]skill.RepositoryTag, len(tags))
-	for _, tag := range tags {
-		if !semver.IsValid(tag.Version) || module.IsPseudoVersion(tag.Version) || semver.Canonical(tag.Version) != tag.Version || tag.CommitSHA == "" {
+func canonicalBackfillVersions(versions []skill.RepositoryTag) []skill.RepositoryTag {
+	set := make(map[string]skill.RepositoryTag, len(versions))
+	for _, candidate := range versions {
+		if !semver.IsValid(candidate.Version) || semver.Canonical(candidate.Version) != candidate.Version || candidate.CommitSHA == "" {
 			continue
 		}
-		set[tag.Version] = tag
+		set[candidate.Version] = candidate
 	}
 	result := make([]skill.RepositoryTag, 0, len(set))
 	for _, tag := range set {

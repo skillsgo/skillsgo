@@ -3,8 +3,8 @@
 
 ## Members
 
-- `scope.go`: defines Global/Workspace installation scopes and validates path-safe Skill names used by takeover locks.
-- `state_digest.go`: computes deterministic filesystem state tokens for External takeover/removal review binding.
+- `scope.go`: defines Global/Workspace installation scopes and validates path-safe Skill names used by adoption locks.
+- `state_digest.go`: computes deterministic filesystem state tokens for External adoption/removal review binding.
 
 ## Architectural Boundary
 

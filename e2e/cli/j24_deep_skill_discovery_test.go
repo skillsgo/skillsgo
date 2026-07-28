@@ -23,9 +23,9 @@ func TestJ24DeepSkillDiscovery(t *testing.T) {
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "general", "ideation", "naming", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	update := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--yes", "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
-	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
-	require.FileExists(t, filepath.Join(newProjection, "skills", "general", "ideation", "naming", "SKILL.md"))
+	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "naming")
+	require.FileExists(t, filepath.Join(newProjection, "SKILL.md"))
 }

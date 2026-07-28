@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J01 Workspace installation.
+ * [OUTPUT]: Provides black-box coverage for J01 Workspace installation with Project-local Package state and user-level disposable Info cache separation.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,9 +42,10 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	require.Equal(t, scenarioContainerPath(t, "project", "skills-lock.yaml"), installed.Workspace.Lock)
 	require.Len(t, installed.Projections, 1)
 
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir, "skills", "alpha", "SKILL.md"))
-
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".skillsgo", "info"))
+	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "cache", "info"))
 }

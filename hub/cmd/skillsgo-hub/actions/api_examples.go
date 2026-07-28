@@ -45,10 +45,11 @@ var exampleFindCandidatesRequest = protocolapi.FindCandidatesRequest{
 var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
 	Candidates: [][]protocolapi.SkillCandidate{{{
 		PackagePath: examplePackagePath,
-		Version:     exampleVersion,
+		Versions:    []string{exampleVersion, "v1.0.0"},
 		Name:        "grill-me",
 		Path:        "skills/productivity/grill-me",
 		Description: "A relentless interview to sharpen a plan or design.",
+		ImageURL:    stringPointer("https://github.com/mattpocock.png?size=256"),
 	}}},
 }
 

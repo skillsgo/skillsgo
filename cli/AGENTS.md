@@ -10,7 +10,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
 - Command seam: `command.Execute`
-- Product responsibility: own local Package Store and Agent Projection mutations, canonical Workspace declarations and locks, immutable Info cache, and installation-state inspection.
+- Product responsibility: own local Package Store and Agent Projection mutations, canonical Workspace declarations and locks, the user-level disposable immutable Info cache, and installation-state inspection.
 
 ## Commands
 
@@ -37,10 +37,10 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/inventory/` | Read-only Package-managed and External Library reconciliation across YAML/Lock state, Scope Package Stores, Package Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-path External Remove planning, in-command state binding, and target-specific execution. |
 | `internal/project/` | Strict Package dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
-| `internal/repositorymutation/` | Ordered local Package mutation commits spanning prepared Package Store/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
-| `internal/infocache/` | Exact immutable Package Info bytes used for checksum-verified offline restore. |
+| `internal/packagemutation/` | Ordered local Package mutation commits spanning prepared Package Store/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
+| `internal/infocache/` | User-level disposable exact immutable Package Info bytes used for checksum-verified offline restore across all scopes. |
 | `internal/hub/` | Client for add-time Package Version Queries followed by exact Package Version metadata/ZIP resources, typed membership, bounded download, and Package h1 verification. |
-| `internal/source/` | Repository ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
+| `internal/source/` | Package ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
 | `internal/packagestore/` | Complete ordinary-file Package Store extraction and deterministic per-Agent Package Projection transactions. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
