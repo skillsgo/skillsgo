@@ -36,10 +36,10 @@ func TestJ27SelectedSkillsShareRepositoryVersion(t *testing.T) {
 	require.Equal(t, 0, head.exitCode, head.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(head.output), &installed), head.output)
-	headSkill, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	headSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.NoError(t, err)
 	require.Contains(t, string(headSkill), "Alpha v2.")
-	beta, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "beta", "SKILL.md"))
+	beta, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md"))
 	require.NoError(t, err)
 	require.Contains(t, string(beta), "Beta v2.")
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))

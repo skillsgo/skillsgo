@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Testcontainers, PostgreSQL, the host runner identity, one disposable suite bind mount, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
- * [OUTPUT]: Provides one shared Cloud-mode CLI/PostgreSQL suite, serial per-Journey Hub/schema/filesystem/Git isolation, whole-suite cleanup, and black-box command/assertion helpers.
+ * [OUTPUT]: Provides one exec-probed shared Cloud-mode CLI/PostgreSQL suite, serial per-Journey Hub/schema/filesystem/Git isolation, whole-suite cleanup, and black-box command/assertion helpers.
  * [POS]: Serves as the suite-scoped Linux/macOS container lifecycle and scenario-isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 }
 
 const (
-	testPackagePath           = "github.com/skillsgo/e2e-versioned-skills"
+	testPackagePath          = "github.com/skillsgo/e2e-versioned-skills"
 	testSkillName            = "alpha"
 	testSkillVersion         = "v1.3.0"
 	testResourcefulSkillName = "resourceful"
@@ -65,12 +65,12 @@ const (
 type addResponse struct {
 	SchemaVersion int      `json:"schemaVersion"`
 	Phase         string   `json:"phase"`
-	PackagePath    string   `json:"packagePath"`
+	PackagePath   string   `json:"packagePath"`
 	Version       string   `json:"version"`
 	Sum           string   `json:"sum"`
 	Skills        []string `json:"skills"`
 	Agents        []string `json:"agents"`
-	PackageDir     string   `json:"packageDir"`
+	PackageDir    string   `json:"packageDir"`
 	Projections   []struct {
 		Agents []string `json:"agents"`
 		Path   string   `json:"path"`
@@ -209,7 +209,10 @@ func startSuite(t *testing.T, ctx context.Context) *e2eSuite {
 		}),
 		testcontainers.WithEnv(environment),
 		network.WithNetwork([]string{"hub"}, nw),
-		testcontainers.WithWaitStrategy(wait.ForLog("SkillsGo E2E suite runtime ready").WithStartupTimeout(45 * time.Second)),
+		testcontainers.WithWaitStrategy(
+			wait.ForExec([]string{"wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3100/__e2e/events"}).
+				WithStartupTimeout(45 * time.Second),
+		),
 	}
 	if image == "" {
 		options = append(options, testcontainers.WithDockerfile(testcontainers.FromDockerfile{

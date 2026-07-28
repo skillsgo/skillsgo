@@ -35,5 +35,5 @@ func TestJ06AuditIsOutsideImmutableInstall(t *testing.T) {
 	require.Equal(t, 0, installed.exitCode, installed.output)
 	var result addResponse
 	require.NoError(t, json.Unmarshal([]byte(installed.output), &result), installed.output)
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, result.Projections[0].Path, "skills", "high-risk", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, result.Projections[0].Path, "SKILL.md"))
 }

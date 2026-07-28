@@ -48,8 +48,8 @@ func TestJ03RestoreSum(t *testing.T) {
 
 	var restored []struct {
 		PackagePath string `json:"packagePath"`
-		Version    string `json:"version"`
-		Status     string `json:"status"`
+		Version     string `json:"version"`
+		Status      string `json:"status"`
 		PackageDir  string `json:"packageDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
@@ -58,7 +58,7 @@ func TestJ03RestoreSum(t *testing.T) {
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir, "skills", "alpha", "SKILL.md"))
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
@@ -70,6 +70,6 @@ func TestJ03RestoreSum(t *testing.T) {
 	require.NoError(t, os.MkdirAll(nested, 0o755))
 	nestedRestore := execCLIFrom(t, ctx, container, scenarioContainerPath(t, "project", "packages", "demo"), "install", "--output", "json")
 	require.Equal(t, 0, nestedRestore.exitCode, nestedRestore.output)
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(nested, "skills.yaml"))
 }

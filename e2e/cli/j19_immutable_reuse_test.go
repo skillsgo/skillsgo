@@ -59,7 +59,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(secondTarget.output), &expanded), secondTarget.output)
 	require.Len(t, expanded.Projections, 2)
 	for _, projection := range expanded.Projections {
-		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
+		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "SKILL.md"))
 	}
 	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir))
 }

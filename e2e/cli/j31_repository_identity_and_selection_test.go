@@ -37,7 +37,7 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, rootOnly.exitCode, rootOnly.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "root-suite", "SKILL.md"))
 	resetLocalInstallation(t, ctx, container)
 
 	duplicate := "fixtures.test/group/subgroup/duplicate"
@@ -46,25 +46,22 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, defaultDuplicate.exitCode, defaultDuplicate.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0", "one", "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0", "two", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "shared", "SKILL.md"))
 	resetLocalInstallation(t, ctx, container)
 	exactDuplicate := execCLI(t, ctx, container,
 		"add", "https://"+duplicate+"@v1.0.0", "--skill-path", "two",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, exactDuplicate.exitCode, exactDuplicate.output)
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0", "one", "SKILL.md"))
-	exactProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "duplicate@v1.0.0")
-	require.FileExists(t, filepath.Join(exactProjection, "two", "SKILL.md"))
+	exactProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "shared")
+	require.FileExists(t, filepath.Join(exactProjection, "SKILL.md"))
 	exactManifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(exactManifest), "- two", "an exact App/CLI selection must persist its path rather than the shared name")
 	require.NoError(t, os.RemoveAll(exactProjection))
 	restored := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
 	require.Equal(t, 0, restored.exitCode, restored.output)
-	require.NoFileExists(t, filepath.Join(exactProjection, "one", "SKILL.md"))
-	require.FileExists(t, filepath.Join(exactProjection, "two", "SKILL.md"))
+	require.FileExists(t, filepath.Join(exactProjection, "SKILL.md"))
 	removed := execCLI(t, ctx, container, "remove", "two", "--agent", "codex", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, removed.exitCode, removed.output)
 	require.NoDirExists(t, exactProjection)

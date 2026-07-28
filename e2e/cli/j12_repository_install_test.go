@@ -33,21 +33,19 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
 	for _, relativeSkillPath := range []string{".", "skills/alpha", "skills/beta", "skills/CamelCase", "skills/general/ideation/naming"} {
 		require.FileExists(t, filepath.Join(packageDir, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
-		for _, projectionRoot := range []string{
-			filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate),
-			filepath.Join(sandboxRoot, "project", ".goose", "skills", coordinate),
-		} {
-			require.FileExists(t, filepath.Join(projectionRoot, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
+	}
+	for _, projectionRoot := range []string{filepath.Join(sandboxRoot, "project", ".agents", "skills"), filepath.Join(sandboxRoot, "project", ".goose", "skills")} {
+		for _, name := range []string{"root-suite", "alpha", "beta", "camel-case", "naming"} {
+			projection := filepath.Join(projectionRoot, name)
+			require.FileExists(t, filepath.Join(projection, "SKILL.md"))
+			info, err := os.Lstat(projection)
+			require.NoError(t, err)
+			require.NotZero(t, info.Mode()&os.ModeSymlink)
 		}
+		require.NoDirExists(t, filepath.Join(projectionRoot, coordinate))
 	}
 	require.FileExists(t, filepath.Join(packageDir, "skills", "invalid", "SKILL.md"))
-	for _, projectionRoot := range []string{
-		filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate),
-		filepath.Join(sandboxRoot, "project", ".goose", "skills", coordinate),
-	} {
-		require.NoFileExists(t, filepath.Join(projectionRoot, "skills", "invalid", "SKILL.md"))
-		require.FileExists(t, filepath.Join(projectionRoot, "runtime", "shared.sh"))
-	}
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "root-suite", "runtime", "shared.sh"))
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
@@ -79,15 +77,13 @@ func TestJ12SkillNameIndependentFromSourceDirectory(t *testing.T) {
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 
-	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "CamelCase")
+	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", "camel-case")
 	require.FileExists(t, filepath.Join(installed, "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "camel-case", "SKILL.md"))
 	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(lock), "sum: h1:")
 
-	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0")
-	require.NoError(t, os.RemoveAll(projection))
+	require.NoError(t, os.Remove(installed))
 	restore := execCLI(t, ctx, container,
 		"install",
 		"--hub", "http://127.0.0.1:1",
@@ -119,29 +115,24 @@ func TestJ12SelectedRepositoryProjectionLifecycle(t *testing.T) {
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
-	projections := []string{
-		filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate),
-		filepath.Join(sandboxRoot, "project", ".goose", "skills", coordinate),
-	}
+	projections := []string{filepath.Join(sandboxRoot, "project", ".agents", "skills"), filepath.Join(sandboxRoot, "project", ".goose", "skills")}
 	require.FileExists(t, filepath.Join(packageDir, "skills", "beta", "SKILL.md"))
 	for _, projection := range projections {
-		require.FileExists(t, filepath.Join(projection, "SKILL.md"))
-		require.FileExists(t, filepath.Join(projection, "skills", "general", "ideation", "naming", "SKILL.md"))
-		require.NoFileExists(t, filepath.Join(projection, "skills", "beta", "SKILL.md"))
-		require.NoFileExists(t, filepath.Join(projection, "skills", "invalid", "SKILL.md"))
-		require.FileExists(t, filepath.Join(projection, "runtime", "shared.sh"))
+		require.FileExists(t, filepath.Join(projection, "root-suite", "SKILL.md"))
+		require.FileExists(t, filepath.Join(projection, "naming", "SKILL.md"))
+		require.NoFileExists(t, filepath.Join(projection, "beta"))
 	}
 
 	removeNested := execCLI(t, ctx, container, "remove", "naming", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, removeNested.exitCode, removeNested.output)
 	for _, projection := range projections {
-		require.FileExists(t, filepath.Join(projection, "SKILL.md"))
-		require.NoFileExists(t, filepath.Join(projection, "skills", "general", "ideation", "naming", "SKILL.md"))
+		require.FileExists(t, filepath.Join(projection, "root-suite", "SKILL.md"))
+		require.NoFileExists(t, filepath.Join(projection, "naming"))
 	}
 
 	removeGoose := execCLI(t, ctx, container, "remove", "root-suite", "--agent", "goose", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, removeGoose.exitCode, removeGoose.output)
-	require.FileExists(t, filepath.Join(projections[0], "SKILL.md"))
-	require.NoDirExists(t, projections[1])
+	require.FileExists(t, filepath.Join(projections[0], "root-suite", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(projections[1], "root-suite"))
 	require.FileExists(t, filepath.Join(packageDir, "skills", "general", "ideation", "naming", "SKILL.md"))
 }

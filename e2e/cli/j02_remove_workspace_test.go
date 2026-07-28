@@ -36,7 +36,7 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	require.Len(t, installed.Projections, 1)
 	projection := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
 	packageDir := containerPathOnHost(t, sandboxRoot, installed.PackageDir)
-	require.FileExists(t, projection+"/skills/alpha/SKILL.md")
+	require.FileExists(t, projection+"/SKILL.md")
 	require.FileExists(t, packageDir+"/skills/alpha/SKILL.md")
 
 	remove := execCLI(t, ctx, container,
@@ -47,6 +47,6 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 		"--color", "never",
 	)
 	require.Equal(t, 0, remove.exitCode, remove.output)
-	require.NoDirExists(t, projection)
+	require.NoFileExists(t, projection)
 	require.NoDirExists(t, packageDir, "removing the last selected Skill must remove its Repository Package Store")
 }

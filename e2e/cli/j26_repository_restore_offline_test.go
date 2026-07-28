@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and public CLI, exact Repository add, YAML/Lock, authoritative Workspace Package Store, and ordinary-file Agent Projection contracts.
+ * [INPUT]: Depends on the disposable E2E environment and public CLI, exact Package add, YAML/Lock, authoritative Workspace Package Store, and direct Agent Skill link contracts.
  * [OUTPUT]: Proves offline projection restoration, repeated healthy install without rewrites, unpublished-manifest filtering, declaration stability, and Local Modification preservation.
  * [POS]: Serves as the Repository expansion recovery journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -31,17 +31,19 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	require.Contains(t, string(manifestBefore), "version: "+version)
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
-	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate)
+	projectionRoot := filepath.Join(sandboxRoot, "project", ".agents", "skills")
 	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
-	require.NoError(t, os.RemoveAll(projection))
+	for _, name := range []string{"root-suite", "alpha", "beta", "camel-case", "naming"} {
+		require.NoError(t, os.Remove(filepath.Join(projectionRoot, name)))
+	}
 	restore := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
-	for _, relative := range []string{"SKILL.md", "skills/alpha/SKILL.md", "skills/beta/SKILL.md", "skills/general/ideation/naming/SKILL.md"} {
-		require.FileExists(t, filepath.Join(projection, filepath.FromSlash(relative)))
+	for _, name := range []string{"root-suite", "alpha", "beta", "camel-case", "naming"} {
+		require.FileExists(t, filepath.Join(projectionRoot, name, "SKILL.md"))
 	}
-	require.NoFileExists(t, filepath.Join(projection, "skills", "invalid", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(projectionRoot, "invalid"))
 	require.FileExists(t, filepath.Join(packageDir, "skills", "invalid", "SKILL.md"))
-	shared := filepath.Join(projection, "runtime", "shared.sh")
+	shared := filepath.Join(projectionRoot, "root-suite", "runtime", "shared.sh")
 	before, err := os.Stat(shared)
 	require.NoError(t, err)
 	healthy := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")

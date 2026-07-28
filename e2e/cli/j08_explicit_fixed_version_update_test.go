@@ -46,7 +46,7 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	sumAfterPreflight, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.Equal(t, sumBefore, sumAfterPreflight, "checking a pinned installation must be read-only")
-	pinnedSkill, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	pinnedSkill, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "SKILL.md"))
 	require.NoError(t, err)
 	require.Contains(t, string(pinnedSkill), "Alpha at v1.")
 }

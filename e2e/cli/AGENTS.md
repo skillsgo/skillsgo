@@ -19,7 +19,8 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 - `git-wrapper.sh`: delegates to system Git while explicitly routing the fixture host to local bare repositories and adding deterministic latency for capacity-only source fixtures.
 - `environment_test.go`: owns suite-scoped runtime/PostgreSQL startup and whole-container cleanup, the private network and bind mount, serial Journey Hub/schema/filesystem/Git isolation, command execution, Repository artifact lookup, and assertion helpers.
 - `repository_fixture_test.go`: provides behavior-level mutable Repository fixture operations so journeys request source publication/ref changes without embedding Git choreography.
-- `j01_*_test.go` through `j48_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
+- `adoption_fixture_test.go`: provides typed stdin JSON adoption requests/reports and a released-CLI black-box runner for External adoption journeys.
+- `j01_*_test.go` through `j57_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
 - `USER-JOURNEYS.md`: prioritizes real cross-product user stories and their observable acceptance boundaries.
 
 ## Boundaries

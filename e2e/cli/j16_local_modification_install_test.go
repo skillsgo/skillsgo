@@ -32,7 +32,7 @@ func TestJ16InstallDoesNotOverwriteLocalModification(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	targetPath := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha")
+	targetPath := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
 	skillPath := filepath.Join(targetPath, "SKILL.md")
 	original, err := os.ReadFile(skillPath)
 	require.NoError(t, err)
