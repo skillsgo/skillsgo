@@ -139,7 +139,8 @@ void main() {
     expect(find.text('★ 12.8K'), findsOneWidget);
     expect(find.text('v1.2.3'), findsWidgets);
     expect(find.text('1 skill'), findsOneWidget);
-    expect(find.text('Install'), findsNWidgets(2));
+    expect(find.text('Install all skills'), findsOneWidget);
+    expect(find.text('Install'), findsOneWidget);
     expect(find.text('Downgrade'), findsNothing);
     final installAll = tester.widget<PrimaryCapsuleButton>(
       find.byKey(const Key('package-install-all')),

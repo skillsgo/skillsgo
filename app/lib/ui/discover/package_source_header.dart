@@ -123,7 +123,7 @@ class _PackageSourceHeader extends StatelessWidget {
             InstallLocationMenuAnchor(
               builder: (context, present) => PrimaryCapsuleButton(
                 key: const Key('package-install-all'),
-                label: context.l10n.install,
+                label: context.l10n.installAll,
                 height: 40,
                 horizontalPadding: 18,
                 labelStyle: const TextStyle(

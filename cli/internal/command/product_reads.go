@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, bounded file/stdin candidate input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides keyword and explicit-source `find`, including best-effort cold Package publication before Catalog reads, plus grouped Hub service commands including source-language `find-candidates` with Human-default and explicit JSON results.
+ * [OUTPUT]: Provides keyword and immutable-version-preserving explicit-source `find`, including best-effort cold Package publication before version-scoped reads, plus grouped Hub service commands including source-language `find-candidates` with Human-default and explicit JSON results.
  * [POS]: Serves as the deep read-only product boundary that owns source normalization and hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -120,6 +120,7 @@ func newFindCommand() *cobra.Command {
 				return err
 			}
 			query := strings.TrimSpace(args[0])
+			resolvedVersion := ""
 			if query == "" {
 				return fmt.Errorf("find query is required")
 			}
@@ -131,14 +132,16 @@ func newFindCommand() *cobra.Command {
 			}
 			if packagePath == "" {
 				if reference, parseErr := source.Parse(query); parseErr == nil {
-					if _, err := client.Package(cmd.Context(), reference.PackagePath, reference.Version); err != nil {
+					resource, err := client.Package(cmd.Context(), reference.PackagePath, reference.Version)
+					if err != nil {
 						return err
 					}
 					query = reference.PackagePath
 					packagePath = reference.PackagePath
+					resolvedVersion = resource.Info.Version
 				}
 			}
-			document, err := client.FindLocalized(cmd.Context(), query, packagePath, canonical, exactName, page, perPage)
+			document, err := client.FindLocalized(cmd.Context(), query, packagePath, resolvedVersion, canonical, exactName, page, perPage)
 			if err != nil {
 				return err
 			}
