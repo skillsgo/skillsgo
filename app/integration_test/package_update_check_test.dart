@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Package Store state, and observes no update on the next check.
+ * [OUTPUT]: Verifies that a user installs the older Repository release, sees one Catalog-derived Package card, updates that exact Package, persists v1.3.0 YAML/Lock and Package Store state, and observes no update card on the next check.
  * [POS]: Serves as the black-box macOS App update lifecycle journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,14 +19,14 @@ import 'support/journey_runtime.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  registerCatalogUpdateCheckJourney();
+  registerPackageUpdatePreviewJourney();
 }
 
-void registerCatalogUpdateCheckJourney() {
+void registerPackageUpdatePreviewJourney() {
   testWidgets(
     'shows Catalog updates for an older installed public fixture release',
     (tester) async {
-      final runtime = await JourneyRuntime.start('catalog_update_check');
+      final runtime = await JourneyRuntime.start('package_update_preview');
       addTearDown(runtime.close);
       final sandbox = runtime.sandbox.path;
       final hubOrigin = runtime.hubOrigin;
@@ -118,24 +118,23 @@ void registerCatalogUpdateCheckJourney() {
         timeout: const Duration(seconds: 45),
       );
       await tester.tap(_textEither('Updates', '有更新'));
+      const packagePath = 'github.com/skillsgo/e2e-versioned-skills';
+      final packageCard = find.byKey(
+        const ValueKey('library-package-update-$packagePath'),
+      );
       await _pumpUntil(
         tester,
-        find.text('alpha'),
+        packageCard,
         timeout: const Duration(seconds: 45),
       );
-      expect(find.text('alpha'), findsOneWidget);
+      expect(packageCard, findsOneWidget);
       expect(find.text('beta'), findsNothing);
 
-      await tester.tap(
-        find.byKey(
-          const ValueKey(
-            'library-select-hub:github.com/skillsgo/e2e-versioned-skills:alpha',
-          ),
-        ),
+      final updatePackage = find.byKey(
+        const ValueKey('library-package-update-action-$packagePath'),
       );
-      final updateSelected = find.byKey(const Key('library-update-selected'));
-      await _pumpUntilEnabledButton(tester, updateSelected);
-      await tester.tap(updateSelected);
+      await _pumpUntilEnabledButton(tester, updatePackage);
+      await tester.tap(updatePackage);
       final alpha = File('$sandbox/test-agent/skills/alpha/SKILL.md');
       await _pumpUntilFileContains(
         tester,
@@ -160,7 +159,7 @@ void registerCatalogUpdateCheckJourney() {
 
       await _pumpUntilGone(
         tester,
-        find.text('alpha'),
+        packageCard,
         timeout: const Duration(seconds: 45),
       );
     },

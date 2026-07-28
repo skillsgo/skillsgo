@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package updates, inline removal state, the localized Adoption story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, direct Package update with inventory refresh, inline-confirmed removal, and detail transitions.
+ * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with inventory refresh, inline-confirmed removal, and detail transitions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -71,49 +71,17 @@ extension _LibraryActions on _LibraryScreenState {
     });
   }
 
-  Future<void> _updateSelectedSkills() async {
-    updateState(() => removalConfirming = false);
-    final selected = _selectedSkills
-        .where(
-          (skill) =>
-              updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
-        )
-        .toList(growable: false);
-    final packages = <String, ({InstalledSkill skill, String toVersion})>{};
-    for (final skill in selected) {
-      final availability = updates[libraryUpdateKey(skill)]!;
-      final key = '${skill.packagePath}\u0000${availability.toVersion}';
-      final current = packages[key];
-      if (current == null) {
-        packages[key] = (skill: skill, toVersion: availability.toVersion);
-        continue;
-      }
-      final targets = <String, SkillInstallationTarget>{
-        for (final target in current.skill.targets)
-          installedTargetKey(target): target,
-        for (final target in skill.targets) installedTargetKey(target): target,
-      };
-      packages[key] = (
-        skill: current.skill.withTargets(targets.values.toList()),
-        toVersion: availability.toVersion,
-      );
-    }
-    if (packages.isEmpty) return;
-    updateState(
-      () => operatingSkills.addAll(selected.map((skill) => skill.name)),
-    );
+  Future<void> _updatePackageCard(_PackageUpdateCardData package) async {
+    if (operatingSkills.contains(package.packagePath)) return;
+    updateState(() => operatingSkills.add(package.packagePath));
     updateState(() => result = null);
     try {
-      for (final package in packages.values) {
-        if (!mounted) return;
-        await widget.gateway.updatePackage(
-          package.skill,
-          toVersion: package.toVersion,
-        );
-      }
+      await widget.gateway.updatePackage(
+        package.skill,
+        toVersion: package.toVersion,
+      );
       await load();
       await checkUpdates();
-      if (mounted) updateState(selectedSkillKeys.clear);
     } catch (caught) {
       result = exceptionResult(caught);
       try {
@@ -124,9 +92,7 @@ extension _LibraryActions on _LibraryScreenState {
       }
     } finally {
       if (mounted) {
-        updateState(
-          () => operatingSkills.removeAll(selected.map((skill) => skill.name)),
-        );
+        updateState(() => operatingSkills.remove(package.packagePath));
       }
     }
   }
@@ -292,11 +258,16 @@ extension _LibraryActions on _LibraryScreenState {
       updateCheckError = null;
       updates = {
         for (final skill in skills!)
-          libraryUpdateKey(skill): UpdateAvailability(
-            state: skill.provenance == LibraryProvenance.hub
-                ? UpdateState.checking
-                : UpdateState.unsupported,
-          ),
+          for (final target in skill.targets)
+            packageScopeUpdateKey(
+              skill.packagePath,
+              target.scope,
+              target.projectRoot,
+            ): UpdateAvailability(
+              state: skill.provenance == LibraryProvenance.hub
+                  ? UpdateState.checking
+                  : UpdateState.unsupported,
+            ),
       };
     });
     try {
@@ -305,9 +276,14 @@ extension _LibraryActions on _LibraryScreenState {
       updateCheckError = caught;
       updates = {
         for (final skill in skills!)
-          libraryUpdateKey(skill): const UpdateAvailability(
-            state: UpdateState.failed,
-          ),
+          for (final target in skill.targets)
+            packageScopeUpdateKey(
+              skill.packagePath,
+              target.scope,
+              target.projectRoot,
+            ): const UpdateAvailability(
+              state: UpdateState.failed,
+            ),
       };
     }
     if (mounted) updateState(() => checking = false);
@@ -473,7 +449,7 @@ extension _LibraryActions on _LibraryScreenState {
     final visible = <InstalledSkill>[];
     for (final visibleSkill in _locationAndAgentProjectedSkills) {
       if (updatesOnly &&
-          updates[libraryUpdateKey(visibleSkill)]?.state !=
+          updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
               UpdateState.available) {
         continue;
       }

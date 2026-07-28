@@ -160,6 +160,15 @@ CommandResult exceptionResult(Object error) {
 String libraryUpdateKey(InstalledSkill skill) =>
     skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
 
+String libraryScopeUpdateKey(InstalledSkill skill) {
+  final target = skill.targets.first;
+  return packageScopeUpdateKey(
+    skill.packagePath,
+    target.scope,
+    target.projectRoot,
+  );
+}
+
 String agentDisplayLabel(String agent) => agent
     .split(RegExp(r'[-_]'))
     .where((part) => part.isNotEmpty)

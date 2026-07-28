@@ -1,10 +1,150 @@
 /*
  * [INPUT]: Depends on unified InstalledSkill entries, Package identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
- * [OUTPUT]: Provides grouping data, deterministic Package grouping, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
+ * [OUTPUT]: Provides grouping data, deterministic Package grouping, one-scope Package update cards, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
  * [POS]: Serves as the Package grouping segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
+
+class _PackageUpdateCardData {
+  const _PackageUpdateCardData({
+    required this.packagePath,
+    required this.skill,
+    required this.toVersion,
+    required this.currentVersions,
+    required this.skillCount,
+    required this.removedSkills,
+  });
+
+  final String packagePath;
+  final InstalledSkill skill;
+  final String toVersion;
+  final List<String> currentVersions;
+  final int skillCount;
+  final List<String> removedSkills;
+}
+
+extension _PackageUpdateCards on _LibraryScreenState {
+  List<_PackageUpdateCardData> get _packageUpdateCards {
+    final grouped = <String, List<InstalledSkill>>{};
+    for (final skill in _visibleSkills) {
+      grouped.putIfAbsent(skill.packagePath, () => []).add(skill);
+    }
+    final cards = <_PackageUpdateCardData>[];
+    for (final entry in grouped.entries) {
+      final available = entry.value
+          .map((skill) => updates[libraryScopeUpdateKey(skill)])
+          .whereType<UpdateAvailability>()
+          .where((state) => state.state == UpdateState.available)
+          .toList();
+      if (available.isEmpty) continue;
+      final targets = <String, SkillInstallationTarget>{};
+      for (final skill in entry.value) {
+        for (final target in skill.targets) {
+          targets[installedTargetKey(target)] = target;
+        }
+      }
+      final versions =
+          targets.values.map((target) => target.version).toSet().toList()
+            ..sort();
+      cards.add(
+        _PackageUpdateCardData(
+          packagePath: entry.key,
+          skill: entry.value.first.withTargets(targets.values.toList()),
+          toVersion: available.first.toVersion,
+          currentVersions: versions,
+          skillCount: available.first.selectedSkillCount,
+          removedSkills: available.first.removedSkills,
+        ),
+      );
+    }
+    cards.sort((a, b) => a.packagePath.compareTo(b.packagePath));
+    return cards;
+  }
+}
+
+class _PackageUpdateCard extends StatelessWidget {
+  const _PackageUpdateCard({
+    required this.package,
+    required this.operating,
+    required this.onUpdate,
+  });
+
+  final _PackageUpdateCardData package;
+  final bool operating;
+  final VoidCallback onUpdate;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      key: ValueKey('library-package-update-${package.packagePath}'),
+      margin: EdgeInsets.zero,
+      color: scheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            PackageAvatar(
+              source: package.packagePath,
+              imageUrl: _packageAvatarUrl(package.packagePath),
+              size: 52,
+              borderRadius: 14,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _compactPackagePath(package.packagePath),
+                    style: context.skillsTypography.display.copyWith(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${package.currentVersions.join(', ')}  →  ${package.toVersion}  ·  ${context.l10n.skillCount(package.skillCount)}',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (package.removedSkills.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${context.l10n.removeSkillsDescription}: ${package.removedSkills.join(', ')}',
+                      style: TextStyle(color: scheme.error, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            FilledButton.icon(
+              key: ValueKey(
+                'library-package-update-action-${package.packagePath}',
+              ),
+              onPressed: operating ? null : onUpdate,
+              icon: operating
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const HugeIcon(
+                      icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+                      size: 17,
+                      strokeWidth: 1.8,
+                    ),
+              label: Text(context.l10n.update),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _InstalledSkillGroupData {
   const _InstalledSkillGroupData({

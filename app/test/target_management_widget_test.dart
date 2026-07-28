@@ -212,7 +212,7 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('remove-targets-dialog')), findsNothing);
     expect(find.text('2 selected'), findsOneWidget);
-    expect(find.byKey(const Key('library-update-selected')), findsOneWidget);
+    expect(find.byKey(const Key('library-update-selected')), findsNothing);
     expect(find.byKey(const Key('library-confirm-remove')), findsOneWidget);
     expect(
       tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, zero-minimum PostgreSQL pooling, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, Package Info, shared pgx transactions, discovery projections, and source cache state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, zero-minimum PostgreSQL pooling, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, ordered current-Package update projections, Package Info, shared pgx transactions, discovery projections, and source cache state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,6 +34,13 @@ func skillResourceID(packagePath, name string) string { return packagePath + ":"
 type Catalog struct {
 	pool    *pgxpool.Pool
 	queries *catalogsqlc.Queries
+}
+
+type CurrentPackage struct {
+	PackagePath   string
+	LatestVersion string
+	Sum           string
+	Skills        []protocolapi.PackageSkill
 }
 
 const (
@@ -562,6 +569,24 @@ func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, er
 		return nil, err
 	}
 	return moduleFromSQLC(stored), nil
+}
+
+func (c *Catalog) CurrentPackages(ctx context.Context, packagePaths []string) ([]CurrentPackage, error) {
+	rows, err := c.queries.CurrentPackagesByPaths(ctx, packagePaths)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]CurrentPackage, 0, len(rows))
+	for _, row := range rows {
+		members := make([]protocolapi.PackageSkill, 0)
+		if err := json.Unmarshal(row.Skills, &members); err != nil {
+			return nil, fmt.Errorf("decode current Package %q membership: %w", row.PackagePath, err)
+		}
+		result = append(result, CurrentPackage{
+			PackagePath: row.PackagePath, LatestVersion: row.LatestVersion, Sum: row.Sum, Skills: members,
+		})
+	}
+	return result, nil
 }
 
 func (c *Catalog) VersionSkills(ctx context.Context, packagePath, version string) ([]VersionSkill, error) {

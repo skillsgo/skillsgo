@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the shared gateway state, SharedPreferences, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance, language, reminder, onboarding, Added Project, Hub origin and runtime discovery, risk policy, and App-version persistence operations.
- * [POS]: Serves as the local preference and project-reference capability inside the RealSkillsGateway adapter.
+ * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI Managed Scope commands, directory pickers, project inspection, App locale, and Hub health CLI command.
+ * [OUTPUT]: Provides appearance, language, reminder, onboarding, CLI-owned Added Project access, Hub origin and runtime discovery, risk policy, and App-version persistence operations.
+ * [POS]: Serves as the local preference and CLI-backed project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
@@ -197,11 +197,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     );
   }
 
-  String _newProjectID() {
-    final bytes = List<int>.generate(12, (_) => Random.secure().nextInt(256));
-    return base64UrlEncode(bytes).replaceAll('=', '');
-  }
-
   Future<String> _canonicalProjectPath(String path) async {
     final normalized = p.normalize(p.absolute(path));
     try {
@@ -212,55 +207,29 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
   }
 
   Future<List<({String id, String name, String path})>>
-  _loadProjectReferences() async {
-    final raw = (await SharedPreferences.getInstance()).getString(
-      _addedProjectsKey,
+  _loadManagedProjectReferences() async {
+    final command = await _runCli(['project', 'list', '--output', 'json']);
+    if (!command.succeeded) throw _commandFailure(command);
+    final raw = _decodeMachineDocument(
+      command.output.stdout,
+      phase: 'project-list',
     );
-    if (raw == null) return const [];
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) throw const FormatException();
-      final ids = <String>{};
-      final paths = <String>{};
-      return decoded
-          .map((entry) {
-            if (entry is! Map<String, dynamic> ||
-                entry['id'] is! String ||
-                (entry['id'] as String).isEmpty ||
-                entry['name'] is! String ||
-                (entry['name'] as String).isEmpty ||
-                entry['path'] is! String ||
-                (entry['path'] as String).isEmpty ||
-                !ids.add(entry['id'] as String) ||
-                !paths.add(entry['path'] as String)) {
-              throw const FormatException();
-            }
-            return (
-              id: entry['id'] as String,
-              name: entry['name'] as String,
-              path: entry['path'] as String,
-            );
-          })
-          .toList(growable: false);
-    } on FormatException {
-      throw const SkillsException(
-        'Saved project references are invalid.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
-  }
-
-  Future<void> _saveProjectReferences(
-    List<({String id, String name, String path})> projects,
-  ) async {
-    final encoded = jsonEncode([
-      for (final project in projects)
-        {'id': project.id, 'name': project.name, 'path': project.path},
-    ]);
-    await (await SharedPreferences.getInstance()).setString(
-      _addedProjectsKey,
-      encoded,
-    );
+    if (raw['projects'] is! List) throw const FormatException();
+    return (raw['projects'] as List)
+        .map((entry) {
+          if (entry is! Map<String, dynamic> ||
+              entry['id'] is! String ||
+              entry['name'] is! String ||
+              entry['root'] is! String) {
+            throw const FormatException();
+          }
+          return (
+            id: entry['id'] as String,
+            name: entry['name'] as String,
+            path: entry['root'] as String,
+          );
+        })
+        .toList(growable: false);
   }
 
   Future<AddedProject> _resolveProject(
@@ -286,7 +255,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
   @override
   Future<List<AddedProject>> loadAddedProjects() async {
-    final references = await _loadProjectReferences();
+    final references = await _loadManagedProjectReferences();
     final projects = <AddedProject>[];
     for (final reference in references) {
       projects.add(await _resolveProject(reference));
@@ -298,7 +267,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
   Future<List<AddedProject>> addProjects() async {
     final selected = await _directoryPathsPicker();
     if (selected.isEmpty) return const [];
-    final references = await _loadProjectReferences();
+    final references = await _loadManagedProjectReferences();
     final referencesByPath =
         <String, ({String id, String name, String path})>{};
     for (final reference in references) {
@@ -307,7 +276,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
     final selectedReferences = <({String id, String name, String path})>[];
     final selectedPaths = <String>{};
-    final addedReferences = <({String id, String name, String path})>[];
     for (final rawPath in selected) {
       final value = rawPath.trim();
       if (value.isEmpty) continue;
@@ -328,19 +296,35 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
         continue;
       }
 
-      final basename = p.basename(path);
+      final command = await _runCli([
+        'project',
+        'add',
+        path,
+        '--output',
+        'json',
+      ]);
+      if (!command.succeeded) throw _commandFailure(command);
+      final raw = _decodeMachineDocument(
+        command.output.stdout,
+        phase: 'project-add',
+      );
+      if (raw['projects'] is! List || (raw['projects'] as List).length != 1) {
+        throw const FormatException();
+      }
+      final added = (raw['projects'] as List).single;
+      if (added is! Map<String, dynamic> ||
+          added['id'] is! String ||
+          added['name'] is! String ||
+          added['root'] is! String) {
+        throw const FormatException();
+      }
       final reference = (
-        id: _newProjectID(),
-        name: basename.isEmpty ? path : basename,
-        path: path,
+        id: added['id'] as String,
+        name: added['name'] as String,
+        path: added['root'] as String,
       );
       referencesByPath[path] = reference;
       selectedReferences.add(reference);
-      addedReferences.add(reference);
-    }
-
-    if (addedReferences.isNotEmpty) {
-      await _saveProjectReferences([...references, ...addedReferences]);
     }
     final projects = <AddedProject>[];
     for (final reference in selectedReferences) {
@@ -351,7 +335,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
   @override
   Future<AddedProject?> relocateProject(String id) async {
-    final references = await _loadProjectReferences();
+    final references = await _loadManagedProjectReferences();
     final index = references.indexWhere((project) => project.id == id);
     if (index < 0) return null;
     final selected = await _directoryPicker(
@@ -367,22 +351,46 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
         throw const SkillsException('That project is already added.');
       }
     }
-    final relocated = (
-      id: references[index].id,
-      name: references[index].name,
-      path: path,
+    final command = await _runCli([
+      'project',
+      'move',
+      id,
+      path,
+      '--output',
+      'json',
+    ]);
+    if (!command.succeeded) throw _commandFailure(command);
+    final raw = _decodeMachineDocument(
+      command.output.stdout,
+      phase: 'project-move',
     );
-    final updated = [...references]..[index] = relocated;
-    await _saveProjectReferences(updated);
-    return _resolveProject(relocated);
+    if (raw['projects'] is! List || (raw['projects'] as List).length != 1) {
+      throw const FormatException();
+    }
+    final moved = (raw['projects'] as List).single;
+    if (moved is! Map<String, dynamic> ||
+        moved['id'] is! String ||
+        moved['name'] is! String ||
+        moved['root'] is! String) {
+      throw const FormatException();
+    }
+    return _resolveProject((
+      id: moved['id'] as String,
+      name: moved['name'] as String,
+      path: moved['root'] as String,
+    ));
   }
 
   @override
   Future<void> removeProject(String id) async {
-    final references = await _loadProjectReferences();
-    await _saveProjectReferences(
-      references.where((project) => project.id != id).toList(growable: false),
-    );
+    final command = await _runCli([
+      'project',
+      'remove',
+      id,
+      '--output',
+      'json',
+    ]);
+    if (!command.succeeded) throw _commandFailure(command);
   }
 
   @override

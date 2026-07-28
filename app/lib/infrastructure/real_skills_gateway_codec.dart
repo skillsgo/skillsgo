@@ -219,9 +219,6 @@ TargetManagementResult _targetManagementResult(
   );
 }
 
-String _installedSkillUpdateKey(InstalledSkill skill) =>
-    skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
-
 SkillMetricKind _metricKind(String value) => switch (value) {
   'all_time_installs' => SkillMetricKind.allTimeInstalls,
   'installs_24h' => SkillMetricKind.installs24h,

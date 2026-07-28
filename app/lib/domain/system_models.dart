@@ -13,10 +13,17 @@ enum CliIssue { missing, damaged, incompatible }
 enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
 
 class UpdateAvailability {
-  const UpdateAvailability({required this.state, this.toVersion = ''});
+  const UpdateAvailability({
+    required this.state,
+    this.toVersion = '',
+    this.selectedSkillCount = 0,
+    this.removedSkills = const [],
+  });
 
   final UpdateState state;
   final String toVersion;
+  final int selectedSkillCount;
+  final List<String> removedSkills;
 }
 
 enum HealthState { ready, notInitialized, unreachable, invalid }
@@ -34,6 +41,12 @@ enum SkillsFailureKind {
 enum DiscoveryCollection { search, ranking, trending, hot }
 
 enum InstallationScope { global, project }
+
+String packageScopeUpdateKey(
+  String packagePath,
+  InstallationScope scope,
+  String projectRoot,
+) => '$packagePath\u0000${scope.name}\u0000$projectRoot';
 
 enum DiscoveryVerification { verified, unverified }
 

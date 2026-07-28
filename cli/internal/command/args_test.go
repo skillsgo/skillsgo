@@ -43,10 +43,6 @@ func TestPublicCommandsProvideExamples(t *testing.T) {
 	update, _, err := root.Find([]string{"update"})
 	require.NoError(t, err)
 	require.Equal(t, "p", update.Flags().Lookup("project").Shorthand)
-	checkUpdate, remaining, err := root.Find([]string{"hub", "check-update"})
-	require.NoError(t, err)
-	require.Equal(t, "check-update", checkUpdate.Name())
-	require.Empty(t, remaining)
 	_, _, err = root.Find([]string{"updates"})
 	require.ErrorContains(t, err, "unknown command \"updates\"")
 }

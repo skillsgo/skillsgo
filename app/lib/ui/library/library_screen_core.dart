@@ -128,15 +128,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         visibleSkills.isNotEmpty &&
         visibleSelectedCount == visibleSkills.length;
     final someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
-    final updateableSelected = selected.where(
-      (skill) =>
-          updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
-    );
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final detailSkill = selectedDetailSkill;
-    final availableUpdateCount = updates.values
-        .where((availability) => availability.state == UpdateState.available)
-        .length;
     return SkillsDestinationLayout(
       bodyTransitionKey: selectedLocation,
       overlay: Positioned(
@@ -153,7 +146,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 : _LibrarySelectionBar(
                     key: const ValueKey('selection-bar-visible'),
                     selectedCount: selected.length,
-                    updateableCount: updateableSelected.length,
                     operating: selected.any(
                       (skill) => operatingSkills.contains(skill.name),
                     ),
@@ -162,7 +154,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       removalConfirming = false;
                       selectedSkillKeys.clear();
                     }),
-                    onUpdate: _updateSelectedSkills,
                     onRequestRemove: _requestSelectedRemoval,
                     onCancelRemove: _cancelSelectedRemoval,
                     onConfirmRemove: _confirmSelectedRemoval,
@@ -226,27 +217,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (reminderSettings?.updateAvailable == true &&
-                        availableUpdateCount > 0) ...[
-                      const SizedBox(height: 14),
-                      InkWell(
-                        key: const Key('library-update-reminder'),
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => setState(() => updatesOnly = true),
-                        child: SkillsAlert(
-                          icon: const HugeIcon(
-                            icon: HugeIcons.strokeRoundedDownload04,
-                            strokeWidth: 1.8,
-                          ),
-                          title: Text(
-                            context.l10n.availableUpdatesReminder(
-                              availableUpdateCount,
-                            ),
-                          ),
-                          description: Text(context.l10n.openAvailableUpdates),
-                        ),
-                      ),
-                    ],
                     if (result != null) ...[
                       const SizedBox(height: 14),
                       OperationPanel(result: result!),
@@ -297,6 +267,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                       ? context.l10n.clearCurrentResultSelection
                                       : context.l10n.selectCurrentResults,
                                   child: adoptionReviewVisible
+                                      ? const SizedBox.shrink()
+                                      : updatesOnly
                                       ? const SizedBox.shrink()
                                       : SkillsCheckbox(
                                           key: const Key(
@@ -384,7 +356,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   skill: detailSkill,
                   projects: projects,
                   initialUpdate:
-                      updates[libraryUpdateKey(detailSkill)] ??
+                      updates[libraryScopeUpdateKey(detailSkill)] ??
                       const UpdateAvailability(state: UpdateState.unknown),
                   onBack: () => unawaited(_closeDetail()),
                   onRemoved: _closeRemovedDetail,

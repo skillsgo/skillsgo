@@ -130,8 +130,15 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
     if (updateCheckErrors.isNotEmpty) throw updateCheckErrors.removeAt(0);
     return {
       for (final skill in skills)
-        (skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey):
-            UpdateAvailability(state: updateState, toVersion: 'v2'),
+        for (final target in skill.targets)
+          packageScopeUpdateKey(
+            skill.packagePath,
+            target.scope,
+            target.projectRoot,
+          ): UpdateAvailability(
+            state: updateState,
+            toVersion: 'v2',
+          ),
     };
   }
 }

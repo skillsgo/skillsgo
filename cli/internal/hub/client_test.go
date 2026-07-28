@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies product-API movable resolution followed by exact Package Version metadata/ZIP reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
+ * [OUTPUT]: Specifies product-API movable resolution followed by exact Package Version metadata/ZIP reads, direct immutable reads, typed member validation, ordered Package update batches, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -159,5 +160,34 @@ func TestPackageInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
 	resource, err := ParsePackageInfo(packagePath, encoded)
 	if err != nil || len(resource.Members) != 2 {
 		t.Fatalf("duplicate-name members = %#v, %v", resource, err)
+	}
+}
+
+func TestPackageUpdatesUsesOneOrderedBatch(t *testing.T) {
+	paths := []string{"github.com/missing/skills", "github.com/example/skills"}
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests++
+		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/packages/check-update" {
+			http.NotFound(w, request)
+			return
+		}
+		var body protocolapi.PackageUpdateCheckRequest
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if got := []string{body.Packages[0].PackagePath, body.Packages[1].PackagePath}; !slices.Equal(got, paths) {
+			t.Fatalf("unexpected paths %v", got)
+		}
+		fmt.Fprint(w, `{"packages":[{"packagePath":"github.com/missing/skills","skills":[],"status":"unsupported"},{"packagePath":"github.com/example/skills","latestVersion":"v1.1.0","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":[{"name":"review","path":"skills/review"}],"status":"available"}]}`)
+	}))
+	defer server.Close()
+	client, err := New(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := client.PackageUpdates(t.Context(), paths)
+	if err != nil || requests != 1 || len(items) != 2 || items[1].LatestVersion != "v1.1.0" {
+		t.Fatalf("items=%#v requests=%d err=%v", items, requests, err)
 	}
 }

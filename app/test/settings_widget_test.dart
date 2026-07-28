@@ -349,7 +349,7 @@ void main() {
     expect(find.text('Local Library refreshed.'), findsOneWidget);
   });
 
-  testWidgets('reminder settings persist and drive the Library update prompt', (
+  testWidgets('reminder settings persist without a Library update banner', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -361,10 +361,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('library-update-reminder')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('library-update-reminder')));
-    await tester.pumpAndSettle();
-    expect(find.text('Updates'), findsOneWidget);
+    expect(find.byKey(const Key('library-update-reminder')), findsNothing);
 
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();

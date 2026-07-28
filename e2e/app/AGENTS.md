@@ -21,7 +21,7 @@ This workspace owns macOS desktop journeys that drive the rendered Flutter App a
 - `app/integration_test/support/journey_runtime.dart`: owns per-Journey real Gateway, filesystem, Hub process, artifact storage, and PostgreSQL schema isolation.
 - `app/integration_test/machine_failure_recovery_test.dart`: routes a rendered explicit-source request through the bundled CLI to an unreachable Hub and verifies App-owned localized recovery without raw diagnostics.
 - `app/integration_test/repository_install_all_test.dart`: searches the SkillsGo-owned public versioned fixture through the disposable Hub and verifies repository-wide installation, nested resources, and complete bundled-CLI metadata.
-- `app/integration_test/catalog_update_check_test.dart`: installs the SkillsGo-owned public fixture at v1.2.0, advances the independent Catalog to v1.3.0, and verifies rendered update availability through the bundled CLI.
+- `app/integration_test/package_update_check_test.dart`: installs the SkillsGo-owned public fixture at v1.2.0, advances the independent Catalog to v1.3.0, and verifies the rendered Scope-by-Package update card through the bundled CLI.
 - `app/integration_test/adoption_management_test.dart`: dismisses the one-time rendered adoption introduction, then manages supported existing Global and Added Project Skills through location menus, verifies exact counts before and after each scoped action, and preserves the original files while the bundled CLI persists complete management metadata.
 
 [PROTOCOL]: Update this map when App E2E runtime, entry points, or isolation rules change.
