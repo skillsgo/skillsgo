@@ -245,6 +245,22 @@ abstract interface class ProcessRunner {
   });
 }
 
+abstract interface class CliServerSession {
+  bool get isClosed;
+
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  });
+
+  Future<void> close();
+}
+
+abstract interface class CliServerRunner {
+  Future<CliServerSession> startCliServer(String executable);
+}
+
 enum AppThemeMode { system, light, dark }
 
 enum AppWallpaper {

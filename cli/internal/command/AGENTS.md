@@ -3,7 +3,8 @@
 
 ## Members
 
-- `root.go`: constructs the public Cobra command graph and localized help surface, exposes the `Execute` behavior seam, emits recognized machine-mode failures, and routes Package add/update/explicitly-confirmed-remove/install operations.
+- `root.go`: constructs the public Cobra command graph and localized help surface, exposes stdin-capable `Execute` behavior seams, emits recognized machine-mode failures, and routes Package add/update/explicitly-confirmed-remove/install operations.
+- `server.go`, `server_test.go`: provide and specify the sequential versioned NDJSON CLI Server used by the App to reuse one process and its HTTP transport while isolating request failures.
 - `machine_failure.go`: translates wrapped command failures into the minimal versioned JSON or NDJSON machine document without making stderr a parsing contract.
 - `machine_failure_test.go`: specifies early JSON and NDJSON failure documents through the public `Execute` seam.
 - `terminal_ui.go`: resolves inherited Human UI/color policy into the shared terminal presentation Adapter.

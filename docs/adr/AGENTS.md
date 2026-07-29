@@ -20,6 +20,7 @@
 - `0015-make-package-updates-scope-aware.md`: makes `Scope × Package Path` the update target, unifies preview and execution under `skillsgo update`, and replaces Skill-level availability checks with Package-level Hub reads.
 - `0016-distribute-package-artifacts-as-static-git-repositories.md`: proposes replacing immutable per-version ZIPs with Hub-authored bare Git Artifact Repositories distributed from Cloudflare-backed R2 over dumb HTTP.
 - `0017-rebuild-disposable-package-caches-and-materialize-scope-trees.md`: makes exact metadata/Git state disposable read-through cache, moves Global Package Trees under the Global declaration root, and preserves complete Scope Trees plus protected member symlinks.
+- `0018-use-a-long-lived-cli-server-for-the-app.md`: keeps one sequential NDJSON CLI process behind the App so Go HTTP connections survive across operations, with explicit crash recovery and non-replay semantics.
 
 ## Architectural Boundary
 

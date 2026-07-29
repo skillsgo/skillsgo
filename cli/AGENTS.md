@@ -52,7 +52,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 - The CLI is the only product boundary that mutates local skill installations.
 - Hub interaction must use the public SkillsGo protocol rather than server internals.
-- The CLI may expose stable machine-readable output and availability exit codes for the App; human output and localized stderr are not integration contracts.
+- The CLI exposes stable machine-readable output and availability exit codes through both one-shot commands and the App's sequential CLI Server; human output and localized stderr are not integration contracts.
 - Do not place Flutter UI state, layout, navigation, or visual policy in this workspace.
 - Preserve artifact integrity and deterministic restoration without introducing a dependency lock graph.
 

@@ -9,6 +9,7 @@ part of 'real_skills_gateway.dart';
 mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
   @override
   Future<CliStatus> detectCli({String? customPath}) async {
+    await _closeCliServer();
     final previouslyResolvedPath = _cliPath;
     _cliPath = null;
     final saved = allowDeveloperCliOverride
@@ -129,12 +130,43 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
       }
     }
     final executable = _requiredCli;
-    final output = await _runner.run(
-      executable,
-      arguments,
-      stdin: stdin,
-      onStdoutLine: onStdoutLine,
-    );
+    final output = _runner is CliServerRunner
+        ? await (await _requireCliServer(
+            executable,
+          )).run(arguments, stdin: stdin, onStdoutLine: onStdoutLine)
+        : await _runner.run(
+            executable,
+            arguments,
+            stdin: stdin,
+            onStdoutLine: onStdoutLine,
+          );
+    if (_cliServerSession?.isClosed ?? false) {
+      _cliServerSession = null;
+      _cliServerStart = null;
+    }
     return CommandResult(command: [executable, ...arguments], output: output);
+  }
+
+  Future<CliServerSession> _requireCliServer(String executable) async {
+    final current = _cliServerSession;
+    if (current != null && !current.isClosed) return current;
+    final starting = _cliServerStart;
+    if (starting != null) return starting;
+    final future = (_runner as CliServerRunner).startCliServer(executable);
+    _cliServerStart = future;
+    try {
+      final session = await future;
+      _cliServerSession = session;
+      return session;
+    } finally {
+      _cliServerStart = null;
+    }
+  }
+
+  Future<void> _closeCliServer() async {
+    final current = _cliServerSession;
+    _cliServerSession = null;
+    _cliServerStart = null;
+    await current?.close();
   }
 }
