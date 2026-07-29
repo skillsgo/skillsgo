@@ -161,7 +161,7 @@ func (c *Client) FetchPackageEntries(ctx context.Context, resource *PackageResou
 		base, _ := url.Parse(c.baseURL + "/")
 		repositoryURL = base.ResolveReference(parsed).String()
 	}
-	entries, err := fetchArtifactEntries(ctx, c.http, repositoryURL, resource.Info.Version, progress)
+	entries, err := fetchArtifactEntries(ctx, c.http, resource.Info.PackagePath, repositoryURL, resource.Info.Version, progress)
 	if err != nil {
 		return nil, err
 	}

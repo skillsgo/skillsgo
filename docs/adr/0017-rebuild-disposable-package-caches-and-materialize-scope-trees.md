@@ -44,7 +44,7 @@ Portable local authority:
 Shared disposable acquisition cache:
 
 - `~/.skillsgo/cache/info`, containing exact Package Info bytes;
-- `~/.skillsgo/cache/packages`, containing bare go-git object databases synchronized from static Artifact repositories.
+- `~/.skillsgo/cache/packages/<package-path>`, containing one bare go-git object database per canonical Package Path synchronized from the Artifact repository advertised by the active Hub. Package Path is the cache identity; the Artifact origin is an acquisition source rather than a second local identity. Paths use Go module escaping so ordinary lowercase paths remain readable while uppercase paths remain distinct on case-insensitive filesystems.
 
 Scope-local derived materialization:
 
