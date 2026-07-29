@@ -294,9 +294,22 @@ jobs:
         run: GOWORK=off go tool gotestsum --format github-actions -- -count=1 -timeout=15m ./...
 
   e2e-app:
-    name: App E2E
-    runs-on: macos-15
+    name: App E2E (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-15
+            target: macos
+          - name: Windows
+            os: windows-2025
+            target: windows
+          - name: Linux
+            os: ubuntu-24.04
+            target: linux
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -322,15 +335,31 @@ jobs:
         working-directory: app
         run: flutter pub get
 
-      - name: Install native PostgreSQL
+      - name: Install macOS PostgreSQL
+        if: matrix.target == 'macos'
         run: |
           brew install postgresql@18
           echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(brew --prefix postgresql@18)/bin" >> "$GITHUB_ENV"
 
+      - name: Install Linux desktop and PostgreSQL dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb postgresql postgresql-client
+          echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(pg_config --bindir)" >> "$GITHUB_ENV"
+
+      - name: Install Windows PostgreSQL
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          choco install postgresql18 --no-progress -y --params "'/Password:skillsgo'"
+          "SKILLSGO_E2E_POSTGRES_BIN_DIR=C:/Program Files/PostgreSQL/18/bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Run rendered desktop journeys
+        shell: bash
         env:
           SKILLSGO_E2E_HUB_RUNTIME: native
-        run: make test-e2e-app
+        run: ./e2e/app/run.sh
 
   required:
     name: Required

@@ -35,7 +35,7 @@ flutter build linux --release
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
-| `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS Journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
+| `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS, Windows, and Linux Journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
 | `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
 | `windows/` | Windows x64 runner and build-time bundled CLI integration. |
 | `linux/` | Linux x64 runner and build-time bundled CLI integration. |

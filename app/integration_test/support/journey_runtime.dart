@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, and SharedPreferences.
  * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation while preserving the real App-to-CLI-to-Hub boundary.
- * [POS]: Serves as the reusable runtime fixture for the single-process macOS App E2E suite and focused Journey execution.
+ * [POS]: Serves as the reusable runtime fixture for the single-process cross-platform App E2E suite and focused Journey execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
@@ -137,11 +137,11 @@ final class JourneyRuntime {
   Future<void> close() async {
     final process = _hubProcess;
     if (process != null) {
-      process.kill(ProcessSignal.sigterm);
+      process.kill();
       try {
         await process.exitCode.timeout(const Duration(seconds: 5));
       } on TimeoutException {
-        process.kill(ProcessSignal.sigkill);
+        process.kill();
         await process.exitCode;
       }
     }
