@@ -18,8 +18,7 @@ class _ManagedProjectsRunner implements ProcessRunner {
   _ManagedProjectsRunner({this.fallback});
 
   final ProcessRunner? fallback;
-  final projects = <String, ({String id, String name, String root})>{};
-  var nextID = 1;
+  final projects = <String, ({String name, String root})>{};
 
   @override
   Future<ProcessOutput> run(
@@ -34,35 +33,14 @@ class _ManagedProjectsRunner implements ProcessRunner {
         final root = await _canonical(arguments[2]);
         projects.putIfAbsent(
           root,
-          () => (
-            id: 'project-${nextID++}',
-            name: root.split(Platform.pathSeparator).last,
-            root: root,
-          ),
+          () => (name: root.split(Platform.pathSeparator).last, root: root),
         );
         return _document('project-add', [projects[root]!]);
       }
       if (action == 'remove') {
-        final value = arguments[2];
-        projects.removeWhere(
-          (_, project) => project.id == value || project.root == value,
-        );
+        final value = await _canonical(arguments[2]);
+        projects.remove(value);
         return _document('project-remove', const []);
-      }
-      if (action == 'move') {
-        final id = arguments[2];
-        final root = await _canonical(arguments[3]);
-        final existing = projects.values.singleWhere(
-          (project) => project.id == id,
-        );
-        projects.remove(existing.root);
-        final moved = (
-          id: 'project-${nextID++}',
-          name: root.split(Platform.pathSeparator).last,
-          root: root,
-        );
-        projects[root] = moved;
-        return _document('project-move', [moved]);
       }
       if (action == 'list') {
         return _document('project-list', projects.values.toList());
@@ -87,7 +65,7 @@ class _ManagedProjectsRunner implements ProcessRunner {
 
   ProcessOutput _document(
     String phase,
-    List<({String id, String name, String root})> values,
+    List<({String name, String root})> values,
   ) => ProcessOutput(
     exitCode: 0,
     stdout: jsonEncode({
@@ -95,7 +73,7 @@ class _ManagedProjectsRunner implements ProcessRunner {
       'phase': phase,
       'projects': [
         for (final project in values)
-          {'id': project.id, 'name': project.name, 'root': project.root},
+          {'name': project.name, 'root': project.root},
       ],
     }),
     stderr: '',
@@ -190,18 +168,16 @@ void main() {
   });
 
   test(
-    'Added Projects persist, relocate by stable inventoryKey, and remove only the App reference',
+    'Added Projects persist and removal only drops the App reference',
     () async {
       SharedPreferences.setMockInitialValues({});
       final root = await Directory.systemTemp.createTemp('skillsgo-projects-');
       addTearDown(() => root.delete(recursive: true));
       final original = Directory('${root.path}/plain project');
       final second = Directory('${root.path}/second project');
-      final relocated = Directory('${root.path}/moved project');
       final unselected = Directory('${root.path}/never selected');
       await original.create();
       await second.create();
-      await relocated.create();
       await unselected.create();
       await File(
         '${original.path}/skills.yaml',
@@ -242,10 +218,6 @@ void main() {
       final restarted = RealSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
-        directoryPicker: ({initialDirectory}) async {
-          expect(initialDirectory, added.first.path);
-          return relocated.path;
-        },
         projectPathInspector: inspect,
       );
       final restored = await restarted.loadAddedProjects();
@@ -254,11 +226,7 @@ void main() {
         restored.map((project) => project.path),
         added.map((project) => project.path),
       );
-      final moved = await restarted.relocateProject(added.first.id);
-      final canonicalRelocatedPath = await relocated.resolveSymbolicLinks();
-      expect(moved!.id, isNotEmpty);
-      expect(moved.path, canonicalRelocatedPath);
-      await restarted.removeProject(moved.id);
+      await restarted.removeProject(added.first.id);
       expect(
         (await restarted.loadAddedProjects()).map((project) => project.path),
         [added[1].path],
@@ -352,7 +320,7 @@ void main() {
       'theme_mode': AppThemeMode.dark.name,
     });
     final runner = _ManagedProjectsRunner();
-    runner.projects['/one'] = (id: 'one', name: 'One', root: '/one');
+    runner.projects['/one'] = (name: 'One', root: '/one');
     final gateway = RealSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
@@ -467,10 +435,10 @@ void main() {
           ),
         ]);
       final runner = _ManagedProjectsRunner(fallback: fallback);
-      runner.projects[project.path] = (
-        id: 'offline-project',
+      final canonicalProjectPath = await project.resolveSymbolicLinks();
+      runner.projects[canonicalProjectPath] = (
         name: 'Offline Project',
-        root: project.path,
+        root: canonicalProjectPath,
       );
       final gateway = RealSkillsGateway(
         processRunner: runner,

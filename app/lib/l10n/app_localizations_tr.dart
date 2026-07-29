@@ -441,9 +441,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get addProject => 'Proje Ekle';
 
   @override
-  String get relocateProject => 'Yerini değiştir';
-
-  @override
   String get removeFromList => 'Listeden Kaldır';
 
   @override
@@ -471,21 +468,21 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Dizin taşınmış olabilir veya birimi çevrimdışı olabilir. Konumunu değiştirin veya yalnızca Uygulama referansını kaldırın.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Proje izni gerekli';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo bu seçilen kökü inceleyemiyor. Dizin seçici aracılığıyla yerini değiştirerek erişim izni verin.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'Proje dizinine erişilemiyor';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo bu proje referansını korudu. Yolu veya birimi kontrol edin ve ardından yerini değiştirin.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Kontrol ediliyor…';

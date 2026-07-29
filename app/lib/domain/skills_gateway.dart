@@ -66,7 +66,6 @@ abstract interface class SkillsGateway {
   Future<List<AddedProject>> loadAddedProjects();
   Future<AddedProject> resolveProjectIcon(AddedProject project);
   Future<List<AddedProject>> addProjects();
-  Future<AddedProject?> relocateProject(String id);
   Future<void> removeProject(String id);
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],

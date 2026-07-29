@@ -441,9 +441,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get addProject => 'Project toevoegen';
 
   @override
-  String get relocateProject => 'Verhuizen';
-
-  @override
   String get removeFromList => 'Verwijderen uit lijst';
 
   @override
@@ -471,14 +468,14 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'De map is mogelijk verplaatst of het volume ervan is mogelijk offline. Verplaats het of verwijder alleen de app-referentie.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Projectvergunning is vereist';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo kan deze geselecteerde root niet inspecteren. Verleen toegang door deze te verplaatsen via de directorykiezer.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -486,7 +483,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo heeft deze projectreferentie behouden. Controleer het pad of volume en verplaats het vervolgens.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Controleren…';

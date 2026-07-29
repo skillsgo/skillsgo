@@ -49,10 +49,6 @@ extension _LibraryBody on _LibraryScreenState {
         return EmptyState(
           title: copy.title,
           message: '${copy.message}\n${project.path}',
-          action: PrimaryCapsuleButton(
-            label: context.l10n.relocateProject,
-            onPressed: () => _relocateProject(project),
-          ),
         );
       }
     }

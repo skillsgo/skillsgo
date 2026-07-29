@@ -61,7 +61,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.projectLoadCompleter,
     AddedProject? projectToAdd,
     List<AddedProject>? projectsToAdd,
-    this.projectToRelocate,
     List<InstalledSkill>? libraryEntries,
     this.localDetailError,
     this.localDetail,
@@ -137,7 +136,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final SkillsException? agentInspectionError;
   final SkillsException? libraryError;
   final List<AddedProject> projectsToAdd;
-  final AddedProject? projectToRelocate;
   final Completer<List<AddedProject>>? projectLoadCompleter;
   List<InstalledSkill>? libraryEntries;
   final SkillsException? localDetailError;

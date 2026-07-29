@@ -255,7 +255,7 @@ Add Project performs the following journey:
 
 A project need not be a Git repository and need not contain SkillsGo files. Removing it from the App never deletes its directory, declarations, Lock, or Skills.
 
-When a project is moved, deleted, or inaccessible, keep a diagnosable rail state with Relocate and Remove from List actions instead of forgetting it silently.
+When a project is moved, deleted, or inaccessible, keep a diagnosable rail state and let the user remove its App reference instead of forgetting it silently.
 
 ## Navigation and State Preservation
 
@@ -298,7 +298,7 @@ Suggested logical routes:
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
 | Manually replaced target | Mark unhealthy; do not delete or overwrite automatically; require user resolution |
-| Inaccessible project | Keep the entry and offer Relocate or Remove from List |
+| Inaccessible project | Keep the entry and offer Remove from List |
 
 ## Implemented Contract Posture
 
