@@ -4,6 +4,7 @@
 ## Members
 
 - `real_skills_gateway.dart`: defines the production `SkillsGateway` adapter, stdin-capable CLI seam, shared state, platform pickers, internal capability composition, and the shared App-side protocol-decode failure telemetry boundary.
+- `bundled_cli_locator.dart`: defines the shared macOS, Windows, and Linux bundle-layout contract used to locate the packaged CLI.
 - `io_process_runner.dart`: executes the bundled CLI with structured arguments, optional stdin, bounded runtime, optional stdout events, typed output, optional working-directory/environment isolation, and self-identifying sanitized completion telemetry used by real-process E2E journeys.
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, minimal Package-install receipt validation, strict payload decoding for read/planning contracts, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.

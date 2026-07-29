@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, process-singleton macOS window integration, Marionette debug instrumentation, build mode, App logging, and the real SkillsGateway with an optional preconfigured process-isolated instance.
- * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, one-time desktop initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
+ * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, platform-aware native window integration, Marionette debug instrumentation, build mode, App logging, and the real SkillsGateway with an optional preconfigured process-isolated instance.
+ * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, one-time macOS/Windows/Linux window initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
  * [POS]: Serves as the Flutter workspace process entry point, global observability bootstrap, and platform initialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -104,17 +105,23 @@ final class _AppLifecycleLogger with WidgetsBindingObserver {
 }
 
 Future<void> _initializeDesktopWindow() async {
-  await WindowManipulator.initialize(enableWindowDelegate: true);
-  await WindowManipulator.makeTitlebarTransparent();
-  await WindowManipulator.enableFullSizeContentView();
-  await WindowManipulator.hideTitle();
+  if (Platform.isMacOS) {
+    await WindowManipulator.initialize(enableWindowDelegate: true);
+    await WindowManipulator.makeTitlebarTransparent();
+    await WindowManipulator.enableFullSizeContentView();
+    await WindowManipulator.hideTitle();
+  }
   await windowManager.ensureInitialized();
-  const options = WindowOptions(
-    size: Size(1120, 760),
-    minimumSize: Size(940, 640),
+  final options = WindowOptions(
+    size: const Size(1120, 760),
+    minimumSize: const Size(940, 640),
     center: true,
-    backgroundColor: Color(0x00000000),
-    titleBarStyle: TitleBarStyle.hidden,
+    backgroundColor: Platform.isMacOS
+        ? const Color(0x00000000)
+        : const Color(0xFFFFFFFF),
+    titleBarStyle: Platform.isMacOS
+        ? TitleBarStyle.hidden
+        : TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
     await windowManager.show();
