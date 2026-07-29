@@ -923,6 +923,13 @@ class AppLocalizationsVi extends AppLocalizations {
       'Sử dụng Hub chính thức hoặc nguồn gốc tự lưu trữ HTTP(S) triển khai cùng giao thức SkillsGo.';
 
   @override
+  String get cloudSettingsTitle => 'Cloud Origin';
+
+  @override
+  String get cloudSettingsDescription =>
+      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
+
+  @override
   String get testConnection => 'Kiểm tra kết nối';
 
   @override
@@ -960,6 +967,26 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get hubConnectionTimeout =>
       'Kết nối Hub đã hết thời gian chờ. Hãy kiểm tra mạng hoặc thử lại.';
+
+  @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+  }
+
+  @override
+  String get cloudInvalidProtocol =>
+      'The server did not return the SkillsGo Cloud ranking protocol.';
+
+  @override
+  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+
+  @override
+  String get cloudConnectionFailure =>
+      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+
+  @override
+  String get cloudConnectionTimeout =>
+      'The Cloud connection timed out. Check the network or try again.';
 
   @override
   String get riskPolicyTitle => 'Chính sách rủi ro cá nhân';
@@ -1010,6 +1037,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub Origin đã được lưu và áp dụng.';
+
+  @override
+  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => 'Đã lưu chính sách cài đặt.';

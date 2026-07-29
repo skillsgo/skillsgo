@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod and the SkillsGateway domain contract.
- * [OUTPUT]: Provides the application-scoped SkillsGateway dependency and startup Hub runtime state to UI controllers.
+ * [OUTPUT]: Provides the application-scoped SkillsGateway dependency and independently configured startup Cloud runtime state to UI controllers.
  * [POS]: Serves as the explicit dependency-injection boundary for Riverpod-managed App state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,6 @@ final skillsGatewayProvider = Provider<SkillsGateway>((ref) {
   throw StateError('skillsGatewayProvider must be overridden at the App root.');
 });
 
-final hubRuntimeProvider = FutureProvider<HubRuntime>(
-  (ref) => ref.watch(skillsGatewayProvider).loadHubRuntime(),
+final cloudOriginProvider = FutureProvider<String>(
+  (ref) => ref.watch(skillsGatewayProvider).loadCloudOrigin(),
 );

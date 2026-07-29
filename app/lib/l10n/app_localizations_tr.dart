@@ -923,6 +923,13 @@ class AppLocalizationsTr extends AppLocalizations {
       'Aynı SkillsGo protokolünü uygulayan resmi Hub veya şirket içinde barındırılan HTTP(S) kaynağını kullanın.';
 
   @override
+  String get cloudSettingsTitle => 'Cloud Origin';
+
+  @override
+  String get cloudSettingsDescription =>
+      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
+
+  @override
   String get testConnection => 'Bağlantıyı test edin';
 
   @override
@@ -960,6 +967,26 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get hubConnectionTimeout =>
       'Hub bağlantısı zaman aşımına uğradı. Ağı kontrol edin veya tekrar deneyin.';
+
+  @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+  }
+
+  @override
+  String get cloudInvalidProtocol =>
+      'The server did not return the SkillsGo Cloud ranking protocol.';
+
+  @override
+  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+
+  @override
+  String get cloudConnectionFailure =>
+      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+
+  @override
+  String get cloudConnectionTimeout =>
+      'The Cloud connection timed out. Check the network or try again.';
 
   @override
   String get riskPolicyTitle => 'Kişisel risk politikası';
@@ -1010,6 +1037,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub Kaynak kaydedildi ve uygulandı.';
+
+  @override
+  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => 'Kurulum politikası kaydedildi.';
