@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
+ * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, the independently configured Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
  * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,6 +16,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
+import 'bundled_cli_locator.dart';
 import 'io_process_runner.dart';
 import 'logging/app_logger.dart';
 import 'project_icon_resolver.dart';
@@ -40,6 +41,7 @@ typedef ProjectPathInspector =
 
 const _customCliKey = 'custom_cli_path';
 const _hubOriginKey = 'hub_origin';
+const _cloudOriginKey = 'cloud_origin';
 const _folderThemeKey = 'folder_theme';
 const _wallpaperKey = 'wallpaper';
 const _themeModeKey = 'theme_mode';
@@ -63,7 +65,7 @@ Uri _originUri(String origin) {
       parsed.userInfo.isNotEmpty ||
       parsed.hasQuery ||
       parsed.hasFragment) {
-    throw const FormatException('Hub Origin must be an HTTP(S) URL.');
+    throw const FormatException('Origin must be an HTTP(S) URL.');
   }
   return Uri.parse(value.endsWith('/') ? value : '$value/');
 }
@@ -76,6 +78,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     this.allowDeveloperCliOverride = !kReleaseMode,
     String? expectedCliOS,
     String hubBaseUrl = 'https://hub.skillsgo.ai',
+    String cloudBaseUrl = 'https://cloud.skillsgo.ai',
     String? appVersion,
     DirectoryPathsPicker? directoryPathsPicker,
     ProjectPathInspector? projectPathInspector,
@@ -83,10 +86,16 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }) : _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
        _bundledCliPath =
-           bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
+           bundledCliPath ??
+           bundledCliPathFor(
+             operatingSystem: Platform.operatingSystem,
+             executable: Platform.resolvedExecutable,
+           ),
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
        _defaultHubBase = _originUri(hubBaseUrl),
        _hubBase = _originUri(hubBaseUrl),
+       _defaultCloudBase = _originUri(cloudBaseUrl),
+       _cloudBase = _originUri(cloudBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
@@ -94,6 +103,8 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final ProcessRunner _runner;
   final Uri _defaultHubBase;
   Uri _hubBase;
+  final Uri _defaultCloudBase;
+  Uri _cloudBase;
   final String _bundledCliPath;
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
@@ -103,7 +114,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
   bool _hubOriginLoaded = false;
-  HubRuntime? _hubRuntime;
+  bool _cloudOriginLoaded = false;
 
   static Future<List<String>> _pickDirectories({
     String? initialDirectory,
@@ -136,6 +147,8 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }
 
   String get _hubOrigin => _hubBase.toString().replaceFirst(RegExp(r'/$'), '');
+  String get _cloudOrigin =>
+      _cloudBase.toString().replaceFirst(RegExp(r'/$'), '');
 
   Future<void> _ensureHubOrigin() async {
     if (_hubOriginLoaded) return;
@@ -149,6 +162,20 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
       }
     }
     _hubOriginLoaded = true;
+  }
+
+  Future<void> _ensureCloudOrigin() async {
+    if (_cloudOriginLoaded) return;
+    final preferences = await SharedPreferences.getInstance();
+    final saved = preferences.getString(_cloudOriginKey);
+    if (saved != null) {
+      try {
+        _cloudBase = _originUri(saved);
+      } on FormatException {
+        await preferences.remove(_cloudOriginKey);
+      }
+    }
+    _cloudOriginLoaded = true;
   }
 
   @override
@@ -187,10 +214,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
 
   @override
   Stream<DiagnosticLogEntry> watchDiagnosticLogs() => appLogger.events;
-
-  static String _bundledPathFor(String executable) => p.normalize(
-    p.join(p.dirname(executable), '..', 'Resources', 'bin', 'skillsgo'),
-  );
 
   static String get _goOperatingSystem => switch (Platform.operatingSystem) {
     'macos' => 'darwin',
@@ -246,6 +269,7 @@ class RealSkillsGateway extends _RealSkillsGatewayCore
     super.allowDeveloperCliOverride,
     super.expectedCliOS,
     super.hubBaseUrl,
+    super.cloudBaseUrl,
     super.appVersion,
     super.directoryPathsPicker,
     super.projectPathInspector,

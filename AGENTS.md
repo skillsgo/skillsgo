@@ -35,7 +35,7 @@ skillsgo/
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- The App invokes the bundled CLI for every Hub and local operation. In Cloud mode it may call the independently deployed SkillsGo Cloud origin declared by `skillsgo hub info` for Cloud-owned ranking reads; it never calls Hub HTTP directly.
+- The App invokes the bundled CLI for every Hub and local operation. It persists Hub and independently deployed SkillsGo Cloud origins separately and may call the configured Cloud origin for Cloud-owned ranking reads; it never calls Hub HTTP directly.
 - The CLI owns local filesystem mutations, Agent Adapters, derived Scope Package Trees, Package Projections, Installation Targets, Workspace Manifests, Workspace Locks, and disposable read-through Package caches.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database and composes ranking responses through uncached Hub batch reads.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.

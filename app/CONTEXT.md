@@ -13,7 +13,7 @@ The completion-gated first-launch journey that introduces SkillsGo and obtains e
 _Avoid_: optional setup, dismissible project guide, product tour
 
 **CLI-mediated Hub Access**:
-The rule that every Hub and local App operation crosses the bundled CLI machine protocol; the App never calls Hub HTTP directly. In Cloud mode the App may call the Cloud origin returned by `skillsgo hub info` for ranking responses composed from Cloud-owned metrics and uncached Hub-owned Skill cards.
+The rule that every Hub and local App operation crosses the bundled CLI machine protocol; the App never calls Hub HTTP directly. The App persists Hub and Cloud origins independently and may call the configured Cloud origin for ranking responses composed from Cloud-owned metrics and uncached Hub-owned Skill cards.
 _Avoid_: direct Hub client, Cloud-persisted Skill metadata
 
 **Presentation Locale**:

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI user-config project commands, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance, language, reminder, onboarding, CLI-owned Added Project access, Hub origin and runtime discovery, risk policy, and App-version persistence operations.
+ * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI user-config project commands, directory pickers, project inspection, App locale, Hub health CLI command, and Cloud ranking HTTP protocol.
+ * [OUTPUT]: Provides appearance, language, reminder, onboarding, CLI-owned Added Project access, independent Hub/Cloud origin configuration, risk policy, and App-version persistence operations.
  * [POS]: Serves as the local preference and CLI-backed project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -81,49 +81,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       _updateCheckCacheKey,
       encoded,
     );
-  }
-
-  @override
-  Future<HubRuntime> loadHubRuntime() async {
-    await _ensureHubOrigin();
-    final cached = _hubRuntime;
-    if (cached != null) return cached;
-    final result = await _runCli([
-      'hub',
-      'info',
-      '--hub',
-      _hubOrigin,
-      '--output',
-      'json',
-    ]);
-    if (!result.succeeded) throw _commandFailure(result);
-    try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> || decoded['mode'] is! String) {
-        throw const FormatException('Invalid Hub info response.');
-      }
-      final mode = switch (decoded['mode']) {
-        'selfhost' => HubMode.selfhost,
-        'cloud' => HubMode.cloud,
-        _ => throw const FormatException('Invalid Hub mode.'),
-      };
-      Uri? cloudOrigin;
-      if (mode == HubMode.cloud) {
-        final rawCloud = decoded['cloud'];
-        if (rawCloud is! String) {
-          throw const FormatException('Cloud origin is missing.');
-        }
-        cloudOrigin = _originUri(rawCloud);
-      } else if (decoded.containsKey('cloud')) {
-        throw const FormatException('Selfhost Hub must not declare Cloud.');
-      }
-      return _hubRuntime = HubRuntime(mode: mode, cloudOrigin: cloudOrigin);
-    } on FormatException catch (error) {
-      throw SkillsException(
-        error.message,
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
   }
 
   @override
@@ -429,7 +386,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     );
     _hubBase = parsed;
     _hubOriginLoaded = true;
-    _hubRuntime = null;
   }
 
   @override
@@ -438,7 +394,32 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     await preferences.remove(_hubOriginKey);
     _hubBase = _defaultHubBase;
     _hubOriginLoaded = true;
-    _hubRuntime = null;
+  }
+
+  @override
+  Future<String> loadCloudOrigin() async {
+    await _ensureCloudOrigin();
+    return _cloudOrigin;
+  }
+
+  @override
+  Future<void> saveCloudOrigin(String origin) async {
+    final parsed = _originUri(origin);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _cloudOriginKey,
+      parsed.toString().replaceFirst(RegExp(r'/$'), ''),
+    );
+    _cloudBase = parsed;
+    _cloudOriginLoaded = true;
+  }
+
+  @override
+  Future<void> resetCloudOrigin() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_cloudOriginKey);
+    _cloudBase = _defaultCloudBase;
+    _cloudOriginLoaded = true;
   }
 
   @override
@@ -487,6 +468,78 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
         issue: HubIssue.connectionFailure,
         diagnostic: error.toString(),
       );
+    }
+  }
+
+  @override
+  Future<HubStatus> testCloudOrigin(String origin) async {
+    final Uri base;
+    try {
+      base = _originUri(origin);
+    } on FormatException catch (error) {
+      return HubStatus(
+        origin: origin.trim(),
+        state: HealthState.invalid,
+        issue: HubIssue.invalidOrigin,
+        diagnostic: error.message,
+      );
+    }
+    final normalized = base.toString().replaceFirst(RegExp(r'/$'), '');
+    final uri = base
+        .resolve('api/v1/rankings/all_time')
+        .replace(
+          queryParameters: const {'page': '0', 'perPage': '1', 'lang': 'en'},
+        );
+    final client = HttpClient();
+    try {
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 10));
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final response = await request.close().timeout(
+        const Duration(seconds: 10),
+      );
+      final body = await utf8.decoder.bind(response).join();
+      if (response.statusCode != HttpStatus.ok) {
+        return HubStatus(
+          origin: normalized,
+          state: HealthState.unreachable,
+          issue: HubIssue.httpFailure,
+          httpStatus: response.statusCode,
+        );
+      }
+      final decoded = jsonDecode(body);
+      if (!_isCloudRankingDocument(decoded)) {
+        return HubStatus(
+          origin: normalized,
+          state: HealthState.invalid,
+          issue: HubIssue.invalidProtocol,
+        );
+      }
+      return HubStatus(origin: normalized, state: HealthState.ready);
+    } on TimeoutException catch (error) {
+      return HubStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: HubIssue.timeout,
+        diagnostic: error.toString(),
+      );
+    } on FormatException catch (error) {
+      return HubStatus(
+        origin: normalized,
+        state: HealthState.invalid,
+        issue: HubIssue.invalidJson,
+        diagnostic: error.message,
+      );
+    } on Object catch (error) {
+      return HubStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: HubIssue.connectionFailure,
+        diagnostic: error.toString(),
+      );
+    } finally {
+      client.close(force: true);
     }
   }
 

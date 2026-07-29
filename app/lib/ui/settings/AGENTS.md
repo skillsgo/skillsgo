@@ -8,7 +8,7 @@
 - `diagnostic_log_viewer.dart`: renders the bounded newest-first human-readable live diagnostic stream with filtering, search, pause/follow, local clear, mutation-safe per-entry copying, and latest-entry recovery.
 - `mermaid_gallery.dart`: renders 32-type native and Beautiful Mermaid/fallback comparisons plus an official Mermaid.js 11.16.0 gallery backed by the App's single shared WebView queue.
 - `appearance_settings.dart`: renders folder theme, appearance mode, wallpaper, and related controls.
-- `integration_settings.dart`: renders CLI, Hub Origin, storage, reminders, and recovery controls.
+- `integration_settings.dart`: renders CLI, independent Hub/Cloud Origin, storage, reminders, and recovery controls.
 - `language_selector.dart`: renders and persists Presentation Locale selection.
 - `agent_status_row.dart`: renders one detected or supported Agent state.
 

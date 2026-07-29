@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, independent Hub/Cloud origin operations, risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, Hub/Cloud origin persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   final controller = TextEditingController();
   final hubController = TextEditingController();
+  final cloudController = TextEditingController();
   final scrollController = ScrollController();
   late final AnimationController _wallpaperIndicator;
   int _wallpaperColumns = 0;
@@ -52,12 +53,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool showingDiagnosticLogs = false;
   CliStatus? status;
   HubStatus? hubStatus;
+  HubStatus? cloudStatus;
   PersonalRiskPolicy? riskPolicy;
   ReminderSettings reminderSettings = const ReminderSettings();
   DiagnosticLogInfo? diagnosticLogInfo;
   bool detecting = true;
   bool loadingSettings = true;
   bool testingHub = false;
+  bool testingCloud = false;
   bool restartingOnboarding = false;
   bool refreshingLibrary = false;
   bool managingDiagnosticLogs = false;
@@ -119,15 +122,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     controller.text = customCliPath;
     final values = await Future.wait([
       widget.gateway.loadHubOrigin(),
+      widget.gateway.loadCloudOrigin(),
       widget.gateway.loadRiskPolicy(),
       widget.gateway.loadReminderSettings(),
       widget.gateway.loadDiagnosticLogInfo(),
     ]);
     if (!mounted) return;
     hubController.text = values[0] as String;
-    riskPolicy = values[1] as PersonalRiskPolicy;
-    reminderSettings = values[2] as ReminderSettings;
-    diagnosticLogInfo = values[3] as DiagnosticLogInfo;
+    cloudController.text = values[1] as String;
+    riskPolicy = values[2] as PersonalRiskPolicy;
+    reminderSettings = values[3] as ReminderSettings;
+    diagnosticLogInfo = values[4] as DiagnosticLogInfo;
     await detect();
     if (!mounted) return;
     setState(() => loadingSettings = false);
@@ -218,12 +223,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   Future<void> resetHub() async {
-    await widget.gateway.resetHubOrigin();
     if (!mounted) return;
-    final defaultOrigin = await widget.gateway.loadHubOrigin();
+    setState(() {
+      testingHub = true;
+      notice = null;
+    });
+    try {
+      await widget.gateway.resetHubOrigin();
+      if (!mounted) return;
+      final defaultOrigin = await widget.gateway.loadHubOrigin();
+      if (!mounted) return;
+      hubController.text = defaultOrigin;
+      await testHub();
+    } finally {
+      if (mounted) setState(() => testingHub = false);
+    }
+  }
+
+  Future<HubStatus?> testCloud() async {
+    if (!mounted) return null;
+    final origin = cloudController.text;
+    setState(() {
+      testingCloud = true;
+      notice = null;
+    });
+    HubStatus tested;
+    try {
+      tested = await widget.gateway.testCloudOrigin(origin);
+    } on Object catch (error) {
+      tested = HubStatus(
+        origin: origin,
+        state: HealthState.unreachable,
+        issue: HubIssue.connectionFailure,
+        diagnostic: error.toString(),
+      );
+    } finally {
+      if (mounted) setState(() => testingCloud = false);
+    }
+    if (!mounted) return null;
+    setState(() => cloudStatus = tested);
+    return tested;
+  }
+
+  Future<void> saveCloud() async {
+    try {
+      final tested = await testCloud();
+      if (!mounted || tested?.isReady != true) return;
+      await widget.gateway.saveCloudOrigin(cloudController.text);
+      final savedOrigin = await widget.gateway.loadCloudOrigin();
+      if (!mounted) return;
+      cloudController.text = savedOrigin;
+      setState(() => notice = context.l10n.cloudOriginSaved);
+    } on FormatException catch (error) {
+      if (mounted) {
+        setState(
+          () => cloudStatus = HubStatus(
+            origin: cloudController.text,
+            state: HealthState.invalid,
+            issue: HubIssue.invalidOrigin,
+            diagnostic: error.message,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> resetCloud() async {
     if (!mounted) return;
-    hubController.text = defaultOrigin;
-    await testHub();
+    setState(() {
+      testingCloud = true;
+      notice = null;
+    });
+    try {
+      await widget.gateway.resetCloudOrigin();
+      if (!mounted) return;
+      final defaultOrigin = await widget.gateway.loadCloudOrigin();
+      if (!mounted) return;
+      cloudController.text = defaultOrigin;
+      await testCloud();
+    } finally {
+      if (mounted) setState(() => testingCloud = false);
+    }
   }
 
   Future<void> setCriticalOverride(bool value) async {
@@ -264,6 +344,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   void dispose() {
     controller.dispose();
     hubController.dispose();
+    cloudController.dispose();
     scrollController.dispose();
     _wallpaperIndicator
       ..removeListener(_rebuildWallpaperIndicator)

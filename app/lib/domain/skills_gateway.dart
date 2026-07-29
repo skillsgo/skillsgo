@@ -30,6 +30,9 @@ abstract interface class SkillsGateway {
   Future<String> loadHubOrigin();
   Future<void> saveHubOrigin(String origin);
   Future<void> resetHubOrigin();
+  Future<String> loadCloudOrigin();
+  Future<void> saveCloudOrigin(String origin);
+  Future<void> resetCloudOrigin();
   Future<String> loadFolderTheme();
   Future<void> saveFolderTheme(String theme);
   Future<AppWallpaper> loadWallpaper();
@@ -47,7 +50,7 @@ abstract interface class SkillsGateway {
   List<DiagnosticLogEntry> recentDiagnosticLogs({int limit = 200});
   Stream<DiagnosticLogEntry> watchDiagnosticLogs();
   Future<HubStatus> testHubOrigin(String origin);
-  Future<HubRuntime> loadHubRuntime();
+  Future<HubStatus> testCloudOrigin(String origin);
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
   Future<String> loadAppVersion();
