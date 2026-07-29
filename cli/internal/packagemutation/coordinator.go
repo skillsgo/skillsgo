@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on prepared Package filesystem transactions plus caller-owned immutable-cache and Workspace-state publication operations.
  * [OUTPUT]: Provides one ordered Package mutation state machine with preview discard, commit-time reverse rollback, and post-commit cleanup.
- * [POS]: Serves as the deep transaction coordinator between command intent and Scope Package Store/project persistence adapters.
+ * [POS]: Serves as the deep transaction coordinator between command intent, direct Package Projection mutation, and project persistence adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package packagemutation

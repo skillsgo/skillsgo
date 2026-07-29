@@ -51,7 +51,7 @@ func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSH
 	t.Helper()
 	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "module-tree",
-		Sum: sum, ArchiveSize: 1024, CommitTime: time.Now().UTC(),
+		Sum: sum, CommitTime: time.Now().UTC(),
 	}
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, visibility))
 }
@@ -90,7 +90,7 @@ func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version,
 		CommitSHA: "commit-" + fmt.Sprint(now.UnixNano()), TreeSHA: "module-tree-" + fmt.Sprint(now.UnixNano()),
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: now,
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: now,
 	}
 	return c.PublishPackageVersionWithVisibility(t.Context(), skill.PackagePath, identity, candidates, CurrentPublication)
 }
@@ -103,7 +103,7 @@ func TestValidatePackageVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T)
 	}
 	identity := PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "module-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: time.Now().UTC(),
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Now().UTC(),
 	}
 	require.NoError(t, ValidatePackageVersion(packagePath, identity, candidates, CurrentPublication))
 }
@@ -333,13 +333,51 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, candidates, "an identical description in a fork must reuse the global localization")
-	documentCandidates, err := c.DocumentTranslationCandidates(ctx, "zh-CN", 10)
+	documentCandidates, err := c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v1", 10)
 	require.NoError(t, err)
 	require.Len(t, documentCandidates, 1, "identical forked SKILL.md content must produce one global candidate")
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, LocalizationFailure{
+		ResourceKind: LocalizedSkillDocument, SourceDigest: documentDigest, Lang: "zh-CN",
+		PromptVersion: "document-v1", ErrorKind: "validation", ErrorMessage: "bad envelope",
+	}))
+	documentCandidates, err = c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, documentCandidates, "a terminal failure must suppress the same immutable translation identity")
+	documentCandidates, err = c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v2", 1)
+	require.NoError(t, err)
+	require.Len(t, documentCandidates, 1, "a prompt change must create a fresh translation identity")
 
 	skill.Description = "Review code changes"
 	require.NoError(t, upsertTestSkill(t, c, skill))
 	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
+}
+
+func TestTranslationFailureSuppressesOnlyTheExactPromptIdentity(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	skill := &Skill{PackagePath: "github.com/acme/failed", Path: "review", Name: "review", Description: "Review changes", DocumentDigest: ContentDigest([]byte("document")), LatestVersion: "main"}
+	require.NoError(t, upsertTestSkill(t, c, skill))
+	digest := DescriptionDigest(skill.Description)
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: digest, Lang: "tr", PromptVersion: "description-v1",
+		ErrorKind: "validation", ErrorMessage: "bad envelope",
+	}))
+	candidates, err := c.TranslationCandidates(ctx, "tr", "description-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, candidates)
+	candidates, err = c.TranslationCandidates(ctx, "tr", "description-v2", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
+}
+
+func TestDocumentTranslationCandidatesHonorDatabaseLimit(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/limited", Path: "one", Name: "one", Description: "One", DocumentDigest: ContentDigest([]byte("one")), LatestVersion: "main"}))
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/limited", Path: "two", Name: "two", Description: "Two", DocumentDigest: ContentDigest([]byte("two")), LatestVersion: "main"}))
+	candidates, err := c.DocumentTranslationCandidates(ctx, "ja", "document-v1", 1)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
 }

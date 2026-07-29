@@ -31,9 +31,7 @@ class _InstalledSkillRow extends StatelessWidget {
     return Semantics(
       selected: selected,
       child: AnimatedContainer(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 120),
+        duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
           color: selected ? scheme.surfaceContainer : Colors.transparent,
           border: BorderDirectional(
@@ -302,9 +300,7 @@ class _ProjectScopePopover extends StatelessWidget {
       enableHover: true,
       interactive: true,
       waitDuration: const Duration(milliseconds: 80),
-      animation: MediaQuery.disableAnimationsOf(context)
-          ? TooltipAnimation.none
-          : TooltipAnimation.fade,
+      animation: TooltipAnimation.fade,
       animationDuration: const Duration(milliseconds: 100),
       theme: JustTooltipTheme(
         backgroundColor: context.skillsComponents.controlRest,
@@ -414,7 +410,6 @@ class _CopyableProjectPathState extends State<_CopyableProjectPath> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -443,9 +438,7 @@ class _CopyableProjectPathState extends State<_CopyableProjectPath> {
           padding: EdgeInsets.zero,
           onPressed: _copy,
           icon: AnimatedSwitcher(
-            duration: disableAnimations
-                ? Duration.zero
-                : const Duration(milliseconds: 140),
+            duration: const Duration(milliseconds: 140),
             switchInCurve: Curves.easeOutBack,
             switchOutCurve: Curves.easeOut,
             transitionBuilder: (child, animation) => FadeTransition(

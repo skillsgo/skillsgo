@@ -237,7 +237,7 @@ func newHubFindCandidatesCommand() *cobra.Command {
 }
 
 func newHubCommand() *cobra.Command {
-	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub info\n  skillsgo hub check\n  skillsgo hub check-update --installed '{...}'"}
+	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub info\n  skillsgo hub check"}
 	info := &cobra.Command{
 		Use:     "info",
 		Short:   appi18n.Pick("Show Hub deployment information", "显示 Hub 部署信息"),
@@ -305,6 +305,6 @@ func newHubCommand() *cobra.Command {
 	}
 	check.Flags().String("hub", defaultHubURL(), "Hub origin")
 	check.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(info, check, newHubFindCandidatesCommand(), newCatalogUpdateCheckCommand())
+	root.AddCommand(info, check, newHubFindCandidatesCommand())
 	return root
 }

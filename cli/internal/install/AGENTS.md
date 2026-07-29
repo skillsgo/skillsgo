@@ -8,6 +8,6 @@
 
 ## Architectural Boundary
 
-This module owns only minimal vocabulary shared by Repository and External workflows. Repository ordinary-file Package Store/Projection mutation belongs to `packagestore`; this module must not materialize Skills, create links, persist state, fetch Hub artifacts, or infer App policy.
+This module owns only minimal vocabulary shared by Package and External workflows. Scope Package Tree and Projection mutation belongs to `packagestore`; this module must not materialize Skills, persist state, fetch Hub artifacts, or infer App policy.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

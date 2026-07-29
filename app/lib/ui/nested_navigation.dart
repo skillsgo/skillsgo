@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Receives localized fixed and scrollable rail items with icon, image, or multilingual fallback identities, optional exact count badges, standard or compact density, selected values, destination content, an optional App-centered overlay, an optional destination-wide foreground, optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
+ * [INPUT]: Receives localized fixed and scrollable rail items with icon, image, or multilingual fallback identities, optional exact count badges, standard or compact density, selected values, destination content, an optional App-centered overlay, an optional destination-wide foreground, optional transition identity, and SkillsGo component tokens.
  * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, App-centered interactive overlay and destination-wide foreground layers, plus the theme-tinted glass side rail and reusable accessible navigation buttons with identity fallback, density-aware selection motion and counts, optional fixed leading destinations and labeled section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -79,19 +79,13 @@ class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
         oldWidget.bodyTransitionKey == widget.bodyTransitionKey) {
       return;
     }
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _bodyEntrance.value = 1;
-      return;
-    }
+
     _bodyEntrance.forward(from: 0);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _bodyEntrance.value = 1;
-    }
   }
 
   @override
@@ -125,8 +119,7 @@ class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
   }
 
   Widget _buildBody(BuildContext context) {
-    if (widget.bodyTransitionKey == null ||
-        MediaQuery.disableAnimationsOf(context)) {
+    if (widget.bodyTransitionKey == null || false) {
       return KeyedSubtree(
         key: const Key('skills-destination-body'),
         child: widget.child,
@@ -233,10 +226,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
     if (_selectedIndex < 0) return;
     final target = _selectedIndex.toDouble();
     if (_position.value == target) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _position.value = target;
-      return;
-    }
+
     _position.animateWith(
       SpringSimulation(
         const SpringDescription(mass: 1, stiffness: 420, damping: 32),

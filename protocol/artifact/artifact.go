@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on immutable Package file inventories and ZIP bytes, extracted Package directories, and canonical Package Path identity.
- * [OUTPUT]: Provides deterministic Package ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
+ * [INPUT]: Depends on immutable Package file inventories, legacy ZIP bytes, extracted Package directories, and canonical Package Path identity.
+ * [OUTPUT]: Provides validated Package trees, deterministic legacy ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
  * [POS]: Serves as the executable Package Artifact format contract shared by Hub producers and clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	MaxArchiveBytes      = 64 << 20
+	MaxArchiveBytes      = 200 << 20
 	MaxFiles             = 5000
-	MaxUncompressedBytes = 64 << 20
+	MaxUncompressedBytes = 200 << 20
 )
 
 // Entry is one validated file or explicit directory in normalized artifact-path order.
@@ -80,6 +80,76 @@ func ValidSum(value string) bool {
 	}
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, "h1:"))
 	return err == nil && len(decoded) == sha256.Size
+}
+
+// PackageEntriesSum validates a complete in-memory Package tree and returns
+// the coordinate-bound Sum without requiring an archive representation.
+func PackageEntriesSum(entries []Entry, packagePath, version string) (string, error) {
+	validated, err := ValidateEntries(entries)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.New()
+	prefix := packagePath + "@" + version + "/"
+	for _, entry := range validated {
+		if err := writeHash1Content(hash, prefix+entry.Path, entry.Contents); err != nil {
+			return "", err
+		}
+	}
+	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
+}
+
+// ValidateEntries returns a canonical path-ordered copy of one complete safe
+// Package tree. Directory entries are omitted because Git Trees and local
+// filesystems derive directories from file paths.
+func ValidateEntries(entries []Entry) ([]Entry, error) {
+	if len(entries) == 0 || len(entries) > MaxFiles {
+		return nil, fmt.Errorf("Package Artifact file count must be between 1 and %d", MaxFiles)
+	}
+	validated := make([]Entry, 0, len(entries))
+	seen := make(map[string]string, len(entries))
+	var total uint64
+	hasSkill := false
+	for _, entry := range entries {
+		if entry.Directory {
+			continue
+		}
+		collisionKey, err := PortablePathKey(entry.Path)
+		if err != nil {
+			return nil, err
+		}
+		if previous, exists := seen[collisionKey]; exists {
+			return nil, fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous, entry.Path)
+		}
+		for parent := path.Dir(entry.Path); parent != "."; parent = path.Dir(parent) {
+			parentKey, _ := PortablePathKey(parent)
+			if previous, exists := seen[parentKey]; exists {
+				return nil, fmt.Errorf("artifact file %q conflicts with parent file %q", entry.Path, previous)
+			}
+		}
+		mode, err := canonicalMode(entry.Mode)
+		if err != nil {
+			return nil, fmt.Errorf("Package Artifact file %q: %w", entry.Path, err)
+		}
+		size := uint64(len(entry.Contents))
+		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
+			return nil, fmt.Errorf("Package Artifact exceeds %d bytes", MaxUncompressedBytes)
+		}
+		total += size
+		if path.Base(entry.Path) == "SKILL.md" && mode.IsRegular() {
+			hasSkill = true
+		}
+		seen[collisionKey] = entry.Path
+		validated = append(validated, Entry{Path: entry.Path, Contents: append([]byte(nil), entry.Contents...), Mode: mode, Size: int64(size)})
+	}
+	if !hasSkill {
+		return nil, fmt.Errorf("Package Artifact does not contain a SKILL.md member")
+	}
+	sort.Slice(validated, func(i, j int) bool { return validated[i].Path < validated[j].Path })
+	if err := ValidateSymlinks(validated); err != nil {
+		return nil, err
+	}
+	return validated, nil
 }
 
 // BuildPackage serializes one complete validated Package file inventory

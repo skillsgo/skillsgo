@@ -22,7 +22,6 @@ final defaultRemoteDetail = SkillDetail(
   packagePath: 'example/skills',
   version: 'v1.2.3',
   time: DateTime.utc(2026, 7, 15),
-  archiveSize: 24576,
   description: 'Build reliable Flutter products.',
   sourceLanguage: 'en',
   translated: true,
@@ -61,7 +60,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.projectLoadCompleter,
     AddedProject? projectToAdd,
     List<AddedProject>? projectsToAdd,
-    this.projectToRelocate,
     List<InstalledSkill>? libraryEntries,
     this.localDetailError,
     this.localDetail,
@@ -85,7 +83,9 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     List<SkillsException> installPlanErrors = const [],
     this.updateError,
     List<SkillsException> updateCheckErrors = const [],
+    this.updateCheckCompleter,
     this.updateState = UpdateState.available,
+    this.updateCheckCache,
     this.reminderSettings = const ReminderSettings(
       updateAvailable: false,
       securityAdvisory: false,
@@ -137,7 +137,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final SkillsException? agentInspectionError;
   final SkillsException? libraryError;
   final List<AddedProject> projectsToAdd;
-  final AddedProject? projectToRelocate;
   final Completer<List<AddedProject>>? projectLoadCompleter;
   List<InstalledSkill>? libraryEntries;
   final SkillsException? localDetailError;
@@ -164,6 +163,9 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final SkillsException? updateError;
   final List<SkillsException> updateCheckErrors;
   final UpdateState updateState;
+  UpdateCheckCache? updateCheckCache;
+  int updateChecks = 0;
+  final Completer<Map<String, UpdateAvailability>>? updateCheckCompleter;
   ReminderSettings reminderSettings;
   DiagnosticLogInfo diagnosticLogInfo = const DiagnosticLogInfo(
     directory: '/tmp/SkillsGo Logs',

@@ -78,6 +78,11 @@ func endpointFrom(credentialsEndpoint, relativeURI string) string {
 	return credentialsEndpoint + relativeURI
 }
 
+func (s *Storage) Ready(ctx context.Context) error {
+	_, err := s.s3API.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
+	return err
+}
+
 // newChainCredentials is based on old credentials.NewChainCredentials in v1.
 func newChainCredentials(providers ...aws.CredentialsProvider) aws.CredentialsProvider {
 	return aws.NewCredentialsCache(

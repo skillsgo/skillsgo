@@ -439,9 +439,6 @@ class AppLocalizationsHi extends AppLocalizations {
   String get addProject => 'प्रोजेक्ट जोड़ें';
 
   @override
-  String get relocateProject => 'स्थानांतरित करें';
-
-  @override
   String get removeFromList => 'सूची से हटाएँ';
 
   @override
@@ -469,14 +466,14 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'हो सकता है कि निर्देशिका स्थानांतरित हो गई हो या उसका वॉल्यूम ऑफ़लाइन हो। इसे स्थानांतरित करें या केवल इसके ऐप संदर्भ को हटा दें।';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'प्रोजेक्ट की अनुमति आवश्यक है';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo इस चयनित रूट का निरीक्षण नहीं कर सकता। इसे निर्देशिका पिकर के माध्यम से स्थानांतरित करके पहुंच प्रदान करें।';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -484,7 +481,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo ने इस प्रोजेक्ट का संदर्भ रखा। पथ या आयतन की जाँच करें, फिर उसे स्थानांतरित करें।';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'जाँच हो रही है...';

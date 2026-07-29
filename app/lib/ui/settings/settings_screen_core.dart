@@ -93,12 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   void _moveWallpaperIndicatorTo(AppWallpaper wallpaper) {
     final target = _wallpaperCoordinate(wallpaper, _wallpaperColumns);
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _wallpaperIndicator.stop();
-      _wallpaperIndicatorFrom = target;
-      _wallpaperIndicatorTo = target;
-      return;
-    }
+
     final from = _wallpaperIndicatorFrom ?? target;
     final to = _wallpaperIndicatorTo ?? target;
     final current = Offset.lerp(from, to, _wallpaperIndicator.value) ?? target;

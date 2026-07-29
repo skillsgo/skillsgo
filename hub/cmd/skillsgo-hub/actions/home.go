@@ -62,7 +62,6 @@ const homepage = `<!DOCTYPE html>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/v1.0.0</pre>
 
 	<h3>Immutable Package archive</h3>
-	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/v1.0.0.zip</pre>
 
 	<h3>Package Version Query</h3>
 	<pre>GET {{ .Host }}/api/v1/github.com/owner/repository/versions/main</pre>

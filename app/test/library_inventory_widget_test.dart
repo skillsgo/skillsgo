@@ -766,41 +766,6 @@ void main() {
     expect(scale.scale.value, 1);
   });
 
-  testWidgets('Library location body skips motion when animations are off', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(
-      SkillsGoApp(
-        gateway: FakeSkillsGateway(
-          installed: false,
-          addedProjects: const [
-            AddedProject(
-              id: 'alpha',
-              name: 'Project Alpha',
-              path: '/work/alpha',
-              accessState: ProjectAccessState.accessible,
-            ),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-library')));
-    await tester.pumpAndSettle();
-
-    await tester.tap(libraryLocation('Project Alpha'));
-    await tester.pump();
-
-    final body = find.byKey(const Key('skills-destination-body'));
-    expect(tester.widget(body), isA<KeyedSubtree>());
-    expect(find.text('No Skills yet'), findsOneWidget);
-  });
-
   testWidgets('Library project rail avoids duplicate macOS scrollbars', (
     tester,
   ) async {
@@ -1045,7 +1010,7 @@ void main() {
     );
   });
 
-  testWidgets('inaccessible Project stays visible and supports Relocate', (
+  testWidgets('inaccessible Project stays visible without relocation', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -1060,12 +1025,6 @@ void main() {
           diagnostic: 'volume offline',
         ),
       ],
-      projectToRelocate: const AddedProject(
-        id: 'stable-id',
-        name: 'Moved Project',
-        path: '/work/project',
-        accessState: ProjectAccessState.accessible,
-      ),
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
@@ -1077,13 +1036,7 @@ void main() {
     expect(find.text('Project directory is missing'), findsOneWidget);
     expect(find.textContaining('/Volumes/offline/project'), findsOneWidget);
     expect(find.textContaining('volume offline'), findsNothing);
-    await tester.tap(find.text('Relocate').last);
-    await tester.pumpAndSettle();
-    expect(find.text('No Skills yet'), findsOneWidget);
-    expect(find.text('Browse Skills'), findsOneWidget);
-    expect(gateway.projects.single.id, 'stable-id');
-    expect(gateway.projects.single.path, '/work/project');
-
+    expect(find.text('Relocate'), findsNothing);
     expect(find.text('Remove from List'), findsNothing);
   });
 }

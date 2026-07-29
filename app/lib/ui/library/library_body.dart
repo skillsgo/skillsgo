@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, explicit async states, project access state, localized empty/error copy, and installed Skill groups.
- * [OUTPUT]: Provides the Library content body for loading, stale/error, inaccessible project, filter-empty, sliver-backed inventory, and feature-gated sticky in-place External Adoption Review states.
+ * [OUTPUT]: Provides the Library content body for loading, stale/error, inaccessible project, package-card updates, filter-empty, sliver-backed inventory, and feature-gated sticky in-place External Adoption Review states.
  * [POS]: Serves as the async content rendering implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,12 +49,27 @@ extension _LibraryBody on _LibraryScreenState {
         return EmptyState(
           title: copy.title,
           message: '${copy.message}\n${project.path}',
-          action: PrimaryCapsuleButton(
-            label: context.l10n.relocateProject,
-            onPressed: () => _relocateProject(project),
-          ),
         );
       }
+    }
+    if (updatesOnly) {
+      final packages = _packageUpdateCards;
+      if (packages.isEmpty) {
+        return EmptyState(
+          title: checking ? context.l10n.loading : context.l10n.upToDate,
+        );
+      }
+      return ListView.separated(
+        key: const ValueKey('library-package-updates'),
+        controller: scrollController,
+        itemCount: packages.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _PackageUpdateCard(
+          package: packages[index],
+          operating: operatingSkills.contains(packages[index].packagePath),
+          onUpdate: () => _updatePackageCard(packages[index]),
+        ),
+      );
     }
     if (_visibleSkills.isEmpty) {
       if (librarySearchController.text.trim().isNotEmpty) {

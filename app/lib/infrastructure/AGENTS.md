@@ -7,13 +7,13 @@
 - `io_process_runner.dart`: executes the bundled CLI with structured arguments, optional stdin, bounded runtime, optional stdout events, typed output, optional working-directory/environment isolation, and self-identifying sanitized completion telemetry used by real-process E2E journeys.
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, minimal Package-install receipt validation, strict payload decoding for read/planning contracts, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
-- `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
+- `real_skills_gateway_preferences.dart`: owns App preferences, persisted update-check cache, Mandatory Onboarding state, CLI user-config project adaptation, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
 - `real_skills_gateway_discovery.dart`: forwards every search input unchanged through current-language CLI `find`, owns bounded-chunk candidate Find and Cloud-composed ranking reads, decodes optional Package summaries and canonical pagination, and uses exact-path `show` only for remote Skill detail.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, and local Skill detail.
 - `real_skills_gateway_installation.dart`: groups ordinary Installation Requests by declaration scope, invokes exact-path Package Store add directly for the user-selected Package version, accepts the CLI's minimal Package-install success receipt without reinterpreting projections, sends one reviewed stdin-JSON Adoption request, and reports App-side protocol failures through the shared telemetry boundary.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
 - `real_skills_gateway_target_management.dart`: owns managed Package-member and External Installation removal planning, execution, and progress translation.
-- `real_skills_gateway_updates.dart`: delegates explicit Package versions directly to CLI update per installed scope, validates only response identity, and owns one Catalog-only batch update check across the current Library.
+- `real_skills_gateway_updates.dart`: delegates exact Package updates to the CLI, validates response identity, and decodes one cross-Scope dry-run into Scope-by-Package preview state.
 - `real_skills_gateway_failures.dart`: owns versioned machine-failure and process-exit translation.
 - `project_icon_resolver.dart`: resolves and caches bounded, safe Added Project identity assets with deterministic fallback.
 - `logging/`: owns App-wide structured event correlation, centralized privacy redaction, JSONL rotation, seven-day retention, and bounded local diagnostics storage.

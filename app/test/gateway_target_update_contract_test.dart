@@ -1,10 +1,9 @@
 /*
  * [INPUT]: Uses controlled CLI target-operation streams, Package update receipts, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies Target Operation Plans, direct Package updates with identity-only receipt validation, and Catalog-only batch update-state contracts.
+ * [OUTPUT]: Specifies Target Operation Plans, direct Package updates with identity-only receipt validation, and Scope-by-Package preview contracts.
  * [POS]: Serves as the target-management and update contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
@@ -251,63 +250,73 @@ void main() {
     },
   );
 
-  test('update check uses one Catalog-only batch CLI request', () async {
-    final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout: '''
-{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","packagePath":"github.com/example/skills","name":"test","versions":["v1"],"latestVersion":"v2","latestStatus":"update_available","status":"update_available"}]}
+  test(
+    'update check uses one deduplicated mutation-free cross-Scope preview',
+    () async {
+      final runner = FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout: '''
+{"schemaVersion":1,"phase":"package-update-preview","updates":[{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","scope":"global","status":"update_available","selectedSkillCount":1,"removedSkills":[{"name":"Retired Skill","path":"skills/retired/SKILL.md"}]},{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v2","toVersion":"v2","scope":"project","projectRoot":"/work","status":"up_to_date","selectedSkillCount":1,"removedSkills":[]}]}
 ''',
-        stderr: '',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
       );
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/bin/skillsgo',
-    );
 
-    final states = await gateway.checkUpdates(const [
-      InstalledSkill(
-        inventoryKey: 'hub:github.com/example/skills:test',
-        name: 'test',
-        path: '/tmp/Test',
-        agents: ['codex'],
-        targetCount: 1,
-        packagePath: 'github.com/example/skills',
-        targets: [
-          SkillInstallationTarget(
-            agent: 'codex',
-            scope: InstallationScope.global,
-            path: '/tmp/Test',
-            version: 'v1',
-          ),
-        ],
-      ),
-    ]);
+      final states = await gateway.checkUpdates(const [
+        InstalledSkill(
+          inventoryKey: 'hub:github.com/example/skills:test',
+          name: 'test',
+          path: '/tmp/Test',
+          agents: ['codex'],
+          targetCount: 1,
+          packagePath: 'github.com/example/skills',
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/tmp/Test',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.project,
+              projectRoot: '/work',
+              path: '/work/.codex/skills/test',
+              version: 'v2',
+            ),
+          ],
+        ),
+      ]);
 
-    expect(
-      states['hub:github.com/example/skills:test']?.state,
-      UpdateState.available,
-    );
-    expect(states['hub:github.com/example/skills:test']?.toVersion, 'v2');
-    expect(runner.calls, hasLength(1));
-    expect(runner.lastArguments!.take(2), ['hub', 'check-update']);
-    expect(
-      runner.lastArguments,
-      containsAllInOrder(['--installed', isA<String>()]),
-    );
-    final installedIndex = runner.lastArguments!.indexOf('--installed');
-    final installed =
-        jsonDecode(runner.lastArguments![installedIndex + 1])
-            as Map<String, dynamic>;
-    expect(installed, {
-      'key': 'hub:github.com/example/skills:test',
-      'packagePath': 'github.com/example/skills',
-      'name': 'test',
-      'versions': ['v1'],
-    });
-    expect(runner.lastArguments, isNot(contains('--preflight')));
-    expect(runner.lastArguments, isNot(contains('--target')));
-  });
+      expect(
+        states['github.com/example/skills\u0000global\u0000']?.state,
+        UpdateState.available,
+      );
+      expect(
+        states['github.com/example/skills\u0000global\u0000']?.toVersion,
+        'v2',
+      );
+      expect(
+        states['github.com/example/skills\u0000global\u0000']
+            ?.removedSkills
+            .single
+            .name,
+        'Retired Skill',
+      );
+      expect(
+        states['github.com/example/skills\u0000project\u0000/work']?.state,
+        UpdateState.upToDate,
+      );
+      expect(runner.calls, hasLength(1));
+      expect(runner.lastArguments!.first, 'update');
+      expect(runner.lastArguments, containsAll(['--all', '--dry-run']));
+      expect(runner.lastArguments, isNot(contains('--yes')));
+    },
+  );
 
   test('update delegates one Package coordinate per scope to CLI', () async {
     final runner = FakeProcessRunner()

@@ -445,9 +445,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addProject => 'Добавить проект';
 
   @override
-  String get relocateProject => 'Переместить';
-
-  @override
   String get removeFromList => 'Удалить из списка';
 
   @override
@@ -475,21 +472,21 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Возможно, каталог был перемещен или его том отключен от сети. Переместите его или удалите только ссылку на его приложение.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Требуется разрешение проекта';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo не может проверить выбранный корень. Предоставьте доступ, переместив его через средство выбора каталога.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'Каталог проекта недоступен';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo сохранил ссылку на этот проект. Проверьте путь или том, а затем переместите его.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Проверка…';

@@ -44,16 +44,13 @@ func documentSkillOperations(api huma.API) {
 		schemaFor[protocolapi.FindCandidatesRequest](api), exampleFindCandidatesRequest, schemaFor[protocolapi.FindCandidatesResponse](api), exampleFindCandidatesResponse)
 	addJSONOperation(api, http.MethodPost, "/api/v1/skills/batch", "hydrateSkillsBatch", "Hydrate Skill cards", "skills",
 		schemaFor[skillBatchRequest](api), exampleBatchRequest, schemaFor[skillBatchResponse](api), exampleBatchResponse)
-	update := addJSONOperation(api, http.MethodPost, "/api/v1/skills/check-update", "checkSkillUpdates", "Check Skill updates", "skills",
-		schemaFor[protocolapi.CatalogUpdateCheckRequest](api), exampleUpdateRequest, schemaFor[protocolapi.CatalogUpdateCheckResponse](api), nil)
-	update.Responses["500"] = jsonResponseExample("The real mattpocock/skills request currently fails during head resolution.", schemaFor[errorResponse](api), exampleUpdateFailure)
-
 }
 
 func documentPackageOperations(api huma.API) {
+	addJSONOperation(api, http.MethodPost, "/api/v1/packages/current", "getCurrentPackages", "Get current Package Publications", "packages",
+		schemaFor[protocolapi.CurrentPackagesRequest](api), exampleCurrentPackagesRequest, schemaFor[protocolapi.CurrentPackagesResponse](api), exampleCurrentPackagesResponse)
 	packagePath := pathParameter("packagePath", "Canonical Package Path.", examplePackagePath)
 	version := pathParameter("version", "Version or Go-compatible Version Query: canonical version, prefix, comparison, latest, branch, tag, or commit. Movable queries are resolved without caching.", "latest")
-	immutableVersion := pathParameter("version", "Exact immutable semantic or pseudo-version.", exampleVersion)
 	api.OpenAPI().AddOperation(&huma.Operation{
 		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions", OperationID: "listPackageVersions",
 		Summary: "List Package Versions", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath},
@@ -70,24 +67,6 @@ func documentPackageOperations(api huma.API) {
 		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions/{version}", OperationID: "getPackageVersion",
 		Summary: "Get Package Version metadata", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath, version},
 		Responses: standardJSONResponses(schemaFor[protocolapi.PackageInfo](api), "Canonical immutable Package Info for the requested Version Query.", examplePackageInfo),
-	})
-	archiveResponses := map[string]*huma.Response{
-		"200": {
-			Description: "Immutable Package ZIP.",
-			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: "string", Format: "binary"}}},
-			Headers: map[string]*huma.Param{
-				"Content-Length": {Description: "Archive size in bytes.", Schema: &huma.Schema{Type: "integer"}, Example: 207631},
-				"ETag":           {Description: "Strong immutable archive validator.", Schema: &huma.Schema{Type: "string"}, Example: `"skillsgo-998167deac1c8e6d51898bfa55f3b7c5f9d33d2f50aceb1338e3048f15634594"`},
-				"Cache-Control":  {Description: "Immutable public cache policy.", Schema: &huma.Schema{Type: "string"}, Example: "public, max-age=31536000, immutable"},
-			},
-		},
-		"301": {Description: "Permanent artifact-origin redirect."},
-		"304": {Description: "Cached representation remains current."},
-		"404": textResponse("Package Version not found."),
-	}
-	api.OpenAPI().AddOperation(&huma.Operation{
-		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions/{version}.zip", OperationID: "downloadPackageVersion",
-		Summary: "Download Package Version ZIP", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath, immutableVersion}, Responses: archiveResponses,
 	})
 }
 

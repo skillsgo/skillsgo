@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Markdown technical spans and intentionally corrupted placeholder responses.
- * [OUTPUT]: Specifies deterministic masking, exact restoration, and corruption rejection.
+ * [OUTPUT]: Specifies deterministic masking, harmless placeholder-format normalization, exact restoration, and corruption rejection.
  * [POS]: Serves as regression coverage for byte-preserving translation protection.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,4 +28,22 @@ func TestProtectMarkdownRejectsMissingOrUnknownPlaceholders(t *testing.T) {
 	require.Error(t, err)
 	_, err = protected.restore(protected.masked + "<skillsgo-protected-999999/>")
 	require.Error(t, err)
+}
+
+func TestProtectMarkdownNormalizesHarmlessPlaceholderFormatting(t *testing.T) {
+	protected := protectMarkdown("Use `command` and visit https://example.com/a\n")
+	for _, translated := range []string{
+		"使用 <skillsgo-protected-000001 /> 并访问 <SKILLSGO-PROTECTED-000002/>。\n",
+		"使用 &lt;skillsgo-protected-000001/&gt; 并访问 &lt;skillsgo-protected-000002 /&gt;。\n",
+	} {
+		restored, err := protected.restore(translated)
+		require.NoError(t, err)
+		require.Equal(t, "使用 `command` 并访问 https://example.com/a。\n", restored)
+	}
+}
+
+func TestProtectMarkdownRejectsDuplicatePlaceholder(t *testing.T) {
+	protected := protectMarkdown("Use `command`.\n")
+	_, err := protected.restore(protected.masked + " <skillsgo-protected-000001 />")
+	require.ErrorContains(t, err, "changed protected placeholder")
 }

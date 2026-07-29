@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart asynchronous primitives.
- * [OUTPUT]: Provides shared status enums, update availability, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
+ * [OUTPUT]: Provides shared status enums, update availability and its persisted App cache, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
  * [POS]: Serves as the cross-journey system vocabulary used by focused App domain modules and infrastructure adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,10 +13,31 @@ enum CliIssue { missing, damaged, incompatible }
 enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
 
 class UpdateAvailability {
-  const UpdateAvailability({required this.state, this.toVersion = ''});
+  const UpdateAvailability({
+    required this.state,
+    this.toVersion = '',
+    this.selectedSkillCount = 0,
+    this.removedSkills = const [],
+  });
 
   final UpdateState state;
   final String toVersion;
+  final int selectedSkillCount;
+  final List<RemovedSkillImpact> removedSkills;
+}
+
+class UpdateCheckCache {
+  const UpdateCheckCache({required this.checkedAt, required this.results});
+
+  final DateTime checkedAt;
+  final Map<String, UpdateAvailability> results;
+}
+
+class RemovedSkillImpact {
+  const RemovedSkillImpact({required this.name, required this.path});
+
+  final String name;
+  final String path;
 }
 
 enum HealthState { ready, notInitialized, unreachable, invalid }
@@ -34,6 +55,12 @@ enum SkillsFailureKind {
 enum DiscoveryCollection { search, ranking, trending, hot }
 
 enum InstallationScope { global, project }
+
+String packageScopeUpdateKey(
+  String packagePath,
+  InstallationScope scope,
+  String projectRoot,
+) => '$packagePath\u0000${scope.name}\u0000$projectRoot';
 
 enum DiscoveryVerification { verified, unverified }
 

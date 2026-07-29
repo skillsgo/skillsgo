@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Package Store, Agent Adapter roots, baseline-aware Package Projection transactions, and the Package mutation coordinator.
- * [OUTPUT]: Removes selected Package members by persisted name-or-path selector through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
+ * [INPUT]: Depends on strict YAML/Lock state, read-through exact Git content, Agent Adapter roots, baseline-aware Scope Tree/member-link transactions, and the Package mutation coordinator.
+ * [OUTPUT]: Removes selected Package members through one coordinated mutation, automatically rebuilding disposable dependency cache state without overwriting Local Modifications.
  * [POS]: Serves as the authoritative managed Package-member selector path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,12 +18,13 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/spf13/cobra"
 )
 
-func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool) (bool, error) {
+func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool, hubURL string) (bool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return true, err
@@ -70,12 +71,13 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			_ = transactions[index].Rollback()
 		}
 	}
-	packagesRoot := filepath.Join(declarationRoot, ".skillsgo", "packages")
 	infoRoot := infocache.DefaultRoot(home)
-	if globalScope {
-		stateRoot := project.GlobalStateRoot(home)
-		packagesRoot = filepath.Join(stateRoot, "packages")
+	packagesRoot := filepath.Join(declarationRoot, ".skillsgo", "packages")
+	client, err := hub.New(hubURL, nil)
+	if err != nil {
+		return true, err
 	}
+	provider := packageprovider.Provider{Client: client, Info: infocache.Cache{Root: infoRoot}}
 	for packagePath, removed := range removals {
 		dependency := manifest.Dependencies[packagePath]
 		locked, ok := lock.Dependencies[packagePath]
@@ -99,17 +101,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			desiredAgents = subtractStringSlice(dependency.Agents, selectedAgents)
 		}
 		removeDependency := len(desiredSkills) == 0 || len(desiredAgents) == 0
-		archive, err := packagestore.ReadVerifiedPackage(packagesRoot, packagePath, dependency.Version, locked.Sum)
-		if err != nil {
-			rollback()
-			return true, err
-		}
-		infoBytes, err := (infocache.Cache{Root: infoRoot}).Get(packagePath, dependency.Version, "package.info")
-		if err != nil {
-			rollback()
-			return true, err
-		}
-		resource, err := hub.ParsePackageInfo(packagePath, infoBytes)
+		resource, err := provider.Content(cmd.Context(), packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum}, nil)
 		if err != nil {
 			rollback()
 			return true, err
@@ -154,7 +146,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			}
 		}
 		transaction, err := packagestore.Prepare(packagestore.Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: members, SkillNames: packageSkillNames(resource.Members), Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
+			Entries: resource.Entries, Sum: locked.Sum, Members: members, SkillNames: packageSkillNames(resource.Members), Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err

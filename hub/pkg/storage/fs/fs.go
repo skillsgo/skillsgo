@@ -7,6 +7,7 @@
 package fs
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,11 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/spf13/afero"
 )
+
+func (s *storageImpl) Ready(context.Context) error {
+	_, err := s.filesystem.Stat(s.rootDir)
+	return err
+}
 
 type storageImpl struct {
 	rootDir    string

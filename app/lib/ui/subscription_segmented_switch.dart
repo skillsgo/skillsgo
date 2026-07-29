@@ -2,7 +2,7 @@
  * Derived from Portal Labs Subscription Pricing Picker, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
  * [INPUT]: Depends on Flutter Material interaction, physics, focus, semantics, and haptic APIs, SkillsGo semantic color tokens, plus HugeIcons rendering.
- * [OUTPUT]: Provides a controlled two-option segmented switch with a sliding selection capsule and single-click selection.
+ * [OUTPUT]: Provides a controlled two-option segmented switch with a sliding selection capsule, optional bounded breathing status dots, and single-click selection.
  * [POS]: Serves as the vendored Portal Labs subscription-period switch adapted for compact Library filtering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,10 +16,15 @@ import 'package:hugeicons/hugeicons.dart';
 import 'design_system/skills_color_tokens.dart';
 
 class SubscriptionSwitchOption {
-  const SubscriptionSwitchOption({required this.label, required this.icon});
+  const SubscriptionSwitchOption({
+    required this.label,
+    required this.icon,
+    this.showBadge = false,
+  });
 
   final String label;
   final List<List<dynamic>> icon;
+  final bool showBadge;
 }
 
 class SubscriptionSegmentedSwitch extends StatefulWidget {
@@ -79,10 +84,7 @@ class _SubscriptionSegmentedSwitchState
 
   void _animateToSelection() {
     final target = selectedIndex.toDouble();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _positionController.value = target;
-      return;
-    }
+
     _positionController.animateWith(
       SpringSimulation(
         _spring,
@@ -129,7 +131,8 @@ class _SubscriptionSegmentedSwitchState
       return width > painter.width ? width : painter.width;
     });
     const segmentHorizontalPadding = 12.0;
-    const iconAndGapWidth = 20.0;
+    final hasBadge = widget.options.any((option) => option.showBadge);
+    final iconAndGapWidth = hasBadge ? 29.0 : 20.0;
     final segmentWidth =
         (widestLabel + iconAndGapWidth + segmentHorizontalPadding * 2).clamp(
           86.0,
@@ -276,18 +279,103 @@ class _SubscriptionSwitchSegment extends StatelessWidget {
                     color: selected ? selectedColor : unselectedColor,
                   ),
                   const SizedBox(width: 5),
-                  Text(
-                    option.label,
-                    style: TextStyle(
-                      color: selected ? selectedColor : unselectedColor,
-                      fontSize: 13,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    ),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          end: option.showBadge ? 5 : 0,
+                        ),
+                        child: Text(
+                          option.label,
+                          style: TextStyle(
+                            color: selected ? selectedColor : unselectedColor,
+                            fontSize: 13,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (option.showBadge)
+                        PositionedDirectional(
+                          top: -3,
+                          end: -3,
+                          child: _BreathingStatusDot(
+                            key: Key(
+                              'subscription-switch-badge-${option.label}',
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BreathingStatusDot extends StatefulWidget {
+  const _BreathingStatusDot({super.key});
+
+  @override
+  State<_BreathingStatusDot> createState() => _BreathingStatusDotState();
+}
+
+class _BreathingStatusDotState extends State<_BreathingStatusDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  late final Animation<double> breath;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1050),
+    );
+    breath = CurvedAnimation(parent: controller, curve: Curves.easeInOutSine);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _startBreathing();
+  }
+
+  void _startBreathing() {
+    if (controller.isAnimating || controller.isCompleted) return;
+    controller.repeat(reverse: true, count: 2);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: breath,
+      builder: (context, child) => Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          color: scheme.error,
+          borderRadius: BorderRadius.circular(999),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.error.withValues(alpha: 0.45 - 0.3 * breath.value),
+              blurRadius: 4 + 12 * breath.value,
+              spreadRadius: 0.5 + 5.5 * breath.value,
+            ),
+          ],
         ),
       ),
     );

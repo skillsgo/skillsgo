@@ -2,7 +2,7 @@
  * Derived from Portal Labs Discrete Tabs, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
  * [INPUT]: Depends on Flutter shader, animation, and text rendering APIs.
- * [OUTPUT]: Provides single-pass or repeating highlight animation for selected Discrete Tab labels and opt-in action emphasis.
+ * [OUTPUT]: Provides bounded single-pass or emphasized highlight animation for selected Discrete Tab labels and opt-in actions.
  * [POS]: Serves as the animated text-label primitive shared by Discrete Tabs and explicitly emphasized actions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,15 +43,12 @@ class _ShimmerTextState extends State<ShimmerText>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller
-        ..stop()
-        ..value = 1;
-    } else if (widget.repeat) {
-      if (!controller.isAnimating) controller.repeat();
-    } else if (controller.value == 0) {
-      controller.forward();
+    if (controller.isAnimating || controller.isCompleted) return;
+    if (widget.repeat) {
+      controller.repeat(count: 2);
+      return;
     }
+    controller.forward();
   }
 
   @override
@@ -62,9 +59,6 @@ class _ShimmerTextState extends State<ShimmerText>
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) {
-      return Text(widget.text, style: widget.style);
-    }
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) => ShaderMask(

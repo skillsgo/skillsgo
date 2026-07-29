@@ -387,7 +387,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智能体';
@@ -409,9 +409,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get addProject => '添加项目';
-
-  @override
-  String get relocateProject => '重新定位';
 
   @override
   String get removeFromList => '从列表移除';
@@ -440,20 +437,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get projectMissingTitle => '项目目录不存在';
 
   @override
-  String get projectMissingMessage => '目录可能已移动，或所在磁盘暂时离线。你可以重新定位，或仅移除 App 引用。';
+  String get projectMissingMessage => '目录可能已移动，或所在磁盘暂时离线。请检查路径，或移除 App 引用。';
 
   @override
   String get projectPermissionTitle => '需要项目目录权限';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo 无法检查这个已选择的根目录。请通过目录选择器重新定位并授予访问权限。';
+      'SkillsGo 无法检查这个项目根目录。请检查文件系统权限，或移除 App 引用。';
 
   @override
   String get projectInaccessibleTitle => '项目目录无法访问';
 
   @override
-  String get projectInaccessibleMessage => 'SkillsGo 已保留该项目引用。请检查路径或磁盘，然后重新定位。';
+  String get projectInaccessibleMessage =>
+      'SkillsGo 已保留该项目引用。请检查路径或磁盘，或移除 App 引用。';
 
   @override
   String get checking => '正在检查…';
@@ -837,7 +835,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get openAvailableUpdates => '打开“有更新”视图，查看并选择需要更新的技能。';
+  String get openAvailableUpdates => '打开“更新”视图，查看可更新的 Package。';
 
   @override
   String securityAdvisoriesReminder(int count) {
@@ -2312,7 +2310,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智能體';
@@ -2331,9 +2329,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get addProject => '添加項目';
-
-  @override
-  String get relocateProject => '重新定位';
 
   @override
   String get removeFromList => '從列表移除';
@@ -2362,20 +2357,21 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get projectMissingTitle => '項目目錄不存在';
 
   @override
-  String get projectMissingMessage => '目錄可能已移動，或所在磁盤暫時離線。你可以重新定位，或僅移除 App 引用。';
+  String get projectMissingMessage => '目錄可能已移動，或所在磁盤暫時離線。請檢查路徑，或移除 App 引用。';
 
   @override
   String get projectPermissionTitle => '需要項目目錄權限';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo 無法檢查這個已選擇的根目錄。請通過目錄選擇器重新定位並授予訪問權限。';
+      'SkillsGo 無法檢查這個項目根目錄。請檢查檔案系統權限，或移除 App 引用。';
 
   @override
   String get projectInaccessibleTitle => '項目目錄無法訪問';
 
   @override
-  String get projectInaccessibleMessage => 'SkillsGo 已保留該項目引用。請檢查路徑或磁盤，然後重新定位。';
+  String get projectInaccessibleMessage =>
+      'SkillsGo 已保留該項目引用。請檢查路徑或磁盤，或移除 App 引用。';
 
   @override
   String get checking => '正在檢查…';
@@ -4145,7 +4141,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智慧體';
@@ -4164,9 +4160,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get addProject => '新增專案';
-
-  @override
-  String get relocateProject => '重新定位';
 
   @override
   String get removeFromList => '從列表移除';
@@ -4195,20 +4188,21 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get projectMissingTitle => '專案目錄不存在';
 
   @override
-  String get projectMissingMessage => '目錄可能已移動，或所在磁碟暫時離線。你可以重新定位，或僅移除 App 引用。';
+  String get projectMissingMessage => '目錄可能已移動，或所在磁碟暫時離線。請檢查路徑，或移除 App 引用。';
 
   @override
   String get projectPermissionTitle => '需要專案資料夾權限';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo 無法檢查所選的根目錄。請透過資料夾選擇器重新選取該目錄並授予存取權限。';
+      'SkillsGo 無法檢查這個專案根目錄。請檢查檔案系統權限，或移除 App 引用。';
 
   @override
   String get projectInaccessibleTitle => '專案目錄無法訪問';
 
   @override
-  String get projectInaccessibleMessage => 'SkillsGo 已保留該專案引用。請檢查路徑或磁碟，然後重新定位。';
+  String get projectInaccessibleMessage =>
+      'SkillsGo 已保留該專案引用。請檢查路徑或磁碟，或移除 App 引用。';
 
   @override
   String get checking => '正在檢查…';

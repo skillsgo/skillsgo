@@ -97,11 +97,7 @@ class _SkillsPrimaryFolderState<T> extends State<SkillsPrimaryFolder<T>>
     selectedIndex = index;
     startIndex = animatedIndex;
     targetIndex = index.toDouble();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller.stop();
-      animatedIndex = targetIndex;
-      return;
-    }
+
     controller.forward(from: 0);
   }
 
@@ -222,9 +218,7 @@ class _FolderTabButton extends StatelessWidget {
         onTap: onPressed,
         child: Center(
           child: AnimatedDefaultTextStyle(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 250),
             style: selected ? activeStyle : inactiveStyle,
             child: ExcludeSemantics(
               child: SizedBox(

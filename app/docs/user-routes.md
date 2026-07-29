@@ -230,7 +230,7 @@ Primary actions include:
 
 An item found in an Agent directory without a SkillsGo receipt appears as an External Installation. Users may inspect it and may remove its exact path after reviewed confirmation. It cannot be updated or repaired while External.
 
-The first time an active Library view finishes planning with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage, and reduced-motion users receive the same deterministic layout without physics. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
+The first time an active Library view finishes planning with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
 
 Batch Adoption performs the following journey within the currently selected Library location:
 
@@ -255,7 +255,7 @@ Add Project performs the following journey:
 
 A project need not be a Git repository and need not contain SkillsGo files. Removing it from the App never deletes its directory, declarations, Lock, or Skills.
 
-When a project is moved, deleted, or inaccessible, keep a diagnosable rail state with Relocate and Remove from List actions instead of forgetting it silently.
+When a project is moved, deleted, or inaccessible, keep a diagnosable rail state and let the user remove its App reference instead of forgetting it silently.
 
 ## Navigation and State Preservation
 
@@ -298,7 +298,7 @@ Suggested logical routes:
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
 | Manually replaced target | Mark unhealthy; do not delete or overwrite automatically; require user resolution |
-| Inaccessible project | Keep the entry and offer Relocate or Remove from List |
+| Inaccessible project | Keep the entry and offer Remove from List |
 
 ## Implemented Contract Posture
 

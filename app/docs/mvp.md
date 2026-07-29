@@ -78,7 +78,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Gate clean installations on the short Mandatory Onboarding; do not show it to existing users after upgrade.
 - Preserve each top-level destination's subpage, scroll position, and running operations across navigation.
 - Show concise progress and results by default, with expandable diagnostics.
-- Follow system language, reduced-motion, and reduced-transparency preferences.
+- Follow system language and reduced-transparency preferences.
 - Keep the Library and local detail usable while offline.
 
 ## Acceptance Criteria

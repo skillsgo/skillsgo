@@ -15,8 +15,9 @@ type Querier interface {
 	BackfillRunByID(ctx context.Context, id string) (PackageBackfillRun, error)
 	CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error)
 	CurrentPackageVersionForUpdate(ctx context.Context, packageID int64) (string, error)
+	CurrentPackagesByPaths(ctx context.Context, packagePaths []string) ([]CurrentPackagesByPathsRow, error)
 	CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error)
-	DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error)
+	DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error)
 	ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error)
 	ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error)
 	FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error)
@@ -29,6 +30,7 @@ type Querier interface {
 	PackageByPath(ctx context.Context, packagePath string) (Package, error)
 	PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error)
 	PackagePublicationCommit(ctx context.Context, arg PackagePublicationCommitParams) (string, error)
+	PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error)
 	PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error)
 	PackageVersionCount(ctx context.Context, arg PackageVersionCountParams) (int64, error)
 	SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error)
@@ -47,8 +49,9 @@ type Querier interface {
 	TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
+	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)

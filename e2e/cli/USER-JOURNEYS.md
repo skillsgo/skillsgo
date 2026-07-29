@@ -347,13 +347,13 @@ The old F1 still resolves to C1, `latest` selects V1 at C1, and the explicit `ma
 
 Status: implemented through released CLI Info requests against a deterministic Repository transitioned from untagged C1 to tagged V1 and then advanced to C2 by `j44_no_tag_to_tag_transition_test.go`.
 
-### J45 — Check many installed Skills against Repository-fresh candidates
+### J45 — Preview a Catalog-fresh Package update
 
-As an App or terminal user with many installed Skills, I want one update check to compare local immutable versions with the fresh Package latest candidate while resolving each Package only once.
+As an App or terminal user with an installed Package, I want a dry-run update to compare its local immutable version with the published Catalog candidate without changing local state.
 
-The journey seeds the Catalog from the SkillsGo-owned public versioned fixture, checks 80 installed entries through one CLI invocation, and receives one latest result for every entry.
+The journey installs v1.2.0 of the public versioned fixture, previews the Global Scope Package update, and receives v1.3.0 as one Package-level candidate.
 
-Status: implemented against the released CLI and Hub by `j45_catalog_only_batch_update_check_test.go`.
+Status: implemented against the released CLI and Hub by `j45_package_update_preview_test.go`.
 
 ### J46 — Roll back a failed whole-Repository add
 

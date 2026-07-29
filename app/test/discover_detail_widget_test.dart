@@ -340,7 +340,6 @@ void main() {
     expect(find.text('example/skills'), findsOneWidget);
     expect(find.text('github.com/example/skills'), findsNothing);
     expect(find.text('2026-07-15'), findsOneWidget);
-    expect(find.text('24 KB'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('detail-instructions')),

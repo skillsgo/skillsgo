@@ -59,9 +59,6 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     const projectA = AddedProject(
       id: 'project-a',
       name: 'Project A',

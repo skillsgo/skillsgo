@@ -49,7 +49,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 - The Hub owns public Package Path plus Skill Name ranking/search identity, Source Repository resolution and metadata, immutable Package Artifacts, exact Package Path plus Skill Path batch-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
 - The Hub does not install skills into local Agent directories and does not own App navigation or local library state.
 - Public ranking/search coordinates carry Package Path and canonical Skill Name; exact member resources and batch-card hydration carry Package Path plus Skill Path.
-- Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
+- Preserve immutable version semantics, source commit identity, Artifact tree identity, and deterministic parentless Artifact commits.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.
 

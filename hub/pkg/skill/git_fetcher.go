@@ -7,11 +7,9 @@
 package skill
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 	"os"
@@ -94,14 +92,12 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, packagePath, revisi
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
 		Members: make([]RepositoryMember, 0, len(candidates)),
 	}
-	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA)
+	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-	snapshot.Archive = io.NopCloser(bytes.NewReader(archive))
-	snapshot.ArchiveMD5 = archiveMD5
+	snapshot.Entries = entries
 	snapshot.Sum = sum
-	snapshot.ArchiveSize = int64(len(archive))
 	for _, candidate := range candidates {
 		directory := filepath.ToSlash(filepath.Dir(candidate))
 		memberResolution := *resolution

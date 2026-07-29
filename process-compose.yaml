@@ -1,5 +1,5 @@
 # [INPUT]: Depends on Process Compose, Docker Compose PostgreSQL exposed on host port 55432, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
-# [OUTPUT]: Declares the ordered, observable local development topology for PostgreSQL, Hub, CLI, and the App with the in-progress Adoption Review UI enabled.
+# [OUTPUT]: Declares the ordered local PostgreSQL, Hub with static disk Git Artifact delivery, CLI, and App development topology.
 # [POS]: Serves as the repository-owned process orchestration contract consumed by scripts/dev.sh.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
