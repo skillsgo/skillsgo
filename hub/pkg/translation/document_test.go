@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses representative source and localized Markdown with fenced code blocks.
- * [OUTPUT]: Specifies exact fenced-code preservation for display-only Skill document translation.
+ * [OUTPUT]: Specifies exact fenced-code preservation across conservative model-wrapper and placeholder normalization for display-only Skill document translation.
  * [POS]: Serves as structural-validator contract coverage for document translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,6 +43,25 @@ func TestOpenAITranslatorRequestsEnvelopeDocumentTranslation(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, Result{Content: "# 演示"}, result)
+}
+
+func TestOpenAITranslatorPreservesFencedCodeThroughHarmlessModelFormatting(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{
+			"choices": []any{map[string]any{"message": map[string]any{
+				"role":    "assistant",
+				"content": "```xml\n<skillsgo-translation-result># 运行\n\n&lt;skillsgo-protected-000001 /&gt;</skillsgo-translation-result>\n```",
+			}}},
+		})
+	}))
+	defer server.Close()
+
+	result, err := NewOpenAITranslator(server.URL, "secret", "test-model").TranslateDocument(
+		t.Context(), []byte("---\nname: demo\ndescription: Demo\n---\n# Run\n\n```sh\nskillsgo add demo\n```\n"), "en", "zh-Hans-CN",
+	)
+	require.NoError(t, err)
+	require.Equal(t, "# 运行\n\n```sh\nskillsgo add demo\n```", result.Content)
 }
 
 func TestDocumentMaxOutputTokensUsesSafeBounds(t *testing.T) {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the official OpenAI Go SDK, an OpenAI-compatible endpoint, declared source/target locales, and untrusted source content.
- * [OUTPUT]: Provides deterministic non-thinking pure translation with one strict XML-like result envelope.
+ * [OUTPUT]: Provides deterministic non-thinking pure translation with one validated XML-like result envelope and conservative wrapper normalization.
  * [POS]: Serves as the external LLM adapter after Hub-local language analysis and translation gating.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,12 +9,15 @@ package translation
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/shared"
 )
+
+var outerTranslationFencePattern = regexp.MustCompile("(?i)^```(?:xml|html|text)?[ \\t]*$")
 
 type Translator interface {
 	Translate(context.Context, string, string, string) (Result, error)
@@ -93,7 +96,8 @@ func (t *OpenAITranslator) translate(ctx context.Context, source, sourceLang, ta
 
 func parseTranslationResult(raw string) (string, error) {
 	const openTag, closeTag = "<skillsgo-translation-result>", "</skillsgo-translation-result>"
-	trimmed := strings.TrimSpace(raw)
+	trimmed := strings.TrimSpace(strings.TrimPrefix(raw, "\ufeff"))
+	trimmed = unwrapOuterTranslationFence(trimmed)
 	if strings.Count(trimmed, openTag) != 1 || strings.Count(trimmed, closeTag) != 1 || !strings.HasPrefix(trimmed, openTag) || !strings.HasSuffix(trimmed, closeTag) {
 		return "", fmt.Errorf("translation response must contain exactly one result envelope")
 	}
@@ -102,6 +106,19 @@ func parseTranslationResult(raw string) (string, error) {
 		return "", fmt.Errorf("translation result is empty")
 	}
 	return content, nil
+}
+
+func unwrapOuterTranslationFence(raw string) string {
+	firstLineEnd := strings.IndexByte(raw, '\n')
+	if firstLineEnd < 0 || !outerTranslationFencePattern.MatchString(strings.TrimSuffix(raw[:firstLineEnd], "\r")) {
+		return raw
+	}
+	body := strings.TrimSpace(raw[firstLineEnd+1:])
+	lastLineStart := strings.LastIndexByte(body, '\n')
+	if lastLineStart < 0 || strings.TrimSpace(body[lastLineStart+1:]) != "```" {
+		return raw
+	}
+	return strings.TrimSpace(body[:lastLineStart])
 }
 
 func canonicalLanguage(lang string) string {

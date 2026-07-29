@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an HTTP test server implementing the configured OpenAI-compatible chat-completions contract.
- * [OUTPUT]: Specifies pure translation requests, disabled thinking, fixed temperature, strict result parsing, and upstream failures.
+ * [OUTPUT]: Specifies pure translation requests, disabled thinking, fixed temperature, conservative result-wrapper parsing, and upstream failures.
  * [POS]: Serves as network-adapter contract coverage for description translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,35 @@ func TestOpenAITranslatorSendsPureTranslationRequest(t *testing.T) {
 
 func TestParseTranslationResultRejectsTextOutsideEnvelope(t *testing.T) {
 	for _, raw := range []string{"", "prefix <skillsgo-translation-result>x</skillsgo-translation-result>", "<skillsgo-translation-result></skillsgo-translation-result>", "<skillsgo-translation-result>x</skillsgo-translation-result> suffix"} {
+		_, err := parseTranslationResult(raw)
+		require.Error(t, err)
+	}
+}
+
+func TestParseTranslationResultNormalizesHarmlessOuterWrappers(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+	}{
+		{name: "byte order mark", raw: "\ufeff<skillsgo-translation-result>审查变更</skillsgo-translation-result>"},
+		{name: "XML code fence", raw: "```xml\n<skillsgo-translation-result>审查变更</skillsgo-translation-result>\n```"},
+		{name: "plain code fence", raw: "```\n<skillsgo-translation-result>审查变更</skillsgo-translation-result>\n```"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := parseTranslationResult(test.raw)
+			require.NoError(t, err)
+			require.Equal(t, "审查变更", result)
+		})
+	}
+}
+
+func TestParseTranslationResultRejectsUnsafeWrappers(t *testing.T) {
+	for _, raw := range []string{
+		"Here is the translation:\n<skillsgo-translation-result>x</skillsgo-translation-result>",
+		"```json\n<skillsgo-translation-result>x</skillsgo-translation-result>\n```",
+		"<skillsgo-translation-result>x</skillsgo-translation-result><skillsgo-translation-result>y</skillsgo-translation-result>",
+	} {
 		_, err := parseTranslationResult(raw)
 		require.Error(t, err)
 	}

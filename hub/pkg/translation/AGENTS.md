@@ -3,9 +3,9 @@
 
 ## Members
 
-- `translator.go`, `translator_test.go`: OpenAI-compatible description translation client and network contract coverage.
+- `translator.go`, `translator_test.go`: OpenAI-compatible description translation client, conservative model-wrapper normalization, and network contract coverage.
 - `language.go`, `language_test.go`: Goldmark paragraph-whitelist extraction, cached Lingua low multilingual analysis, and conservative target gating.
-- `protection.go`, `protection_test.go`: deterministic technical-span placeholders and strict byte-identical restoration.
+- `protection.go`, `protection_test.go`: deterministic technical-span placeholders, harmless tag-format normalization, and validated byte-identical restoration.
 - `document.go`, `document_test.go`: display-only Markdown-body translation and structural validation.
 - `document_worker.go`, `document_worker_test.go`: groups document work by source digest, prioritizes currently published content, analyzes and reads each source once, translates missing languages through one shared four-request concurrency bound, skips existing sidecars on retry, and persists content-addressed results.
 - `worker.go`: groups description work by source digest and executes one bounded, retryable multi-language batch for River.
