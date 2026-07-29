@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and the CLI user config projects section.
+ * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
  * [OUTPUT]: Verifies exact All/User/Project adoption counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -67,13 +67,7 @@ void registerAdoptionManagementJourney() {
       await runtime.gateway.saveReminderSettings(
         const ReminderSettings(updateAvailable: false),
       );
-      final configFile = File('$sandbox/home/.skillsgo/config.yaml');
-      configFile.parent.createSync(recursive: true);
-      configFile.writeAsStringSync(
-        'schemaVersion: 1\n'
-        'projects:\n'
-        '  - ${jsonEncode(projectRoot.path)}\n',
-      );
+      await runtime.registerProject(projectRoot);
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
         gateway: runtime.gateway,
@@ -223,10 +217,7 @@ Future<void> _pumpUntilEither(
       DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(
-    first.evaluate().isNotEmpty || second.evaluate().isNotEmpty,
-    isTrue,
-  );
+  expect(first.evaluate().isNotEmpty || second.evaluate().isNotEmpty, isTrue);
 }
 
 Future<void> _pumpUntilEnabledPrimaryButton(
