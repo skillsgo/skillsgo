@@ -72,6 +72,17 @@ void registerAdoptionManagementJourney() {
         'projects:\n'
         '  - ${jsonEncode(projectRoot.path)}\n',
       );
+      final configuredProjects = await runtime.gateway.loadAddedProjects();
+      expect(configuredProjects, hasLength(1));
+      final initialInventory = await runtime.gateway.listInstalled(
+        projects: configuredProjects,
+      );
+      expect(
+        initialInventory.where(
+          (skill) => skill.provenance == LibraryProvenance.external,
+        ),
+        hasLength(2),
+      );
 
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,

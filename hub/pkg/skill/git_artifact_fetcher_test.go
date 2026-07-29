@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Git-backed Repository fetcher, filesystem fixtures, and injected Git transport outcomes.
- * [OUTPUT]: Specifies Repository cache paths and credential-free controlled Git transport behavior.
+ * [OUTPUT]: Specifies Repository cache paths and credential-free, Windows-long-path-safe controlled Git transport behavior.
  * [POS]: Serves as focused construction and transport coverage for the Hub Repository fetcher.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -41,8 +41,10 @@ func TestGitTransportStripsAmbientCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if environmentValue(capturedEnvironment, "GIT_CONFIG_COUNT") != "" || environmentValue(capturedEnvironment, "GIT_CONFIG_VALUE_0") != "" {
-		t.Fatalf("controlled Git environment retained ambient credentials: %v", capturedEnvironment)
+	if environmentValue(capturedEnvironment, "GIT_CONFIG_COUNT") != "1" ||
+		environmentValue(capturedEnvironment, "GIT_CONFIG_KEY_0") != "core.longpaths" ||
+		environmentValue(capturedEnvironment, "GIT_CONFIG_VALUE_0") != "true" {
+		t.Fatalf("controlled Git environment did not replace ambient credentials with long-path support: %v", capturedEnvironment)
 	}
 }
 
