@@ -252,6 +252,22 @@ func TestTaskQueueEnvironmentOverride(t *testing.T) {
 	require.Equal(t, 24, conf.TaskQueue.MaxWorkers)
 }
 
+func TestDatabasePoolsHaveIndependentEnvironmentCapacity(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_DATABASE_MAX_OPEN_CONNS", "11")
+	t.Setenv("SKILLSGO_HUB_DATABASE_BACKGROUND_MAX_OPEN_CONNS", "17")
+	conf := defaultConfig()
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, 11, conf.Database.MaxOpenConns)
+	require.Equal(t, 17, conf.Database.Background().MaxOpenConns)
+	require.Equal(t, conf.Database.DSN, conf.Database.Background().DSN)
+}
+
+func TestDatabaseBackgroundCapacityFallsBackForProgrammaticConfig(t *testing.T) {
+	cfg := DatabaseConfig{MaxOpenConns: 7}
+	require.Equal(t, 7, cfg.Background().MaxOpenConns)
+}
+
 func TestEnvOverridesPreservingPort(t *testing.T) {
 	os.Clearenv()
 	setTestHome(t)

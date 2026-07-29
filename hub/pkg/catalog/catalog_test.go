@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies zero-minimum idle pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,6 +45,23 @@ func TestPoolConfigOverridesDSNWithZeroIdlePolicy(t *testing.T) {
 	require.Equal(t, int32(4), poolConfig.MaxConns)
 	require.Equal(t, 2*time.Minute, poolConfig.MaxConnIdleTime)
 	require.Equal(t, 30*time.Second, poolConfig.HealthCheckPeriod)
+}
+
+func TestForegroundAndBackgroundPoolConfigsRetainIndependentZeroMinimums(t *testing.T) {
+	cfg := config.DatabaseConfig{
+		DSN:                    "postgres://example/database",
+		Schema:                 config.DefaultDatabaseSchema,
+		MaxOpenConns:           20,
+		BackgroundMaxOpenConns: 40,
+	}
+	foreground, err := newPoolConfig(cfg)
+	require.NoError(t, err)
+	background, err := newPoolConfig(cfg.Background())
+	require.NoError(t, err)
+	require.Equal(t, int32(20), foreground.MaxConns)
+	require.Equal(t, int32(40), background.MaxConns)
+	require.Zero(t, foreground.MinConns)
+	require.Zero(t, background.MinConns)
 }
 
 func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSHA, sum string, visibility PublicationVisibility, candidates []Skill) {
