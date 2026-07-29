@@ -74,7 +74,6 @@ void registerAdoptionManagementJourney() {
         'projects:\n'
         '  - ${jsonEncode(projectRoot.path)}\n',
       );
-      await runtime.gateway.detectCli();
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
         gateway: runtime.gateway,
