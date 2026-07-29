@@ -23,7 +23,14 @@ class UpdateAvailability {
   final UpdateState state;
   final String toVersion;
   final int selectedSkillCount;
-  final List<String> removedSkills;
+  final List<RemovedSkillImpact> removedSkills;
+}
+
+class RemovedSkillImpact {
+  const RemovedSkillImpact({required this.name, required this.path});
+
+  final String name;
+  final String path;
 }
 
 enum HealthState { ready, notInitialized, unreachable, invalid }

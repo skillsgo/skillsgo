@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared validated Package Scope inputs, declared Package dependencies, one Catalog-backed Package update batch or explicit immutable target, verified current Scope Package Stores and Info, Agent Adapter roots, and the shared Package reconciler.
- * [OUTPUT]: Provides mutation-free Package update previews plus confirmed single-Package or best-effort scope-wide execution that consumes previewed immutable targets, preserves available persisted Skill selectors and Agents, reports removed selectors, binds execution to current declaration state, and reports complete per-Package outcomes.
+ * [OUTPUT]: Provides mutation-free Package update previews plus confirmed single-Package or best-effort scope-wide execution that consumes previewed immutable targets, preserves available persisted Skill selectors and Agents, reports removed Skills with canonical current name/path identity, binds execution to current declaration state, and reports complete per-Package outcomes.
  * [POS]: Serves as the Package update intent and interaction adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,22 +34,27 @@ import (
 )
 
 type packageUpdateReport struct {
-	SchemaVersion  int      `json:"schemaVersion"`
-	Phase          string   `json:"phase"`
-	PackagePath    string   `json:"packagePath"`
-	FromVersion    string   `json:"fromVersion"`
-	ToVersion      string   `json:"toVersion"`
-	Sum            string   `json:"sum"`
-	Skills         []string `json:"skills"`
-	Agents         []string `json:"agents"`
-	Scope          string   `json:"scope"`
-	ProjectRoot    string   `json:"projectRoot,omitempty"`
-	PackageDir     string   `json:"packageDir"`
-	Status         string   `json:"status"`
-	RemovedSkills  []string `json:"removedSkills"`
-	SelectedSkills int      `json:"selectedSkillCount"`
-	SelectedAgents int      `json:"selectedAgentCount"`
-	Error          string   `json:"error,omitempty"`
+	SchemaVersion  int                  `json:"schemaVersion"`
+	Phase          string               `json:"phase"`
+	PackagePath    string               `json:"packagePath"`
+	FromVersion    string               `json:"fromVersion"`
+	ToVersion      string               `json:"toVersion"`
+	Sum            string               `json:"sum"`
+	Skills         []string             `json:"skills"`
+	Agents         []string             `json:"agents"`
+	Scope          string               `json:"scope"`
+	ProjectRoot    string               `json:"projectRoot,omitempty"`
+	PackageDir     string               `json:"packageDir"`
+	Status         string               `json:"status"`
+	RemovedSkills  []removedSkillReport `json:"removedSkills"`
+	SelectedSkills int                  `json:"selectedSkillCount"`
+	SelectedAgents int                  `json:"selectedAgentCount"`
+	Error          string               `json:"error,omitempty"`
+}
+
+type removedSkillReport struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 type packageUpdatesReport struct {
@@ -171,7 +176,7 @@ func newPackageUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 					}})
 					continue
 				}
-				report.RemovedSkills = append([]string(nil), preview.RemovedSkills...)
+				report.RemovedSkills = append([]removedSkillReport(nil), preview.RemovedSkills...)
 				report.SelectedSkills = preview.SelectedSkills
 				report.SelectedAgents = preview.SelectedAgents
 				prepared = append(prepared, preparedPackageUpdate{report: report, apply: apply})
@@ -277,7 +282,7 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 			if scope.global && errors.Is(loadErr, os.ErrNotExist) {
 				continue
 			}
-			failed = append(failed, packageUpdateReport{SchemaVersion: 1, Phase: "package-update-preview", Scope: map[bool]string{true: "global", false: "project"}[scope.global], ProjectRoot: scope.root, Status: "failed", Error: loadErr.Error(), Skills: []string{}, Agents: []string{}, RemovedSkills: []string{}})
+			failed = append(failed, packageUpdateReport{SchemaVersion: 1, Phase: "package-update-preview", Scope: map[bool]string{true: "global", false: "project"}[scope.global], ProjectRoot: scope.root, Status: "failed", Error: loadErr.Error(), Skills: []string{}, Agents: []string{}, RemovedSkills: []removedSkillReport{}})
 			continue
 		}
 		for packagePath := range manifest.Dependencies {
@@ -320,7 +325,7 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 		}
 		items, previewErr := previewPackageUpdatesResolved(cmd.Context(), scope.root, scope.global, client, scope.paths, queries, resolved)
 		if previewErr != nil {
-			previews = append(previews, packageUpdateReport{SchemaVersion: 1, Phase: "package-update-preview", Scope: map[bool]string{true: "global", false: "project"}[scope.global], ProjectRoot: scope.root, Status: "failed", Error: previewErr.Error(), Skills: []string{}, Agents: []string{}, RemovedSkills: []string{}})
+			previews = append(previews, packageUpdateReport{SchemaVersion: 1, Phase: "package-update-preview", Scope: map[bool]string{true: "global", false: "project"}[scope.global], ProjectRoot: scope.root, Status: "failed", Error: previewErr.Error(), Skills: []string{}, Agents: []string{}, RemovedSkills: []removedSkillReport{}})
 			continue
 		}
 		previews = append(previews, items...)
@@ -346,7 +351,7 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 			prepared = append(prepared, preparedPackageUpdate{report: item.preview})
 			continue
 		}
-		report.RemovedSkills = append([]string(nil), item.preview.RemovedSkills...)
+		report.RemovedSkills = append([]removedSkillReport(nil), item.preview.RemovedSkills...)
 		report.SelectedSkills = item.preview.SelectedSkills
 		report.SelectedAgents = item.preview.SelectedAgents
 		prepared = append(prepared, preparedPackageUpdate{report: report, apply: apply})
@@ -404,7 +409,7 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 		dependency, declared := manifest.Dependencies[packagePath]
 		locked, lockedOK := lock.Dependencies[packagePath]
 		report := packageUpdateReport{SchemaVersion: 1, Phase: "package-update-preview", PackagePath: packagePath, Scope: scopeContext.scopeName,
-			ProjectRoot: scopeContext.projectRoot, Status: "failed", Skills: []string{}, Agents: []string{}, RemovedSkills: []string{}}
+			ProjectRoot: scopeContext.projectRoot, Status: "failed", Skills: []string{}, Agents: []string{}, RemovedSkills: []removedSkillReport{}}
 		if !declared || !lockedOK || dependency.Version != locked.Version {
 			report.Error = fmt.Sprintf("Package %s is not a locked dependency in this scope", packagePath)
 			reports = append(reports, report)
@@ -415,6 +420,18 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 		report.Agents = append([]string(nil), dependency.Agents...)
 		report.SelectedSkills = len(dependency.Skills)
 		report.SelectedAgents = len(dependency.Agents)
+		currentInfoBytes, currentInfoErr := (infocache.Cache{Root: scopeContext.infoRoot}).Get(packagePath, dependency.Version, "package.info")
+		if currentInfoErr != nil {
+			report.Error = fmt.Sprintf("read current immutable Package Info: %v", currentInfoErr)
+			reports = append(reports, report)
+			continue
+		}
+		currentResource, currentInfoErr := hub.ParsePackageInfo(packagePath, currentInfoBytes)
+		if currentInfoErr != nil {
+			report.Error = currentInfoErr.Error()
+			reports = append(reports, report)
+			continue
+		}
 		var targetVersion, targetSum string
 		var targetMembers []protocolapi.PackageSkill
 		if queries[packagePath] == "latest" {
@@ -453,8 +470,18 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 				}
 			}
 			if !available {
-				report.RemovedSkills = append(report.RemovedSkills, selector)
+				currentMember, found := hub.SelectVersionSkill(selector, currentResource.Members)
+				if !found {
+					report.Status = "failed"
+					report.Error = fmt.Sprintf("resolve current Package Skill selector %s", selector)
+					break
+				}
+				report.RemovedSkills = append(report.RemovedSkills, removedSkillReport{Name: currentMember.Info.Name, Path: currentMember.Info.Path})
 			}
+		}
+		if report.Error != "" {
+			reports = append(reports, report)
+			continue
 		}
 		report.Status = "update_available"
 		if dependency.Version == targetVersion && locked.Sum == targetSum {

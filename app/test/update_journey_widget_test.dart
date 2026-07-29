@@ -78,6 +78,12 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('subscription-switch-badge-Updates')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Retired Skill'), findsOneWidget);
+    expect(find.textContaining('skills/retired/SKILL.md'), findsNothing);
     expect(find.text('local-skill'), findsNothing);
     expect(find.byKey(const Key('library-select-visible')), findsNothing);
   });
