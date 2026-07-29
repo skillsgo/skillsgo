@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on App assembly, default configuration loading, and isolated Testcontainers PostgreSQL databases.
- * [OUTPUT]: Specifies top-level application construction and idempotent cleanup without reading user database state.
+ * [INPUT]: Depends on App assembly, runtime cleanup ownership, default configuration loading, and isolated Testcontainers PostgreSQL databases.
+ * [OUTPUT]: Specifies top-level application construction plus reverse-order, idempotent cleanup without reading user database state.
  * [POS]: Serves as test coverage for the actions package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -75,4 +75,16 @@ func TestAppReturnsCleanupWithExporters(t *testing.T) {
 
 	// Calling cleanup a second time should also be safe (idempotency).
 	assert.NotPanics(t, cleanup)
+}
+
+func TestRuntimeResourcesCloseInReverseOrderOnce(t *testing.T) {
+	resources := &runtimeResources{}
+	var closed []string
+	resources.addCleanup(func() { closed = append(closed, "first") })
+	resources.addCleanup(func() { closed = append(closed, "second") })
+
+	resources.Close()
+	resources.Close()
+
+	assert.Equal(t, []string{"second", "first"}, closed)
 }

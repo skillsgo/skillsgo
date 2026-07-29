@@ -3,8 +3,9 @@
 
 ## Members
 
-- `app.go`, `app_test.go`, `app_postgres_integration_test.go`: assemble and verify the native Fiber application, isolated foreground/background PostgreSQL Catalog pools, River or synchronous task runtime, periodic business tasks, PostgreSQL boot/restart with queued-job recovery, middleware lifecycle, and top-level wiring.
+- `app.go`, `app_runtime.go`, `app_test.go`, `app_postgres_integration_test.go`: express and verify native Fiber top-level assembly, reverse-order idempotent ownership of isolated foreground/background PostgreSQL Catalog pools and the River or synchronous task runtime, PostgreSQL boot/restart with queued-job recovery, middleware lifecycle, and failure rollback.
 - `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, payload validation, dispatcher versus single-localization timeout behavior, and domain-handler adapters for Source Repository metadata and translation.
+- `translation_jobs.go`: assembles translation workers and registers description/document dispatch, execution, terminal failure handling, and periodic scheduling outside the top-level App flow.
 - `app_proxy.go`, `app_proxy_test.go`: compose source discovery, Artifact Store, Catalog, OpenAPI, Package metadata, and Skill-content routes through Fiber and cover integration behavior.
 - `basicauth.go`, `basicauth_test.go`, `admin_auth_test.go`: configure global versus administration-scoped HTTP Basic Auth behavior; source publication remains credential-free while GitHub tokens are metadata-API-only.
 - `catalog_api.go`, `catalog_api_test.go`: expose `GET /api/v1/skills/find` with zero-based page/per-page requests, greedy one-extra-row has-more responses, and language-localized immutable Package Publication projection with source-description fallback after CLI-owned explicit-source resolution; ordinary search remains current-Catalog-only. They also own source-description-by-default candidate Find with optional presentation localization, exact-path ordered batch-card hydration, set-based Catalog-only Package update checks, and correlated private diagnostics.
