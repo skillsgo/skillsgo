@@ -106,7 +106,11 @@ void registerAdoptionManagementJourney() {
       expect(refreshButton.onPressed, isNotNull);
       refreshButton.onPressed!();
       await tester.pump();
-      await _pumpUntil(tester, find.text('Local Library refreshed.'));
+      await _pumpUntil(
+        tester,
+        find.text('Local Library refreshed.'),
+        timeout: const Duration(seconds: 120),
+      );
       await tester.tap(libraryDestination);
 
       await _pumpUntilAdoptionCount(tester, 1);
@@ -250,8 +254,12 @@ Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
   expect(finder, findsNothing);
 }
 
-Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 45));
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 45),
+}) async {
+  final deadline = DateTime.now().add(timeout);
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }

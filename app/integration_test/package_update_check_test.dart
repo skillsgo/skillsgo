@@ -141,6 +141,7 @@ void registerPackageUpdatePreviewJourney() {
         alpha,
         'Version 1.3.0 fixture content.',
       );
+      await _pumpUntilFileContains(tester, manifest, 'v1.3.0');
       expect(
         alpha.readAsStringSync(),
         contains('Version 1.3.0 fixture content.'),
