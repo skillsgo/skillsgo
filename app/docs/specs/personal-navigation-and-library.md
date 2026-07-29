@@ -112,7 +112,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Manifest, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
 77. As a project user, I want projects restored after App restart, so that navigation remains stable.
 78. As a project user, I want removing a project from SkillsGo to leave its files untouched, so that navigation cleanup is not destructive.
-79. As a user with a moved project, I want a Relocate action, so that its identity and history can be recovered.
+79. As a user with an inaccessible project, I want its reference preserved until I explicitly remove it, so that transient filesystem failures do not silently erase configuration.
 80. As a user with an inaccessible project, I want a diagnosable state instead of silent removal, so that permission and storage problems are understandable.
 81. As a privacy-conscious user, I want SkillsGo to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
 82. As a user with no Installed Agent, I want discovery to remain available, so that I can evaluate Skills before configuring an Agent.

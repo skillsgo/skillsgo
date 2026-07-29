@@ -867,12 +867,6 @@ abstract class AppLocalizations {
   /// **'Add Project'**
   String get addProject;
 
-  /// No description provided for @relocateProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Relocate'**
-  String get relocateProject;
-
   /// No description provided for @removeFromList.
   ///
   /// In en, this message translates to:
@@ -918,7 +912,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectMissingMessage.
   ///
   /// In en, this message translates to:
-  /// **'The directory may have moved or its volume may be offline. Relocate it or remove only its App reference.'**
+  /// **'The directory may have moved or its volume may be offline. Check the path or remove its App reference.'**
   String get projectMissingMessage;
 
   /// No description provided for @projectPermissionTitle.
@@ -930,7 +924,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectPermissionMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo cannot inspect this selected root. Grant access by relocating it through the directory picker.'**
+  /// **'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.'**
   String get projectPermissionMessage;
 
   /// No description provided for @projectInaccessibleTitle.
@@ -942,7 +936,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectInaccessibleMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo kept this project reference. Check the path or volume, then relocate it.'**
+  /// **'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.'**
   String get projectInaccessibleMessage;
 
   /// No description provided for @checking.

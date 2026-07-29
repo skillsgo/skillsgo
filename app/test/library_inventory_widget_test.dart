@@ -1045,7 +1045,7 @@ void main() {
     );
   });
 
-  testWidgets('inaccessible Project stays visible and supports Relocate', (
+  testWidgets('inaccessible Project stays visible without relocation', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -1060,12 +1060,6 @@ void main() {
           diagnostic: 'volume offline',
         ),
       ],
-      projectToRelocate: const AddedProject(
-        id: 'stable-id',
-        name: 'Moved Project',
-        path: '/work/project',
-        accessState: ProjectAccessState.accessible,
-      ),
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
@@ -1077,13 +1071,7 @@ void main() {
     expect(find.text('Project directory is missing'), findsOneWidget);
     expect(find.textContaining('/Volumes/offline/project'), findsOneWidget);
     expect(find.textContaining('volume offline'), findsNothing);
-    await tester.tap(find.text('Relocate').last);
-    await tester.pumpAndSettle();
-    expect(find.text('No Skills yet'), findsOneWidget);
-    expect(find.text('Browse Skills'), findsOneWidget);
-    expect(gateway.projects.single.id, 'stable-id');
-    expect(gateway.projects.single.path, '/work/project');
-
+    expect(find.text('Relocate'), findsNothing);
     expect(find.text('Remove from List'), findsNothing);
   });
 }

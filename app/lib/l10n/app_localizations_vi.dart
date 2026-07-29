@@ -441,9 +441,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get addProject => 'Thêm dự án';
 
   @override
-  String get relocateProject => 'di dời';
-
-  @override
   String get removeFromList => 'Xóa khỏi danh sách';
 
   @override
@@ -471,14 +468,14 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Thư mục có thể đã di chuyển hoặc ổ đĩa của nó có thể ngoại tuyến. Di dời nó hoặc chỉ xóa tham chiếu Ứng dụng của nó.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Cần có sự cho phép của dự án';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo không thể kiểm tra gốc đã chọn này. Cấp quyền truy cập bằng cách di chuyển nó thông qua bộ chọn thư mục.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -486,7 +483,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo đã lưu giữ tài liệu tham khảo về dự án này. Kiểm tra đường dẫn hoặc ổ đĩa, sau đó di chuyển nó.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Đang kiểm tra…';

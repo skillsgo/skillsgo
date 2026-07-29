@@ -31,7 +31,6 @@ part 'real_skills_gateway_target_management.dart';
 part 'real_skills_gateway_updates.dart';
 part 'real_skills_gateway_failures.dart';
 
-typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
 typedef DirectoryPathsPicker =
     Future<List<String>> Function({String? initialDirectory});
 typedef ProjectPathInspector =
@@ -77,7 +76,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     String? expectedCliOS,
     String hubBaseUrl = 'https://hub.skillsgo.ai',
     String? appVersion,
-    DirectoryPicker? directoryPicker,
     DirectoryPathsPicker? directoryPathsPicker,
     ProjectPathInspector? projectPathInspector,
     this._projectIconResolver = const ProjectIconResolver(),
@@ -89,7 +87,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
        _defaultHubBase = _originUri(hubBaseUrl),
        _hubBase = _originUri(hubBaseUrl),
        _injectedAppVersion = appVersion,
-       _directoryPicker = directoryPicker ?? _pickDirectory,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
@@ -100,16 +97,12 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
   final String? _injectedAppVersion;
-  final DirectoryPicker _directoryPicker;
   final DirectoryPathsPicker _directoryPathsPicker;
   final ProjectPathInspector _projectPathInspector;
   final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
   bool _hubOriginLoaded = false;
   HubRuntime? _hubRuntime;
-
-  static Future<String?> _pickDirectory({String? initialDirectory}) =>
-      file_selector.getDirectoryPath(initialDirectory: initialDirectory);
 
   static Future<List<String>> _pickDirectories({
     String? initialDirectory,
@@ -253,7 +246,6 @@ class RealSkillsGateway extends _RealSkillsGatewayCore
     super.expectedCliOS,
     super.hubBaseUrl,
     super.appVersion,
-    super.directoryPicker,
     super.directoryPathsPicker,
     super.projectPathInspector,
     super.projectIconResolver,

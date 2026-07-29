@@ -433,9 +433,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get addProject => 'プロジェクトの追加';
 
   @override
-  String get relocateProject => '移転する';
-
-  @override
   String get removeFromList => 'リストから削除';
 
   @override
@@ -463,21 +460,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'ディレクトリが移動したか、そのボリュームがオフラインになっている可能性があります。再配置するか、App 参照のみを削除します。';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'プロジェクトの許可が必要です';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo は選択したルートを確認できません。ディレクトリ選択画面でもう一度このフォルダーを選択し、アクセスを許可してください。';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'プロジェクトディレクトリにアクセスできません';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo はこのプロジェクト参照を保管していました。パスまたはボリュームを確認し、再配置してください。';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => '確認中…';

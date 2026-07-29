@@ -442,9 +442,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get addProject => 'Tambahkan Proyek';
 
   @override
-  String get relocateProject => 'Pindah';
-
-  @override
   String get removeFromList => 'Hapus dari Daftar';
 
   @override
@@ -472,21 +469,21 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Direktori mungkin telah berpindah atau volumenya mungkin offline. Pindahkan atau hapus hanya referensi Aplikasinya.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Izin proyek diperlukan';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo tidak dapat memeriksa akar yang dipilih ini. Berikan akses dengan memindahkannya melalui pemilih direktori.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'Direktori proyek tidak dapat diakses';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo menyimpan referensi proyek ini. Periksa jalur atau volume, lalu pindahkan lokasinya.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Memeriksa…';

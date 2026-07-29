@@ -433,9 +433,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get addProject => '프로젝트 추가';
 
   @override
-  String get relocateProject => '재배치';
-
-  @override
   String get removeFromList => '목록에서 제거';
 
   @override
@@ -463,21 +460,21 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      '디렉터리가 이동되었거나 해당 볼륨이 오프라인 상태일 수 있습니다. 위치를 바꾸거나 앱 참조만 제거하세요.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => '프로젝트 권한이 필요합니다';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo는 선택한 루트를 검사할 수 없습니다. 디렉터리 선택기를 통해 위치를 변경하여 액세스 권한을 부여하세요.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => '프로젝트 디렉터리에 액세스할 수 없습니다.';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo는 이 프로젝트 참조를 유지했습니다. 경로나 볼륨을 확인한 후 재배치하세요.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => '확인 중…';

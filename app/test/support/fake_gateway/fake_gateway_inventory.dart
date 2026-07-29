@@ -96,15 +96,6 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<AddedProject?> relocateProject(String id) async {
-    final project = projectToRelocate;
-    if (project == null || project.id != id) return null;
-    final index = projects.indexWhere((item) => item.id == id);
-    if (index >= 0) projects[index] = project;
-    return project;
-  }
-
-  @override
   Future<void> removeProject(String id) async {
     projects.removeWhere((project) => project.id == id);
   }

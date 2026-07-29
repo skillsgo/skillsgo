@@ -123,16 +123,6 @@ extension _LibraryActions on _LibraryScreenState {
     return null;
   }
 
-  Future<void> _relocateProject(AddedProject project) async {
-    try {
-      final relocated = await widget.gateway.relocateProject(project.id);
-      if (relocated == null || !mounted) return;
-      await load();
-    } on Object catch (caught) {
-      if (mounted) updateState(() => actionError = caught);
-    }
-  }
-
   Future<void> _addProject() async {
     if (addingProject) return;
     updateState(() {

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI Managed Scope commands, directory pickers, project inspection, App locale, and Hub health CLI command.
+ * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI user-config project commands, directory pickers, project inspection, App locale, and Hub health CLI command.
  * [OUTPUT]: Provides appearance, language, reminder, onboarding, CLI-owned Added Project access, Hub origin and runtime discovery, risk policy, and App-version persistence operations.
  * [POS]: Serves as the local preference and CLI-backed project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -206,7 +206,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     }
   }
 
-  Future<List<({String id, String name, String path})>>
+  Future<List<({String name, String path})>>
   _loadManagedProjectReferences() async {
     final command = await _runCli(['project', 'list', '--output', 'json']);
     if (!command.succeeded) throw _commandFailure(command);
@@ -218,32 +218,27 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     return (raw['projects'] as List)
         .map((entry) {
           if (entry is! Map<String, dynamic> ||
-              entry['id'] is! String ||
               entry['name'] is! String ||
               entry['root'] is! String) {
             throw const FormatException();
           }
-          return (
-            id: entry['id'] as String,
-            name: entry['name'] as String,
-            path: entry['root'] as String,
-          );
+          return (name: entry['name'] as String, path: entry['root'] as String);
         })
         .toList(growable: false);
   }
 
   Future<AddedProject> _resolveProject(
-    ({String id, String name, String path}) reference,
+    ({String name, String path}) reference,
   ) async {
     final path = await _canonicalProjectPath(reference.path);
     final access = await _projectPathInspector(path);
     return AddedProject(
-      id: reference.id,
+      id: path,
       name: reference.name,
       path: path,
       accessState: access.state,
       diagnostic: access.diagnostic,
-      icon: await _projectIconResolver.cached(reference.id),
+      icon: await _projectIconResolver.cached(path),
     );
   }
 
@@ -268,13 +263,12 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     final selected = await _directoryPathsPicker();
     if (selected.isEmpty) return const [];
     final references = await _loadManagedProjectReferences();
-    final referencesByPath =
-        <String, ({String id, String name, String path})>{};
+    final referencesByPath = <String, ({String name, String path})>{};
     for (final reference in references) {
       referencesByPath[await _canonicalProjectPath(reference.path)] = reference;
     }
 
-    final selectedReferences = <({String id, String name, String path})>[];
+    final selectedReferences = <({String name, String path})>[];
     final selectedPaths = <String>{};
     for (final rawPath in selected) {
       final value = rawPath.trim();
@@ -313,13 +307,11 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       }
       final added = (raw['projects'] as List).single;
       if (added is! Map<String, dynamic> ||
-          added['id'] is! String ||
           added['name'] is! String ||
           added['root'] is! String) {
         throw const FormatException();
       }
       final reference = (
-        id: added['id'] as String,
         name: added['name'] as String,
         path: added['root'] as String,
       );
@@ -331,54 +323,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       projects.add(await _resolveProject(reference));
     }
     return projects;
-  }
-
-  @override
-  Future<AddedProject?> relocateProject(String id) async {
-    final references = await _loadManagedProjectReferences();
-    final index = references.indexWhere((project) => project.id == id);
-    if (index < 0) return null;
-    final selected = await _directoryPicker(
-      initialDirectory: references[index].path,
-    );
-    if (selected == null || selected.trim().isEmpty) {
-      return _resolveProject(references[index]);
-    }
-    final path = await _canonicalProjectPath(selected.trim());
-    for (final project in references) {
-      if (project.id != id &&
-          p.equals(await _canonicalProjectPath(project.path), path)) {
-        throw const SkillsException('That project is already added.');
-      }
-    }
-    final command = await _runCli([
-      'project',
-      'move',
-      id,
-      path,
-      '--output',
-      'json',
-    ]);
-    if (!command.succeeded) throw _commandFailure(command);
-    final raw = _decodeMachineDocument(
-      command.output.stdout,
-      phase: 'project-move',
-    );
-    if (raw['projects'] is! List || (raw['projects'] as List).length != 1) {
-      throw const FormatException();
-    }
-    final moved = (raw['projects'] as List).single;
-    if (moved is! Map<String, dynamic> ||
-        moved['id'] is! String ||
-        moved['name'] is! String ||
-        moved['root'] is! String) {
-      throw const FormatException();
-    }
-    return _resolveProject((
-      id: moved['id'] as String,
-      name: moved['name'] as String,
-      path: moved['root'] as String,
-    ));
   }
 
   @override

@@ -442,9 +442,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get addProject => 'เพิ่มโครงการ';
 
   @override
-  String get relocateProject => 'ย้ายที่อยู่';
-
-  @override
   String get removeFromList => 'ลบออกจากรายการ';
 
   @override
@@ -472,21 +469,21 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'ไดเร็กทอรีอาจถูกย้ายหรือโวลุ่มของไดเร็กทอรีอาจออฟไลน์ ย้ายตำแหน่งหรือลบเฉพาะการอ้างอิงแอปเท่านั้น';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'ต้องได้รับอนุญาตจากโครงการ';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo ไม่สามารถตรวจสอบรูทที่เลือกนี้ได้ ให้สิทธิ์การเข้าถึงโดยการย้ายตำแหน่งผ่านตัวเลือกไดเรกทอรี';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'ไม่สามารถเข้าถึงไดเรกทอรีโครงการได้';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo เก็บการอ้างอิงโครงการนี้ไว้ ตรวจสอบเส้นทางหรือโวลุ่ม แล้วย้ายตำแหน่ง';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'กำลังตรวจสอบ...';

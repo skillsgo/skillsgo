@@ -441,9 +441,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addProject => 'Ajouter un projet';
 
   @override
-  String get relocateProject => 'Déménager';
-
-  @override
   String get removeFromList => 'Supprimer de la liste';
 
   @override
@@ -471,14 +468,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Le répertoire a peut-être été déplacé ou son volume est peut-être hors ligne. Déplacez-le ou supprimez uniquement sa référence d\'application.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'L\'autorisation du projet est requise';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo ne peut pas inspecter cette racine sélectionnée. Accordez l\'accès en le déplaçant via le sélecteur de répertoire.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -486,7 +483,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo a conservé cette référence de projet. Vérifiez le chemin ou le volume, puis déplacez-le.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Vérification…';
