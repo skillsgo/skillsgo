@@ -81,8 +81,12 @@ The `~/.agents` directory that owns Global Scope `skills.yaml` and `skills-lock.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
 **Global State Root**:
-The `~/.skillsgo` directory that owns Global Scope Package Stores, the cross-scope disposable cache, ephemeral plans, and other SkillsGo-private state.
+The `~/.skillsgo` directory that owns the user-level SkillsGo configuration, Global Scope Package Stores, the cross-scope disposable cache, ephemeral plans, and other SkillsGo-private state.
 _Avoid_: Global Declaration Root, Agent configuration root
+
+**SkillsGo User Configuration**:
+The strict, versioned `~/.skillsgo/config.yaml` document that is the single extensible home for user-level SkillsGo settings. Its `projects` section is a minimal sorted sequence of canonical absolute Workspace paths used by the App and cross-Scope CLI operations; display names and UI identity are derived from those paths rather than persisted separately. The CLI is the only persistence owner; product callers use typed CLI commands rather than editing the file directly.
+_Avoid_: Managed Scope registry file, App preferences, Workspace manifest, configuration fragments
 
 **Batch Adoption**:
 The state-bound execution of App-reviewed External Skill mappings. Each item carries an exact Package Path, immutable Version, Skill Path, and existing Installation Targets. The user's confirmation authorizes replacement of conflicting Package Store and Package Projection paths in the selected scope. The CLI fully prepares the ordinary Package add change set before touching External paths, then commits Package state and External retirement through the same mutation Plan; any pre-publication failure rolls everything back, while successful commit hands superseded copies to Trash during final cleanup.

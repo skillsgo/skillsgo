@@ -20,13 +20,13 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/config"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/projectregistry"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/spf13/cobra"
@@ -260,7 +260,7 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 	if err != nil {
 		return err
 	}
-	registered, err := (projectregistry.Registry{Home: home}).List()
+	registered, err := (config.Store{Home: home}).ListProjects()
 	if err != nil {
 		return err
 	}

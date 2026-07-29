@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a temporary user home and real Workspace directories.
- * [OUTPUT]: Specifies stable machine add/move/list/remove journeys for the CLI-owned Managed Scope registry.
+ * [OUTPUT]: Specifies stable machine add/list/remove journeys over the projects section of CLI-owned user configuration.
  * [POS]: Serves as executable command-contract coverage for App and terminal project registration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,14 +32,8 @@ func TestProjectRegistryCommands(t *testing.T) {
 	require.NoError(t, json.Unmarshal(output.Bytes(), &listed))
 	require.Equal(t, added.Projects, listed.Projects)
 	output.Reset()
-	movedRoot := t.TempDir()
-	canonicalMovedRoot, err := filepath.EvalSymlinks(movedRoot)
-	require.NoError(t, err)
-	require.NoError(t, Execute([]string{"project", "move", added.Projects[0].ID, movedRoot, "--output", "json"}, &output, &output))
-	var moved projectRegistryReport
-	require.NoError(t, json.Unmarshal(output.Bytes(), &moved))
-	require.Equal(t, canonicalMovedRoot, moved.Projects[0].Root)
-	output.Reset()
-	require.NoError(t, Execute([]string{"project", "remove", moved.Projects[0].ID, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"project", "remove", added.Projects[0].Root, "--output", "json"}, &output, &output))
 	require.DirExists(t, workspace)
+	output.Reset()
+	require.ErrorContains(t, Execute([]string{"project", "move", workspace, t.TempDir()}, &output, &output), `unknown command "move"`)
 }
