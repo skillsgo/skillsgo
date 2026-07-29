@@ -117,6 +117,7 @@ final class JourneyRuntime {
     final childEnvironment = <String, String>{
       ...Platform.environment,
       'HOME': '${sandbox.path}/home',
+      'USERPROFILE': '${sandbox.path}/home',
       'CFFIXED_USER_HOME': '${sandbox.path}/home',
       'TMPDIR': '${sandbox.path}/tmp',
       'XDG_CONFIG_HOME': '${sandbox.path}/home/.config',
