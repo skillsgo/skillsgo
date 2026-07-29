@@ -34,6 +34,7 @@ void registerAdoptionManagementJourney() {
         DiscoveryCollection.search,
         query: 'https://github.com/skillsgo/e2e-versioned-skills@v1.2.0',
       );
+      await runtime.gateway.detectCli();
       final sandbox = runtime.sandbox.path;
       final globalTarget = Directory(
         '$sandbox/test-agent/skills/user-existing',
