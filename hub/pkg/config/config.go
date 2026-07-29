@@ -197,10 +197,11 @@ func defaultConfig() *Config {
 			Disk: &DiskConfig{},
 		},
 		Database: &DatabaseConfig{
-			DSN:             "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
-			Schema:          DefaultDatabaseSchema,
-			MaxOpenConns:    10,
-			ConnMaxLifetime: 1800,
+			DSN:                    "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
+			Schema:                 DefaultDatabaseSchema,
+			MaxOpenConns:           20,
+			BackgroundMaxOpenConns: 40,
+			ConnMaxLifetime:        1800,
 		},
 		TaskQueue: &TaskQueueConfig{MaxWorkers: 10},
 		LLM: &LLMConfig{
@@ -337,7 +338,10 @@ func envOverride(config *Config) error {
 		config.Database.Schema = DefaultDatabaseSchema
 	}
 	if config.Database.MaxOpenConns == 0 {
-		config.Database.MaxOpenConns = 10
+		config.Database.MaxOpenConns = 20
+	}
+	if config.Database.BackgroundMaxOpenConns == 0 {
+		config.Database.BackgroundMaxOpenConns = 40
 	}
 	if config.Database.ConnMaxLifetime == 0 {
 		config.Database.ConnMaxLifetime = 1800

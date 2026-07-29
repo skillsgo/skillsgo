@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, zero-minimum PostgreSQL pooling, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, ordered current-Package update projections, Package Info, shared pgx transactions, discovery projections, and source cache state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, ordered current-Package update projections, Package Info, shared pgx transactions, discovery projections, and source cache state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,6 +50,20 @@ const (
 )
 
 func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
+	c, err := Connect(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Migrate(ctx); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	return c, nil
+}
+
+// Connect opens an additional isolated Catalog pool after the owning process
+// has migrated the shared schema through Open.
+func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if cfg.Schema == "" {
 		cfg.Schema = config.DefaultDatabaseSchema
 	}
@@ -68,12 +82,7 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		pool.Close()
 		return nil, fmt.Errorf("connect metadata database pool: %w", err)
 	}
-	c := &Catalog{pool: pool, queries: catalogsqlc.New(pool)}
-	if err := c.Migrate(ctx); err != nil {
-		pool.Close()
-		return nil, err
-	}
-	return c, nil
+	return &Catalog{pool: pool, queries: catalogsqlc.New(pool)}, nil
 }
 
 func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
@@ -101,7 +110,7 @@ func (c *Catalog) Close() error {
 	return nil
 }
 
-// PostgresPool returns the shared native PostgreSQL pool owned by Catalog.
+// PostgresPool returns the native PostgreSQL pool owned by this Catalog.
 func (c *Catalog) PostgresPool() *pgxpool.Pool { return c.pool }
 
 // WithPostgresTx runs fn with the exact native pgx transaction that can also be
