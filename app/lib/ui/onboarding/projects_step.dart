@@ -191,9 +191,7 @@ class _OnboardingProjectStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedSize(
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 160),
+    duration: const Duration(milliseconds: 160),
     alignment: AlignmentDirectional.centerStart,
     child: LayoutBuilder(
       builder: (context, constraints) {

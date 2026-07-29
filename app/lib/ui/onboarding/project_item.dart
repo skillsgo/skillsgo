@@ -50,9 +50,7 @@ class _OnboardingProjectItemState extends State<_OnboardingProjectItem> {
             ),
             const SizedBox(width: 3),
             AnimatedOpacity(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 120),
               opacity: showRemove ? 1 : 0,
               child: IgnorePointer(
                 ignoring: !showRemove,

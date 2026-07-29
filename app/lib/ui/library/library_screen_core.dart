@@ -126,7 +126,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         visibleSkills.isNotEmpty &&
         visibleSelectedCount == visibleSkills.length;
     final someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final detailSkill = selectedDetailSkill;
     return SkillsDestinationLayout(
       bodyTransitionKey: selectedLocation,
@@ -138,7 +137,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           alignment: Alignment.bottomCenter,
           child: _LibrarySelectionBarTransition(
             key: const Key('library-selection-bar-switcher'),
-            disableAnimations: disableAnimations,
             child: selected.isEmpty || adoptionReviewVisible
                 ? null
                 : _LibrarySelectionBar(
@@ -304,6 +302,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         const SizedBox(width: 4),
                         _LibraryScopeToggle(
                           updatesOnly: updatesOnly,
+                          updateCount: _packageUpdateCards.length,
                           onChanged: (value) {
                             setState(() => updatesOnly = value);
                             if (value) {
@@ -341,18 +340,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           if (detailSkill != null)
             SlideTransition(
               key: const Key('library-detail-surface'),
-              position: disableAnimations
-                  ? const AlwaysStoppedAnimation(Offset.zero)
-                  : Tween<Offset>(
-                      begin: const Offset(1, 0),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: detailTransition,
-                        curve: Curves.easeOutCubic,
-                        reverseCurve: Curves.easeOutCubic,
-                      ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: detailTransition,
+                      curve: Curves.easeOutCubic,
+                      reverseCurve: Curves.easeOutCubic,
                     ),
+                  ),
               child: ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: LocalDetailScreen(

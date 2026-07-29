@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter Material buttons, HugeIcons, progress, shape/state properties, SkillsGo component tokens, and reduced-motion semantics.
+ * [INPUT]: Depends on Flutter Material buttons, HugeIcons, progress, shape/state properties, and SkillsGo component tokens.
  * [OUTPUT]: Provides skeleton boxes plus fixed-height capsule buttons with control-specific label geometry, optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
  * [POS]: Serves as the action and cold-loading segment of the native component library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

@@ -257,7 +257,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout: '''
-{"schemaVersion":1,"phase":"package-update-preview","updates":[{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","scope":"global","status":"update_available","selectedSkillCount":1,"removedSkills":[]},{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v2","toVersion":"v2","scope":"project","projectRoot":"/work","status":"up_to_date","selectedSkillCount":1,"removedSkills":[]}]}
+{"schemaVersion":1,"phase":"package-update-preview","updates":[{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","scope":"global","status":"update_available","selectedSkillCount":1,"removedSkills":[{"name":"Retired Skill","path":"skills/retired/SKILL.md"}]},{"schemaVersion":1,"phase":"package-update-preview","packagePath":"github.com/example/skills","fromVersion":"v2","toVersion":"v2","scope":"project","projectRoot":"/work","status":"up_to_date","selectedSkillCount":1,"removedSkills":[]}]}
 ''',
           stderr: '',
         );
@@ -299,6 +299,13 @@ void main() {
       expect(
         states['github.com/example/skills\u0000global\u0000']?.toVersion,
         'v2',
+      );
+      expect(
+        states['github.com/example/skills\u0000global\u0000']
+            ?.removedSkills
+            .single
+            .name,
+        'Retired Skill',
       );
       expect(
         states['github.com/example/skills\u0000project\u0000/work']?.state,

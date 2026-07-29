@@ -213,11 +213,6 @@ void main() {
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      tester.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
       final projects = Completer<List<AddedProject>>();
       final gateway = FakeSkillsGateway(
         onboardingState: const OnboardingState(

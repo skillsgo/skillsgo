@@ -127,9 +127,7 @@ class _LibraryAgentMultiFilterState extends State<_LibraryAgentMultiFilter> {
                       onPressed: _showAllAgents,
                     ),
                     noItemsFoundText: context.l10n.noInstalledAgentsTitle,
-                    animationDuration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 180),
+                    animationDuration: const Duration(milliseconds: 180),
                     animationCurve: Curves.easeOutCubic,
                   ),
                   itemBuilder: (item, index, onTap) => _AgentFilterOptionRow(
@@ -398,9 +396,7 @@ class _AgentFilterOptionRow extends StatelessWidget {
               ),
               AnimatedOpacity(
                 opacity: selected ? 1 : 0,
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 120),
+                duration: const Duration(milliseconds: 120),
                 child: const HugeIcon(
                   icon: HugeIcons.strokeRoundedTick01,
                   size: 18,

@@ -209,9 +209,7 @@ class RemoveTargetsDialogState extends ConsumerState<RemoveTargetsDialog> {
                 diagnosticRows * 28)
             .clamp(44, 264)
             .toDouble();
-    final animationDuration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 180);
+    final animationDuration = const Duration(milliseconds: 180);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,

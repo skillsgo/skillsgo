@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Hub runtime state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
- * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, Mermaid renderer, and eager Hub runtime initialization.
+ * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, always-enabled product motion, Mermaid renderer, and eager Hub runtime initialization.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

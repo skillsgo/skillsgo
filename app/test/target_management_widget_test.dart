@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
  * [OUTPUT]: Specifies Library selection, inline-confirmed multi-Skill removal without modal or decorative-animation stalls, and modified-target safety behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -114,9 +114,6 @@ void main() {
 
   testWidgets('Remove confirms all selected Skills inline', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
         InstalledSkill(
@@ -194,8 +191,6 @@ void main() {
       tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,
       closeTo(tester.getCenter(find.text('Remove')).dy, .5),
     );
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: false);
     await tester.pump();
     await tester.tap(find.byKey(const Key('library-remove-selected')));
     await tester.pump();
@@ -207,8 +202,6 @@ void main() {
       lessThan(tester.getCenter(find.text('Remove now')).dy),
     );
     await tester.pump(const Duration(milliseconds: 300));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
     await tester.pump();
     expect(find.byKey(const Key('remove-targets-dialog')), findsNothing);
     expect(find.text('2 selected'), findsOneWidget);

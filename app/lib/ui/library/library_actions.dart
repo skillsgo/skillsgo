@@ -323,11 +323,9 @@ extension _LibraryActions on _LibraryScreenState {
       selectedDetailSkill = skill;
       detailTransitioning = true;
     });
-    if (MediaQuery.disableAnimationsOf(context)) {
-      detailTransition.value = 1;
-    } else {
-      await detailTransition.forward(from: 0);
-    }
+
+    await detailTransition.forward(from: 0);
+
     if (!mounted || selectedDetailSkill?.inventoryKey != skill.inventoryKey) {
       return;
     }
@@ -337,11 +335,9 @@ extension _LibraryActions on _LibraryScreenState {
   Future<void> _closeDetail() async {
     if (selectedDetailSkill == null) return;
     updateState(() => detailTransitioning = true);
-    if (MediaQuery.disableAnimationsOf(context)) {
-      detailTransition.value = 0;
-    } else {
-      await detailTransition.reverse();
-    }
+
+    await detailTransition.reverse();
+
     if (!mounted) return;
     updateState(() {
       selectedDetailSkill = null;

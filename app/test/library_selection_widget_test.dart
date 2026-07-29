@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
  * [OUTPUT]: Specifies Unified Library grouping, exact location target projection, degraded Hub behavior without decorative-animation stalls, menu-scoped selection reset, External detail diagnostics, and selection motion.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -22,9 +22,6 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     const project = AddedProject(
       id: 'alpha',
       name: 'Project Alpha',
@@ -90,9 +87,6 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     const project = AddedProject(
       id: 'alpha',
       name: 'Project Alpha',
@@ -163,11 +157,6 @@ void main() {
     'Hub outage never empties the selected Project or local Agent views',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
-      tester.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
       const project = AddedProject(
         id: 'alpha',
         name: 'Project Alpha',
@@ -568,61 +557,6 @@ void main() {
       expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'Library selection toolbar removes translation for reduced motion',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      tester.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
-      await tester.pumpWidget(
-        SkillsGoApp(
-          gateway: FakeSkillsGateway(
-            libraryEntries: const [
-              InstalledSkill(
-                inventoryKey: 'hub:github.com/example/skills:demo',
-                name: 'demo',
-                packagePath: 'github.com/example/skills',
-                path: '/Users/test/.codex/skills/demo',
-                agents: ['codex'],
-                targetCount: 1,
-                versions: ['v1'],
-                targets: [
-                  SkillInstallationTarget(
-                    agent: 'codex',
-                    scope: InstallationScope.global,
-                    path: '/Users/test/.codex/skills/demo',
-                    version: 'v1',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(
-          const ValueKey('library-select-hub:github.com/example/skills:demo'),
-        ),
-      );
-      await tester.pump();
-
-      expect(
-        find.byKey(const Key('library-selection-bar-fade-transition')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('library-selection-bar-slide-transition')),
-        findsNothing,
-      );
     },
   );
 }

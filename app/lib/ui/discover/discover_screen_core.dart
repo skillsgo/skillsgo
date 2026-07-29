@@ -294,7 +294,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
   @override
   Widget build(BuildContext context) {
     final discoverState = ref.watch(discoverProvider);
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return Shortcuts(
       shortcuts: {
         const SingleActivator(LogicalKeyboardKey.keyF, meta: true):
@@ -349,18 +348,17 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
                 KeyedSubtree(
                   key: const ValueKey('discover-detail-motion'),
                   child: SlideTransition(
-                    position: disableAnimations
-                        ? const AlwaysStoppedAnimation(Offset.zero)
-                        : Tween<Offset>(
-                            begin: const Offset(1, 0),
-                            end: Offset.zero,
-                          ).animate(
-                            CurvedAnimation(
-                              parent: detailTransition,
-                              curve: Curves.easeOutCubic,
-                              reverseCurve: Curves.easeOutCubic,
-                            ),
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: detailTransition,
+                            curve: Curves.easeOutCubic,
+                            reverseCurve: Curves.easeOutCubic,
                           ),
+                        ),
                     child: ColoredBox(
                       color: Theme.of(
                         context,

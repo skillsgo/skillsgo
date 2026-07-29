@@ -327,9 +327,7 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
       ),
     );
     final rows = AnimatedSwitcher(
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: widget.expanded
@@ -554,9 +552,7 @@ class _AdoptionReviewRow extends StatelessWidget {
     final selectedCandidate = match?.selected;
     final ready = selectedCandidate != null && match?.selectedVersion != null;
     return AnimatedContainer(
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 120),
+      duration: const Duration(milliseconds: 120),
       decoration: BoxDecoration(
         color: Colors.transparent,
         border: BorderDirectional(
@@ -757,9 +753,7 @@ class _AdoptionSingleSelectState<T extends Object>
               marginTop: 6,
               borderRadius: BorderRadius.circular(14),
               listPadding: const EdgeInsets.symmetric(vertical: 6),
-              animationDuration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 180),
+              animationDuration: const Duration(milliseconds: 180),
               animationCurve: Curves.easeOutCubic,
             ),
             itemBuilder: (item, index, onTap) => Column(
@@ -830,9 +824,7 @@ class _AdoptionSingleSelectState<T extends Object>
                 const SizedBox(width: 6),
                 AnimatedRotation(
                   turns: controllerOpen ? .5 : 0,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 180),
                   curve: Curves.easeInOutCubic,
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedArrowDown01,

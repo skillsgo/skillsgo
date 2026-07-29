@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses SkillsGoApp, branded Package avatars, rendered Flutter widgets, reduced-motion accessibility state, and the controllable SkillsGateway test double.
+ * [INPUT]: Uses SkillsGoApp, branded Package avatars, rendered Flutter widgets, and the controllable SkillsGateway test double.
  * [OUTPUT]: Specifies Installed-detail package identity, provenance without decorative-animation stalls, Hub enrichment resilience, and local install-more behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,9 +19,6 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1500, 900));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
 
     Future<void> open(InstalledSkill entry, {UpdateState? updateState}) async {
       await tester.pumpWidget(const SizedBox.shrink());

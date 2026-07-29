@@ -46,10 +46,7 @@ class _DiscoverLeaderboardTabsState extends State<_DiscoverLeaderboardTabs>
     super.didUpdateWidget(oldWidget);
     final target = _indexOf(widget.selected).toDouble();
     if (_position.value == target) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _position.value = target;
-      return;
-    }
+
     _position.animateWith(
       SpringSimulation(
         const SpringDescription(mass: 1, stiffness: 420, damping: 32),
@@ -184,12 +181,9 @@ class _DiscoverHeaderReveal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(end: visible ? 1 : 0),
-      duration: reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       curve: const Cubic(0, 0, 0.2, 1),
       builder: (context, progress, child) => ClipRect(
         child: Align(

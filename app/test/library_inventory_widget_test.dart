@@ -766,41 +766,6 @@ void main() {
     expect(scale.scale.value, 1);
   });
 
-  testWidgets('Library location body skips motion when animations are off', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(
-      SkillsGoApp(
-        gateway: FakeSkillsGateway(
-          installed: false,
-          addedProjects: const [
-            AddedProject(
-              id: 'alpha',
-              name: 'Project Alpha',
-              path: '/work/alpha',
-              accessState: ProjectAccessState.accessible,
-            ),
-          ],
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-library')));
-    await tester.pumpAndSettle();
-
-    await tester.tap(libraryLocation('Project Alpha'));
-    await tester.pump();
-
-    final body = find.byKey(const Key('skills-destination-body'));
-    expect(tester.widget(body), isA<KeyedSubtree>());
-    expect(find.text('No Skills yet'), findsOneWidget);
-  });
-
   testWidgets('Library project rail avoids duplicate macOS scrollbars', (
     tester,
   ) async {
