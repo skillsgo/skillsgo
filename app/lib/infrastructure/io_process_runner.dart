@@ -353,9 +353,9 @@ final class _IoCliServerSession implements CliServerSession {
   Future<void> close() async {
     if (_isClosed) return;
     _isClosed = true;
-    await _process.stdin.close();
     _process.kill();
     _finishPending(_transportFailure('CLI Server was closed.'));
+    await _process.exitCode;
   }
 }
 
