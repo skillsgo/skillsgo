@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on canonical SHA-256 source digests, prompt versions, supported languages, and bounded UTF-8 SKILL.md bytes.
  * [OUTPUT]: Defines backend-neutral content-addressed source and localized Skill Markdown persistence plus strict digest decoding.
- * [POS]: Serves as the globally deduplicated Skill Markdown object boundary beside immutable Package ZIP storage.
+ * [POS]: Serves as the globally deduplicated Skill Markdown object boundary beside static Git Artifact repositories.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package storage

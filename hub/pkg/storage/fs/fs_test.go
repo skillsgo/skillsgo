@@ -1,135 +1,31 @@
 /*
- * [INPUT]: Depends on shared filesystem instances, storage compliance fixtures, untrusted coordinates, and concurrent immutable artifact writes.
- * [OUTPUT]: Specifies storage-root containment, general compliance, and cross-instance create-only pair atomicity and conflict preservation.
- * [POS]: Serves as behavioral coverage for the native filesystem storage backend.
+ * [INPUT]: Depends on in-memory and OS filesystem backends plus shared storage compliance.
+ * [OUTPUT]: Verifies the filesystem backend implements the unified Artifact Store contract.
+ * [POS]: Serves as filesystem storage integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package fs
 
 import (
-	"bytes"
-	"context"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
 	"testing"
 
-	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/compliance"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
-func TestOperationsRejectCoordinatesOutsideStorageRoot(t *testing.T) {
-	rootParent := t.TempDir()
-	root := filepath.Join(rootParent, "artifacts")
-	require.NoError(t, os.Mkdir(root, 0o700))
-	backendValue, err := NewStorage(root, afero.NewOsFs())
-	require.NoError(t, err)
-	backend := backendValue.(*storageImpl)
-
-	outside := filepath.Join(rootParent, "outside")
-	require.NoError(t, os.Mkdir(outside, 0o700))
-	sentinel := filepath.Join(outside, "sentinel")
-	require.NoError(t, os.WriteFile(sentinel, []byte("preserve"), 0o600))
-
-	_, err = backend.PutIfAbsent(t.Context(), "../outside", "v1.0.0", strings.NewReader("archive"), nil, []byte("info"))
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Info(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Zip(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Exists(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	err = backend.Delete(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.List(t.Context(), "../outside")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.PutSkillContentIfAbsent(t.Context(), "invalid", []byte("content"))
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.SkillContent(t.Context(), "invalid")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-
-	require.FileExists(t, sentinel)
-	require.NoFileExists(t, filepath.Join(outside, "v1.0.0", "source.zip"))
-}
-
-func TestPutIfAbsentIsAtomicAcrossBackendInstances(t *testing.T) {
-	filesystem := afero.NewOsFs()
-	root := t.TempDir()
-	firstBackend, err := NewStorage(root, filesystem)
-	require.NoError(t, err)
-	secondBackend, err := NewStorage(root, filesystem)
-	require.NoError(t, err)
-	first := firstBackend.(storage.ImmutableSaver)
-	second := secondBackend.(storage.ImmutableSaver)
-	type result struct {
-		created bool
-		err     error
-	}
-	results := make(chan result, 2)
-	start := make(chan struct{})
-	var ready sync.WaitGroup
-	ready.Add(2)
-	write := func(saver storage.ImmutableSaver, archive, info string) {
-		ready.Done()
-		<-start
-		created, saveErr := saver.PutIfAbsent(context.Background(), "github.com/example/repo", "v1.0.0", strings.NewReader(archive), nil, []byte(info))
-		results <- result{created: created, err: saveErr}
-	}
-	go write(first, "archive-a", "info-a")
-	go write(second, "archive-b", "info-b")
-	ready.Wait()
-	close(start)
-	left, right := <-results, <-results
-	require.NotEqual(t, left.created, right.created)
-	if left.err != nil {
-		require.True(t, huberrors.Is(left.err, huberrors.KindAlreadyExists))
-	}
-	if right.err != nil {
-		require.True(t, huberrors.Is(right.err, huberrors.KindAlreadyExists))
-	}
-	info, err := firstBackend.Info(context.Background(), "github.com/example/repo", "v1.0.0")
-	require.NoError(t, err)
-	archive, err := firstBackend.Zip(context.Background(), "github.com/example/repo", "v1.0.0")
-	require.NoError(t, err)
-	defer archive.Close()
-	archiveBytes, err := io.ReadAll(archive)
-	require.NoError(t, err)
-	require.True(t,
-		(bytes.Equal(info, []byte("info-a")) && bytes.Equal(archiveBytes, []byte("archive-a"))) ||
-			(bytes.Equal(info, []byte("info-b")) && bytes.Equal(archiveBytes, []byte("archive-b"))),
-		"stored Info and ZIP came from different writers: info=%q zip=%q", info, archiveBytes,
-	)
-}
-
 func TestBackend(t *testing.T) {
-	fs := afero.NewMemMapFs()
-	b := getStorage(t, fs)
-	compliance.RunTests(t, b, b.Clear)
-	fs.RemoveAll(b.rootDir)
+	filesystem := afero.NewMemMapFs()
+	require.NoError(t, filesystem.MkdirAll("/artifacts", 0o755))
+	backend, err := NewStorage("/artifacts", filesystem)
+	require.NoError(t, err)
+	compliance.RunTests(t, backend, func() error { return backend.(*storageImpl).Clear() })
 }
 
 func BenchmarkBackend(b *testing.B) {
-	fs := afero.NewOsFs()
-	backend := getStorage(b, fs)
-	compliance.RunBenchmarks(b, backend, backend.Clear)
-	fs.RemoveAll(backend.rootDir)
-}
-
-func BenchmarkMemory(b *testing.B) {
-	backend := getStorage(b, afero.NewMemMapFs())
-	compliance.RunBenchmarks(b, backend, backend.Clear)
-}
-
-func getStorage(tb testing.TB, fs afero.Fs) *storageImpl {
-	tb.Helper()
-	dir, err := afero.TempDir(fs, "", "athens-fs-test")
-	require.NoError(tb, err, "could not create temp dir")
-	backend, err := NewStorage(dir, fs)
-	require.NoError(tb, err)
-	return backend.(*storageImpl)
+	filesystem := afero.NewMemMapFs()
+	require.NoError(b, filesystem.MkdirAll("/artifacts", 0o755))
+	backend, err := NewStorage("/artifacts", filesystem)
+	require.NoError(b, err)
+	compliance.RunBenchmarks(b, backend, func() error { return backend.(*storageImpl).Clear() })
 }

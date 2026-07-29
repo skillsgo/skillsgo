@@ -49,14 +49,13 @@ func TestSelectVersionSkillMatrix(t *testing.T) {
 	}
 }
 
-func TestAddYesReplacesEveryConflictingPackagePath(t *testing.T) {
+func TestAddYesReplacesConflictingDirectProjection(t *testing.T) {
 	packagePath, version, _, _, server := adoptionPackageFixture(t)
 	defer server.Close()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	packageStore := filepath.Join(home, ".skillsgo", "packages", packagePath+"@"+version)
 	projection := filepath.Join(home, ".codex", "skills", "alpha")
-	for _, target := range []string{packageStore, projection} {
+	for _, target := range []string{projection} {
 		require.NoError(t, os.MkdirAll(target, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(target, "local-only.txt"), []byte("conflict"), 0o644))
 	}
@@ -77,24 +76,24 @@ func TestAddYesReplacesEveryConflictingPackagePath(t *testing.T) {
 
 	require.ErrorContains(t, execute(false, true), "Local Modification")
 	require.ErrorContains(t, execute(false, false), "Local Modification")
-	for _, target := range []string{packageStore, projection} {
+	for _, target := range []string{projection} {
 		require.FileExists(t, filepath.Join(target, "local-only.txt"))
 	}
 	require.NoError(t, execute(true, true))
-	for _, target := range []string{packageStore, projection} {
+	for _, target := range []string{projection} {
 		require.FileExists(t, filepath.Join(target, "local-only.txt"))
 	}
 	require.NoError(t, execute(true, false))
-	for _, target := range []string{packageStore, projection} {
+	for _, target := range []string{projection} {
 		require.NoFileExists(t, filepath.Join(target, "local-only.txt"))
 	}
-	require.FileExists(t, filepath.Join(packageStore, "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
+	require.NoDirExists(t, filepath.Join(home, ".skillsgo", "packages"))
+	require.DirExists(t, filepath.Join(home, ".agents", ".skillsgo", "packages"))
 
 	// Explicit replacement remains retry-safe after the desired Package state
 	// has already been committed.
 	require.NoError(t, execute(true, false))
-	require.FileExists(t, filepath.Join(packageStore, "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
 }
 

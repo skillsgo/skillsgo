@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J05 atomic corrupted-download rejection while restoring the shared suite artifact afterward.
+ * [OUTPUT]: Provides black-box coverage for J05 atomic corrupted-Pack rejection while restoring the shared suite Git Artifact afterward.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,15 +40,16 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(suite.sandboxRoot, "hub", "storage"), installed.PackagePath, ".zip")
-	originalZIP, err := os.ReadFile(hubZIP)
+	hubPack := findStoredRepositoryArtifact(t, filepath.Join(suite.sandboxRoot, "hub", "storage", "packages"), installed.PackagePath, ".pack")
+	originalPack, err := os.ReadFile(hubPack)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, os.WriteFile(hubZIP, originalZIP, 0o600))
+		require.NoError(t, os.WriteFile(hubPack, originalPack, 0o600))
 	})
-	require.NoError(t, os.WriteFile(hubZIP, []byte("corrupted e2e artifact"), 0o600))
+	require.NoError(t, os.WriteFile(hubPack, []byte("corrupted e2e artifact"), 0o600))
 	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.PackageDir)))
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
+	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "home", ".skillsgo", "cache", "packages")))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.NotEqual(t, 0, restore.exitCode, "corrupted Hub artifact unexpectedly restored: %s", restore.output)

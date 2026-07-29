@@ -107,7 +107,7 @@ func newShowCommand() *cobra.Command {
 			}
 			if output == "json" {
 				view := moduleInfoView{
-					SchemaVersion: resource.Info.SchemaVersion, Kind: resource.Info.Kind, PackagePath: resource.Info.PackagePath,
+					SchemaVersion: 1, Kind: resource.Info.Kind, PackagePath: resource.Info.PackagePath,
 					Version: resource.Info.Version, Time: resource.Info.Time, Skills: make([]skillInfoView, 0, len(resource.Members)),
 				}
 				for _, member := range resource.Members {

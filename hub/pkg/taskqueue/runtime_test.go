@@ -44,9 +44,9 @@ func (unlimitedArgs) JobTimeout() time.Duration { return -1 }
 
 func TestBalancedQueueWorkersPreservesTotalBudget(t *testing.T) {
 	queues := BalancedQueueWorkers(10)
-	require.Equal(t, 2, queues[river.QueueDefault])
-	require.Equal(t, 6, queues[QueueSource])
-	require.Equal(t, 2, queues[QueueMaintenance])
+	require.Equal(t, 4, queues[river.QueueDefault])
+	require.Equal(t, 5, queues[QueueSource])
+	require.Equal(t, 1, queues[QueueMaintenance])
 	require.Equal(t, QueueSource, riverInsertOptions(InsertOptions{Queue: QueueSource}).Queue)
 }
 
@@ -69,6 +69,20 @@ func TestTypedWorkerUsesJobSpecificTimeout(t *testing.T) {
 
 	defaultWorker := &typedWorker[reindexArgs]{}
 	require.Zero(t, defaultWorker.Timeout(&river.Job[reindexArgs]{Args: reindexArgs{}}))
+}
+
+func TestRiverDefaultRetryPolicyUsesIncreasingExponentialBackoff(t *testing.T) {
+	policy := &river.DefaultClientRetryPolicy{}
+	now := time.Now().UTC()
+	delays := make([]time.Duration, 0, 4)
+	for errorsCount := 0; errorsCount < 4; errorsCount++ {
+		errors := make([]rivertype.AttemptError, errorsCount)
+		next := policy.NextRetry(&rivertype.JobRow{Errors: errors})
+		delays = append(delays, next.Sub(now))
+	}
+	for index := 1; index < len(delays); index++ {
+		require.Greater(t, delays[index], delays[index-1]*2, "retry delay must grow exponentially rather than use a fixed interval")
+	}
 }
 
 func TestWorkScheduleKeepsDueWorkRunningAndArmsFutureWake(t *testing.T) {

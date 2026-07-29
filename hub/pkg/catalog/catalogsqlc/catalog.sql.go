@@ -99,6 +99,59 @@ func (q *Queries) CurrentPackageVersionForUpdate(ctx context.Context, packageID 
 	return column_1, err
 }
 
+const currentPackagesByPaths = `-- name: CurrentPackagesByPaths :many
+WITH requested AS (
+    SELECT package_path, ordinal
+    FROM unnest($1::text[]) WITH ORDINALITY AS input(package_path, ordinal)
+)
+SELECT input.package_path::text AS package_path,
+       COALESCE(mv.version, '')::text AS latest_version,
+       COALESCE(mv.sum, '')::text AS sum,
+       COALESCE(
+           jsonb_agg(jsonb_build_object('name', mvs.name, 'path', mvs.path) ORDER BY mvs.path)
+               FILTER (WHERE mvs.id IS NOT NULL),
+           '[]'::jsonb
+       )::jsonb AS skills
+FROM requested input
+LEFT JOIN packages m ON m.path=input.package_path
+LEFT JOIN versions mv ON mv.id=m.current_version_id
+LEFT JOIN skills mvs ON mvs.version_id=mv.id
+GROUP BY input.ordinal, input.package_path, mv.version, mv.sum
+ORDER BY input.ordinal
+`
+
+type CurrentPackagesByPathsRow struct {
+	PackagePath   string          `json:"package_path"`
+	LatestVersion string          `json:"latest_version"`
+	Sum           string          `json:"sum"`
+	Skills        json.RawMessage `json:"skills"`
+}
+
+func (q *Queries) CurrentPackagesByPaths(ctx context.Context, packagePaths []string) ([]CurrentPackagesByPathsRow, error) {
+	rows, err := q.db.Query(ctx, currentPackagesByPaths, packagePaths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CurrentPackagesByPathsRow{}
+	for rows.Next() {
+		var i CurrentPackagesByPathsRow
+		if err := rows.Scan(
+			&i.PackagePath,
+			&i.LatestVersion,
+			&i.Sum,
+			&i.Skills,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const currentSkill = `-- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
        mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
@@ -157,21 +210,29 @@ WITH documents AS (
   GROUP BY mvs.document_digest
 )
 SELECT documents.document_digest,
-       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
+       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS stored_prompt_version
 FROM documents
 LEFT JOIN localizations l
   ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
+WHERE l.source_digest IS NULL OR l.prompt_version<>$2
 ORDER BY documents.is_current DESC,documents.document_digest
+LIMIT $3
 `
 
-type DocumentTranslationCandidatesRow struct {
-	DocumentDigest string `json:"document_digest"`
-	SourceDigest   string `json:"source_digest"`
-	PromptVersion  string `json:"prompt_version"`
+type DocumentTranslationCandidatesParams struct {
+	Lang                string `json:"lang"`
+	TargetPromptVersion string `json:"target_prompt_version"`
+	PageLimit           int32  `json:"page_limit"`
 }
 
-func (q *Queries) DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, documentTranslationCandidates, lang)
+type DocumentTranslationCandidatesRow struct {
+	DocumentDigest      string `json:"document_digest"`
+	SourceDigest        string `json:"source_digest"`
+	StoredPromptVersion string `json:"stored_prompt_version"`
+}
+
+func (q *Queries) DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, documentTranslationCandidates, arg.Lang, arg.TargetPromptVersion, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +240,7 @@ func (q *Queries) DocumentTranslationCandidates(ctx context.Context, lang string
 	items := []DocumentTranslationCandidatesRow{}
 	for rows.Next() {
 		var i DocumentTranslationCandidatesRow
-		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.PromptVersion); err != nil {
+		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.StoredPromptVersion); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -480,20 +541,19 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 }
 
 const insertPackageVersion = `-- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
 `
 
 type InsertPackageVersionParams struct {
-	PackageID   int64     `json:"package_id"`
-	Version     string    `json:"version"`
-	Ref         string    `json:"ref"`
-	CommitSha   string    `json:"commit_sha"`
-	TreeSha     string    `json:"tree_sha"`
-	Sum         string    `json:"sum"`
-	ArchiveSize int64     `json:"archive_size"`
-	CommitTime  time.Time `json:"commit_time"`
-	CreatedAt   time.Time `json:"created_at"`
+	PackageID  int64     `json:"package_id"`
+	Version    string    `json:"version"`
+	Ref        string    `json:"ref"`
+	CommitSha  string    `json:"commit_sha"`
+	TreeSha    string    `json:"tree_sha"`
+	Sum        string    `json:"sum"`
+	CommitTime time.Time `json:"commit_time"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVersionParams) (int64, error) {
@@ -504,7 +564,6 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 		arg.CommitSha,
 		arg.TreeSha,
 		arg.Sum,
-		arg.ArchiveSize,
 		arg.CommitTime,
 		arg.CreatedAt,
 	)
@@ -692,9 +751,37 @@ func (q *Queries) PackagePublicationCommit(ctx context.Context, arg PackagePubli
 	return commit_sha, err
 }
 
+const packagePublishedVersions = `-- name: PackagePublishedVersions :many
+SELECT mv.version
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
+WHERE m.path=$1
+ORDER BY mv.version
+`
+
+func (q *Queries) PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error) {
+	rows, err := q.db.Query(ctx, packagePublishedVersions, packagePath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const packageVersion = `-- name: PackageVersion :one
 SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
-       mv.sum, mv.archive_size, mv.commit_time, mv.created_at
+       mv.sum, mv.commit_time, mv.created_at
 FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=$1 AND mv.version=$2
@@ -716,7 +803,6 @@ func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) 
 		&i.CommitSha,
 		&i.TreeSha,
 		&i.Sum,
-		&i.ArchiveSize,
 		&i.CommitTime,
 		&i.CreatedAt,
 	)
@@ -1444,7 +1530,7 @@ INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_con
 VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind=excluded.result_kind,text_content=excluded.text_content,
-prompt_version=excluded.prompt_version,updated_at=excluded.updated_at
+prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,updated_at=excluded.updated_at
 `
 
 type UpsertLocalizationParams struct {
@@ -1470,6 +1556,37 @@ func (q *Queries) UpsertLocalization(ctx context.Context, arg UpsertLocalization
 	return err
 }
 
+const upsertLocalizationFailure = `-- name: UpsertLocalizationFailure :exec
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,updated_at)
+VALUES ($1,$2,$3,'failed',$4,$5,$6,$7)
+ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
+result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
+error_kind=excluded.error_kind,error_message=excluded.error_message,updated_at=excluded.updated_at
+`
+
+type UpsertLocalizationFailureParams struct {
+	ResourceKind  string      `json:"resource_kind"`
+	SourceDigest  string      `json:"source_digest"`
+	Lang          string      `json:"lang"`
+	PromptVersion string      `json:"prompt_version"`
+	ErrorKind     pgtype.Text `json:"error_kind"`
+	ErrorMessage  pgtype.Text `json:"error_message"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error {
+	_, err := q.db.Exec(ctx, upsertLocalizationFailure,
+		arg.ResourceKind,
+		arg.SourceDigest,
+		arg.Lang,
+		arg.PromptVersion,
+		arg.ErrorKind,
+		arg.ErrorMessage,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
 const upsertPackage = `-- name: UpsertPackage :one
 
 INSERT INTO packages (source_host, source_path, path, created_at, updated_at)
@@ -1486,7 +1603,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

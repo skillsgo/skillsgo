@@ -15,13 +15,13 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/riverqueue/river"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -158,7 +158,9 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	taskRuntime := taskqueue.NewSynchronous()
 	if pool := metadata.PostgresPool(); pool != nil {
 		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
-			QueueWorkers: taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
+			JobTimeout:           translationJobTimeout,
+			RescueStuckJobsAfter: 15 * time.Minute,
+			QueueWorkers:         taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
 		})
 		if err != nil {
 			cancelWorkers()
@@ -172,35 +174,116 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	if conf.LLM.Enabled() {
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
 		languageAnalyzer := translation.NewLanguageAnalyzer()
-		contents, ok := storage.WithImmutableWrites(store).(storage.SkillContentStore)
-		if !ok {
-			cancelWorkers()
-			return nil, cleanup, fmt.Errorf("configured storage does not support localized Skill documents")
-		}
 		descriptionWorker := translation.NewWorker(
-			metadata, translator, languageAnalyzer, logger, conf.LLM.TranslationLangs, conf.LLM.DescriptionPromptVersion,
+			metadata, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DescriptionPromptVersion,
 			conf.LLM.TranslationBatch,
 		)
-		documentWorker := translation.NewDocumentWorker(metadata, contents, translator, languageAnalyzer, logger, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
-		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args descriptionTranslationBatchArgs) error {
-			return descriptionWorker.RunOnce(ctx)
+		documentWorker := translation.NewDocumentWorker(metadata, store, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
+		recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, cause error) error {
+			message := cause.Error()
+			runes := []rune(message)
+			if len(runes) > 2048 {
+				message = string(runes[:2048])
+			}
+			return metadata.UpsertLocalizationFailure(ctx, catalog.LocalizationFailure{
+				ResourceKind: resourceKind, SourceDigest: digest, Lang: lang, PromptVersion: prompt,
+				ErrorKind: kind, ErrorMessage: message,
+			})
+		}
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ descriptionTranslationDispatchArgs) error {
+			work, err := descriptionWorker.Plan(ctx)
+			if err != nil {
+				return err
+			}
+			for _, item := range work {
+				err = taskRuntime.Enqueue(ctx, descriptionTranslationArgs{
+					ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description,
+					SourceDigest: item.SourceDigest, Lang: item.Lang, PromptVersion: item.PromptVersion,
+				}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: river.QueueDefault})
+				if err != nil {
+					return err
+				}
+			}
+			logger.Infof("description translation dispatcher submitted %d localization jobs", len(work))
+			return nil
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register description translation dispatcher: %w", err)
+		}
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args descriptionTranslationArgs) error {
+			err := descriptionWorker.RunOne(ctx, translation.DescriptionWork{
+				ResourceKind: args.ResourceKind, ResourceID: args.ResourceID, Description: args.Description,
+				SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion,
+			})
+			if translation.IsPermanent(err) {
+				logger.Warnf("description translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
+				if persistErr := recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+					return persistErr
+				}
+				return river.JobCancel(err)
+			}
+			if err != nil {
+				logger.Warnf("description translation attempt failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
+			}
+			return err
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
+		}
+		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args descriptionTranslationArgs, cause error) error {
+			return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register description translation failure handler: %w", err)
+		}
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ documentTranslationDispatchArgs) error {
+			work, err := documentWorker.Plan(ctx)
+			if err != nil {
+				return err
+			}
+			for _, item := range work {
+				if err := taskRuntime.Enqueue(ctx, documentTranslationArgs{
+					SourceDigest: item.SourceDigest, Lang: item.Lang, PromptVersion: item.PromptVersion,
+				}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: river.QueueDefault}); err != nil {
+					return err
+				}
+			}
+			logger.Infof("document translation dispatcher submitted %d localization jobs", len(work))
+			return nil
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register document translation dispatcher: %w", err)
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args documentTranslationArgs) error {
-			return documentWorker.RunOnce(ctx)
+			err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
+			if translation.IsPermanent(err) {
+				logger.Warnf("document translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
+				if persistErr := recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+					return persistErr
+				}
+				return river.JobCancel(err)
+			}
+			if err != nil {
+				logger.Warnf("document translation attempt failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
+			}
+			return err
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
 		}
-		if err := taskRuntime.Every(descriptionTranslationBatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args documentTranslationArgs, cause error) error {
+			return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+		}); err != nil {
 			cancelWorkers()
-			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
+			return nil, cleanup, fmt.Errorf("register document translation failure handler: %w", err)
 		}
-		if err := taskRuntime.Every(documentTranslationArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+		if err := taskRuntime.Every(descriptionTranslationDispatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 3, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
 			cancelWorkers()
-			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
+			return nil, cleanup, fmt.Errorf("register description translation dispatcher: %w", err)
+		}
+		if err := taskRuntime.Every(documentTranslationDispatchArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 3, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register document translation dispatcher: %w", err)
 		}
 		logger.Infof("presentation localization enabled with model %s for languages %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLangs, ","))
 	}

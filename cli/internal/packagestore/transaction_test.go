@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses deterministic Package Artifacts, explicit member selections, and temporary Package Store/Agent roots.
+ * [INPUT]: Uses deterministic Package Artifact entries, explicit member selections, and temporary Package Store/Agent roots.
  * [OUTPUT]: Specifies complete Package Store retention, direct canonical-name Agent Skill links, confirmed full reinstall, safe internal symlinks, multi-Agent visibility, baseline-guarded replacement, ordinary Local Modification refusal, explicitly authorized conflict replacement, caller-selected replaced-path disposal, finalization, and rollback.
  * [POS]: Serves as the filesystem transaction contract for Scope Package Store and Package Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,6 +16,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testArtifactEntries(t *testing.T, archive []byte, packagePath, version string) []protocolartifact.Entry {
+	t.Helper()
+	entries := make([]protocolartifact.Entry, 0)
+	_, err := protocolartifact.WalkPackage(archive, packagePath, version, func(entry protocolartifact.Entry) error {
+		if !entry.Directory {
+			entries = append(entries, entry)
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	return entries
+}
+
 func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *testing.T) {
 	packagePath, version := "github.com/example/skills", "v1.2.3"
 	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
@@ -31,7 +44,7 @@ func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *tes
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent-skills")
 
 	transaction, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
@@ -54,7 +67,7 @@ func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *tes
 	require.NotZero(t, info.Mode().Perm()&0o111)
 
 	retry, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
@@ -65,7 +78,7 @@ func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *tes
 	projectionBeforeReinstall, err := os.Lstat(projection)
 	require.NoError(t, err)
 	reinstall, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}}, ReplaceConflicts: true,
 	})
@@ -80,7 +93,7 @@ func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *tes
 
 	require.NoError(t, os.WriteFile(filepath.Join(packageStore, "scripts", "shared.sh"), []byte("modified"), 0o755))
 	_, err = Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
@@ -99,7 +112,7 @@ func TestPackageTransactionRestoresAndVerifiesInternalSymlinks(t *testing.T) {
 	require.NoError(t, err)
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
 	transaction, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}},
 	})
 	require.NoError(t, err)
@@ -116,7 +129,7 @@ func TestPackageTransactionRestoresAndVerifiesInternalSymlinks(t *testing.T) {
 	}
 	rebuilt, err := ReadVerifiedPackage(packagesRoot, packagePath, version, sum)
 	require.NoError(t, err)
-	rebuiltSum, err := protocolartifact.PackageSum(rebuilt, packagePath, version)
+	rebuiltSum, err := protocolartifact.PackageEntriesSum(rebuilt, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, sum, rebuiltSum)
 	require.NoError(t, VerifySkillProjection(CoordinatePath(packagesRoot, packagePath, version), filepath.Join(agentRoot, "root-skill"), "."))
@@ -129,7 +142,7 @@ func TestPackageTransactionRollbackRemovesOnlyNewPaths(t *testing.T) {
 	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
-	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
@@ -152,7 +165,7 @@ func TestPackageTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t *t
 	packagesRoot, codexRoot, zedRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "codex"), filepath.Join(t.TempDir(), "zed")
 
 	initial, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: codexRoot, Selected: []string{"skills/design"}}},
 	})
@@ -161,7 +174,7 @@ func TestPackageTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t *t
 	require.NoError(t, initial.Finalize())
 
 	expandedOptions := Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{
 			{Agent: "codex", Root: codexRoot, PreviousSelected: []string{"skills/design"}, Selected: []string{".", "skills/design"}},
@@ -191,7 +204,7 @@ func TestPackageTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t *t
 
 	require.NoError(t, os.WriteFile(filepath.Join(CoordinatePath(packagesRoot, packagePath, version), "runtime", "shared.txt"), []byte("user change"), 0o644))
 	_, err = Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design", "skills/review": "review"},
 		Projections: []Projection{{Agent: "codex", Root: codexRoot, PreviousSelected: []string{".", "skills/design"}, Selected: []string{".", "skills/design", "skills/review"}}},
 	})
@@ -218,7 +231,7 @@ func TestPackageTransactionExplicitlyReplacesConflictsAndRollsThemBack(t *testin
 	}
 
 	transaction, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}},
 		ReplaceConflicts: true,
 	})
@@ -250,7 +263,7 @@ func TestPackageTransactionDisposesOnlyCommittedExactReplacement(t *testing.T) {
 		require.NoError(t, os.MkdirAll(projection, 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(projection, "external.txt"), []byte("external"), 0o644))
 		transaction, prepareErr := Prepare(Options{
-			PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+			PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 			Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"},
 			Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}, ReplaceConflicts: true,
 		})
@@ -311,7 +324,7 @@ func TestReadVerifiedPackageRebuildsArtifactAndRejectsModification(t *testing.T)
 	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
-	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{".", "skills/design"}, SkillNames: map[string]string{".": "root-skill", "skills/design": "design"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
@@ -319,7 +332,7 @@ func TestReadVerifiedPackageRebuildsArtifactAndRejectsModification(t *testing.T)
 
 	rebuilt, err := ReadVerifiedPackage(packagesRoot, packagePath, version, sum)
 	require.NoError(t, err)
-	rebuiltSum, err := protocolartifact.PackageSum(rebuilt, packagePath, version)
+	rebuiltSum, err := protocolartifact.PackageEntriesSum(rebuilt, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, sum, rebuiltSum)
 
@@ -336,14 +349,14 @@ func TestPackageTransactionRemovesHealthyProjectionWithRollbackAndFinalization(t
 	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
-	initial, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+	initial, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, initial.Commit())
 	require.NoError(t, initial.Finalize())
 	target := filepath.Join(agentRoot, "root-skill")
 
-	removalOptions := Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+	removalOptions := Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"."}, SkillNames: map[string]string{".": "root-skill"}, RemovedProjections: []Projection{{Agent: "codex", Root: agentRoot, PreviousSelected: []string{"."}}}, RemovePackage: true}
 	packageStore := CoordinatePath(packagesRoot, packagePath, version)
 	removal, err := Prepare(removalOptions)
@@ -374,13 +387,13 @@ func TestPackageTransactionMigratesLegacyCoordinateProjectionAtomically(t *testi
 	require.NoError(t, err)
 	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
 	legacy := CoordinatePath(agentRoot, packagePath, version)
-	temporary, err := materialize(archive, packagePath, version, legacy, nil)
+	temporary, err := materialize(testArchiveEntries(t, archive, packagePath, version), legacy, nil)
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(filepath.Dir(legacy), 0o755))
 	require.NoError(t, os.Rename(temporary, legacy))
 
 	transaction, err := Prepare(Options{
-		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
 		Members: []string{"skills/source-dir"}, SkillNames: map[string]string{"skills/source-dir": "canonical-name"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/source-dir"}}},
 	})
@@ -396,4 +409,17 @@ func TestPackageTransactionMigratesLegacyCoordinateProjectionAtomically(t *testi
 	require.NoError(t, transaction.Rollback())
 	require.DirExists(t, legacy)
 	require.NoFileExists(t, direct)
+}
+
+func testArchiveEntries(t *testing.T, archive []byte, packagePath, version string) []protocolartifact.Entry {
+	t.Helper()
+	entries := make([]protocolartifact.Entry, 0)
+	_, err := protocolartifact.WalkPackage(archive, packagePath, version, func(entry protocolartifact.Entry) error {
+		if !entry.Directory {
+			entries = append(entries, entry)
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	return entries
 }

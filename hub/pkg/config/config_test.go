@@ -173,6 +173,27 @@ func TestDeploymentConfiguration(t *testing.T) {
 	require.Error(t, validateDeployment("invalid", "https://cloud.skillsgo.ai"))
 }
 
+func TestCloudOriginDefaultsAndEnvironmentOverride(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		conf := defaultConfig()
+		require.Equal(t, "https://cloud.skillsgo.ai", conf.CloudOrigin)
+	})
+
+	t.Run("empty configuration value", func(t *testing.T) {
+		conf := defaultConfig()
+		conf.CloudOrigin = ""
+		require.NoError(t, envOverride(conf))
+		require.Equal(t, "https://cloud.skillsgo.ai", conf.CloudOrigin)
+	})
+
+	t.Run("environment override", func(t *testing.T) {
+		t.Setenv("SKILLSGO_HUB_CLOUD_ORIGIN", "https://cloud.example.com")
+		conf := defaultConfig()
+		require.NoError(t, envOverride(conf))
+		require.Equal(t, "https://cloud.example.com", conf.CloudOrigin)
+	})
+}
+
 func TestArtifactOriginConfiguration(t *testing.T) {
 	require.NoError(t, validateArtifactOrigin(""))
 	require.NoError(t, validateArtifactOrigin("https://artifacts.skillsgo.ai/repositories"))
@@ -189,6 +210,7 @@ func TestEnvOverrides(t *testing.T) {
 	expConf := &Config{
 		Environment:  "production",
 		Mode:         "selfhost",
+		CloudOrigin:  "https://cloud.skillsgo.ai",
 		LogLevel:     "info",
 		CloudRuntime: "gcp",
 		TimeoutConf: TimeoutConf{
@@ -350,6 +372,7 @@ func TestParseExampleConfig(t *testing.T) {
 	expConf := &Config{
 		Environment:             "development",
 		Mode:                    "selfhost",
+		CloudOrigin:             "https://cloud.skillsgo.ai",
 		GithubTokens:            TokenList{},
 		LogLevel:                "debug",
 		LogFormat:               "plain",

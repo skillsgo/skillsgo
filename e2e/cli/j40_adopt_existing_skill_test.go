@@ -57,7 +57,7 @@ func TestJ40AdoptSkillsShGlobalCanonicalDirectoryAndAgentSymlinks(t *testing.T) 
 	}
 	require.FileExists(t, filepath.Join(home, ".agents", "skills.yaml"))
 	require.FileExists(t, filepath.Join(home, ".agents", "skills-lock.yaml"))
-	require.FileExists(t, filepath.Join(home, ".skillsgo", "packages", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(home, ".agents", ".skillsgo", "packages", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "alpha", "SKILL.md"))
 
 	inventory := execCLI(t, ctx, container, "list", "--global", "--output", "json")
 	require.Equal(t, 0, inventory.exitCode, inventory.output)

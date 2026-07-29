@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on shared validated Package Scope inputs, a strict matching skills.yaml/skills-lock.yaml pair, exact immutable Package resources only when Package Store is absent, verified Scope Package Store, Agent Adapter roots, and the shared Package reconciler.
- * [OUTPUT]: Provides conflict-safe idempotent Workspace/Global install ensure results, restoring missing Package Store/projections from persisted selectors without movable resolution, pruning extras, or overwriting Local Modifications.
+ * [INPUT]: Depends on shared validated Package Scope inputs, a strict matching skills.yaml/skills-lock.yaml pair, the read-through Package Provider, Agent Adapter roots, and the shared direct-Projection reconciler.
+ * [OUTPUT]: Provides conflict-safe idempotent Workspace/Global install ensure results, rebuilding missing Projections from exact locked Git content without movable resolution, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-driven install intent adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
@@ -75,37 +76,15 @@ func ensureOnePackage(ctx context.Context, root string, globalScope bool, catalo
 		return "", "", err
 	}
 	packageDir := packagestore.CoordinatePath(scopeContext.packagesRoot, packagePath, dependency.Version)
-	cache := infocache.Cache{Root: scopeContext.infoRoot}
-	infoBytes, infoErr := cache.Get(packagePath, dependency.Version, "package.info")
-	var resource *hub.PackageResource
-	if infoErr == nil {
-		resource, infoErr = hub.ParsePackageInfo(packagePath, infoBytes)
-	}
-	archive, restored := []byte(nil), false
-	if _, err := os.Lstat(packageDir); os.IsNotExist(err) {
-		fetched, fetchErr := client.FetchPackageWithProgress(ctx, packagePath, dependency.Version, nil)
-		if fetchErr != nil {
-			return "", packageDir, fmt.Errorf("restore exact Package %s@%s: %w", packagePath, dependency.Version, fetchErr)
-		}
-		resource = fetched
-		if resource.Info.Version != dependency.Version || resource.Info.Sum != locked.Sum {
-			return "", packageDir, fmt.Errorf("exact Package %s@%s conflicts with skills-lock.yaml", packagePath, dependency.Version)
-		}
-		archive = resource.ZIP
-		restored = true
-	} else if err != nil {
+	provider := packageprovider.Provider{Client: client, Info: infocache.Cache{Root: scopeContext.infoRoot}}
+	resource, err := provider.Content(ctx, packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum}, nil)
+	if err != nil {
 		return "", packageDir, err
-	} else {
-		var readErr error
-		archive, readErr = packagestore.ReadVerifiedPackage(scopeContext.packagesRoot, packagePath, dependency.Version, locked.Sum)
-		if readErr != nil {
-			return "", packageDir, readErr
-		}
 	}
-	if resource == nil {
-		if infoErr != nil {
-			return "", packageDir, fmt.Errorf("read immutable Package Info for offline Projection: %w", infoErr)
-		}
+	_, storeErr := os.Lstat(packageDir)
+	restored := os.IsNotExist(storeErr)
+	if storeErr != nil && !os.IsNotExist(storeErr) {
+		return "", packageDir, storeErr
 	}
 	selectedPaths, err := packagePathsForNames(dependency.Skills, resource.Members)
 	if err != nil {
@@ -129,7 +108,7 @@ func ensureOnePackage(ctx context.Context, root string, globalScope bool, catalo
 		packagePath:  packagePath,
 		packagesRoot: scopeContext.packagesRoot,
 		infoRoot:     scopeContext.infoRoot,
-		desired:      packageCoordinateState{resource: resource, archive: archive, projections: projections, sum: locked.Sum},
+		desired:      packageCoordinateState{resource: resource, entries: resource.Entries, projections: projections, sum: locked.Sum},
 		operation:    "Package install",
 	}); err != nil {
 		return "", packageDir, err

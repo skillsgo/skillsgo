@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Workspace declarations, user-home Scope conventions, Agent Adapter roots, Hub Package members, and Package Store Projection contracts.
+ * [INPUT]: Depends on Workspace declarations, Scope-local Package Tree conventions, Agent Adapter roots, Hub Package members, and member Projection contracts.
  * [OUTPUT]: Provides shared validated Package Scope context, Workspace state loading, persisted Skill selection resolution, and physical Projection construction for Package command adapters.
  * [POS]: Serves as the narrow input-normalization layer shared by add, update, install, remove, and the Package reconciler without owning command policy or transaction execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -43,7 +43,7 @@ func resolvePackageScope(declarationRoot string, global bool) (packageScopeConte
 	}
 	if global {
 		context.declarationRoot = project.GlobalDeclarationRoot(home)
-		context.packagesRoot = filepath.Join(project.GlobalStateRoot(home), "packages")
+		context.packagesRoot = filepath.Join(context.declarationRoot, ".skillsgo", "packages")
 		context.agentScope = agent.ScopeGlobal
 		context.scopeName = "global"
 		context.projectRoot = ""

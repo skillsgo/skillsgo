@@ -55,8 +55,8 @@ func BalancedQueueWorkers(total int) map[string]int {
 	if total < 3 {
 		return map[string]int{river.QueueDefault: total}
 	}
-	maintenance := max(1, total/5)
-	defaultWorkers := max(1, total/5)
+	maintenance := 1
+	defaultWorkers := max(1, total*2/5)
 	source := total - maintenance - defaultWorkers
 	return map[string]int{
 		river.QueueDefault: defaultWorkers,

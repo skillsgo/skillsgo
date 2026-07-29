@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
- * [OUTPUT]: Specifies public current and immutable-version Skill Find with localized Package-summary fallback, candidate lookup, ordered batch hydration, Repository-fresh update checks, removed legacy routes, and correlated redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public current and immutable-version Skill Find with localized Package-summary fallback, candidate lookup, ordered batch hydration, Catalog-backed current Package Publication reads, removed legacy routes, and correlated redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -26,7 +25,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
@@ -137,24 +135,13 @@ func (s *catalogArtifactStub) Info(_ context.Context, skillID, version string) (
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(protocolapi.PackageInfo{SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: immutableVersion,
-		Time: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Sum: sum, ArchiveSize: int64(len(archive)),
+	return json.Marshal(protocolapi.PackageInfo{SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: immutableVersion,
+		Time: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Sum: sum,
 		Skills: []protocolapi.PackageSkill{{Name: "ask-matt", Path: "skills/engineering/ask-matt"}}})
 }
 
 func (s *catalogArtifactStub) List(_ context.Context, packagePath string) ([]string, error) {
 	return append([]string(nil), s.lists[packagePath]...), nil
-}
-
-func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {
-	if s.archiveErr != nil {
-		return nil, s.archiveErr
-	}
-	data := s.archive
-	if data == nil {
-		data = defaultCatalogRepositoryArchive()
-	}
-	return storage.NewSizer(io.NopCloser(bytes.NewReader(data)), int64(len(data))), nil
 }
 
 func defaultCatalogRepositoryArchive() []byte {
@@ -187,7 +174,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	skill := &catalog.Skill{PackagePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", SourceRepository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: "v0.0.0-test", Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: int64(len(defaultCatalogRepositoryArchive())), CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{*skill}, catalog.CurrentPublication))
 	const packageDescription = "Skills for Real Engineers."
 	require.NoError(t, c.UpdatePackageSourceMetadata(
@@ -245,7 +232,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	historicalVersion := "v1.0.0"
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: historicalVersion, Ref: "refs/tags/v1.0.0", CommitSHA: "commit-historical", TreeSHA: "historical-tree",
-		Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", ArchiveSize: 42, CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+		Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{{PackagePath: "github.com/mattpocock/skills", Path: "skills/retired", Name: "retired", Description: "Historical member"}}, catalog.HistoricalPublication))
 	versionedFind := httptest.NewRecorder()
 	serveFiber(t, r, versionedFind, httptest.NewRequest(http.MethodGet,
@@ -319,7 +306,7 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	}}
 	identity := catalog.PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree",
-		Sum: digest, ArchiveSize: 10, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	require.NoError(t, metadata.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, catalog.HistoricalPublication))
 
@@ -332,35 +319,33 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 
 }
 
-func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t *testing.T) {
+func TestCurrentPackagesReadsPublishedCatalogAndPreservesRequestOrder(t *testing.T) {
 	c := openActionTestCatalog(t)
-	known := &catalog.Skill{
-		PackagePath: "github.com/example/skills", Path: "review", Name: "review",
-		SourceHost: "github.com", SourceRepository: "example/skills", LatestVersion: "v1.3.0",
-	}
-	require.NoError(t, upsertActionTestSkill(context.Background(), c, known))
 	packagePath := "github.com/example/skills"
-	repositoryInfo := func(version string) []byte {
-		return []byte(fmt.Sprintf(`{"schemaVersion":1,"kind":"Package","packagePath":%q,"version":%q,"skills":[{"name":"review","path":"review"}]}`, packagePath, version))
-	}
-	artifacts := &catalogArtifactStub{
-		lists: map[string][]string{packagePath: {"v1.3.0"}},
-		infos: map[string][]byte{
-			packagePath + "@v1.3.0": repositoryInfo("v1.3.0"),
-		},
-	}
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, catalog.PackageVersion{
+		Version: "v1.3.0", Ref: "refs/tags/v1.3.0", CommitSHA: "commit-v1.3.0", TreeSHA: "tree-v1.3.0",
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
+	}, []catalog.Skill{
+		{PackagePath: packagePath, Path: "skills/review", Name: "review", Description: "Review changes"},
+		{PackagePath: packagePath, Path: "skills/test", Name: "test", Description: "Test changes"},
+	}, catalog.CurrentPublication))
 	r := newFiberApp()
-	registerCatalogAPIRoutes(r, c, artifacts)
-	body := `{"schemaVersion":1,"skills":[{"packagePath":"github.com/example/skills","name":"missing"},{"packagePath":"github.com/example/skills","name":"review"}]}`
+	registerCatalogAPIRoutes(r, c, &catalogArtifactStub{infoErr: errors.New("artifact access must not occur")})
+	body := `{"schemaVersion":1,"packages":[{"packagePath":"github.com/missing/skills"},{"packagePath":"github.com/example/skills"}]}`
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/skills/check-update", strings.NewReader(body)))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/packages/current", strings.NewReader(body)))
 	require.Equal(t, http.StatusOK, recorder.Code)
-	var response catalogUpdateCheckResponse
+	var response protocolapi.CurrentPackagesResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
-	require.Equal(t, []catalogUpdateCheckItem{
-		{PackagePath: packagePath, Name: "missing", Status: "unsupported"},
-		{PackagePath: packagePath, Name: "review", LatestVersion: "v1.3.0", Status: "available"},
-	}, response.Items)
+	require.Equal(t, []protocolapi.CurrentPackage{
+		{PackagePath: "github.com/missing/skills", Skills: []protocolapi.PackageSkill{}, Status: protocolapi.PackageUnavailable},
+		{PackagePath: packagePath, Version: "v1.3.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []protocolapi.PackageSkill{
+			{Name: "review", Path: "skills/review"}, {Name: "test", Path: "skills/test"},
+		}, Status: protocolapi.PackagePublished},
+	}, response.Packages)
+	legacy := httptest.NewRecorder()
+	serveFiber(t, r, legacy, httptest.NewRequest(http.MethodPost, "/api/v1/packages/check-update", strings.NewReader(body)))
+	require.Equal(t, http.StatusNotFound, legacy.Code)
 }
 
 func TestSkillImageURLSupportsGitHubOnly(t *testing.T) {

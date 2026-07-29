@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Package ZIP/directory fixtures plus the upstream Go dirhash implementation.
- * [OUTPUT]: Specifies Package build/verification, Go Hash1 parity, ZIP/directory parity, safe paths, bounded resource use, Skill membership, and framing failures.
+ * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Package tree/legacy ZIP/directory fixtures plus the upstream Go dirhash implementation.
+ * [OUTPUT]: Specifies Package tree validation, build/verification, Go Hash1 parity, representation parity, safe paths, bounded resource use, Skill membership, and framing failures.
  * [POS]: Serves as exhaustive compatibility and hostile-input coverage shared transitively by Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,12 @@ import (
 
 	"golang.org/x/mod/sumdb/dirhash"
 )
+
+func TestPackageArtifactLimits(t *testing.T) {
+	if MaxArchiveBytes != 200<<20 || MaxUncompressedBytes != 200<<20 {
+		t.Fatalf("Package Artifact byte limits = %d/%d, want 200 MiB", MaxArchiveBytes, MaxUncompressedBytes)
+	}
+}
 
 type zipEntry struct {
 	name, body string
@@ -99,6 +105,36 @@ func TestRepositoryArtifactBuildAndSumMatchGoHashZipSemanticsWithoutRootSkill(t 
 	}
 	if got, want := strings.Join(visited, ","), "README.md,bin/tool,skills/review/SKILL.md"; got != want {
 		t.Fatalf("visited %q, want %q", got, want)
+	}
+}
+
+func TestPackageEntriesSumMatchesLegacyZIPAndCanonicalizesEntries(t *testing.T) {
+	files := []Entry{
+		{Path: "skills/review/SKILL.md", Contents: []byte("review instructions")},
+		{Path: "bin/tool", Contents: []byte("#!/bin/sh\n"), Mode: 0o700},
+		{Path: "README.md", Contents: []byte("repository")},
+	}
+	archive, err := BuildPackage("github.com/example/suite", "v1.2.3", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := PackageSum(archive, "github.com/example/suite", "v1.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := PackageEntriesSum(files, "github.com/example/suite", "v1.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("PackageEntriesSum() = %q, want %q", got, want)
+	}
+	validated, err := ValidateEntries(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if validated[0].Path != "README.md" || validated[1].Mode != 0o755 {
+		t.Fatalf("ValidateEntries() = %#v", validated)
 	}
 }
 
@@ -635,6 +671,33 @@ func TestPathAndDigestSyntaxBoundaries(t *testing.T) {
 		if ValidSum(value) {
 			t.Fatalf("invalid digest accepted: %q", value)
 		}
+	}
+}
+
+func TestValidateEntriesRejectsInvalidTrees(t *testing.T) {
+	tests := []struct {
+		name    string
+		entries []Entry
+	}{
+		{name: "empty"},
+		{name: "invalid path", entries: []Entry{{Path: "../SKILL.md", Contents: []byte("x")}}},
+		{name: "portable collision", entries: []Entry{{Path: "SKILL.md", Contents: []byte("x")}, {Path: "skill.md", Contents: []byte("y")}}},
+		{name: "parent file", entries: []Entry{{Path: "SKILL.md", Contents: []byte("x")}, {Path: "a", Contents: []byte("file")}, {Path: "a/child", Contents: []byte("child")}}},
+		{name: "unsupported mode", entries: []Entry{{Path: "SKILL.md", Contents: []byte("x"), Mode: os.ModeNamedPipe}}},
+		{name: "no skill", entries: []Entry{{Path: "README.md", Contents: []byte("x")}}},
+		{name: "unsafe symlink", entries: []Entry{{Path: "SKILL.md", Contents: []byte("x")}, {Path: "escape", Contents: []byte("../outside"), Mode: os.ModeSymlink}}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ValidateEntries(test.entries); err == nil {
+				t.Fatal("expected invalid tree")
+			}
+		})
+	}
+	directories := []Entry{{Path: "ignored", Directory: true}, {Path: "SKILL.md", Contents: []byte("x")}}
+	validated, err := ValidateEntries(directories)
+	if err != nil || len(validated) != 1 {
+		t.Fatalf("directory filtering = %#v, %v", validated, err)
 	}
 }
 

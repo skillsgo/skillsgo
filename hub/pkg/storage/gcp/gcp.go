@@ -95,3 +95,8 @@ func newClient(ctx context.Context, gcpConf *config.GCPConfig, timeout time.Dura
 		timeout: timeout,
 	}, nil
 }
+
+func (s *Storage) Ready(ctx context.Context) error {
+	_, err := s.bucket.Attrs(ctx)
+	return err
+}
