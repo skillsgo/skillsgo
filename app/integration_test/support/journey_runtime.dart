@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, and SharedPreferences.
+ * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, deterministic English App language, and SharedPreferences.
  * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation while preserving the real App-to-CLI-to-Hub boundary.
  * [POS]: Serves as the reusable runtime fixture for the single-process cross-platform App E2E suite and focused Journey execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/io_process_runner.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
 
@@ -118,17 +119,19 @@ final class JourneyRuntime {
       'SKILLSGO_TEST_AGENT_HOME': '${sandbox.path}/test-agent',
       'SKILLSGO_HUB_URL': hubOrigin,
     };
+    final gateway = RealSkillsGateway(
+      processRunner: IoProcessRunner(
+        workingDirectory: '${sandbox.path}/project',
+        environment: childEnvironment,
+      ),
+      hubBaseUrl: hubOrigin,
+    );
+    await gateway.saveLanguage(AppLanguage.english);
     return JourneyRuntime._(
       name: name,
       sandbox: sandbox,
       hubOrigin: hubOrigin,
-      gateway: RealSkillsGateway(
-        processRunner: IoProcessRunner(
-          workingDirectory: '${sandbox.path}/project',
-          environment: childEnvironment,
-        ),
-        hubBaseUrl: hubOrigin,
-      ),
+      gateway: gateway,
       hubProcess: hubProcess,
       hubLogSinks: hubLogSinks,
     );
