@@ -7,7 +7,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 ## Workspace Identity
 
 - Package: `skillsgo`
-- Runtime: Flutter desktop; macOS is the currently maintained target.
+- Runtime: Flutter desktop; CI maintains macOS arm64, macOS x64, Windows x64, and Linux x64 build/startup coverage, while the complete product Journey suite remains macOS-only.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
 - Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and consume Cloud-composed ranking cards.
@@ -22,6 +22,8 @@ flutter analyze
 flutter test
 flutter run -d macos
 flutter build macos --release
+flutter build windows --release
+flutter build linux --release
 ```
 
 ## Workspace Map
@@ -33,14 +35,16 @@ flutter build macos --release
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
-| `integration_test/` | Rendered macOS journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
+| `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS Journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
 | `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
+| `windows/` | Windows x64 runner and build-time bundled CLI integration. |
+| `linux/` | Linux x64 runner and build-time bundled CLI integration. |
 | `docs/` | App-specific specifications, plans, and decisions. |
 | `THIRD_PARTY_NOTICES.md` | Licenses and attribution for vendored App UI code. |
 
 ## Boundaries
 
-- The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. In Cloud mode it may call only the Cloud origin declared by `skillsgo hub info` for Cloud-composed ranking reads.
+- The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. It stores Hub and Cloud origins independently and may call only the configured Cloud origin directly for Cloud-composed ranking reads.
 - The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
 - The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on App domain status contracts, localized copy, SkillsGo design tokens, HugeIcons, and native Material components.
- * [OUTPUT]: Provides localized BuildContext access, shared failure/status copy, command result rendering, stable Library target keys, Agent labels, and health/status presentation.
+ * [OUTPUT]: Provides localized BuildContext access, shared failure and Hub/Cloud status copy, command result rendering, stable Library target keys, Agent labels, and health/status presentation.
  * [POS]: Serves as the small shared presentation vocabulary imported by otherwise independent App journey libraries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -208,6 +208,19 @@ String hubStatusMessage(BuildContext context, HubStatus status) =>
       HubIssue.connectionFailure => context.l10n.hubConnectionFailure,
       HubIssue.timeout => context.l10n.hubConnectionTimeout,
       null => context.l10n.hubInvalidProtocol,
+    };
+
+String cloudStatusMessage(BuildContext context, HubStatus status) =>
+    switch (status.issue) {
+      HubIssue.invalidOrigin => context.l10n.hubInvalidOrigin,
+      HubIssue.httpFailure => context.l10n.cloudHttpFailure(
+        status.httpStatus ?? 0,
+      ),
+      HubIssue.invalidProtocol => context.l10n.cloudInvalidProtocol,
+      HubIssue.invalidJson => context.l10n.cloudInvalidJson,
+      HubIssue.connectionFailure => context.l10n.cloudConnectionFailure,
+      HubIssue.timeout => context.l10n.cloudConnectionTimeout,
+      null => context.l10n.cloudInvalidProtocol,
     };
 
 String cliAvailabilityLabel(
