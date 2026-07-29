@@ -1,4 +1,4 @@
-# [INPUT]: Depends on Flutter Linux tooling, GTK, quickjs_engine's Linux export-macro compatibility, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
+# [INPUT]: Depends on Flutter Linux tooling, GTK, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
 # [OUTPUT]: Builds the Linux desktop runner and packages a matching native SkillsGo CLI in data/bin.
 # [POS]: Serves as the Linux desktop build and relocatable bundle entry point.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -100,14 +100,6 @@ set_target_properties(${BINARY_NAME}
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
-
-# quickjs_engine 0.1.2 uses FLUTTER_PLUGIN_EXPORT in its Linux header without
-# defining it. Keep the workaround scoped to the affected plugin and runner so
-# the package can be removed cleanly once the upstream header supplies the macro.
-target_compile_definitions(quickjs_engine_plugin PRIVATE
-  "FLUTTER_PLUGIN_EXPORT=__attribute__((visibility(\"default\")))")
-target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_PLUGIN_EXPORT=")
-
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
