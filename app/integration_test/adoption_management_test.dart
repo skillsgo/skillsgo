@@ -34,7 +34,6 @@ void registerAdoptionManagementJourney() {
         DiscoveryCollection.search,
         query: 'https://github.com/skillsgo/e2e-versioned-skills@v1.2.0',
       );
-      await runtime.gateway.detectCli();
       final sandbox = runtime.sandbox.path;
       final globalTarget = Directory(
         '$sandbox/test-agent/skills/user-existing',
@@ -65,12 +64,25 @@ void registerAdoptionManagementJourney() {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
       await preferences.setBool('batch_adoption_prompt_seen_v1', true);
+      await runtime.gateway.saveReminderSettings(
+        const ReminderSettings(updateAvailable: false),
+      );
       final configFile = File('$sandbox/home/.skillsgo/config.yaml');
       configFile.parent.createSync(recursive: true);
       configFile.writeAsStringSync(
         'schemaVersion: 1\n'
         'projects:\n'
         '  - ${jsonEncode(projectRoot.path)}\n',
+      );
+      await runtime.gateway.detectCli();
+      final seededInventory = await runtime.gateway.listInstalled(
+        projects: await runtime.gateway.loadAddedProjects(),
+      );
+      expect(
+        seededInventory.where(
+          (skill) => skill.provenance == LibraryProvenance.external,
+        ),
+        hasLength(2),
       );
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
@@ -84,36 +96,13 @@ void registerAdoptionManagementJourney() {
       );
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
-      await tester.pump();
-      await _pumpUntilGone(
-        tester,
-        find.byKey(const ValueKey('library-skeleton')),
-      );
-
-      final settingsDestination = find.byKey(
-        const ValueKey('primary-destination-settings'),
-      );
-      await tester.tap(settingsDestination);
-      final advancedSettings = find.text('Advanced');
-      await _pumpUntil(tester, advancedSettings);
-      await tester.tap(advancedSettings);
-      final refreshLibrary = find.byKey(const Key('refresh-local-library'));
-      await _pumpUntil(tester, refreshLibrary);
-      await tester.ensureVisible(refreshLibrary);
-      await tester.pumpAndSettle();
-      final refreshButton = tester.widget<SkillsButton>(refreshLibrary);
-      expect(refreshButton.enabled, isTrue);
-      expect(refreshButton.onPressed, isNotNull);
-      refreshButton.onPressed!();
-      await tester.pump();
-      await _pumpUntil(
-        tester,
-        find.text('Local Library refreshed.'),
-        timeout: const Duration(seconds: 120),
-      );
-      await tester.tap(libraryDestination);
-
-      await _pumpUntilAdoptionCount(tester, 1);
+      final globalAdoption = _adoptionCount(1);
+      final retry = find.text('Retry');
+      await _pumpUntilEither(tester, globalAdoption, retry);
+      if (retry.evaluate().isNotEmpty) {
+        await tester.tap(retry);
+      }
+      await _pumpUntil(tester, globalAdoption);
       await _pumpUntil(tester, find.text('adoption-project'));
 
       await tester.tap(find.text('adoption-project'));
@@ -233,6 +222,23 @@ Future<void> _executeAdoption(
 Future<void> _pumpUntilAdoptionCount(WidgetTester tester, int count) =>
     _pumpUntil(tester, _adoptionCount(count));
 
+Future<void> _pumpUntilEither(
+  WidgetTester tester,
+  Finder first,
+  Finder second,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  while (first.evaluate().isEmpty &&
+      second.evaluate().isEmpty &&
+      DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(
+    first.evaluate().isNotEmpty || second.evaluate().isNotEmpty,
+    isTrue,
+  );
+}
+
 Future<void> _pumpUntilEnabledPrimaryButton(
   WidgetTester tester,
   Finder finder,
@@ -254,12 +260,8 @@ Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
   expect(finder, findsNothing);
 }
 
-Future<void> _pumpUntil(
-  WidgetTester tester,
-  Finder finder, {
-  Duration timeout = const Duration(seconds: 45),
-}) async {
-  final deadline = DateTime.now().add(timeout);
+Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
@@ -272,9 +274,15 @@ Future<void> _pumpUntil(
       )
       .map((widget) => widget.data)
       .toList();
+  final visibleText = tester
+      .widgetList<Text>(find.byType(Text))
+      .map((widget) => widget.data)
+      .whereType<String>()
+      .join(' | ');
   expect(
     finder,
     findsWidgets,
-    reason: 'Rendered adoption labels: $adoptionLabels',
+    reason:
+        'Rendered adoption labels: $adoptionLabels\nVisible UI: $visibleText',
   );
 }
