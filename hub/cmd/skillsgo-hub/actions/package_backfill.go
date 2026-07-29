@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Package Publisher, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions, with heartbeat and stale-Run reconciliation.
- * [POS]: Serves as the administration workflow joining durable business state, River transport, and Historical Publication materialization.
+ * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, chunked Package Publisher sessions, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions through one source and Artifact session, with heartbeat and stale-Run reconciliation.
+ * [POS]: Serves as the administration workflow joining durable business state, River transport, and batched Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -48,16 +48,16 @@ func (packageBackfillReconcileArgs) Kind() string { return "module_history_backf
 type packageBackfillService struct {
 	metadata     *catalog.Catalog
 	tasks        *taskqueue.Runtime
-	lister       repositoryVersionLister
+	lister       repositoryBackfillPreparer
 	materializer historicalRepositoryMaterializer
 	logger       *log.Logger
 }
 
-type repositoryVersionLister interface {
-	ListRepositoryBackfillVersions(context.Context, string) ([]skill.RepositoryTag, error)
+type repositoryBackfillPreparer interface {
+	PrepareRepositoryBackfill(context.Context, string) (skill.RepositoryBackfillSession, error)
 }
 
-func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
+func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryBackfillPreparer, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
 	return &packageBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
 }
 
@@ -119,7 +119,7 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 	if !active || run.Status == catalog.BackfillComplete || run.Status == catalog.BackfillCompleteWithErrors {
 		return nil
 	}
-	versions, err := s.lister.ListRepositoryBackfillVersions(ctx, args.PackagePath)
+	source, err := s.lister.PrepareRepositoryBackfill(ctx, args.PackagePath)
 	diagnostics := make([]string, 0)
 	errorCount := 0
 	if err != nil {
@@ -128,7 +128,10 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 		diagnostics = append(diagnostics, diagnostic)
 		s.logFailure(ctx, args, "", diagnostic)
 	} else {
+		defer source.Close()
+		versions := source.Versions()
 		versions = canonicalBackfillVersions(versions)
+		pending := make([]string, 0, len(versions))
 		for _, candidate := range versions {
 			version := candidate.Version
 			if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
@@ -151,7 +154,11 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 				}
 				continue
 			}
-			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.PackagePath, version); materializeErr != nil {
+			pending = append(pending, version)
+		}
+		results := s.materializer.MaterializeHistoricalBatch(ctx, source, pending)
+		for _, version := range pending {
+			if materializeErr := results[version]; materializeErr != nil {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, classifyBackfillFailure(materializeErr))
 				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)

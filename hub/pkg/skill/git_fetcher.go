@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -54,23 +54,52 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 // DiscoverRepository synchronizes and resolves a Repository once, scans the
 // selected commit once, and prepares every valid Skill from that snapshot.
 func (g *gitFetcher) DiscoverRepository(ctx context.Context, packagePath, revision string) (*RepositorySnapshot, error) {
-	const op errors.Op = "gitFetcher.DiscoverRepository"
+	var snapshot *RepositorySnapshot
+	var discoveryErr error
+	err := g.VisitRepositorySnapshots(ctx, packagePath, []string{revision}, func(_ string, candidate *RepositorySnapshot, err error) error {
+		snapshot, discoveryErr = candidate, err
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, discoveryErr
+}
+
+// VisitRepositorySnapshots synchronizes and leases one source Repository once,
+// then visits revisions in request order without repeating remote negotiation.
+func (g *gitFetcher) VisitRepositorySnapshots(ctx context.Context, packagePath string, revisions []string, visit func(string, *RepositorySnapshot, error) error) error {
+	const op errors.Op = "gitFetcher.VisitRepositorySnapshots"
 	repository, err := ParsePackagePath(packagePath)
 	if err != nil || repository.String() != packagePath {
-		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", packagePath), errors.KindBadRequest)
+		return errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", packagePath), errors.KindBadRequest)
+	}
+	if visit == nil {
+		return errors.E(op, fmt.Errorf("Repository snapshot visitor is required"), errors.KindBadRequest)
 	}
 	release, err := g.acquireRepository(repository.String())
 	if err != nil {
-		return nil, errors.E(op, err)
+		return errors.E(op, err)
 	}
 	defer release()
-	if err := g.syncRepository(ctx, repository); err != nil {
-		return nil, err
-	}
 	repoDir, err := g.repositoryDir(repository.String())
 	if err != nil {
-		return nil, errors.E(op, err)
+		return errors.E(op, err)
 	}
+	if err := g.syncRepository(ctx, repository); err != nil {
+		return err
+	}
+	for _, revision := range revisions {
+		snapshot, discoveryErr := g.discoverRepositorySnapshot(ctx, packagePath, revision, repository, repoDir)
+		if err := visit(revision, snapshot, discoveryErr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath, revision string, repository PackagePath, repoDir string) (*RepositorySnapshot, error) {
+	const op errors.Op = "gitFetcher.DiscoverRepository"
 	resolution, err := resolveGitRevision(ctx, repoDir, repository, revision)
 	if err != nil {
 		return nil, err

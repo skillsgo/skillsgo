@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Defines source revision, complete validated Package Artifact trees, and Repository member metadata.
+ * [INPUT]: Depends on contexts, immutable Repository revisions, validated Artifact entries and Skill manifests, plus visitor callbacks over leased Backfill sessions.
+ * [OUTPUT]: Defines source revision, complete validated Package Artifact trees, Repository member metadata, and explicit one-sync Backfill session contracts.
  * [POS]: Serves as the source boundary between Repository publication orchestration and Git resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,6 +28,20 @@ type Resolution struct {
 // returning every installable Skill without repeating source synchronization.
 type RepositoryFetcher interface {
 	DiscoverRepository(ctx context.Context, packagePath, revision string) (*RepositorySnapshot, error)
+	VisitRepositorySnapshots(ctx context.Context, packagePath string, revisions []string, visit func(string, *RepositorySnapshot, error) error) error
+}
+
+// RepositoryBackfillSession owns the source Repository lease from the one
+// synchronization that discovers Versions through all selected snapshot visits.
+type RepositoryBackfillSession interface {
+	PackagePath() string
+	Versions() []RepositoryTag
+	VisitSnapshots(ctx context.Context, revisions []string, visit func(string, *RepositorySnapshot, error) error) error
+	Close()
+}
+
+type RepositoryBackfillPreparer interface {
+	PrepareRepositoryBackfill(ctx context.Context, packagePath string) (RepositoryBackfillSession, error)
 }
 
 type RepositorySnapshot struct {
