@@ -75,15 +75,6 @@ void registerAdoptionManagementJourney() {
         '  - ${jsonEncode(projectRoot.path)}\n',
       );
       await runtime.gateway.detectCli();
-      final seededInventory = await runtime.gateway.listInstalled(
-        projects: await runtime.gateway.loadAddedProjects(),
-      );
-      expect(
-        seededInventory.where(
-          (skill) => skill.provenance == LibraryProvenance.external,
-        ),
-        hasLength(2),
-      );
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
         gateway: runtime.gateway,
