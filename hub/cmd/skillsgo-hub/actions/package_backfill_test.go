@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Package Backfill validation, immutable-version filtering, and bounded diagnostics.
- * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
+ * [INPUT]: Depends on Package Backfill validation, PostgreSQL Run state, batch Historical materialization, immutable-version filtering, and bounded diagnostics.
+ * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, one batch materializer call with isolated Version failures, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
  * [POS]: Serves as the fast behavior contract for Package History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,19 +11,62 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/jackc/pgx/v5"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/stretchr/testify/require"
 )
 
 type backfillAdministrationStub struct{}
+
+type repositoryVersionListerStub struct {
+	versions []skill.RepositoryTag
+}
+
+func (stub repositoryVersionListerStub) PrepareRepositoryBackfill(_ context.Context, packagePath string) (skill.RepositoryBackfillSession, error) {
+	return &repositoryBackfillSessionStub{packagePath: packagePath, versions: stub.versions}, nil
+}
+
+type repositoryBackfillSessionStub struct {
+	packagePath string
+	versions    []skill.RepositoryTag
+}
+
+func (stub *repositoryBackfillSessionStub) PackagePath() string { return stub.packagePath }
+func (stub *repositoryBackfillSessionStub) Versions() []skill.RepositoryTag {
+	return append([]skill.RepositoryTag(nil), stub.versions...)
+}
+func (stub *repositoryBackfillSessionStub) Close() {}
+func (stub *repositoryBackfillSessionStub) VisitSnapshots(context.Context, []string, func(string, *skill.RepositorySnapshot, error) error) error {
+	return nil
+}
+
+type historicalBatchMaterializerStub struct {
+	calls   int
+	queries []string
+	failed  string
+}
+
+func (stub *historicalBatchMaterializerStub) MaterializeHistoricalBatch(_ context.Context, _ skill.RepositoryBackfillSession, queries []string) map[string]error {
+	stub.calls++
+	stub.queries = append([]string(nil), queries...)
+	result := make(map[string]error, len(queries))
+	for _, query := range queries {
+		if query == stub.failed {
+			result[query] = fmt.Errorf("injected revision failure")
+		} else {
+			result[query] = nil
+		}
+	}
+	return result
+}
 
 func TestPackageBackfillUsesExplicitLongRunningTimeout(t *testing.T) {
 	require.Equal(t, 2*time.Hour, packageBackfillArgs{}.JobTimeout())
@@ -121,6 +164,29 @@ func TestCanonicalBackfillVersionsAreDeterministic(t *testing.T) {
 		{Version: "v1.1.0-0.20260722000000-deadbeefdead", CommitSHA: "pseudo"},
 		{Version: "v2.0.0", CommitSHA: "two"},
 	}, actual)
+}
+
+func TestPackageBackfillUsesOneBatchAndKeepsVersionFailuresIndependent(t *testing.T) {
+	metadata := openActionTestCatalog(t)
+	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/batch", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	materializer := &historicalBatchMaterializerStub{failed: "v1.0.0"}
+	service := &packageBackfillService{
+		metadata: metadata,
+		lister: repositoryVersionListerStub{versions: []skill.RepositoryTag{
+			{Version: "v1.0.0", CommitSHA: "one"}, {Version: "v1.1.0", CommitSHA: "two"},
+		}},
+		materializer: materializer,
+		logger:       log.NoOpLogger(),
+	}
+	require.NoError(t, service.run(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}))
+	require.Equal(t, 1, materializer.calls)
+	require.Equal(t, []string{"v1.0.0", "v1.1.0"}, materializer.queries)
+	completed, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, catalog.BackfillCompleteWithErrors, completed.Status)
+	require.Equal(t, 1, completed.ErrorCount)
 }
 
 func TestBackfillDiagnosticExposesOnlyStableCode(t *testing.T) {
