@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, Cloud Ranking/Trending/Hot, and translation-aware Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
+ * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -465,7 +465,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           decoded['time'] is! String ||
-          decoded['archiveSize'] is! num ||
           decoded['translated'] is! bool ||
           decoded['packagePath'] != skill.packagePath ||
           decoded['name'] != skill.name ||
@@ -501,7 +500,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         packagePath: decoded['packagePath'] as String,
         version: decoded['version'] as String,
         time: DateTime.parse(decoded['time'] as String).toLocal(),
-        archiveSize: (decoded['archiveSize'] as num).toInt(),
         description: decoded['description'] as String,
         sourceLanguage: decoded['sourceLanguage'] as String,
         translated: decoded['translated'] as bool,

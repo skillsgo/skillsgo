@@ -8,6 +8,82 @@ part of 'real_skills_gateway.dart';
 
 mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
   @override
+  Future<UpdateCheckCache?> loadUpdateCheckCache() async {
+    final encoded = (await SharedPreferences.getInstance()).getString(
+      _updateCheckCacheKey,
+    );
+    if (encoded == null || encoded.isEmpty) return null;
+    try {
+      final raw = jsonDecode(encoded);
+      if (raw is! Map<String, dynamic> ||
+          raw['checkedAt'] is! String ||
+          raw['results'] is! Map<String, dynamic>) {
+        return null;
+      }
+      final checkedAt = DateTime.tryParse(raw['checkedAt'] as String)?.toUtc();
+      if (checkedAt == null) return null;
+      final results = <String, UpdateAvailability>{};
+      for (final entry in (raw['results'] as Map<String, dynamic>).entries) {
+        final value = entry.value;
+        if (value is! Map<String, dynamic> || value['state'] is! String) {
+          return null;
+        }
+        final state = UpdateState.values
+            .where((candidate) => candidate.name == value['state'])
+            .firstOrNull;
+        if (state == null || state == UpdateState.checking) return null;
+        final removed = value['removedSkills'];
+        if (removed is! List) return null;
+        results[entry.key] = UpdateAvailability(
+          state: state,
+          toVersion: value['toVersion'] is String
+              ? value['toVersion'] as String
+              : '',
+          selectedSkillCount: value['selectedSkillCount'] is int
+              ? value['selectedSkillCount'] as int
+              : 0,
+          removedSkills: [
+            for (final item in removed)
+              if (item is Map<String, dynamic> &&
+                  item['name'] is String &&
+                  item['path'] is String)
+                RemovedSkillImpact(
+                  name: item['name'] as String,
+                  path: item['path'] as String,
+                ),
+          ],
+        );
+      }
+      return UpdateCheckCache(checkedAt: checkedAt, results: results);
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveUpdateCheckCache(UpdateCheckCache cache) async {
+    final encoded = jsonEncode({
+      'checkedAt': cache.checkedAt.toUtc().toIso8601String(),
+      'results': {
+        for (final entry in cache.results.entries)
+          entry.key: {
+            'state': entry.value.state.name,
+            'toVersion': entry.value.toVersion,
+            'selectedSkillCount': entry.value.selectedSkillCount,
+            'removedSkills': [
+              for (final skill in entry.value.removedSkills)
+                {'name': skill.name, 'path': skill.path},
+            ],
+          },
+      },
+    });
+    await (await SharedPreferences.getInstance()).setString(
+      _updateCheckCacheKey,
+      encoded,
+    );
+  }
+
+  @override
   Future<HubRuntime> loadHubRuntime() async {
     await _ensureHubOrigin();
     final cached = _hubRuntime;

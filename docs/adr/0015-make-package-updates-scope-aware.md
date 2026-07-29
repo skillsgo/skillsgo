@@ -71,7 +71,7 @@ The atomic mutation boundary remains one Package in one Scope. It reconciles tha
 
 ### Package-level Hub contract
 
-The Skill-level `/api/v1/skills/check-update` contract and repeated installed-Skill CLI input are transitional and will be removed after all callers migrate. The replacement is a bounded Package-level batch read, exposed as `POST /api/v1/packages/check-update`, containing unique canonical Package Paths rather than Skill coordinates or local Scope details.
+The Skill-level `/api/v1/skills/check-update` contract and repeated installed-Skill CLI input are transitional and will be removed after all callers migrate. The replacement is a bounded Catalog read, exposed as `POST /api/v1/packages/current`, containing unique canonical Package Paths rather than Skill coordinates or local Scope details. It returns the Hub's current published Package state and does not imply an upstream Git refresh; the CLI derives update availability by comparing that publication with local state.
 
 The Hub returns the latest currently published immutable Package Version, Sum, and complete Package membership for each requested Package. It performs bounded set-based Catalog reads and work proportional to the number of unique Packages, never to the number of locally selected Skills or Scopes.
 

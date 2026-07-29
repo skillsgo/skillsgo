@@ -32,6 +32,20 @@ void main() {
             installed: false,
             libraryEntries: [entry],
             updateState: updateState ?? UpdateState.available,
+            updateCheckCache: UpdateCheckCache(
+              checkedAt: DateTime.now().toUtc(),
+              results: {
+                for (final target in entry.targets)
+                  packageScopeUpdateKey(
+                    entry.packagePath,
+                    target.scope,
+                    target.projectRoot,
+                  ): UpdateAvailability(
+                    state: updateState ?? UpdateState.available,
+                    toVersion: 'v2',
+                  ),
+              },
+            ),
           ),
         ),
       );

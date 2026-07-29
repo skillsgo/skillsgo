@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart asynchronous primitives.
- * [OUTPUT]: Provides shared status enums, update availability, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
+ * [OUTPUT]: Provides shared status enums, update availability and its persisted App cache, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
  * [POS]: Serves as the cross-journey system vocabulary used by focused App domain modules and infrastructure adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,6 +24,13 @@ class UpdateAvailability {
   final String toVersion;
   final int selectedSkillCount;
   final List<RemovedSkillImpact> removedSkills;
+}
+
+class UpdateCheckCache {
+  const UpdateCheckCache({required this.checkedAt, required this.results});
+
+  final DateTime checkedAt;
+  final Map<String, UpdateAvailability> results;
 }
 
 class RemovedSkillImpact {

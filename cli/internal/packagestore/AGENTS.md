@@ -1,4 +1,4 @@
-# Scope Package Store Module
+# Scope Package Tree Module
 > F3 | Parent: `/cli/AGENTS.md` | Workspace: `github.com/skillsgo/skillsgo/cli`
 
 ## Members
@@ -9,6 +9,6 @@
 
 ## Architectural Boundary
 
-This module owns filesystem-safe Package Store extraction, locked Package Store verification, and deterministic direct Agent Skill link construction/replacement/removal. It accepts already resolved immutable Package identity, canonical member names, explicit membership/selection, and an explicit caller-owned replacement authorization; it must not contact Hub, parse Workspace YAML, infer Agent choices, overwrite Local Modifications without that authorization, link outside the current Scope Package Store, or update dependency declarations.
+This module owns filesystem-safe complete Scope Package Tree extraction, locked Tree verification, and deterministic Agent member-link construction/replacement/removal. Trees are derived from Manifest, Lock, and exact Git content but existing differences remain protected Local Modifications. The module must not contact Hub, parse Workspace YAML, infer Agent choices, link outside the current Scope Tree, or update dependency declarations.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

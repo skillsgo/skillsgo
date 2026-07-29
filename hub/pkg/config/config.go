@@ -24,7 +24,10 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-const defaultConfigFile = "skillsgo-hub.yaml"
+const (
+	defaultConfigFile  = "skillsgo-hub.yaml"
+	defaultCloudOrigin = "https://cloud.skillsgo.ai"
+)
 
 // Config provides configuration values for all components.
 type Config struct {
@@ -170,6 +173,7 @@ func defaultConfig() *Config {
 	return &Config{
 		Environment:             "development",
 		Mode:                    "selfhost",
+		CloudOrigin:             defaultCloudOrigin,
 		GithubTokens:            TokenList{},
 		RepositoryCacheTTL:      604800,
 		RepositoryCacheMaxBytes: 10 << 30,
@@ -304,6 +308,9 @@ func envOverride(config *Config) error {
 	}
 	if strings.TrimSpace(config.Mode) == "" {
 		config.Mode = "selfhost"
+	}
+	if strings.TrimSpace(config.CloudOrigin) == "" {
+		config.CloudOrigin = defaultCloudOrigin
 	}
 	if config.StorageType == "r2" {
 		if config.Storage == nil {

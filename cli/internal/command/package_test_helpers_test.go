@@ -68,6 +68,7 @@ func commandTestArtifactRepository(t *testing.T, packagePath, version string, en
 	run(work, "commit", "-q", "-m", packagePath+"@"+version)
 	run(work, "tag", version)
 	run("", "clone", "-q", "--bare", work, repository)
+	run(repository, "repack", "-q", "-a", "-d")
 	run(repository, "update-server-info")
 	return "file://" + filepath.ToSlash(repository)
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, and Huma documentation projection.
- * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, best-effort initial Repository metadata, version-scoped Skill content, typed OpenAPI documentation, immutable Package routes, and authenticated Backfill administration with shared task infrastructure.
+ * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, static disk delivery, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, local static Git delivery, Repository metadata, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	staticmiddleware "github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
@@ -51,6 +52,9 @@ func addProxyRoutesWithCatalog(
 	r.Get("/readyz", getReadinessHandler(s))
 	r.Get("/version", versionHandler)
 	r.Get("/robots.txt", robotsHandler(c))
+	if c.StorageType == "disk" && c.Storage.Disk != nil {
+		r.Use("/packages/*", staticmiddleware.New(filepath.Join(c.Storage.Disk.RootPath, "packages"), staticmiddleware.Config{ByteRange: true, CacheDuration: -1}))
+	}
 
 	fs := afero.NewOsFs()
 
@@ -73,9 +77,6 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
-		if c.ArtifactOrigin == "" {
-			return fmt.Errorf("SKILLSGO_HUB_ARTIFACT_ORIGIN is required when Package publication is enabled")
-		}
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)

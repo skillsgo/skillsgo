@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on fully resolved current and desired Package artifacts, caller-selected Projection state, immutable Info cache identity, and optional Workspace manifest/lock publication.
- * [OUTPUT]: Provides the shared Package reconcile preparation plus the ordinary commit wrapper for Store, Projections, immutable Info, manifest, and lock mutations.
+ * [INPUT]: Depends on fully resolved current and desired Package trees, caller-selected Projection state, immutable Info cache identity, and optional Workspace manifest/lock publication.
+ * [OUTPUT]: Provides shared direct-Projection reconcile preparation plus the ordinary commit wrapper for Projections, immutable Info, manifest, and lock mutations.
  * [POS]: Serves as the command-internal desired-state engine shared by add, update, install, and adopt-through-add without owning their user intent or interaction policy.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

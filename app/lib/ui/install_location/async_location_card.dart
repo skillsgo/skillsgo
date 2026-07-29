@@ -56,9 +56,10 @@ class _AsyncInstallLocationCardState extends State<_AsyncInstallLocationCard> {
             );
           }
           if (snapshot.hasError) {
+            final failure = failureCopy(context, snapshot.error!, detail: true);
             return SkillsCard(
-              title: Text(l10n.installSkillTo(widget.summary.name)),
-              description: Text(l10n.installationPlanFailed),
+              title: Text(failure.title),
+              description: Text(failure.message),
               child: Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: SkillsButton(onPressed: retry, child: Text(l10n.retry)),

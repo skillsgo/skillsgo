@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable revisions.
- * [OUTPUT]: Specifies public Package Version metadata, removal of ZIP paths, HTTP method boundaries, and conditional cache policy.
+ * [OUTPUT]: Specifies public Package Version metadata, request-origin Artifact URL fallback, removal of ZIP paths, HTTP method boundaries, and conditional cache policy.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package download
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -49,6 +50,32 @@ func TestPackageVersionsAreServedAsJSON(t *testing.T) {
 	}
 	if response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != "application/json; charset=utf-8" || string(body) != `{"versions":["v1.0.0","v2.0.0-rc.1"]}` {
 		t.Fatalf("versions response status=%d content-type=%q body=%s", response.StatusCode, response.Header.Get("Content-Type"), body)
+	}
+}
+
+func TestPackageInfoDefaultsArtifactOriginToRequestOrigin(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &relativeArtifactProtocol{}, Logger: log.NoOpLogger()})
+	request, err := http.NewRequest(http.MethodGet, "http://hub.example.test:8080/api/v1/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		ArtifactRepository string `json:"artifactRepository"`
+	}
+	if err := json.Unmarshal(body, &document); err != nil {
+		t.Fatal(err)
+	}
+	if document.ArtifactRepository != "http://hub.example.test:8080/packages/github.com/skillsgo/skillsgo" {
+		t.Fatalf("Artifact Repository = %q, want request-origin URL", document.ArtifactRepository)
 	}
 }
 
@@ -185,6 +212,18 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 
 type successfulProtocol struct {
 	Protocol
+}
+
+type relativeArtifactProtocol struct {
+	Protocol
+}
+
+func (p *relativeArtifactProtocol) Info(context.Context, string, string) ([]byte, error) {
+	return []byte(`{"artifactRepository":"/packages/github.com/skillsgo/skillsgo"}`), nil
+}
+
+func (p *relativeArtifactProtocol) List(context.Context, string) ([]string, error) {
+	return []string{"v1.0.0"}, nil
 }
 
 func (p *successfulProtocol) Info(context.Context, string, string) ([]byte, error) {

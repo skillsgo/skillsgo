@@ -16,8 +16,10 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -119,7 +121,12 @@ func preparePackageAdd(cmd *cobra.Command, catalog *agent.Catalog, reference sou
 	replaceConflicts := options.yes || options.replaceConflicts
 	var current *packageCoordinateState
 	if exists && existing.Version != resource.Info.Version {
-		oldResource, fetchErr := client.FetchPackageWithProgress(cmd.Context(), reference.PackagePath, existing.Version, nil)
+		locked, ok := lock.Dependencies[reference.PackagePath]
+		if !ok || locked.Version != existing.Version {
+			return packageAddChangeSet{}, fmt.Errorf("skills-lock.yaml does not match current Package %s", reference.PackagePath)
+		}
+		provider := packageprovider.Provider{Client: client, Info: infocache.Cache{Root: scopeContext.infoRoot}}
+		oldResource, fetchErr := provider.Content(cmd.Context(), packageprovider.LockedPackage{PackagePath: reference.PackagePath, Version: existing.Version, Sum: locked.Sum}, nil)
 		if fetchErr != nil {
 			return packageAddChangeSet{}, fmt.Errorf("load current Package version %s for atomic replacement: %w", existing.Version, fetchErr)
 		}

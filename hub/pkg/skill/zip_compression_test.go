@@ -1,0 +1,57 @@
+/*
+ * [INPUT]: Depends on a temporary Git commit, the tar-based Repository Artifact projector, and the Protocol's legacy deterministic ZIP Sum contract.
+ * [OUTPUT]: Specifies that tar/PAX transport metadata is absent from Package entries and that tar and legacy ZIP projections preserve one coordinate-bound Sum.
+ * [POS]: Serves as the format-equivalence regression contract for Repository Artifact assembly.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package skill
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRepositoryTarProjectionExcludesPAXMetadataAndPreservesLegacySum(t *testing.T) {
+	repository := t.TempDir()
+	runGit(t, repository, "init", "--initial-branch=main")
+	runGit(t, repository, "config", "user.name", "SkillsGo Test")
+	runGit(t, repository, "config", "user.email", "skillsgo@example.com")
+	require.NoError(t, os.MkdirAll(filepath.Join(repository, "skills", "alpha"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(repository, ".agents"), 0o755))
+	skill := []byte("---\nname: alpha\ndescription: Alpha.\n---\n# Alpha\n")
+	guide := []byte("shared guide\n")
+	require.NoError(t, os.WriteFile(filepath.Join(repository, "skills", "alpha", "SKILL.md"), skill, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, "GUIDE.md"), guide, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, ".agents", "excluded.md"), []byte("excluded"), 0o644))
+	runGit(t, repository, "add", ".")
+	runGit(t, repository, "commit", "-m", "fixture")
+	revision := strings.TrimSpace(runGit(t, repository, "rev-parse", "HEAD"))
+
+	const packagePath, version = "github.com/example/skills", "v1.2.3"
+	entries, tarSum, err := createRepositoryArtifact(context.Background(), packagePath, version, repository, revision)
+	require.NoError(t, err)
+	require.Equal(t, []string{"GUIDE.md", "skills/alpha/SKILL.md"}, artifactEntryPaths(entries))
+
+	legacyZIP, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
+		{Path: "GUIDE.md", Contents: guide, Mode: 0o644},
+		{Path: "skills/alpha/SKILL.md", Contents: skill, Mode: 0o644},
+	})
+	require.NoError(t, err)
+	legacySum, err := protocolartifact.PackageSum(legacyZIP, packagePath, version)
+	require.NoError(t, err)
+	require.Equal(t, legacySum, tarSum)
+}
+
+func artifactEntryPaths(entries []protocolartifact.Entry) []string {
+	paths := make([]string, len(entries))
+	for index, entry := range entries {
+		paths[index] = entry.Path
+	}
+	return paths
+}

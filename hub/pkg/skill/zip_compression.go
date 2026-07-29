@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Git revisions, canonical Package coordinates, the shared Package Artifact tree contract, and Go tar primitives.
- * [OUTPUT]: Adapts a complete Git-tracked tree into canonical safe Artifact entries and a coordinate-bound Sum without constructing a ZIP.
+ * [OUTPUT]: Adapts a complete Git-tracked tree into canonical safe Artifact entries and a coordinate-bound Sum without exposing tar/PAX transport metadata or constructing a ZIP.
  * [POS]: Serves as the safe tree boundary between Git source resolution and immutable Package publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,17 +47,18 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 		if err != nil {
 			return nil, "", fmt.Errorf("read Git Repository tree stream: %w", err)
 		}
-		if file.FileInfo().IsDir() {
+		switch file.Typeflag {
+		case tar.TypeDir, tar.TypeXHeader, tar.TypeXGlobalHeader:
 			continue
+		case tar.TypeReg, tar.TypeRegA, tar.TypeSymlink:
+		default:
+			return nil, "", fmt.Errorf("Git Repository contains unsupported tar entry %q with type %d", file.Name, file.Typeflag)
 		}
 		artifactPath := strings.TrimSuffix(file.Name, "/")
 		if isExcludedArtifactPath(artifactPath) {
 			continue
 		}
 		mode := file.FileInfo().Mode()
-		if !mode.IsRegular() && mode&os.ModeSymlink == 0 {
-			return nil, "", fmt.Errorf("Git Repository contains non-regular file %q", file.Name)
-		}
 		var contents []byte
 		if mode&os.ModeSymlink != 0 {
 			contents = []byte(file.Linkname)

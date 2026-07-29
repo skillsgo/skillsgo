@@ -85,7 +85,7 @@ func (p *moduleInfoProtocol) Info(ctx context.Context, packagePath, version stri
 		if err := json.Unmarshal(persisted, &info); err != nil {
 			return nil, fmt.Errorf("decode persisted Package Info: %w", err)
 		}
-		info.ArtifactRepository = p.artifactOrigin + "/git/" + packagePath + ".git"
+		info.ArtifactRepository = p.artifactOrigin + "/packages/" + packagePath
 		return json.Marshal(info)
 	}
 	return nil, fmt.Errorf("Package publication has no immutable Info for %s@%s", packagePath, canonicalVersion)

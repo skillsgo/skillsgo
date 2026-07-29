@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated Package Artifact entries, canonical immutable versions, deterministic commit time, and incremental Pack lifecycle primitives.
- * [OUTPUT]: Authors parentless Artifact commits, immutable lightweight Version tags, append-only incremental Packs, and standard dumb-HTTP repository indexes.
+ * [OUTPUT]: Authors parentless Artifact commits, immutable lightweight Version tags, a standard movable main/HEAD discovery ref, append-only incremental Packs, and dumb-HTTP indexes.
  * [POS]: Serves as the standard Git encoding boundary between Hub Package publication and repository-file storage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -75,7 +75,11 @@ func Publish(repositoryPath, packagePath, version string, commitTime time.Time, 
 	if err := repository.Storer.SetReference(plumbing.NewHashReference(tagName, commitHash)); err != nil {
 		return plumbing.ZeroHash, false, fmt.Errorf("publish Artifact tag: %w", err)
 	}
-	if err := repository.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, tagName)); err != nil {
+	main := plumbing.NewBranchReferenceName("main")
+	if err := repository.Storer.SetReference(plumbing.NewHashReference(main, commitHash)); err != nil {
+		return plumbing.ZeroHash, false, fmt.Errorf("publish Artifact main ref: %w", err)
+	}
+	if err := repository.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, main)); err != nil {
 		return plumbing.ZeroHash, false, fmt.Errorf("publish Artifact HEAD: %w", err)
 	}
 	if _, err := packNewObjects(repositoryPath, repository, newObjects); err != nil {
@@ -194,7 +198,7 @@ func writeDumbHTTPIndexes(repositoryPath string, repository *git.Repository) err
 	defer refs.Close()
 	lines := make([]string, 0)
 	err = refs.ForEach(func(reference *plumbing.Reference) error {
-		if reference.Type() == plumbing.HashReference && reference.Name().IsTag() {
+		if reference.Type() == plumbing.HashReference && (reference.Name().IsTag() || reference.Name().IsBranch()) {
 			lines = append(lines, reference.Hash().String()+"\t"+reference.Name().String()+"\n")
 		}
 		return nil

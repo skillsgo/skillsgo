@@ -724,20 +724,8 @@ func (c *Catalog) SkillPublishedVersionsByPath(ctx context.Context, packagePath,
 
 // PackagePublishedVersions returns every immutable Catalog version for a Package.
 func (c *Catalog) PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error) {
-	rows, err := c.pool.Query(ctx, `SELECT v.version FROM package_versions v JOIN packages p ON p.id = v.package_id WHERE p.path = $1`, packagePath)
+	versions, err := c.queries.PackagePublishedVersions(ctx, packagePath)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	versions := make([]string, 0)
-	for rows.Next() {
-		var version string
-		if err := rows.Scan(&version); err != nil {
-			return nil, err
-		}
-		versions = append(versions, version)
-	}
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return protocolversion.OrderedImmutableVersions(versions), nil

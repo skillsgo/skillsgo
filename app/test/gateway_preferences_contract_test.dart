@@ -114,6 +114,35 @@ void main() {
     expect(restored.securityAdvisory, isFalse);
   });
 
+  test('update check cache persists exact scope results', () async {
+    final gateway = RealSkillsGateway();
+    expect(await gateway.loadUpdateCheckCache(), isNull);
+    final checkedAt = DateTime.utc(2026, 7, 29, 12, 30);
+    await gateway.saveUpdateCheckCache(
+      UpdateCheckCache(
+        checkedAt: checkedAt,
+        results: const {
+          'github.com/example/skills\u0000global\u0000': UpdateAvailability(
+            state: UpdateState.available,
+            toVersion: 'v1.1.0',
+            selectedSkillCount: 2,
+            removedSkills: [
+              RemovedSkillImpact(name: 'old', path: 'skills/old'),
+            ],
+          ),
+        },
+      ),
+    );
+
+    final restored = await RealSkillsGateway().loadUpdateCheckCache();
+    expect(restored?.checkedAt, checkedAt);
+    final result = restored?.results.values.single;
+    expect(result?.state, UpdateState.available);
+    expect(result?.toVersion, 'v1.1.0');
+    expect(result?.selectedSkillCount, 2);
+    expect(result?.removedSkills.single.name, 'old');
+  });
+
   test(
     'selected language is forwarded to Hub Find as canonical content locale',
     () async {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Library journey library, local/remote Skill identity, gateway operations, update state, and detail navigation.
- * [OUTPUT]: Provides the public LocalDetailScreen plus package-avatar identity, loading, refresh, update, exact removal, install-more, and root rendering behavior.
+ * [INPUT]: Depends on the Library journey library, local/remote Skill identity, gateway mutations, the App-scoped update coordinator, and detail navigation.
+ * [OUTPUT]: Provides the public LocalDetailScreen plus package-avatar identity, loading, cached update state, post-mutation update refresh, exact removal, install-more, and root rendering behavior.
  * [POS]: Serves as the state-owning core of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,10 +45,14 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     skill = widget.skill;
     updateAvailability = widget.initialUpdate;
     unawaited(load());
-    if (skill.provenance == LibraryProvenance.hub &&
-        updateState != UpdateState.available &&
-        updateState != UpdateState.upToDate) {
-      unawaited(_checkUpdateState());
+  }
+
+  @override
+  void didUpdateWidget(covariant LocalDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.initialUpdate, oldWidget.initialUpdate) &&
+        !updating) {
+      updateAvailability = widget.initialUpdate;
     }
   }
 
@@ -64,7 +68,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _checkUpdateState() async {
+  Future<void> _refreshUpdateStateAfterMutation() async {
     if (skill.provenance != LibraryProvenance.hub) return;
     if (mounted) {
       setState(
@@ -74,7 +78,10 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       );
     }
     try {
-      final states = await widget.gateway.checkUpdates([skill]);
+      final inventory = ref.read(libraryProvider).value?.skills ?? [skill];
+      final states = await ref
+          .read(updateCheckProvider.notifier)
+          .check(inventory, trigger: UpdateCheckTrigger.mutation);
       if (!mounted) return;
       setState(() {
         updateAvailability =
@@ -293,7 +300,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     }
     skill = entry;
     await load();
-    if (checkUpdateState) await _checkUpdateState();
+    if (checkUpdateState) await _refreshUpdateStateAfterMutation();
     return true;
   }
 

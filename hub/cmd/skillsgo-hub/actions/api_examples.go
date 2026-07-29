@@ -82,7 +82,7 @@ var examplePackageInfo = map[string]any{
 	"version":            exampleVersion,
 	"time":               "2026-07-08T21:20:40+08:00",
 	"sum":                examplePackageSum,
-	"artifactRepository": "https://artifacts.skillsgo.dev/git/github.com/mattpocock/skills.git",
+	"artifactRepository": "https://artifacts.skillsgo.dev/packages/github.com/mattpocock/skills",
 	"skills": []any{
 		moduleSkill("design-an-interface", "skills/deprecated/design-an-interface"),
 		moduleSkill("qa", "skills/deprecated/qa"),

@@ -46,6 +46,7 @@ const _themeModeKey = 'theme_mode';
 const _languageKey = 'language';
 const _updateReminderKey = 'reminder_update_available';
 const _securityReminderKey = 'reminder_security_advisory';
+const _updateCheckCacheKey = 'update_check_cache_v1';
 const _allowCriticalOverrideKey = 'allow_critical_risk_override';
 const _onboardingCompletedKey = 'onboarding_completed_v1';
 const _onboardingStepKey = 'onboarding_step_v1';
