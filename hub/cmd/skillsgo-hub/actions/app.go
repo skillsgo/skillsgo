@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, workload-isolated River task execution, and background workers.
- * [OUTPUT]: Provides the native Fiber Hub application with bounded task queue allocation plus coordinated lifecycle cleanup.
+ * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, isolated foreground/background Catalog assembly, workload-isolated River task execution, and background workers.
+ * [OUTPUT]: Provides the native Fiber Hub application with database-capacity-isolated online and background work plus coordinated lifecycle cleanup.
  * [POS]: Serves as the Fiber server and middleware composition root for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -143,12 +143,18 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	if err != nil {
 		return nil, cleanup, fmt.Errorf("opening metadata catalog: %w", err)
 	}
+	backgroundMetadata, err := catalog.Connect(context.Background(), conf.Database.Background())
+	if err != nil {
+		_ = metadata.Close()
+		return nil, cleanup, fmt.Errorf("opening background metadata catalog: %w", err)
+	}
 	exporterCleanup := cleanup
 	backgroundCleanup := noop
 	var metadataOnce sync.Once
 	cleanup = func() {
 		metadataOnce.Do(func() {
 			backgroundCleanup()
+			_ = backgroundMetadata.Close()
 			_ = metadata.Close()
 		})
 		exporterCleanup()
@@ -156,7 +162,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 
 	workerCtx, cancelWorkers := context.WithCancel(context.Background())
 	taskRuntime := taskqueue.NewSynchronous()
-	if pool := metadata.PostgresPool(); pool != nil {
+	if pool := backgroundMetadata.PostgresPool(); pool != nil {
 		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
 			JobTimeout:           translationJobTimeout,
 			RescueStuckJobsAfter: 15 * time.Minute,
@@ -167,7 +173,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			return nil, cleanup, fmt.Errorf("creating task runtime: %w", err)
 		}
 	}
-	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, taskRuntime, adminRouter, adminEnabled); err != nil {
+	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, adminRouter, adminEnabled); err != nil {
 		cancelWorkers()
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
 	}
@@ -175,17 +181,17 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
 		languageAnalyzer := translation.NewLanguageAnalyzer()
 		descriptionWorker := translation.NewWorker(
-			metadata, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DescriptionPromptVersion,
+			backgroundMetadata, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DescriptionPromptVersion,
 			conf.LLM.TranslationBatch,
 		)
-		documentWorker := translation.NewDocumentWorker(metadata, store, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
+		documentWorker := translation.NewDocumentWorker(backgroundMetadata, store, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
 		recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, cause error) error {
 			message := cause.Error()
 			runes := []rune(message)
 			if len(runes) > 2048 {
 				message = string(runes[:2048])
 			}
-			return metadata.UpsertLocalizationFailure(ctx, catalog.LocalizationFailure{
+			return backgroundMetadata.UpsertLocalizationFailure(ctx, catalog.LocalizationFailure{
 				ResourceKind: resourceKind, SourceDigest: digest, Lang: lang, PromptVersion: prompt,
 				ErrorKind: kind, ErrorMessage: message,
 			})
