@@ -1,4 +1,4 @@
-# [INPUT]: Depends on Flutter Windows tooling, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
+# [INPUT]: Depends on Flutter Windows tooling, quickjs_engine's Windows registrar-name compatibility, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
 # [OUTPUT]: Builds the Windows desktop runner and packages a matching native SkillsGo CLI executable in data/bin.
 # [POS]: Serves as the Windows desktop build and runnable bundle entry point.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -83,6 +83,12 @@ add_dependencies(${BINARY_NAME} skillsgo_cli)
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+# quickjs_engine 0.1.2 declares the C API registrar while its plugin metadata
+# asks Flutter to generate the legacy registrar name. Alias only the runner's
+# generated call until the upstream metadata and exported symbol agree.
+target_compile_definitions(${BINARY_NAME} PRIVATE
+  "QuickjsEnginePluginRegisterWithRegistrar=QuickjsEnginePluginCApiRegisterWithRegistrar")
 
 
 # === Installation ===
