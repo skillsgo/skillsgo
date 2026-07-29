@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, deterministic English App language, and SharedPreferences.
- * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation while preserving the real App-to-CLI-to-Hub boundary.
+ * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation and forwarded Hub diagnostics while preserving the real App-to-CLI-to-Hub boundary.
  * [POS]: Serves as the reusable runtime fixture for the single-process cross-platform App E2E suite and focused Journey execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -102,8 +102,14 @@ final class JourneyRuntime {
       final stdoutLog = hubLog.openWrite();
       final stderrLog = hubLog.openWrite(mode: FileMode.append);
       hubLogSinks.addAll([stdoutLog, stderrLog]);
-      hubProcess.stdout.transform(utf8.decoder).listen(stdoutLog.write);
-      hubProcess.stderr.transform(utf8.decoder).listen(stderrLog.write);
+      hubProcess.stdout.transform(utf8.decoder).listen((output) {
+        stdoutLog.write(output);
+        stderr.write('[hub:$safeName] $output');
+      });
+      hubProcess.stderr.transform(utf8.decoder).listen((output) {
+        stderrLog.write(output);
+        stderr.write('[hub:$safeName] $output');
+      });
       await _waitForHub(hubOrigin, hubProcess, hubLog);
     }
 
