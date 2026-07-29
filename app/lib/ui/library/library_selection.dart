@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Library selection identity, selected entries, removal/update callbacks, motion preferences, and scope toggle state.
- * [OUTPUT]: Provides scope grouping, a removal-only stable selection bar, source labels, and All/Updates toggle.
+ * [OUTPUT]: Provides scope grouping, a removal-only stable selection bar, source labels, and an All/Updates toggle with Package update count.
  * [POS]: Serves as the multi-selection and scope-control segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -58,14 +58,9 @@ String _librarySelectionKey(InstalledSkill skill) => skill.inventoryKey.isEmpty
     : skill.inventoryKey;
 
 class _LibrarySelectionBarTransition extends StatefulWidget {
-  const _LibrarySelectionBarTransition({
-    super.key,
-    required this.child,
-    required this.disableAnimations,
-  });
+  const _LibrarySelectionBarTransition({super.key, required this.child});
 
   final Widget? child;
-  final bool disableAnimations;
 
   @override
   State<_LibrarySelectionBarTransition> createState() =>
@@ -112,17 +107,6 @@ class _LibrarySelectionBarTransitionState
 
   void _animateTo(double target) {
     _target = target;
-    if (widget.disableAnimations) {
-      _settleAtTarget(
-        _controller.animateTo(
-          target,
-          duration: Duration(milliseconds: target == 1 ? 200 : 160),
-          curve: const Cubic(0.23, 1, 0.32, 1),
-        ),
-        target,
-      );
-      return;
-    }
     _settleAtTarget(
       _controller.animateWith(
         SpringSimulation(
@@ -167,7 +151,6 @@ class _LibrarySelectionBarTransitionState
       opacity: _controller,
       child: child,
     );
-    if (widget.disableAnimations) return faded;
     return SlideTransition(
       key: const Key('library-selection-bar-slide-transition'),
       position: Tween<Offset>(
@@ -290,9 +273,7 @@ class _LibrarySelectionBar extends StatelessWidget {
                     SizedBox(
                       height: 20,
                       child: AnimatedSwitcher(
-                        duration: MediaQuery.disableAnimationsOf(context)
-                            ? Duration.zero
-                            : const Duration(milliseconds: 220),
+                        duration: const Duration(milliseconds: 220),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
                         transitionBuilder: (child, animation) {
@@ -349,10 +330,12 @@ String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
 class _LibraryScopeToggle extends StatelessWidget {
   const _LibraryScopeToggle({
     required this.updatesOnly,
+    required this.updateCount,
     required this.onChanged,
   });
 
   final bool updatesOnly;
+  final int updateCount;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -367,6 +350,7 @@ class _LibraryScopeToggle extends StatelessWidget {
         SubscriptionSwitchOption(
           label: context.l10n.updatesOnly,
           icon: HugeIcons.strokeRoundedArrowReloadVertical,
+          showBadge: updateCount > 0,
         ),
       ],
       selectedIndex: updatesOnly ? 1 : 0,

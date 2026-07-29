@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library screen library, current-theme design tokens, Package avatars, localized adoption copy, and caller-provided preflight identities plus exact CLI transaction results.
- * [OUTPUT]: Provides a responsive modal hardware-console Batch Adoption surface with an input-blocking dismissible scrim, symmetric entrance and exit motion, automatic reviewed execution, transaction-accurate controls independent from the continuing story animation, vintage brand stickers, a borderless pending queue, a deterministic Tetris story ending with four localized LED pain-point pieces, a self-clearing managed board, an in-board settlement, and reduced-motion behavior.
+ * [OUTPUT]: Provides a responsive modal hardware-console Batch Adoption surface with an input-blocking dismissible scrim, symmetric entrance and exit motion, automatic reviewed execution, transaction-accurate controls independent from the continuing story animation, vintage brand stickers, a borderless pending queue, a deterministic Tetris story ending with four localized LED pain-point pieces, a self-clearing managed board, and an in-board settlement.
  * [POS]: Serves as the visual product-story and truthful post-transaction feedback module of the Library Batch Adoption journey while delegated callbacks retain mutation ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -353,9 +353,7 @@ class _BatchAdoptionConsoleState extends State<_BatchAdoptionConsole>
     super.didChangeDependencies();
     if (widget.initiallyCompleted || _automaticExecutionScheduled) return;
     _automaticExecutionScheduled = true;
-    final delay = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 900);
+    final delay = const Duration(milliseconds: 900);
     Future<void>.delayed(delay, () {
       if (mounted) unawaited(_confirm());
     });
@@ -419,13 +417,7 @@ class _BatchAdoptionConsoleState extends State<_BatchAdoptionConsole>
         _executing = false;
         _transactionCompleted = true;
       });
-      if (MediaQuery.disableAnimationsOf(context)) {
-        setState(() {
-          _settledCount = pieces.length;
-          _completed = true;
-        });
-        return;
-      }
+
       for (var index = 0; index < pieces.length; index++) {
         if (!mounted) return;
         await Future<void>.delayed(_adoptionPieceDuration(index));
@@ -473,11 +465,7 @@ class _BatchAdoptionConsoleState extends State<_BatchAdoptionConsole>
   @override
   Widget build(BuildContext context) {
     final front = _buildFrontConsole(context);
-    if (MediaQuery.disableAnimationsOf(context)) {
-      return _buildModalPortal(
-        _buildModalLayer(context, console: front, progress: 1),
-      );
-    }
+
     final revealController = _revealController ??= AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -984,9 +972,7 @@ class _AdoptionHardwareButtonState extends State<_AdoptionHardwareButton> {
     final edgeColor = widget.primary
         ? const Color(0xff973c37)
         : const Color(0xff746f66);
-    final duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 70);
+    final duration = const Duration(milliseconds: 70);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: widget.enabled ? (_) => _setPressed(true) : null,
@@ -1292,9 +1278,7 @@ class _BatchAdoptionStory extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: AnimatedSwitcher(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 420),
+              duration: const Duration(milliseconds: 420),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               child: content,
@@ -2494,9 +2478,7 @@ class _AdoptionPendingQueueState extends State<_AdoptionPendingQueue> {
       if (!_controller.hasClients) return;
       _controller.animateTo(
         math.min(_controller.offset + 58, _controller.position.maxScrollExtent),
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
       );
     });

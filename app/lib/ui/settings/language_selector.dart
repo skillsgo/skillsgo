@@ -91,9 +91,7 @@ class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
                 marginTop: 6,
                 borderRadius: BorderRadius.circular(14),
                 listPadding: const EdgeInsets.symmetric(vertical: 6),
-                animationDuration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
+                animationDuration: const Duration(milliseconds: 180),
                 animationCurve: Curves.easeOutCubic,
               ),
               itemBuilder: (item, index, onTap) => Semantics(
@@ -121,9 +119,7 @@ class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
                           ),
                           AnimatedOpacity(
                             opacity: item.selected ? 1 : 0,
-                            duration: MediaQuery.disableAnimationsOf(context)
-                                ? Duration.zero
-                                : const Duration(milliseconds: 120),
+                            duration: const Duration(milliseconds: 120),
                             child: const HugeIcon(
                               icon: HugeIcons.strokeRoundedTick01,
                               size: 18,

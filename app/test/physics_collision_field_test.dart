@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter widget testing and the locally vendored PhysicsCollisionField public interaction contract.
- * [OUTPUT]: Specifies deterministic oriented-box separation, identity-preserving parent rebuilds, drag/fling wake-up, natural settling without timed freezes, and reduced-motion interaction behavior.
+ * [OUTPUT]: Specifies deterministic oriented-box separation, identity-preserving parent rebuilds, drag/fling wake-up, and natural settling without timed freezes.
  * [POS]: Serves as the focused regression suite for the reusable vendored collision primitive outside its Library product consumer.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,32 +26,28 @@ const _persistentMotionStyle = PhysicsCollisionFieldStyle(
 );
 
 Widget _field({
-  bool disableAnimations = false,
   PhysicsCollisionFieldStyle style = _style,
   Offset initialVelocity = Offset.zero,
 }) => MaterialApp(
-  home: MediaQuery(
-    data: MediaQueryData(disableAnimations: disableAnimations),
-    child: Center(
-      child: SizedBox(
-        width: 300,
+  home: Center(
+    child: SizedBox(
+      width: 300,
+      height: 200,
+      child: PhysicsCollisionField(
         height: 200,
-        child: PhysicsCollisionField(
-          height: 200,
-          style: style,
-          items: [
-            PhysicsCollisionFieldItem(
-              id: 'test-body',
-              collisionSize: const Size.square(60),
-              initialPosition: const Offset(80, 80),
-              initialVelocity: initialVelocity,
-              child: const ColoredBox(
-                key: Key('collision-test-body'),
-                color: Colors.blue,
-              ),
+        style: style,
+        items: [
+          PhysicsCollisionFieldItem(
+            id: 'test-body',
+            collisionSize: const Size.square(60),
+            initialPosition: const Offset(80, 80),
+            initialVelocity: initialVelocity,
+            child: const ColoredBox(
+              key: Key('collision-test-body'),
+              color: Colors.blue,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
   ),
@@ -150,22 +146,6 @@ void main() {
     final after = tester.getCenter(body);
 
     expect(after, isNot(before));
-  });
-
-  testWidgets('reduced motion keeps deterministic layout and disables drag', (
-    tester,
-  ) async {
-    await tester.pumpWidget(_field(disableAnimations: true));
-    await tester.pump();
-    await tester.pumpAndSettle();
-    final body = find.byKey(const Key('collision-test-body'));
-    final before = tester.getCenter(body);
-
-    await tester.drag(body, const Offset(64, 24));
-    await tester.pumpAndSettle();
-
-    expect(tester.getCenter(body), before);
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('an unrelated parent rebuild preserves body position', (

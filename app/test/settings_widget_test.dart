@@ -4,8 +4,6 @@
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-import 'dart:ui' show Tristate;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,27 +125,6 @@ void main() {
     expect(find.byKey(const Key('discovery-options-mode')), findsOneWidget);
   });
 
-  testWidgets('reduced motion keeps tab selection immediate', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Ranking'));
-    await tester.pump();
-
-    final rankingSemantics = find.bySemanticsLabel('Ranking');
-    expect(
-      List.generate(
-        rankingSemantics.evaluate().length,
-        (index) => tester.getSemantics(rankingSemantics.at(index)),
-      ).any((node) => node.flagsCollection.isSelected == Tristate.isTrue),
-      isTrue,
-    );
-  });
-
   testWidgets('keyboard focus can activate the first leaderboard tab', (
     tester,
   ) async {
@@ -218,27 +195,6 @@ void main() {
     expect(fade.opacity.value, 1);
     expect(slide.position.value, Offset.zero);
     expect(scale.scale.value, 1);
-  });
-
-  testWidgets('Settings secondary body skips motion when animations are off', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-settings')));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Reminders'));
-    await tester.pump();
-
-    final body = find.byKey(const Key('skills-destination-body'));
-    expect(body, findsOneWidget);
-    expect(tester.widget(body), isA<KeyedSubtree>());
-    expect(find.byKey(const Key('update-reminder-label')), findsOneWidget);
   });
 
   testWidgets('Settings keeps infrequent controls behind one advanced route', (

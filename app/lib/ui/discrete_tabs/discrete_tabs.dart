@@ -137,10 +137,7 @@ class _DiscreteTabItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final duration = reduceMotion
-        ? Duration.zero
-        : const Duration(milliseconds: 600);
+    const duration = Duration(milliseconds: 600);
     return FocusableActionDetector(
       key: ValueKey('discrete-tab-focus-${tab.label}'),
       mouseCursor: SystemMouseCursors.click,
@@ -167,7 +164,7 @@ class _DiscreteTabItem extends StatelessWidget {
           onTap: onPressed,
           child: AnimatedContainer(
             duration: duration,
-            curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
+            curve: Curves.easeOutBack,
             height: style.height,
             padding: EdgeInsets.symmetric(horizontal: style.horizontalPadding),
             decoration: BoxDecoration(
@@ -190,7 +187,7 @@ class _DiscreteTabItem extends StatelessWidget {
                 AnimatedScale(
                   scale: selected ? style.selectedScale : 1,
                   duration: duration,
-                  curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
+                  curve: Curves.easeOutBack,
                   child: HugeIcon(
                     icon: tab.icon,
                     size: 20,
@@ -199,68 +196,47 @@ class _DiscreteTabItem extends StatelessWidget {
                   ),
                 ),
                 ClipRect(
-                  child: reduceMotion
-                      ? selected
-                            ? Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  start: 6,
+                  child: AnimatedSize(
+                    duration: duration,
+                    curve: Curves.easeOutBack,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: selected
+                        ? TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: 1),
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) => Opacity(
+                              opacity: value,
+                              child: Transform.translate(
+                                offset: Offset(-10 * (1 - value), 0),
+                                child: child,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: 6,
+                              ),
+                              child: ShimmerText(
+                                text: tab.label,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: style.selectedLabelWeight,
+                                  letterSpacing: -.5,
+                                  color: tab.activeColor,
                                 ),
-                                child: Text(
-                                  tab.label,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: style.selectedLabelWeight,
-                                    letterSpacing: -.5,
-                                    color: tab.activeColor,
-                                  ),
-                                ),
-                              )
-                            : const SizedBox.shrink()
-                      : AnimatedSize(
-                          duration: duration,
-                          curve: Curves.easeOutBack,
-                          alignment: AlignmentDirectional.centerStart,
-                          child: selected
-                              ? TweenAnimationBuilder<double>(
-                                  tween: Tween(begin: 0, end: 1),
-                                  duration: reduceMotion
-                                      ? Duration.zero
-                                      : const Duration(milliseconds: 400),
-                                  curve: Curves.easeOutCubic,
-                                  builder: (context, value, child) => Opacity(
-                                    opacity: value,
-                                    child: Transform.translate(
-                                      offset: Offset(-10 * (1 - value), 0),
-                                      child: child,
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsetsDirectional.only(
-                                      start: 6,
-                                    ),
-                                    child: ShimmerText(
-                                      text: tab.label,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: style.selectedLabelWeight,
-                                        letterSpacing: -.5,
-                                        color: tab.activeColor,
-                                      ),
-                                      baseColor: tab.activeColor,
-                                      highlightColor:
-                                          Color.lerp(
-                                            tab.activeColor,
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
-                                            .8,
-                                          ) ??
-                                          tab.activeColor,
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
+                                baseColor: tab.activeColor,
+                                highlightColor:
+                                    Color.lerp(
+                                      tab.activeColor,
+                                      Theme.of(context).colorScheme.onSurface,
+                                      .8,
+                                    ) ??
+                                    tab.activeColor,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ),
               ],
             ),

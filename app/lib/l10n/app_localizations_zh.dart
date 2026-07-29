@@ -387,7 +387,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智能体';
@@ -835,7 +835,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get openAvailableUpdates => '打开“有更新”视图，查看并选择需要更新的技能。';
+  String get openAvailableUpdates => '打开“更新”视图，查看可更新的 Package。';
 
   @override
   String securityAdvisoriesReminder(int count) {
@@ -2310,7 +2310,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智能體';
@@ -4141,7 +4141,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get allSkills => '全部 Skills';
 
   @override
-  String get updatesOnly => '有更新';
+  String get updatesOnly => '更新';
 
   @override
   String get allAgents => '所有智慧體';

@@ -129,9 +129,7 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
                 widget.onRemove != null) ...[
               const SizedBox(width: 6),
               AnimatedSwitcher(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 180),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeOutCubic,
                 transitionBuilder: (child, animation) => FadeTransition(

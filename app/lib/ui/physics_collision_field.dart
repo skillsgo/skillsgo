@@ -2,7 +2,7 @@
  * Derived from Portal Labs Physics Collision Card, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
  * [INPUT]: Depends on Flutter rendering, ticker, gestures, haptics, caller-provided stable item identities, widgets, and physical parameters.
- * [OUTPUT]: Provides a deterministic, draggable oriented-box collision field with identity-preserving rebuilds, gravity, damping, SAT wall/body collisions, rotation, sleep, and reduced-motion support.
+ * [OUTPUT]: Provides a deterministic, draggable oriented-box collision field with identity-preserving rebuilds, gravity, damping, SAT wall/body collisions, rotation, and sleep.
  * [POS]: Serves as the locally adapted Portal Labs physics interaction primitive whose collision geometry matches rectangular visual children.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -100,9 +100,7 @@ class _PhysicsCollisionFieldState extends State<PhysicsCollisionField>
   DateTime? _lastHapticTime;
 
   bool get _motionAllowed =>
-      widget.motionEnabled &&
-      TickerMode.valuesOf(context).enabled &&
-      !MediaQuery.disableAnimationsOf(context);
+      widget.motionEnabled && TickerMode.valuesOf(context).enabled && !false;
 
   @override
   void initState() {

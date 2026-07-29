@@ -243,7 +243,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final l10n = AppLocalizations.of(context);
     final colors = context.skillsColors;
     final components = context.skillsComponents;
-    final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return SafeArea(
       child: Center(
         child: ConstrainedBox(
@@ -256,9 +255,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: reducedMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 220),
+                      duration: const Duration(milliseconds: 220),
                       child: SingleChildScrollView(
                         key: ValueKey(_currentStep),
                         padding: const EdgeInsets.fromLTRB(32, 84, 32, 24),
@@ -302,9 +299,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   IgnorePointer(
                     ignoring: _busy,
                     child: AnimatedOpacity(
-                      duration: reducedMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 120),
+                      duration: const Duration(milliseconds: 120),
                       opacity: _busy ? .55 : 1,
                       child: Focus(
                         autofocus: true,
@@ -339,11 +334,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             stepSpacing: 20,
                             buttonTextStyle: context.skillsTypography.label
                                 .copyWith(fontWeight: FontWeight.w600),
-                            enableHaptics: !reducedMotion,
+                            enableHaptics: true,
                             padding: const EdgeInsets.fromLTRB(32, 18, 32, 24),
-                            springMass: reducedMotion ? .1 : 1,
-                            springStiffness: reducedMotion ? 1000 : 150,
-                            springDamping: reducedMotion ? 100 : 15,
+                            springMass: 1,
+                            springStiffness: 150,
+                            springDamping: 15,
                             showFinishIcon: false,
                           ),
                         ),

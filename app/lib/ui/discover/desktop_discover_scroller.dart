@@ -147,7 +147,6 @@ class _DesktopDiscoverScrollerState extends State<_DesktopDiscoverScroller> {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final refreshActive = widget.refreshing || _refreshRequestActive;
     final visibleExtent = refreshActive ? _refreshThreshold : _pullExtent;
     final pullProgress = (visibleExtent / _refreshThreshold).clamp(0.0, 1.0);
@@ -159,9 +158,7 @@ class _DesktopDiscoverScrollerState extends State<_DesktopDiscoverScroller> {
         children: [
           TweenAnimationBuilder<double>(
             tween: Tween(end: offset),
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutBack,
             builder: (context, value, child) =>
                 Transform.translate(offset: Offset(0, value), child: child),
@@ -184,12 +181,10 @@ class _DesktopDiscoverScrollerState extends State<_DesktopDiscoverScroller> {
                     child: AnimatedOpacity(
                       key: const Key('discover-refresh-opacity'),
                       opacity: pullProgress,
-                      duration: reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 140),
+                      duration: const Duration(milliseconds: 140),
                       curve: Curves.easeOut,
                       child: TickerMode(
-                        enabled: !reduceMotion && visibleExtent > 0,
+                        enabled: visibleExtent > 0,
                         child: SkillsLoadingShape(
                           size: 34,
                           progress: refreshActive ? null : pullProgress,

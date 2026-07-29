@@ -89,8 +89,7 @@ class SkillsLoadingShape extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final animate = !reduceMotion;
+    const animate = true;
     final indicatorColor = color ?? Theme.of(context).colorScheme.primary;
     return TickerMode(
       enabled: animate,
@@ -119,12 +118,11 @@ class SkillsRepositoryLoadingShape extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     return TickerMode(
-      enabled: !reduceMotion,
+      enabled: true,
       child: portal.LoadingShapes(
         key: const Key('portal-repository-loading-shape'),
-        isLoading: !reduceMotion,
+        isLoading: true,
         style: portal.LoadingShapesStyle(
           size: size,
           color: color ?? Theme.of(context).colorScheme.primary,

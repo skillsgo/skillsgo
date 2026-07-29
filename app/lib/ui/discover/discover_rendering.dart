@@ -394,12 +394,8 @@ extension _DiscoverRendering on _DiscoverScreenState {
       openPlanOnDetailLoad = openPlan;
       detailTransitioning = true;
     });
-    if (MediaQuery.disableAnimationsOf(context)) {
-      detailTransition.value = 1;
-      if (mounted) updateState(() => detailTransitioning = false);
-    } else {
-      unawaited(_animateDetailOpen(skill));
-    }
+
+    unawaited(_animateDetailOpen(skill));
   }
 
   Future<void> _animateDetailOpen(SkillSummary skill) async {
@@ -409,16 +405,11 @@ extension _DiscoverRendering on _DiscoverScreenState {
   }
 
   Future<void> _closeDetail({required bool installed}) async {
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final cardFocus = selectedSkillFocus;
     final routeState = routeUiStates[selectedRoute]!;
     final scrollOffset = selectedSkillScrollOffset;
     updateState(() => detailTransitioning = true);
-    if (disableAnimations) {
-      detailTransition.value = 0;
-    } else {
-      await detailTransition.reverse();
-    }
+    await detailTransition.reverse();
     if (!mounted) return;
     updateState(() {
       selectedSkill = null;

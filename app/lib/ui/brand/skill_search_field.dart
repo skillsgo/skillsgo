@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on text/focus controllers, optional product input bounds, search appearance, keyboard/focus semantics, HugeIcons, and SkillsGo component tokens.
- * [OUTPUT]: Provides the reusable capsule and leaderboard SkillSearchField with bounded input, focus, hover, clear, submit, and reduced-motion behavior.
+ * [OUTPUT]: Provides the reusable capsule and leaderboard SkillSearchField with bounded input, focus, hover, clear, submit, and animated state transitions.
  * [POS]: Serves as the search-input segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -66,10 +66,7 @@ class SkillSearchField extends StatelessWidget {
               const contentAlignment = skillSearchLeaderboardContentAlignment;
               final showSparkles =
                   value.text.contains(' ') && value.text.trim().length >= 2;
-              final reduceMotion = MediaQuery.disableAnimationsOf(context);
-              final animationDuration = MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 100);
+              final animationDuration = const Duration(milliseconds: 100);
               return AnimatedContainer(
                 duration: animationDuration,
                 decoration: BoxDecoration(
@@ -112,9 +109,7 @@ class SkillSearchField extends StatelessWidget {
                           AnimatedOpacity(
                             key: const Key('search-visual-icon'),
                             opacity: showSparkles ? 0 : 1,
-                            duration: reduceMotion
-                                ? Duration.zero
-                                : const Duration(milliseconds: 200),
+                            duration: const Duration(milliseconds: 200),
                             curve: const Cubic(0.4, 0, 0.2, 1),
                             child: SearchVisualIcon(
                               color: scheme.onSurfaceVariant,
@@ -123,9 +118,7 @@ class SkillSearchField extends StatelessWidget {
                           AnimatedOpacity(
                             key: const Key('search-sparkles-icon'),
                             opacity: showSparkles ? 1 : 0,
-                            duration: reduceMotion
-                                ? Duration.zero
-                                : const Duration(milliseconds: 200),
+                            duration: const Duration(milliseconds: 200),
                             curve: const Cubic(0.4, 0, 0.2, 1),
                             child: SearchVisualIcon(
                               color: scheme.onSurfaceVariant,
@@ -257,9 +250,7 @@ class SkillSearchField extends StatelessWidget {
             );
             return AnimatedContainer(
               key: const Key('skill-search-surface'),
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 160),
+              duration: const Duration(milliseconds: 160),
               decoration: BoxDecoration(
                 borderRadius: radius,
                 boxShadow: active
