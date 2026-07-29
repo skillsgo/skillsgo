@@ -79,10 +79,20 @@ void registerAdoptionManagementJourney() {
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
+      final libraryDestination = find.byKey(
+        const ValueKey('primary-destination-library'),
+      );
+      await _pumpUntil(tester, libraryDestination);
+      await tester.tap(libraryDestination);
+      await tester.pump();
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const ValueKey('library-skeleton')),
+      );
+
       final settingsDestination = find.byKey(
         const ValueKey('primary-destination-settings'),
       );
-      await _pumpUntil(tester, settingsDestination);
       await tester.tap(settingsDestination);
       final advancedSettings = find.text('Advanced');
       await _pumpUntil(tester, advancedSettings);
@@ -97,10 +107,6 @@ void registerAdoptionManagementJourney() {
       refreshButton.onPressed!();
       await tester.pump();
       await _pumpUntil(tester, find.text('Local Library refreshed.'));
-      final libraryDestination = find.byKey(
-        const ValueKey('primary-destination-library'),
-      );
-      await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
 
       await _pumpUntilAdoptionCount(tester, 1);
