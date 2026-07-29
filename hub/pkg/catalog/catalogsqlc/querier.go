@@ -17,7 +17,7 @@ type Querier interface {
 	CurrentPackageVersionForUpdate(ctx context.Context, packageID int64) (string, error)
 	CurrentPackagesByPaths(ctx context.Context, packagePaths []string) ([]CurrentPackagesByPathsRow, error)
 	CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error)
-	DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error)
+	DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error)
 	ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error)
 	ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error)
 	FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error)
@@ -48,6 +48,7 @@ type Querier interface {
 	TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
+	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
 	// [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.

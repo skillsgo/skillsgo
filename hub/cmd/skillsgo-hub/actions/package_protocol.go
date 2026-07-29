@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped logging, canonical Package Paths, persisted Package Info, Catalog publication membership, singleflight coordination, and one Repository materializer.
- * [OUTPUT]: Serves byte-stable Package Info/ZIP resources and deduplicated demand-driven exact Package publication at the Package distribution API.
+ * [OUTPUT]: Serves Package Info carrying the static Git Artifact Repository URL and deduplicated demand-driven exact Package publication at the Package distribution API.
  * [POS]: Serves as the Package publication protocol decorator; Skills are members and never independent artifact resources.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,33 +8,66 @@ package actions
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"golang.org/x/sync/singleflight"
 )
 
-func withPackageInfo(protocol download.Protocol, metadata *catalog.Catalog, materializer repositoryMaterializer) download.Protocol {
-	return &moduleInfoProtocol{Protocol: protocol, metadata: metadata, materializer: materializer}
+func withPackageInfo(protocol download.Protocol, metadata *catalog.Catalog, materializer repositoryMaterializer, origins ...string) download.Protocol {
+	artifactOrigin := ""
+	if len(origins) > 0 {
+		artifactOrigin = origins[0]
+	}
+	return &moduleInfoProtocol{Protocol: protocol, metadata: metadata, materializer: materializer, artifactOrigin: strings.TrimRight(artifactOrigin, "/")}
 }
 
 type moduleInfoProtocol struct {
 	download.Protocol
-	metadata     *catalog.Catalog
-	materializer repositoryMaterializer
-	publication  singleflight.Group
+	metadata       *catalog.Catalog
+	materializer   repositoryMaterializer
+	artifactOrigin string
+	publication    singleflight.Group
 }
 
 func (p *moduleInfoProtocol) List(ctx context.Context, packagePath string) ([]string, error) {
 	if err := validatePackageResource(packagePath); err != nil {
 		return nil, huberrors.E("moduleInfoProtocol.List", err, huberrors.KindBadRequest)
 	}
-	return p.Protocol.List(ctx, packagePath)
+	published, err := p.metadata.PackagePublishedVersions(ctx, packagePath)
+	if err != nil {
+		return nil, err
+	}
+	upstream, upstreamErr := p.Protocol.List(ctx, packagePath)
+	if upstreamErr != nil {
+		if len(published) > 0 && huberrors.IsRepoNotFoundErr(upstreamErr) {
+			return published, nil
+		}
+		return nil, upstreamErr
+	}
+	return mergeVersions(upstream, published), nil
+}
+
+func mergeVersions(first, second []string) []string {
+	seen := make(map[string]struct{}, len(first)+len(second))
+	merged := make([]string, 0, len(first)+len(second))
+	for _, versions := range [][]string{first, second} {
+		for _, version := range versions {
+			if _, ok := seen[version]; ok {
+				continue
+			}
+			seen[version] = struct{}{}
+			merged = append(merged, version)
+		}
+	}
+	return merged
 }
 
 func (p *moduleInfoProtocol) Info(ctx context.Context, packagePath, version string) ([]byte, error) {
@@ -48,20 +81,14 @@ func (p *moduleInfoProtocol) Info(ctx context.Context, packagePath, version stri
 	if persisted, ok, err := p.metadata.PackageVersionInfo(ctx, packagePath, canonicalVersion); err != nil {
 		return nil, err
 	} else if ok {
-		return persisted, nil
+		var info protocolapi.PackageInfo
+		if err := json.Unmarshal(persisted, &info); err != nil {
+			return nil, fmt.Errorf("decode persisted Package Info: %w", err)
+		}
+		info.ArtifactRepository = p.artifactOrigin + "/git/" + packagePath + ".git"
+		return json.Marshal(info)
 	}
 	return nil, fmt.Errorf("Package publication has no immutable Info for %s@%s", packagePath, canonicalVersion)
-}
-
-func (p *moduleInfoProtocol) Zip(ctx context.Context, packagePath, version string) (storage.SizeReadCloser, error) {
-	if err := validatePackageResource(packagePath); err != nil {
-		return nil, huberrors.E("moduleInfoProtocol.Zip", err, huberrors.KindBadRequest)
-	}
-	canonicalVersion, err := p.ensurePublished(ctx, packagePath, version)
-	if err != nil {
-		return nil, err
-	}
-	return p.Protocol.Zip(ctx, packagePath, canonicalVersion)
 }
 
 func (p *moduleInfoProtocol) ensurePublished(ctx context.Context, packagePath, version string) (string, error) {

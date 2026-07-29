@@ -43,6 +43,7 @@ func TestAppReturnsCleanup(t *testing.T) {
 	c, err := config.Load("")
 	require.NoError(t, err)
 	c.Database.DSN = actionTestPostgresDSN(t)
+	c.ArtifactOrigin = "https://artifacts.example.test"
 
 	handler, cleanup, err := App(l, c)
 	require.NoError(t, err)
@@ -58,6 +59,7 @@ func TestAppReturnsCleanupWithExporters(t *testing.T) {
 	c, err := config.Load("")
 	require.NoError(t, err)
 	c.Database.DSN = actionTestPostgresDSN(t)
+	c.ArtifactOrigin = "https://artifacts.example.test"
 	// Exercise the real exporter registration path: OTLP traces (the gRPC
 	// exporter dials lazily, so no collector is needed) and Prometheus metrics.
 	c.TraceExporter = "otlp"

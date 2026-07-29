@@ -8,6 +8,7 @@ package actions
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -42,7 +43,6 @@ func addProxyRoutesWithCatalog(
 	adminRouter fiber.Router,
 	adminEnabled bool,
 ) error {
-	s = storage.WithImmutableWrites(s)
 	if taskRuntime == nil {
 		taskRuntime = taskqueue.NewSynchronous()
 	}
@@ -50,7 +50,6 @@ func addProxyRoutesWithCatalog(
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", getReadinessHandler(s))
 	r.Get("/version", versionHandler)
-	r.Get("/catalog", catalogHandler(s))
 	r.Get("/robots.txt", robotsHandler(c))
 
 	fs := afero.NewOsFs()
@@ -72,8 +71,11 @@ func addProxyRoutesWithCatalog(
 		return err
 	}
 
-	dp := download.New(&download.Opts{Storage: s, Lister: lister, NetworkMode: c.NetworkMode})
+	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
+		if c.ArtifactOrigin == "" {
+			return fmt.Errorf("SKILLSGO_HUB_ARTIFACT_ORIGIN is required when Package publication is enabled")
+		}
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
@@ -82,10 +84,11 @@ func addProxyRoutesWithCatalog(
 			repositoryFetcher,
 			s,
 			metadata,
+			withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
 			withCurrentPublicationObserver(metadataCache.RefreshInitial),
 		)
-		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
-		dp = withPackageInfo(dp, metadata, publisher)
+		registerPackageSkillRoute(r, metadata, publisher, s)
+		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
 		if adminEnabled {
 			if metadata.PostgresPool() == nil {
 				return fmt.Errorf("Package Backfill administration requires PostgreSQL")

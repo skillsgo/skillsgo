@@ -18,6 +18,7 @@
 - `0013-require-user-reviewed-external-skill-adoption.md`: makes External Skill adoption a user-reviewed Hub candidate and immutable-version selection, permits multiple versions of one Repository per scope, and requires 30-day per-Skill recovery.
 - `0014-localize-presentation-content-without-translating-artifacts.md`: localizes descriptions and display-only Skill documents across the Hub, Protocol, CLI, and App while keeping Package Artifacts and Agent execution source-only.
 - `0015-make-package-updates-scope-aware.md`: makes `Scope × Package Path` the update target, unifies preview and execution under `skillsgo update`, and replaces Skill-level availability checks with Package-level Hub reads.
+- `0016-distribute-package-artifacts-as-static-git-repositories.md`: proposes replacing immutable per-version ZIPs with Hub-authored bare Git Artifact Repositories distributed from Cloudflare-backed R2 over dumb HTTP.
 
 ## Architectural Boundary
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Package artifact and metadata resolution, and request validation.
- * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Catalog-backed batch Package update checks, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Catalog-backed current Package Publication reads, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,6 @@ import (
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
@@ -52,13 +51,12 @@ type skillBatchResponse struct {
 
 type discoverySkill = protocolapi.FindSkill
 
-type packageUpdateCheckRequest = protocolapi.PackageUpdateCheckRequest
-type packageUpdateCheckItem = protocolapi.PackageUpdateCheckItem
-type packageUpdateCheckResponse = protocolapi.PackageUpdateCheckResponse
+type currentPackagesRequest = protocolapi.CurrentPackagesRequest
+type currentPackage = protocolapi.CurrentPackage
+type currentPackagesResponse = protocolapi.CurrentPackagesResponse
 
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)
-	Zip(context.Context, string, string) (storage.SizeReadCloser, error)
 }
 
 type errorResponse struct {
@@ -79,12 +77,12 @@ func registerCatalogAPIRoutes(
 	r.Get("/api/v1/skills/find", findSkillsHandler(metadata, repositories))
 	r.Post("/api/v1/skills/find-candidates", findSkillsBatchHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata, repositories))
-	r.Post("/api/v1/packages/check-update", packageUpdateCheckHandler(metadata))
+	r.Post("/api/v1/packages/current", currentPackagesHandler(metadata))
 }
 
-func packageUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
+func currentPackagesHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		var request packageUpdateCheckRequest
+		var request currentPackagesRequest
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&request); err != nil || request.SchemaVersion != protocolapi.SchemaVersion || len(request.Packages) == 0 || len(request.Packages) > 1000 {
@@ -101,16 +99,16 @@ func packageUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
 		}
 		current, err := metadata.CurrentPackages(c.Context(), paths)
 		if err != nil {
-			return writeInternalAPIError(c, "catalog.package_update_check", fiber.StatusInternalServerError, "internal_error", "Package update check failed", err)
+			return writeInternalAPIError(c, "catalog.current_packages", fiber.StatusInternalServerError, "internal_error", "Current Package read failed", err)
 		}
-		response := packageUpdateCheckResponse{Packages: make([]packageUpdateCheckItem, 0, len(current))}
+		response := currentPackagesResponse{Packages: make([]currentPackage, 0, len(current))}
 		for _, item := range current {
-			status := protocolapi.UpdateAvailable
+			status := protocolapi.PackagePublished
 			if item.LatestVersion == "" {
-				status = protocolapi.UpdateUnsupported
+				status = protocolapi.PackageUnavailable
 			}
-			response.Packages = append(response.Packages, packageUpdateCheckItem{
-				PackagePath: item.PackagePath, LatestVersion: item.LatestVersion, Sum: item.Sum, Skills: item.Skills, Status: status,
+			response.Packages = append(response.Packages, currentPackage{
+				PackagePath: item.PackagePath, Version: item.LatestVersion, Sum: item.Sum, Skills: item.Skills, Status: status,
 			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)

@@ -210,21 +210,29 @@ WITH documents AS (
   GROUP BY mvs.document_digest
 )
 SELECT documents.document_digest,
-       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
+       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS stored_prompt_version
 FROM documents
 LEFT JOIN localizations l
   ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
+WHERE l.source_digest IS NULL OR l.prompt_version<>$2
 ORDER BY documents.is_current DESC,documents.document_digest
+LIMIT $3
 `
 
-type DocumentTranslationCandidatesRow struct {
-	DocumentDigest string `json:"document_digest"`
-	SourceDigest   string `json:"source_digest"`
-	PromptVersion  string `json:"prompt_version"`
+type DocumentTranslationCandidatesParams struct {
+	Lang                string `json:"lang"`
+	TargetPromptVersion string `json:"target_prompt_version"`
+	PageLimit           int32  `json:"page_limit"`
 }
 
-func (q *Queries) DocumentTranslationCandidates(ctx context.Context, lang string) ([]DocumentTranslationCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, documentTranslationCandidates, lang)
+type DocumentTranslationCandidatesRow struct {
+	DocumentDigest      string `json:"document_digest"`
+	SourceDigest        string `json:"source_digest"`
+	StoredPromptVersion string `json:"stored_prompt_version"`
+}
+
+func (q *Queries) DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, documentTranslationCandidates, arg.Lang, arg.TargetPromptVersion, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +240,7 @@ func (q *Queries) DocumentTranslationCandidates(ctx context.Context, lang string
 	items := []DocumentTranslationCandidatesRow{}
 	for rows.Next() {
 		var i DocumentTranslationCandidatesRow
-		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.PromptVersion); err != nil {
+		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.StoredPromptVersion); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -533,20 +541,19 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 }
 
 const insertPackageVersion = `-- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id
 `
 
 type InsertPackageVersionParams struct {
-	PackageID   int64     `json:"package_id"`
-	Version     string    `json:"version"`
-	Ref         string    `json:"ref"`
-	CommitSha   string    `json:"commit_sha"`
-	TreeSha     string    `json:"tree_sha"`
-	Sum         string    `json:"sum"`
-	ArchiveSize int64     `json:"archive_size"`
-	CommitTime  time.Time `json:"commit_time"`
-	CreatedAt   time.Time `json:"created_at"`
+	PackageID  int64     `json:"package_id"`
+	Version    string    `json:"version"`
+	Ref        string    `json:"ref"`
+	CommitSha  string    `json:"commit_sha"`
+	TreeSha    string    `json:"tree_sha"`
+	Sum        string    `json:"sum"`
+	CommitTime time.Time `json:"commit_time"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVersionParams) (int64, error) {
@@ -557,7 +564,6 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 		arg.CommitSha,
 		arg.TreeSha,
 		arg.Sum,
-		arg.ArchiveSize,
 		arg.CommitTime,
 		arg.CreatedAt,
 	)
@@ -747,7 +753,7 @@ func (q *Queries) PackagePublicationCommit(ctx context.Context, arg PackagePubli
 
 const packageVersion = `-- name: PackageVersion :one
 SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
-       mv.sum, mv.archive_size, mv.commit_time, mv.created_at
+       mv.sum, mv.commit_time, mv.created_at
 FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=$1 AND mv.version=$2
@@ -769,7 +775,6 @@ func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) 
 		&i.CommitSha,
 		&i.TreeSha,
 		&i.Sum,
-		&i.ArchiveSize,
 		&i.CommitTime,
 		&i.CreatedAt,
 	)
@@ -1497,7 +1502,7 @@ INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_con
 VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind=excluded.result_kind,text_content=excluded.text_content,
-prompt_version=excluded.prompt_version,updated_at=excluded.updated_at
+prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,updated_at=excluded.updated_at
 `
 
 type UpsertLocalizationParams struct {
@@ -1518,6 +1523,37 @@ func (q *Queries) UpsertLocalization(ctx context.Context, arg UpsertLocalization
 		arg.ResultKind,
 		arg.TextContent,
 		arg.PromptVersion,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const upsertLocalizationFailure = `-- name: UpsertLocalizationFailure :exec
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,updated_at)
+VALUES ($1,$2,$3,'failed',$4,$5,$6,$7)
+ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
+result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
+error_kind=excluded.error_kind,error_message=excluded.error_message,updated_at=excluded.updated_at
+`
+
+type UpsertLocalizationFailureParams struct {
+	ResourceKind  string      `json:"resource_kind"`
+	SourceDigest  string      `json:"source_digest"`
+	Lang          string      `json:"lang"`
+	PromptVersion string      `json:"prompt_version"`
+	ErrorKind     pgtype.Text `json:"error_kind"`
+	ErrorMessage  pgtype.Text `json:"error_message"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error {
+	_, err := q.db.Exec(ctx, upsertLocalizationFailure,
+		arg.ResourceKind,
+		arg.SourceDigest,
+		arg.Lang,
+		arg.PromptVersion,
+		arg.ErrorKind,
+		arg.ErrorMessage,
 		arg.UpdatedAt,
 	)
 	return err

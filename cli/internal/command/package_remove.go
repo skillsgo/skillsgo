@@ -154,7 +154,7 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			}
 		}
 		transaction, err := packagestore.Prepare(packagestore.Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: members, SkillNames: packageSkillNames(resource.Members), Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
+			Entries: archive, Sum: locked.Sum, Members: members, SkillNames: packageSkillNames(resource.Members), Projections: projections, RemovedProjections: removedProjections, RemovePackage: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err

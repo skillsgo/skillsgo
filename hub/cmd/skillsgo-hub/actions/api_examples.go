@@ -59,15 +59,15 @@ var exampleBatchRequest = map[string]any{
 
 var exampleBatchResponse = map[string]any{"skills": []any{exampleSkill}}
 
-var examplePackageUpdateRequest = protocolapi.PackageUpdateCheckRequest{
-	SchemaVersion: 1,
+var exampleCurrentPackagesRequest = protocolapi.CurrentPackagesRequest{
+	SchemaVersion: protocolapi.PackageInfoSchemaVersion,
 	Packages:      []protocolapi.PackageCoordinate{{PackagePath: examplePackagePath}},
 }
 
-var examplePackageUpdateResponse = protocolapi.PackageUpdateCheckResponse{
-	Packages: []protocolapi.PackageUpdateCheckItem{{
-		PackagePath: examplePackagePath, LatestVersion: exampleVersion, Sum: examplePackageSum,
-		Skills: []protocolapi.PackageSkill{{Name: "grill-me", Path: "skills/productivity/grill-me"}}, Status: protocolapi.UpdateAvailable,
+var exampleCurrentPackagesResponse = protocolapi.CurrentPackagesResponse{
+	Packages: []protocolapi.CurrentPackage{{
+		PackagePath: examplePackagePath, Version: exampleVersion, Sum: examplePackageSum,
+		Skills: []protocolapi.PackageSkill{{Name: "grill-me", Path: "skills/productivity/grill-me"}}, Status: protocolapi.PackagePublished,
 	}},
 }
 
@@ -76,13 +76,13 @@ var examplePackageVersions = protocolapi.PackageVersionsResponse{
 }
 
 var examplePackageInfo = map[string]any{
-	"schemaVersion": 1,
-	"kind":          "Package",
-	"packagePath":   examplePackagePath,
-	"version":       exampleVersion,
-	"time":          "2026-07-08T21:20:40+08:00",
-	"sum":           examplePackageSum,
-	"archiveSize":   207631,
+	"schemaVersion":      1,
+	"kind":               "Package",
+	"packagePath":        examplePackagePath,
+	"version":            exampleVersion,
+	"time":               "2026-07-08T21:20:40+08:00",
+	"sum":                examplePackageSum,
+	"artifactRepository": "https://artifacts.skillsgo.dev/git/github.com/mattpocock/skills.git",
 	"skills": []any{
 		moduleSkill("design-an-interface", "skills/deprecated/design-an-interface"),
 		moduleSkill("qa", "skills/deprecated/qa"),
@@ -131,7 +131,6 @@ var examplePackageVersionSkill = map[string]any{
 	"packagePath": examplePackagePath,
 	"version":     exampleVersion,
 	"time":        "2026-07-08T13:20:40Z",
-	"archiveSize": 207631,
 	"name":        "grill-me",
 	"path":        "skills/productivity/grill-me",
 	"description": "A relentless interview to sharpen a plan or design.",

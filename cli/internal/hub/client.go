@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, bounded Package ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, canonical downloads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed batch Package update reads, and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, static Git Artifact repositories, and optional progress reporting.
+ * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, dumb-HTTP Git Artifact reads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed current Package Publication reads, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,7 +34,7 @@ type PackageResource struct {
 	Info      PackageInfo
 	InfoBytes []byte
 	Members   []VersionSkill
-	ZIP       []byte
+	Entries   []protocolartifact.Entry
 }
 
 // SelectVersionSkill restores a persisted exact source path when present,
@@ -74,8 +74,8 @@ type skillsResponse struct {
 
 type SkillCoordinate = protocolapi.SkillCoordinate
 
-type PackageUpdateItem = protocolapi.PackageUpdateCheckItem
-type packageUpdateResponse = protocolapi.PackageUpdateCheckResponse
+type CurrentPackage = protocolapi.CurrentPackage
+type currentPackagesResponse = protocolapi.CurrentPackagesResponse
 
 type Client struct {
 	baseURL string
@@ -117,7 +117,7 @@ func (c *Client) Package(ctx context.Context, packagePath, query string) (*Packa
 	if err != nil {
 		return nil, err
 	}
-	infoBytes, err := c.get(ctx, c.versionEndpoint(packagePath, parsedQuery.Value, false))
+	infoBytes, err := c.get(ctx, c.versionEndpoint(packagePath, parsedQuery.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -136,17 +136,26 @@ func (c *Client) FetchPackageWithProgress(ctx context.Context, packagePath, quer
 	if err != nil {
 		return nil, err
 	}
-	archive, err := c.getWithProgress(ctx, c.versionEndpoint(packagePath, resource.Info.Version, true), progress)
+	if progress != nil {
+		progress(0, -1)
+	}
+	if resource.Info.ArtifactRepository == "" {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Package Info without an Artifact Repository")}
+	}
+	repositoryURL := resource.Info.ArtifactRepository
+	if parsed, parseErr := url.Parse(repositoryURL); parseErr == nil && !parsed.IsAbs() {
+		base, _ := url.Parse(c.baseURL + "/")
+		repositoryURL = base.ResolveReference(parsed).String()
+	}
+	entries, err := fetchArtifactEntries(ctx, c.http, repositoryURL, resource.Info.Version, progress)
 	if err != nil {
 		return nil, err
 	}
-	if resource.Info.ArchiveSize != int64(len(archive)) {
-		return nil, fmt.Errorf("Hub returned an unexpected Package Archive Size for %s@%s", packagePath, resource.Info.Version)
+	actual, err := protocolartifact.PackageEntriesSum(entries, packagePath, resource.Info.Version)
+	if err != nil || actual != resource.Info.Sum {
+		return nil, fmt.Errorf("Hub returned a Package Sum mismatch for %s@%s", packagePath, resource.Info.Version)
 	}
-	if err := VerifyPackageSum(archive, packagePath, resource.Info.Version, resource.Info.Sum); err != nil {
-		return nil, err
-	}
-	resource.ZIP = archive
+	resource.Entries = entries
 	return resource, nil
 }
 
@@ -158,12 +167,12 @@ func ParsePackageInfo(packagePath string, infoBytes []byte) (*PackageResource, e
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
 		return nil, &ProtocolError{Err: fmt.Errorf("decode Package Info: %w", err)}
 	}
-	if info.SchemaVersion != 1 {
+	if info.SchemaVersion != protocolapi.PackageInfoSchemaVersion {
 		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Package Info schema %d for %s", info.SchemaVersion, packagePath), Incompatible: true}
 	}
 	if info.Kind != protocolapi.KindPackage || info.PackagePath != packagePath ||
 		info.Version == "" || info.Time.IsZero() ||
-		!protocolartifact.ValidSum(info.Sum) || info.ArchiveSize <= 0 || len(info.Skills) == 0 {
+		!protocolartifact.ValidSum(info.Sum) || len(info.Skills) == 0 {
 		return nil, fmt.Errorf("Hub returned incomplete Package Info for %s", packagePath)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
@@ -188,11 +197,11 @@ func (c *Client) PackageVersionSkill(ctx context.Context, packagePath, version, 
 	if strings.TrimSpace(lang) != "" {
 		query.Set("lang", strings.TrimSpace(lang))
 	}
-	endpoint := c.versionEndpoint(packagePath, version, false) + "/skills?" + query.Encode()
+	endpoint := c.versionEndpoint(packagePath, version) + "/skills?" + query.Encode()
 	if err := c.getJSON(ctx, endpoint, &result); err != nil {
 		return result, err
 	}
-	if result.PackagePath != packagePath || !protocolversion.IsImmutable(result.Version) || result.Name == "" || result.Path != skillPath || result.Time.IsZero() || result.ArchiveSize <= 0 {
+	if result.PackagePath != packagePath || !protocolversion.IsImmutable(result.Version) || result.Name == "" || result.Path != skillPath || result.Time.IsZero() {
 		return result, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Package Version Skill for %s@%s:%s", packagePath, version, skillPath)}
 	}
 	return result, nil
@@ -334,16 +343,16 @@ func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
 	return document, nil
 }
 
-func (c *Client) PackageUpdates(ctx context.Context, packagePaths []string) ([]PackageUpdateItem, error) {
+func (c *Client) CurrentPackages(ctx context.Context, packagePaths []string) ([]CurrentPackage, error) {
 	coordinates := make([]protocolapi.PackageCoordinate, 0, len(packagePaths))
 	for _, packagePath := range packagePaths {
 		coordinates = append(coordinates, protocolapi.PackageCoordinate{PackagePath: packagePath})
 	}
-	requestBody, err := json.Marshal(protocolapi.PackageUpdateCheckRequest{SchemaVersion: protocolapi.SchemaVersion, Packages: coordinates})
+	requestBody, err := json.Marshal(protocolapi.CurrentPackagesRequest{SchemaVersion: protocolapi.SchemaVersion, Packages: coordinates})
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/packages/check-update", bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/packages/current", bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
@@ -360,22 +369,22 @@ func (c *Client) PackageUpdates(ctx context.Context, packagePaths []string) ([]P
 	if response.StatusCode != http.StatusOK {
 		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
 	}
-	var decoded packageUpdateResponse
+	var decoded currentPackagesResponse
 	if json.Unmarshal(body, &decoded) != nil || len(decoded.Packages) != len(packagePaths) {
-		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Package update response")}
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid current Packages response")}
 	}
 	for index, item := range decoded.Packages {
-		if item.PackagePath != packagePaths[index] || (item.Status != protocolapi.UpdateAvailable && item.Status != protocolapi.UpdateUnsupported) {
-			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Package update item")}
+		if item.PackagePath != packagePaths[index] || (item.Status != protocolapi.PackagePublished && item.Status != protocolapi.PackageUnavailable) {
+			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid current Package")}
 		}
-		if item.Status == protocolapi.UpdateUnsupported {
-			if item.LatestVersion != "" || item.Sum != "" || len(item.Skills) != 0 {
-				return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an inconsistent unsupported Package update item")}
+		if item.Status == protocolapi.PackageUnavailable {
+			if item.Version != "" || item.Sum != "" || len(item.Skills) != 0 {
+				return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an inconsistent unavailable Package")}
 			}
 			continue
 		}
-		if !protocolversion.IsImmutable(item.LatestVersion) || !protocolartifact.ValidSum(item.Sum) || len(item.Skills) == 0 {
-			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an incomplete Package update item")}
+		if !protocolversion.IsImmutable(item.Version) || !protocolartifact.ValidSum(item.Sum) || len(item.Skills) == 0 {
+			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an incomplete current Package")}
 		}
 		seenPaths := map[string]bool{}
 		for _, member := range item.Skills {
@@ -389,7 +398,7 @@ func (c *Client) PackageUpdates(ctx context.Context, packagePaths []string) ([]P
 	return decoded.Packages, nil
 }
 
-func (c *Client) versionEndpoint(packagePath, revision string, archive bool) string {
+func (c *Client) versionEndpoint(packagePath, revision string) string {
 	escapedID, err := modmodule.EscapePath(strings.Trim(packagePath, "/"))
 	if err != nil {
 		// Canonical IDs have already crossed the source parser boundary. Keep
@@ -402,11 +411,7 @@ func (c *Client) versionEndpoint(packagePath, revision string, archive bool) str
 	} else {
 		revision = url.PathEscape(revision)
 	}
-	suffix := ""
-	if archive {
-		suffix = ".zip"
-	}
-	return c.baseURL + "/api/v1/" + escapedID + "/versions/" + revision + suffix
+	return c.baseURL + "/api/v1/" + escapedID + "/versions/" + revision
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {

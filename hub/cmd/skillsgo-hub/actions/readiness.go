@@ -13,7 +13,7 @@ import (
 
 func getReadinessHandler(s storage.Backend) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		if _, err := s.List(c.Context(), "github.com/skillsgo/skillsgo/hub"); err != nil {
+		if err := s.Ready(c.Context()); err != nil {
 			c.Type("json", "utf-8")
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
