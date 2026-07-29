@@ -9,7 +9,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Module: `github.com/skillsgo/skillsgo/cli`
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
-- Command seam: `command.Execute`
+- Command seams: `command.Execute` for ordinary process calls and `command.ExecuteWithInput` for CLI Server requests with explicit stdin
 - Product responsibility: own derived Scope Package Tree and Agent Projection mutations, canonical Workspace declarations and locks, disposable read-through Package metadata/Git caches, and installation-state inspection.
 
 ## Commands

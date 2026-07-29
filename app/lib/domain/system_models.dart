@@ -236,7 +236,7 @@ class ProcessOutput {
   final String stderr;
 }
 
-abstract interface class ProcessRunner {
+abstract interface class ProcessRunner implements CliServerRunner {
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {

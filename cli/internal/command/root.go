@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, project, Package installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, Managed Workspace registration, conflict-safe Workspace/Global install ensure, Package preview/update/remove, grouped Hub reads, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and stdin-capable ExecuteWithInput, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, Managed Workspace registration, conflict-safe Workspace/Global install ensure, Package preview/update/remove, grouped Hub reads, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

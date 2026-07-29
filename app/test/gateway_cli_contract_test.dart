@@ -348,4 +348,39 @@ void main() {
 
     expect(runner.starts, 2);
   });
+
+  test('concurrent cold commands share detection and Server startup', () async {
+    final runner = FakeCliServerRunner()
+      ..responses.add(
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '0.1.0',
+            'appProtocolVersion': 17,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        ),
+      );
+    final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
+    runner.serverResponses.addAll([
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+    ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    await Future.wait([gateway.inspectAgents(), gateway.inspectAgents()]);
+
+    expect(runner.calls, hasLength(1));
+    expect(runner.starts, 1);
+    expect(runner.sessions.single.calls, hasLength(2));
+  });
 }
