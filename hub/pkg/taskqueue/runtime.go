@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, process-local timers, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, burst-mode durable PostgreSQL scheduling, and transactional enqueue.
+ * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, deterministic synchronous execution, lifecycle-owned asynchronous dispatch, burst-mode durable PostgreSQL scheduling, and transactional enqueue.
  * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs without resident idle polling.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,6 +79,7 @@ type Runtime struct {
 	idleTimeout   time.Duration
 	riverMu       sync.Mutex
 	riverRunning  bool
+	asyncActive   map[string]struct{}
 	wg            sync.WaitGroup
 }
 
@@ -131,7 +132,7 @@ func (w *typedWorker[T]) finalize(ctx context.Context, args T, cause error) {
 
 // NewSynchronous creates the deterministic local/test substitute.
 func NewSynchronous() *Runtime {
-	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: river.NewWorkers(), wake: make(chan struct{}, 1), idleTimeout: defaultIdleTimeout}
+	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: river.NewWorkers(), wake: make(chan struct{}, 1), idleTimeout: defaultIdleTimeout, asyncActive: make(map[string]struct{})}
 }
 
 // NewRiver migrates River's schema and creates a runtime sharing Catalog's
@@ -180,7 +181,7 @@ func NewRiver(ctx context.Context, pool *pgxpool.Pool, maxWorkers int, options .
 	if idleTimeout <= 0 {
 		idleTimeout = defaultIdleTimeout
 	}
-	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: workers, river: client, wake: make(chan struct{}, 1), idleTimeout: idleTimeout}, nil
+	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: workers, river: client, wake: make(chan struct{}, 1), idleTimeout: idleTimeout, asyncActive: make(map[string]struct{})}, nil
 }
 
 // Register installs one typed worker during service assembly.
@@ -355,6 +356,51 @@ func (r *Runtime) Enqueue(ctx context.Context, args river.JobArgs, opts InsertOp
 		r.Wake()
 	}
 	return err
+}
+
+// EnqueueAsync durably inserts River work like Enqueue. In the synchronous
+// substitute it transfers execution to a lifecycle-owned goroutine so callers
+// that model asynchronous domain boundaries never execute provider work inline.
+func (r *Runtime) EnqueueAsync(ctx context.Context, args river.JobArgs, opts InsertOptions) error {
+	if err := r.validate(args); err != nil {
+		return err
+	}
+	if r.river != nil {
+		return r.Enqueue(ctx, args, opts)
+	}
+	uniqueKey := ""
+	if opts.Unique {
+		payload, err := json.Marshal(args)
+		if err != nil {
+			return fmt.Errorf("encode unique asynchronous job %q: %w", args.Kind(), err)
+		}
+		uniqueKey = args.Kind() + ":" + string(payload)
+	}
+	r.mu.Lock()
+	if !r.started {
+		r.mu.Unlock()
+		return fmt.Errorf("task runtime must be started before asynchronous enqueue")
+	}
+	if uniqueKey != "" {
+		if _, active := r.asyncActive[uniqueKey]; active {
+			r.mu.Unlock()
+			return nil
+		}
+		r.asyncActive[uniqueKey] = struct{}{}
+	}
+	handler := r.handlers[args.Kind()]
+	r.wg.Add(1)
+	r.mu.Unlock()
+	go func() {
+		defer func() {
+			r.mu.Lock()
+			delete(r.asyncActive, uniqueKey)
+			r.mu.Unlock()
+			r.wg.Done()
+		}()
+		_ = handler(context.WithoutCancel(ctx), args)
+	}()
+	return nil
 }
 
 // EnqueueTx atomically submits a typed River job with PostgreSQL domain changes.

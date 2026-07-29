@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,15 +10,49 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/catalogsqlc"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+type catalogQueryCounter struct{ count atomic.Int64 }
+
+func (c *catalogQueryCounter) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	c.count.Add(1)
+	return ctx
+}
+
+func (*catalogQueryCounter) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func openCountingTestCatalog(t *testing.T) (*Catalog, *catalogQueryCounter) {
+	t.Helper()
+	ctx := t.Context()
+	container, err := postgres.Run(ctx, "postgres:18-alpine", postgres.WithDatabase("skillsgo"), postgres.WithUsername("skillsgo"), postgres.WithPassword("skillsgo"), postgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+	cfg := config.DatabaseConfig{DSN: dsn, Schema: config.DefaultDatabaseSchema, MaxOpenConns: 5}
+	poolConfig, err := newPoolConfig(cfg)
+	require.NoError(t, err)
+	counter := &catalogQueryCounter{}
+	poolConfig.ConnConfig.Tracer = counter
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	require.NoError(t, err)
+	c := &Catalog{pool: pool, queries: catalogsqlc.New(pool)}
+	require.NoError(t, c.Migrate(ctx))
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	counter.count.Store(0)
+	return c, counter
+}
 
 func openTestCatalog(t *testing.T) *Catalog {
 	t.Helper()
@@ -151,7 +185,7 @@ func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, exact, 1)
 	require.Equal(t, "ask-matt", exact[0].Name)
-	localized, err := c.FindLocalized(ctx, "ask-matt", "zh-CN", false, 10, 0)
+	localized, err := c.SearchSkillCards(ctx, "ask-matt", "zh-CN", false, 10, 0)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(localized), 2)
 	require.Equal(t, "ask-matt", localized[0].Name)
@@ -190,7 +224,7 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 		if locale == "" {
 			results, err = c.Find(ctx, query, exactName, 20, 0)
 		} else {
-			results, err = c.FindLocalized(ctx, query, locale, exactName, 20, 0)
+			results, err = c.SearchSkillCards(ctx, query, locale, exactName, 20, 0)
 		}
 		require.NoError(t, err)
 		coordinates := make([]string, 0, len(results))
@@ -314,6 +348,95 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	require.Equal(t, "github.com/acme/two", results[1].Skills[0].PackagePath)
 	require.Equal(t, "missing", results[2].ID)
 	require.Empty(t, results[2].Skills)
+}
+
+func TestPostgresCatalogPackagesDueForSourceMetadataRefreshUsesStableIDCursorAndRetryWindows(t *testing.T) {
+	c := openTestCatalog(t)
+	ctx := t.Context()
+	now := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
+	paths := []string{
+		"github.com/acme/due-a",
+		"github.com/acme/fresh",
+		"github.com/acme/retry-blocked",
+		"github.com/acme/due-b",
+	}
+	for index, path := range paths {
+		require.NoError(t, upsertTestSkill(t, c, &Skill{
+			PackagePath: path, Path: "demo", Name: fmt.Sprintf("demo-%d", index), LatestVersion: "v1.0.0",
+		}))
+	}
+	freshCheckedAt := now.Add(-time.Hour)
+	require.NoError(t, c.UpdatePackageSourceMetadata(ctx, paths[1], "", 0, "", &freshCheckedAt, nil))
+	blockedUntil := now.Add(time.Hour)
+	require.NoError(t, c.UpdatePackageSourceMetadata(ctx, paths[2], "", 0, "", nil, &blockedUntil))
+
+	first, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"github.com"}, now.Add(-18*time.Hour), now, 0, 1)
+	require.NoError(t, err)
+	require.Len(t, first, 1)
+	require.Equal(t, paths[0], first[0].Path)
+	second, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"github.com"}, now.Add(-18*time.Hour), now, first[0].ID, 10)
+	require.NoError(t, err)
+	require.Equal(t, []DuePackage{{ID: second[0].ID, Path: paths[3]}}, second)
+
+	_, err = c.pool.Exec(ctx, `
+INSERT INTO packages(source_host,source_path,path,created_at,updated_at)
+SELECT 'gitlab.com','acme/bulk-' || value,'gitlab.com/acme/bulk-' || value,$1,$1
+FROM generate_series(1,501) AS value`, now)
+	require.NoError(t, err)
+	_, err = c.pool.Exec(ctx, `
+INSERT INTO versions(package_id,version,ref,commit_sha,tree_sha,sum,commit_time,created_at)
+SELECT id,'v1.0.0','refs/tags/v1.0.0','bulk-commit-' || id,'bulk-tree-' || id,
+       'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',$1,$1
+FROM packages WHERE source_host='gitlab.com'`, now)
+	require.NoError(t, err)
+	_, err = c.pool.Exec(ctx, `
+UPDATE packages AS package SET current_version_id=version.id
+FROM versions AS version
+WHERE version.package_id=package.id AND package.source_host='gitlab.com'`)
+	require.NoError(t, err)
+	bulkFirst, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"gitlab.com"}, now.Add(-18*time.Hour), now, 0, 500)
+	require.NoError(t, err)
+	require.Len(t, bulkFirst, 500)
+	bulkSecond, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"gitlab.com"}, now.Add(-18*time.Hour), now, bulkFirst[len(bulkFirst)-1].ID, 500)
+	require.NoError(t, err)
+	require.Len(t, bulkSecond, 1)
+	require.Greater(t, bulkSecond[0].ID, bulkFirst[len(bulkFirst)-1].ID)
+}
+
+func TestPostgresCatalogSearchSkillCardsUsesOneQueryForEveryCardinalityLocaleAndPackageCount(t *testing.T) {
+	c, counter := openCountingTestCatalog(t)
+	onePackage := make([]Skill, 0, 100)
+	for index := range 100 {
+		onePackage = append(onePackage, Skill{
+			PackagePath: "github.com/acme/many-skills", Name: fmt.Sprintf("skill-%03d", index),
+			Path: fmt.Sprintf("skills/skill-%03d", index), Description: "source description",
+		})
+	}
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/acme/many-skills", PackageVersion{
+		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "many-skills", TreeSHA: "many-skills-tree",
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
+	}, onePackage, CurrentPublication))
+	for index := range 20 {
+		require.NoError(t, upsertTestSkill(t, c, &Skill{
+			PackagePath: fmt.Sprintf("github.com/acme/package-%02d", index), Name: fmt.Sprintf("common-package-skill-%02d", index),
+			Path: "skills/common", Description: "source description", LatestVersion: "v1.0.0",
+		}))
+	}
+
+	assertOneQuery := func(query, locale string, limit, expected int) {
+		t.Helper()
+		counter.count.Store(0)
+		rows, err := c.SearchSkillCards(t.Context(), query, locale, false, limit, 0)
+		require.NoError(t, err)
+		require.Len(t, rows, expected)
+		require.Equal(t, int64(1), counter.count.Load())
+	}
+	assertOneQuery("not-present", "", 100, 0)
+	assertOneQuery("skill-", "", 1, 1)
+	assertOneQuery("skill-", "", 20, 20)
+	assertOneQuery("skill-", "", 100, 100)
+	assertOneQuery("skill-", "zh-CN", 100, 100)
+	assertOneQuery("common-package-skill", "zh-CN", 20, 20)
 }
 
 func TestPostgresCatalogRejectsNilTransactionCallback(t *testing.T) {

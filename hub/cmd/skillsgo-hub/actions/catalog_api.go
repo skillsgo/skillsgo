@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, canonical presentation languages, freshness-cached Package artifact and metadata resolution, and request validation.
- * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup with source descriptions by default plus optional localization, stable-first exact-path versions and Package avatar metadata, language-aware ordered batch Skill-card hydration with opportunistic Package metadata refresh, Catalog-backed current Package Publication reads, and correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog's set-based localized read models, canonical presentation languages, freshness-cached Package artifact resolution, and request validation.
+ * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup, stable-first exact-path versions and Package avatar metadata, constant-query ordered batch Skill-card hydration, Catalog-backed current Package Publication reads, and correlated private diagnostics.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -68,15 +68,10 @@ func registerCatalogAPIRoutes(
 	r fiber.Router,
 	metadata *catalog.Catalog,
 	artifacts artifactReader,
-	repositoryReaders ...repositoryMetadataReader,
 ) {
-	var repositories repositoryMetadataReader
-	if len(repositoryReaders) > 0 {
-		repositories = repositoryReaders[0]
-	}
-	r.Get("/api/v1/skills/find", findSkillsHandler(metadata, repositories))
+	r.Get("/api/v1/skills/find", findSkillsHandler(metadata))
 	r.Post("/api/v1/skills/find-candidates", findSkillsBatchHandler(metadata))
-	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata, repositories))
+	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
 	r.Post("/api/v1/packages/current", currentPackagesHandler(metadata))
 }
 
@@ -115,8 +110,8 @@ func currentPackagesHandler(metadata *catalog.Catalog) fiber.Handler {
 	}
 }
 
-func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadataReader) fiber.Handler {
-	projection := skillCardProjection{catalog: metadata, repositories: repositories}
+func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
+	projection := skillCardProjection{}
 	return func(c fiber.Ctx) error {
 		lang := ""
 		if rawLang := strings.TrimSpace(c.Query("lang")); rawLang != "" {
@@ -140,20 +135,17 @@ func skillBatchHandler(metadata *catalog.Catalog, repositories repositoryMetadat
 			}
 			seen[key] = true
 		}
-		cards, err := projection.HydratePaths(c.Context(), request.Skills)
+		items, err := metadata.SkillCardsByPathCoordinates(c.Context(), request.Skills, lang)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
 		}
-		projection.LocalizePaths(c.Context(), lang, cards)
+		cards := projection.Stored(items)
 		return writeJSON(c, fiber.StatusOK, skillBatchResponse{Skills: cards})
 	}
 }
 
-func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMetadataReader) fiber.Handler {
-	projection := skillCardProjection{catalog: metadata}
-	if len(repositories) > 0 {
-		projection.repositories = repositories[0]
-	}
+func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
+	projection := skillCardProjection{}
 	return func(c fiber.Ctx) error {
 		page, perPage, ok := apiPagination(c)
 		if !ok {
@@ -181,7 +173,7 @@ func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMeta
 			if !found {
 				return writeAPIError(c, fiber.StatusNotFound, "Package Version not found")
 			}
-			members, err := metadata.VersionSkills(c.Context(), packagePath, version)
+			members, err := metadata.VersionSkillCards(c.Context(), packagePath, version, lang)
 			if err != nil {
 				return writeInternalAPIError(c, "catalog.find_package_version", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 			}
@@ -190,7 +182,6 @@ func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMeta
 				cards = append(cards, discoverySkill{PackagePath: packagePath, Name: member.Name, Description: member.Description,
 					ImageURL: skillImageURL(stored.SourceHost, stored.SourcePath), Path: member.Path, LatestVersion: version})
 			}
-			projection.LocalizePaths(c.Context(), lang, cards)
 			start := page * perPage
 			if start >= len(cards) {
 				cards = cards[:0]
@@ -215,11 +206,11 @@ func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMeta
 		}
 		if packagePath != "" {
 			if packagePath == query {
-				ranked, err := metadata.FindLocalized(c.Context(), packagePath, lang, false, perPage+1, page*perPage)
+				ranked, err := metadata.SearchSkillCards(c.Context(), packagePath, lang, false, perPage+1, page*perPage)
 				if err != nil {
 					return writeInternalAPIError(c, "catalog.find_package", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 				}
-				response := discoveryResponse(c.Context(), projection, lang, ranked, page, perPage)
+				response := discoveryResponse(projection, ranked, page, perPage)
 				stored, err := metadata.Package(c.Context(), packagePath)
 				if err != nil {
 					return writeInternalAPIError(c, "catalog.find_package", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
@@ -235,22 +226,21 @@ func findSkillsHandler(metadata *catalog.Catalog, repositories ...repositoryMeta
 			if !coordinate.Valid() {
 				return writeAPIError(c, fiber.StatusBadRequest, "packagePath and q must form a canonical Skill coordinate")
 			}
-			cards, err := projection.Hydrate(c.Context(), []protocolapi.SkillCoordinate{coordinate})
+			items, err := metadata.SkillCardsByCoordinates(c.Context(), []protocolapi.SkillCoordinate{coordinate}, lang)
 			if err != nil {
 				return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 			}
+			cards := projection.Stored(items)
 			if page > 0 {
 				cards = cards[:0]
-			} else {
-				projection.Localize(c.Context(), presentationLang(c), cards)
 			}
 			return writeJSON(c, fiber.StatusOK, skillsResponse{Skills: cards, Pagination: pagination(page, perPage, false)})
 		}
-		skills, err := metadata.FindLocalized(c.Context(), query, lang, exactName, perPage+1, page*perPage)
+		skills, err := metadata.SearchSkillCards(c.Context(), query, lang, exactName, perPage+1, page*perPage)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), projection, lang, skills, page, perPage))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(projection, skills, page, perPage))
 	}
 }
 
@@ -316,12 +306,12 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 	}
 }
 
-func discoveryResponse(ctx context.Context, projection skillCardProjection, locale string, ranked []catalog.SearchSkill, page, perPage int) skillsResponse {
+func discoveryResponse(projection skillCardProjection, ranked []catalog.SearchSkill, page, perPage int) skillsResponse {
 	hasMore := len(ranked) > perPage
 	if hasMore {
 		ranked = ranked[:perPage]
 	}
-	skills := projection.Search(ctx, locale, ranked)
+	skills := projection.Search(ranked)
 	return skillsResponse{
 		Skills:     skills,
 		Pagination: pagination(page, perPage, hasMore),
@@ -353,18 +343,6 @@ func localizedPackageDescription(ctx context.Context, metadata *catalog.Catalog,
 		return localized
 	}
 	return sourceDescription
-}
-
-func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.SearchSkill) {
-	if locale == "" {
-		return
-	}
-	for index := range skills {
-		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].PackagePath+":"+skills[index].Name, locale)
-		if err == nil && ok {
-			skills[index].Description = localized
-		}
-	}
 }
 
 func skillImageURL(sourceHost, repository string) *string {

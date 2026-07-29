@@ -1,102 +1,32 @@
 /*
- * [INPUT]: Depends on canonical Skill coordinates, Catalog rows, presentation locale, optional localized descriptions, and optional stale-while-revalidate Repository metadata reads.
- * [OUTPUT]: Provides ordered batch hydration and Find projection into stable public Skill cards while opportunistically scheduling stale Repository metadata refresh.
- * [POS]: Serves as the deep read projection module between Catalog persistence and thin HTTP discovery handlers.
+ * [INPUT]: Depends only on final Catalog Skill rows whose presentation description has already been selected by the set-based read query.
+ * [OUTPUT]: Provides side-effect-free ordered mapping from Catalog rows into stable public Skill cards.
+ * [POS]: Serves as the pure presentation projection boundary between Catalog read models and thin HTTP discovery handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
-	"context"
-
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
-type skillCardProjection struct {
-	catalog      *catalog.Catalog
-	repositories repositoryMetadataReader
-}
+type skillCardProjection struct{}
 
-func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]protocolapi.FindSkill, error) {
-	items, err := projection.catalog.SkillsByCoordinates(ctx, coordinates)
-	if err != nil {
-		return nil, err
-	}
-	projection.refreshRepositoryMetadata(ctx, items)
+func (skillCardProjection) Stored(items []catalog.Skill) []protocolapi.FindSkill {
 	cards := make([]protocolapi.FindSkill, 0, len(items))
 	for _, item := range items {
 		cards = append(cards, storedSkillCard(item))
 	}
-	return cards, nil
+	return cards
 }
 
-func (projection skillCardProjection) HydratePaths(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]protocolapi.FindSkill, error) {
-	items, err := projection.catalog.SkillsByPathCoordinates(ctx, coordinates)
-	if err != nil {
-		return nil, err
-	}
-	projection.refreshRepositoryMetadata(ctx, items)
-	cards := make([]protocolapi.FindSkill, 0, len(items))
-	for _, item := range items {
-		cards = append(cards, storedSkillCard(item))
-	}
-	return cards, nil
-}
-
-func (projection skillCardProjection) Search(ctx context.Context, locale string, ranked []catalog.SearchSkill) []discoverySkill {
-	items := make([]catalog.Skill, 0, len(ranked))
-	for _, item := range ranked {
-		items = append(items, item.Skill)
-	}
-	projection.refreshRepositoryMetadata(ctx, items)
-	localizeSearchSkills(ctx, projection.catalog, locale, ranked)
+func (skillCardProjection) Search(ranked []catalog.SearchSkill) []discoverySkill {
 	cards := make([]discoverySkill, 0, len(ranked))
 	for _, item := range ranked {
 		cards = append(cards, searchedSkillCard(item))
 	}
 	return cards
-}
-
-func (projection skillCardProjection) refreshRepositoryMetadata(ctx context.Context, items []catalog.Skill) {
-	if projection.repositories == nil {
-		return
-	}
-	seen := make(map[string]struct{}, len(items))
-	for _, item := range items {
-		key := item.SourceHost + "/" + item.SourceRepository
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		_, _ = projection.repositories.Read(ctx, item.SourceHost, item.SourceRepository)
-	}
-}
-
-func (projection skillCardProjection) Localize(ctx context.Context, locale string, cards []discoverySkill) {
-	if locale == "" {
-		return
-	}
-	for index := range cards {
-		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].PackagePath+":"+cards[index].Name, locale)
-		if err == nil && ok {
-			cards[index].Description = description
-		}
-	}
-}
-
-func (projection skillCardProjection) LocalizePaths(ctx context.Context, locale string, cards []discoverySkill) {
-	if locale == "" {
-		return
-	}
-	for index := range cards {
-		localized, ok, err := projection.catalog.LocalizedVersionSkill(
-			ctx, cards[index].PackagePath, cards[index].LatestVersion, cards[index].Path, catalog.LocalizedSkill, locale,
-		)
-		if err == nil && ok && localized.ResultKind == catalog.LocalizationTranslated {
-			cards[index].Description = localized.Text
-		}
-	}
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {

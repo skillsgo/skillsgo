@@ -27,12 +27,14 @@ type Querier interface {
 	InsertSkill(ctx context.Context, arg InsertSkillParams) error
 	LatestBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error)
 	ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error)
+	LocalizedVersionSkillCards(ctx context.Context, arg LocalizedVersionSkillCardsParams) ([]LocalizedVersionSkillCardsRow, error)
 	PackageByPath(ctx context.Context, packagePath string) (Package, error)
 	PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error)
 	PackagePublicationCommit(ctx context.Context, arg PackagePublicationCommitParams) (string, error)
 	PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error)
 	PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error)
 	PackageVersionCount(ctx context.Context, arg PackageVersionCountParams) (int64, error)
+	PackagesDueForSourceMetadataRefresh(ctx context.Context, arg PackagesDueForSourceMetadataRefreshParams) ([]PackagesDueForSourceMetadataRefreshRow, error)
 	SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error)
 	SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error)
 	SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error
@@ -51,7 +53,7 @@ type Querier interface {
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, batch current-Package update projection, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)
