@@ -9,7 +9,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Module: `github.com/skillsgo/skillsgo/cli`
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
-- Command seam: `command.Execute`
+- Command seams: `command.Execute` for ordinary process calls and `command.ExecuteWithInput` for CLI Server requests with explicit stdin
 - Product responsibility: own derived Scope Package Tree and Agent Projection mutations, canonical Workspace declarations and locks, disposable read-through Package metadata/Git caches, and installation-state inspection.
 
 ## Commands
@@ -52,7 +52,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 - The CLI is the only product boundary that mutates local skill installations.
 - Hub interaction must use the public SkillsGo protocol rather than server internals.
-- The CLI may expose stable machine-readable output and availability exit codes for the App; human output and localized stderr are not integration contracts.
+- The CLI exposes stable machine-readable output and availability exit codes through both one-shot commands and the App's sequential CLI Server; human output and localized stderr are not integration contracts.
 - Do not place Flutter UI state, layout, navigation, or visual policy in this workspace.
 - Preserve artifact integrity and deterministic restoration without introducing a dependency lock graph.
 
