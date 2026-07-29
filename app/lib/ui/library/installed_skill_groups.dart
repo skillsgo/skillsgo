@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on unified InstalledSkill entries, Package identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
- * [OUTPUT]: Provides grouping data, deterministic Package grouping, one-scope Package update cards, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
+ * [OUTPUT]: Provides grouping data, deterministic Package grouping, one-scope Package update cards with CLI-owned removed-Skill names, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and bounded idle guidance.
  * [POS]: Serves as the Package grouping segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ class _PackageUpdateCardData {
   final String toVersion;
   final List<String> currentVersions;
   final int skillCount;
-  final List<String> removedSkills;
+  final List<RemovedSkillImpact> removedSkills;
 }
 
 extension _PackageUpdateCards on _LibraryScreenState {
@@ -114,7 +114,7 @@ class _PackageUpdateCard extends StatelessWidget {
                   if (package.removedSkills.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      '${context.l10n.removeSkillsDescription}: ${package.removedSkills.join(', ')}',
+                      '${context.l10n.removeSkillsDescription}: ${package.removedSkills.map((skill) => skill.name).join(', ')}',
                       style: TextStyle(color: scheme.error, fontSize: 12),
                     ),
                   ],
@@ -407,12 +407,8 @@ class _IdleMagicSelectionIconState extends State<_IdleMagicSelectionIcon>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller
-        ..stop()
-        ..value = 0;
-    } else if (!controller.isAnimating) {
-      controller.repeat();
+    if (!controller.isAnimating && !controller.isCompleted) {
+      controller.forward();
     }
   }
 

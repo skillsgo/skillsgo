@@ -140,7 +140,19 @@ mixin _RealSkillsGatewayUpdates
           _ => throw const FormatException(),
         };
         final projectRoot = raw['projectRoot'] as String? ?? '';
-        final removed = (raw['removedSkills'] as List).cast<String>();
+        final removed = (raw['removedSkills'] as List)
+            .map((entry) {
+              if (entry is! Map<String, dynamic> ||
+                  entry['name'] is! String ||
+                  entry['path'] is! String) {
+                throw const FormatException();
+              }
+              return RemovedSkillImpact(
+                name: entry['name'] as String,
+                path: entry['path'] as String,
+              );
+            })
+            .toList(growable: false);
         states[packageScopeUpdateKey(
           raw['packagePath'] as String,
           scope,

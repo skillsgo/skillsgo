@@ -138,6 +138,12 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
           ): UpdateAvailability(
             state: updateState,
             toVersion: 'v2',
+            removedSkills: const [
+              RemovedSkillImpact(
+                name: 'Retired Skill',
+                path: 'skills/retired/SKILL.md',
+              ),
+            ],
           ),
     };
   }
