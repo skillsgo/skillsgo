@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -220,7 +219,7 @@ func writeDumbHTTPIndexes(repositoryPath string, repository *git.Repository) err
 	sort.Strings(packMatches)
 	packLines := make([]string, 0, len(packMatches))
 	for _, packFile := range packMatches {
-		packLines = append(packLines, "P "+path.Base(packFile)+"\n")
+		packLines = append(packLines, "P "+filepath.Base(packFile)+"\n")
 	}
 	infoDir := filepath.Join(repositoryPath, "objects", "info")
 	if err := os.MkdirAll(infoDir, 0o755); err != nil {
