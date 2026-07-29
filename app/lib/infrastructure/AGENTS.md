@@ -17,11 +17,12 @@
 - `real_skills_gateway_updates.dart`: delegates exact Package updates to the CLI, validates response identity, and decodes one cross-Scope dry-run into Scope-by-Package preview state.
 - `real_skills_gateway_failures.dart`: owns versioned machine-failure and process-exit translation.
 - `project_icon_resolver.dart`: resolves and caches bounded, safe Added Project identity assets with deterministic fallback.
+- `mermaid_script_cache.dart`: asynchronously prefetches the immutable CDN-hosted Mermaid.js gzip payload at App startup, verifies its SHA-256 identity, atomically persists it in the platform cache directory, retries failed downloads on first use, and decompresses it only when rendering begins.
 - `logging/`: owns App-wide structured event correlation, centralized privacy redaction, JSONL rotation, seven-day retention, and bounded local diagnostics storage.
 
 ## Architectural Boundary
 
-This module adapts operating-system processes, preferences, directory pickers, direct Cloud-composed ranking reads, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud ranking reads use the independently persisted Cloud origin. No capability may call Hub HTTP directly or parse human-oriented CLI output.
+This module adapts operating-system processes, preferences, directory pickers, direct Cloud-composed ranking reads, immutable CDN renderer assets, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud ranking reads use the independently persisted Cloud origin. No capability may call Hub HTTP directly or parse human-oriented CLI output.
 
 `RealSkillsGateway` is the external seam. Its private capability mixins are internal implementation partitions and may share adapter state, but each owns one coherent change axis and remains below the workspace file-size limit.
 

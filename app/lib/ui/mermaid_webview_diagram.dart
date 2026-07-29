@@ -1,15 +1,17 @@
 /*
- * [INPUT]: Depends on the bundled Mermaid.js renderer page, one App-scoped webview_flutter controller, JSON/base64 messaging, and the active Material ColorScheme.
+ * [INPUT]: Depends on the bundled renderer page, the App-scoped asynchronous CDN MermaidScriptCache, rootBundle, one App-scoped webview_flutter controller, JSON/base64 messaging, and the active Material ColorScheme.
  * [OUTPUT]: Provides MermaidWebViewRendererScope and self-sizing MermaidWebViewDiagram widgets backed by one queued WebView-to-PNG renderer.
- * [POS]: Serves as the shared browser rendering service for every Markdown and Settings Mermaid block while keeping the native Dart renderer outside the active path.
+ * [POS]: Serves as the sole shared browser rendering service for every Markdown and Settings Mermaid block.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../infrastructure/mermaid_script_cache.dart';
 
 class MermaidWebViewRendererScope extends StatefulWidget {
   const MermaidWebViewRendererScope({super.key, required this.child});
@@ -48,14 +50,28 @@ class _MermaidWebViewRendererState extends State<MermaidWebViewRendererScope> {
   final _ready = Completer<void>();
   final _cache = <String, MermaidRenderResult>{};
   WebViewController? _controller;
+  Future<void>? _initializing;
   Completer<MermaidRenderResult>? _active;
   Future<void> _queue = Future.value();
 
   @override
   void initState() {
     super.initState();
-    if (WebViewPlatform.instance == null) return;
-    _controller = WebViewController()
+    if (WebViewPlatform.instance != null) {
+      unawaited(mermaidScriptCache.prefetch());
+    }
+  }
+
+  Future<void> _ensureRenderer() {
+    final initializing = _initializing;
+    if (initializing != null) return initializing;
+    final created = _initializeRenderer();
+    _initializing = created;
+    return created;
+  }
+
+  Future<void> _initializeRenderer() async {
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('MermaidHost', onMessageReceived: _handleMessage)
       ..setNavigationDelegate(
@@ -64,8 +80,27 @@ class _MermaidWebViewRendererState extends State<MermaidWebViewRendererScope> {
             if (!_ready.isCompleted) _ready.complete();
           },
         ),
-      )
-      ..loadFlutterAsset('assets/mermaid-js/renderer.html');
+      );
+    setState(() => _controller = controller);
+    await _loadRenderer(controller);
+  }
+
+  Future<void> _loadRenderer(WebViewController controller) async {
+    try {
+      final template = await rootBundle.loadString(
+        'assets/mermaid-js/renderer.html',
+      );
+      final script = await mermaidScriptCache.loadScript();
+      final html = template.replaceFirst('/*__MERMAID_SCRIPT__*/', script);
+      if (html == template) {
+        throw const FormatException(
+          'Mermaid renderer template is missing its script slot.',
+        );
+      }
+      await controller.loadHtmlString(html);
+    } catch (error, stackTrace) {
+      if (!_ready.isCompleted) _ready.completeError(error, stackTrace);
+    }
   }
 
   Future<MermaidRenderResult> render(String source, ColorScheme scheme) {
@@ -73,11 +108,12 @@ class _MermaidWebViewRendererState extends State<MermaidWebViewRendererScope> {
         '$source\u0000${scheme.brightness}\u0000${scheme.primary.toARGB32()}';
     final cached = _cache[key];
     if (cached != null) return Future.value(cached);
-    if (_controller == null) {
+    if (WebViewPlatform.instance == null) {
       return Future.error(UnsupportedError('当前平台没有可用的 Mermaid WebView 实现。'));
     }
     final result = Completer<MermaidRenderResult>();
     _queue = _queue.then((_) async {
+      await _ensureRenderer();
       await _ready.future;
       if (!mounted) throw StateError('Mermaid WebView renderer is disposed.');
       _active = result;

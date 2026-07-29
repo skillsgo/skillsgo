@@ -46,7 +46,7 @@ void main() {
     );
     expect(
       (background.image as AssetImage).assetName,
-      'assets/backgrounds/earth-starfield.png',
+      'assets/backgrounds/earth-starfield.webp',
     );
     for (
       var attempt = 0;
@@ -391,7 +391,7 @@ void main() {
     );
     expect(
       (background.image as AssetImage).assetName,
-      'assets/backgrounds/earth-starfield.png',
+      'assets/backgrounds/earth-starfield.webp',
     );
   });
 
