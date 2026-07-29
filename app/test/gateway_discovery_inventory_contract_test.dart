@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI Find reads, an independently configured HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
+ * [INPUT]: Uses controlled CLI Find reads, an injected portable HTTP client with an independently configured Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, platform-HTTP-independent Cloud ranking contracts, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -274,6 +275,7 @@ void main() {
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
       cloudBaseUrl: 'http://127.0.0.1:${cloud.port}',
+      cloudHttpClientFactory: http.Client.new,
     );
     await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
@@ -346,6 +348,7 @@ void main() {
           cloudBaseUrl: cloud == null
               ? 'https://cloud.skillsgo.ai'
               : 'http://127.0.0.1:${cloud.port}',
+          cloudHttpClientFactory: http.Client.new,
         );
 
         if (tc.wireCollection == null) {

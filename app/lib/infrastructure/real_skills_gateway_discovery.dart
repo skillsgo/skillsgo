@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, independently configured Cloud runtime, direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
+ * [INPUT]: Depends on the shared gateway state, independently configured Cloud runtime, platform-native macOS HTTP and portable IO HTTP for direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
+ * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -376,16 +376,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             'lang': lang,
           },
         );
-    final client = HttpClient();
+    final client = _cloudHttpClientFactory();
     try {
-      final request = await client
-          .getUrl(uri)
-          .timeout(const Duration(seconds: 10));
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      final response = await request.close().timeout(
-        const Duration(seconds: 10),
-      );
-      final body = await utf8.decoder.bind(response).join();
+      final response = await client
+          .get(uri, headers: {HttpHeaders.acceptHeader: 'application/json'})
+          .timeout(const Duration(seconds: 15));
+      final body = utf8.decode(response.bodyBytes);
       if (response.statusCode != HttpStatus.ok) {
         throw SkillsException(
           'Cloud ranking request failed with HTTP ${response.statusCode}.',
@@ -444,8 +440,13 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         'Cloud ranking service is unavailable.',
         kind: SkillsFailureKind.offline,
       );
+    } on http.ClientException {
+      throw const SkillsException(
+        'Cloud ranking service is unavailable.',
+        kind: SkillsFailureKind.offline,
+      );
     } finally {
-      client.close(force: true);
+      client.close();
     }
   }
 
