@@ -38,11 +38,11 @@ Scope selection is distinct from Package selection:
 
 `--global`, `--project`, and `--all` are mutually exclusive. An explicit `@<version>` continues to accept a Version Query, resolves it once to an immutable Package Version, and never permits a downgrade through `update`; callers use `add` for an intentional downgrade.
 
-### Managed Scope registry
+### User configuration projects
 
-`--all` means Global Scope plus every explicitly registered Workspace Scope. It never scans the filesystem or infers projects from recent directories. The CLI owns the Managed Scope registry, and the App delegates Added Project registration and removal to the CLI so terminal and App callers observe the same set.
+`--all` means Global Scope plus every explicitly registered Workspace Scope. It never scans the filesystem or infers projects from recent directories. The CLI owns the strict, versioned `~/.skillsgo/config.yaml` document, and its `projects` section is a sorted sequence of canonical absolute paths serving as the single source of explicitly managed Workspaces. It persists no separate project ID or display name. The App delegates Added Project registration and removal to the CLI so terminal and App callers observe the same set. The configuration document is the extensible home for future user-level SkillsGo settings rather than a project-specific registry file.
 
-The CLI exposes explicit project registration commands, including `skillsgo project add`, `skillsgo project remove`, and `skillsgo project list`. Removing a Workspace from the registry stops managing it through cross-Scope commands and does not delete its manifest, lock, Package Store, or Projections. Missing or relocated Workspace roots produce an independent Scope result and do not prevent other Managed Scopes from being checked or updated.
+The CLI exposes only explicit project registration commands: `skillsgo project add`, `skillsgo project remove`, and `skillsgo project list`. Projects cannot be moved in place; users remove the old root and add the new root. Removing a Workspace from the registry stops managing it through cross-Scope commands and does not delete its manifest, lock, Package Store, or Projections. Missing Workspace roots produce an independent Scope result and do not prevent other Managed Scopes from being checked or updated.
 
 ### Preview and execution
 
@@ -98,11 +98,11 @@ Implementation proceeds in compatibility-preserving stages:
 3. Add `skillsgo update --dry-run` for Global, current Workspace, and explicit Workspace scopes. Omitting the Package selects every Package in that one Scope.
 4. Refactor confirmed `skillsgo update` to consume the same preview and state-token validation path. Preserve per-Package atomicity and batch best-effort behavior.
 5. Migrate the App update count, Package-card list, detail, and one-Package execution flows from Skill availability to Package previews; remove the separate update banner, update selection, and batch controls from the App while retaining CLI batch behavior.
-6. Move Added Project ownership into the CLI Managed Scope registry and migrate existing App registrations without scanning disk.
-7. Enable cross-Scope `skillsgo update --all` using the registry, deduplicated Hub reads, and independent Scope results.
+6. Move Added Project ownership into the CLI user configuration `projects` section without scanning disk or retaining an alternate project registry.
+7. Enable cross-Scope `skillsgo update --all` using configured projects, deduplicated Hub reads, and independent Scope results.
 8. Remove the Skill-level Hub route, `hub check-update --installed`, Skill update-availability DTOs, and App logic that merges Skill selections back into Packages.
 
-Stages one through four form the minimum terminal and performance correction. Cross-Scope `--all` is not enabled until the Managed Scope registry is authoritative.
+Stages one through four form the minimum terminal and performance correction. Cross-Scope `--all` is not enabled until the user configuration `projects` section is authoritative.
 
 ## Considered options
 
@@ -117,6 +117,6 @@ Stages one through four form the minimum terminal and performance correction. Cr
 
 Update vocabulary, transport, UI, and execution align with the Package Store and manifest model established by ADR-0010. A large Package has the same Hub check complexity whether one or one hundred Skills are selected. Multiple Scopes using the same Package share one Hub resolution while retaining independent local versions and transactions.
 
-The CLI gains durable Managed Scope registry responsibility, and the App must migrate Added Projects to that authority. Hub background freshness becomes product-significant because checks no longer force an upstream synchronization. Operators must observe publication-refresh age and failures separately from interactive update latency. The App and CLI intentionally expose different orchestration breadth over the same Package transaction: the App updates one visible Package card at a time, while the CLI retains deterministic batch operations.
+The CLI gains durable user configuration responsibility, with Added Projects stored under `projects`, and the App delegates project ownership to that authority. Hub background freshness becomes product-significant because checks no longer force an upstream synchronization. Operators must observe publication-refresh age and failures separately from interactive update latency. The App and CLI intentionally expose different orchestration breadth over the same Package transaction: the App updates one visible Package card at a time, while the CLI retains deterministic batch operations.
 
 The transition temporarily carries both Skill-level and Package-level contracts. Compatibility code is bounded by the rollout and must be deleted after App and CLI migration rather than retained as a permanent alternate update model.

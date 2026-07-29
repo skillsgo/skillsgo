@@ -14,7 +14,7 @@
 - `show.go`: implements `show` for direct, read-only Package summaries and exact-path Skill content with immutable source identity; discovery and name lookup belong to `find`.
 - `show_test.go`: specifies `show` Go-compatible latest resolution, Package description preservation, exact Package-member selection, stable JSON, missing-member failure, and the no-local-write boundary.
 - `product_reads.go`: exposes top-level single-query Skill `find` plus `hub info`, `hub check`, and strict file/stdin source-language `hub find-candidates` reads; single Find classifies all explicit Package aliases through the CLI Source parser, resolves the selected Package query once, preserves its immutable version through product Find, and leaves keyword and candidate Find Catalog-only.
-- `project_registry.go`, `project_registry_test.go`: expose and specify explicit Managed Workspace registration, removal, and stable machine listing over the CLI-owned registry.
+- `project_registry.go`, `project_registry_test.go`: expose and specify explicit Managed Workspace registration, removal, and stable machine listing over the `projects` section of CLI-owned user configuration.
 - `product_reads_test.go`: specifies single and batch Find, immutable explicit-source resolution, ordered batch hydration, and grouped Hub service inspection through Execute.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.
 - `list.go`: owns the sole installed-Skill listing command and adapts mode-free Package-managed/external inventory v7 into stable JSON plus path-rich adaptive Human output, defaulting to the current Workspace.
