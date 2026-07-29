@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses controlled CLI Find reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [INPUT]: Uses controlled CLI Find reads, an independently configured HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
  * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -263,11 +263,6 @@ void main() {
     });
     final runner = FakeProcessRunner()
       ..responses.addAll([
-        ProcessOutput(
-          exitCode: 0,
-          stdout: '{"mode":"cloud","cloud":"http://127.0.0.1:${cloud.port}"}',
-          stderr: '',
-        ),
         const ProcessOutput(
           exitCode: 0,
           stdout: '{"schemaVersion":7,"entries":[]}',
@@ -278,6 +273,7 @@ void main() {
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
+      cloudBaseUrl: 'http://127.0.0.1:${cloud.port}',
     );
     await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
@@ -287,7 +283,7 @@ void main() {
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
     expect(requestedCloudUris.single.queryParameters['lang'], 'zh-Hans-CN');
-    expect(runner.calls, hasLength(2));
+    expect(runner.calls, hasLength(1));
     await cloud.close(force: true);
   });
 
@@ -342,19 +338,14 @@ void main() {
             );
             await request.response.close();
           });
-          runner.responses.addAll([
-            ProcessOutput(
-              exitCode: 0,
-              stdout:
-                  '{"mode":"cloud","cloud":"http://127.0.0.1:${cloud.port}"}',
-              stderr: '',
-            ),
-          ]);
         }
         final gateway = RealSkillsGateway(
           processRunner: runner,
           initialCliPath: '/usr/local/bin/skillsgo',
           hubBaseUrl: 'https://hub.example.test',
+          cloudBaseUrl: cloud == null
+              ? 'https://cloud.skillsgo.ai'
+              : 'http://127.0.0.1:${cloud.port}',
         );
 
         if (tc.wireCollection == null) {
@@ -375,11 +366,10 @@ void main() {
 
         final page = await gateway.discover(tc.collection);
         expect(page.skills, isEmpty, reason: tc.name);
-        expect(runner.calls.first.arguments, [
-          'hub',
-          'info',
-          '--hub',
-          'https://hub.example.test',
+        expect(runner.calls, hasLength(1));
+        expect(runner.calls.single.arguments, [
+          'project',
+          'list',
           '--output',
           'json',
         ]);

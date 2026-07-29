@@ -1,10 +1,39 @@
 /*
- * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
+ * [INPUT]: Depends on the shared gateway state, independently configured Cloud runtime, direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
  * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
+
+bool _isCloudRankingDocument(Object? value) {
+  if (value is! Map<String, dynamic> ||
+      value['skills'] is! List ||
+      value['pagination'] is! Map<String, dynamic>) {
+    return false;
+  }
+  final pagination = value['pagination'] as Map<String, dynamic>;
+  if (pagination['page'] is! num ||
+      pagination['perPage'] is! num ||
+      pagination['hasMore'] is! bool) {
+    return false;
+  }
+  return (value['skills'] as List).every((raw) {
+    if (raw is! Map<String, dynamic> ||
+        raw['packagePath'] is! String ||
+        raw['name'] is! String ||
+        raw['description'] is! String ||
+        raw['path'] is! String ||
+        raw['latestVersion'] is! String ||
+        (raw['imageUrl'] != null && raw['imageUrl'] is! String) ||
+        raw['metric'] is! Map<String, dynamic>) {
+      return false;
+    }
+    final metric = raw['metric'] as Map<String, dynamic>;
+    return metric['value'] is num &&
+        (metric['change'] == null || metric['change'] is num);
+  });
+}
 
 const _sourceFindChunkSize = 80;
 const _sourceFindConcurrentChunks = 2;
@@ -335,14 +364,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     required int page,
     required int perPage,
   }) async {
-    final runtime = await loadHubRuntime();
-    final cloud = runtime.cloudOrigin;
-    if (runtime.mode != HubMode.cloud || cloud == null) {
-      throw const SkillsException(
-        'Rankings are available only when the current Hub uses SkillsGo Cloud.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
+    await _ensureCloudOrigin();
+    final cloud = _cloudBase;
     final lang = await _contentLang();
     final uri = cloud
         .resolve('api/v1/rankings/$collection')
@@ -370,11 +393,10 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       final cloudDocument = jsonDecode(body);
-      if (cloudDocument is! Map<String, dynamic> ||
-          cloudDocument['skills'] is! List ||
-          cloudDocument['pagination'] is! Map<String, dynamic>) {
+      if (!_isCloudRankingDocument(cloudDocument)) {
         throw const FormatException('Invalid Cloud ranking response.');
       }
+      cloudDocument as Map<String, dynamic>;
       final items = cloudDocument['skills'] as List;
       final skills = <Map<String, dynamic>>[];
       for (final raw in items) {

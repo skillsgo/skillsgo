@@ -109,6 +109,12 @@ extension _SettingsSections on _SettingsScreenState {
         color: Theme.of(context).colorScheme.outlineVariant,
       ),
       const SizedBox(height: 24),
+      _cloudSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
       _policySettings(),
       const SizedBox(height: 28),
       SkillsSeparator.horizontal(

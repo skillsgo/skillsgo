@@ -888,6 +888,13 @@ class AppLocalizationsJa extends AppLocalizations {
       '公式ハブ、または同じ SkillsGo プロトコルを実装する HTTP(S) セルフホスト型オリジンを使用します。';
 
   @override
+  String get cloudSettingsTitle => 'Cloud Origin';
+
+  @override
+  String get cloudSettingsDescription =>
+      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
+
+  @override
   String get testConnection => 'テスト接続';
 
   @override
@@ -924,6 +931,26 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get hubConnectionTimeout =>
       'ハブ接続がタイムアウトしました。ネットワークを確認するか、もう一度試してください。';
+
+  @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+  }
+
+  @override
+  String get cloudInvalidProtocol =>
+      'The server did not return the SkillsGo Cloud ranking protocol.';
+
+  @override
+  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+
+  @override
+  String get cloudConnectionFailure =>
+      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+
+  @override
+  String get cloudConnectionTimeout =>
+      'The Cloud connection timed out. Check the network or try again.';
 
   @override
   String get riskPolicyTitle => '個人リスクポリシー';
@@ -971,6 +998,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'ハブの原点が保存され、適用されました。';
+
+  @override
+  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => 'インストールポリシーが保存されました。';

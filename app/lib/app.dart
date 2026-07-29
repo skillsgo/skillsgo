@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Hub runtime state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
- * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, always-enabled product motion, Mermaid renderer, and eager Hub runtime initialization.
+ * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Cloud runtime state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
+ * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, always-enabled product motion, Mermaid renderer, and eager configured-Cloud initialization.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,7 +36,7 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(hubRuntimeProvider);
+    ref.watch(cloudOriginProvider);
     final language = ref.watch(appearanceProvider).value?.language;
     final localeParts = language?.explicitUiLocale;
     final locale = localeParts == null

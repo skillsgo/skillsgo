@@ -44,7 +44,7 @@ flutter build linux --release
 
 ## Boundaries
 
-- The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. In Cloud mode it may call only the Cloud origin declared by `skillsgo hub info` for Cloud-composed ranking reads.
+- The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. It stores Hub and Cloud origins independently and may call only the configured Cloud origin directly for Cloud-composed ranking reads.
 - The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
 - The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.

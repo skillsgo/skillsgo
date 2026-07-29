@@ -8,7 +8,7 @@
 - `io_process_runner.dart`: executes the bundled CLI with structured arguments, optional stdin, bounded runtime, optional stdout events, typed output, optional working-directory/environment isolation, and self-identifying sanitized completion telemetry used by real-process E2E journeys.
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, minimal Package-install receipt validation, strict payload decoding for read/planning contracts, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
-- `real_skills_gateway_preferences.dart`: owns App preferences, persisted update-check cache, Mandatory Onboarding state, CLI user-config project adaptation, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
+- `real_skills_gateway_preferences.dart`: owns App preferences, persisted update-check cache, Mandatory Onboarding state, CLI user-config project adaptation, independent Hub/Cloud origins and health checks, risk policy, and App-version lookup.
 - `real_skills_gateway_discovery.dart`: forwards every search input unchanged through current-language CLI `find`, owns bounded-chunk candidate Find and Cloud-composed ranking reads, decodes optional Package summaries and canonical pagination, and uses exact-path `show` only for remote Skill detail.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, and local Skill detail.
 - `real_skills_gateway_installation.dart`: groups ordinary Installation Requests by declaration scope, invokes exact-path Package Store add directly for the user-selected Package version, accepts the CLI's minimal Package-install success receipt without reinterpreting projections, sends one reviewed stdin-JSON Adoption request, and reports App-side protocol failures through the shared telemetry boundary.
@@ -21,7 +21,7 @@
 
 ## Architectural Boundary
 
-This module adapts operating-system processes, preferences, directory pickers, direct Cloud-composed ranking reads, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud ranking reads may use the Cloud origin declared by `hub info`. No capability may call Hub HTTP directly or parse human-oriented CLI output.
+This module adapts operating-system processes, preferences, directory pickers, direct Cloud-composed ranking reads, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud ranking reads use the independently persisted Cloud origin. No capability may call Hub HTTP directly or parse human-oriented CLI output.
 
 `RealSkillsGateway` is the external seam. Its private capability mixins are internal implementation partitions and may share adapter state, but each owns one coherent change axis and remains below the workspace file-size limit.
 

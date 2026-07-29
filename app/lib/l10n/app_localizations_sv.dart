@@ -923,6 +923,13 @@ class AppLocalizationsSv extends AppLocalizations {
       'Använd den officiella Hub eller ett HTTP(S) självhostat ursprung som implementerar samma SkillsGo-protokoll.';
 
   @override
+  String get cloudSettingsTitle => 'Cloud Origin';
+
+  @override
+  String get cloudSettingsDescription =>
+      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
+
+  @override
   String get testConnection => 'Testa anslutningen';
 
   @override
@@ -960,6 +967,26 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get hubConnectionTimeout =>
       'Hub-anslutningen tog timeout. Kontrollera nätverket eller försök igen.';
+
+  @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+  }
+
+  @override
+  String get cloudInvalidProtocol =>
+      'The server did not return the SkillsGo Cloud ranking protocol.';
+
+  @override
+  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+
+  @override
+  String get cloudConnectionFailure =>
+      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+
+  @override
+  String get cloudConnectionTimeout =>
+      'The Cloud connection timed out. Check the network or try again.';
 
   @override
   String get riskPolicyTitle => 'Personlig riskpolicy';
@@ -1010,6 +1037,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub Ursprung sparat och tillämpat.';
+
+  @override
+  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => 'Installationspolicyn har sparats.';
