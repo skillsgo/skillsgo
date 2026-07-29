@@ -21,6 +21,10 @@ class _ManagedProjectsRunner implements ProcessRunner {
   final projects = <String, ({String name, String root})>{};
 
   @override
+  Future<CliServerSession> startCliServer(String executable) async =>
+      _ManagedProjectsSession(this, executable);
+
+  @override
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {
@@ -78,6 +82,31 @@ class _ManagedProjectsRunner implements ProcessRunner {
     }),
     stderr: '',
   );
+}
+
+class _ManagedProjectsSession implements CliServerSession {
+  _ManagedProjectsSession(this.runner, this.executable);
+
+  final _ManagedProjectsRunner runner;
+  final String executable;
+
+  @override
+  bool isClosed = false;
+
+  @override
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  }) => runner.run(
+    executable,
+    arguments,
+    stdin: stdin,
+    onStdoutLine: onStdoutLine,
+  );
+
+  @override
+  Future<void> close() async => isClosed = true;
 }
 
 void main() {
@@ -305,13 +334,23 @@ void main() {
     },
   );
 
-  test('Onboarding Agent inspection uses one bundled CLI command', () async {
-    final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout:
-            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":16,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
-        stderr: '',
+  test('Onboarding Agent inspection uses the bundled CLI Server', () async {
+    final runner = FakeCliServerRunner()
+      ..responses.add(
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":17,"os":"darwin","architecture":"arm64"}',
+          stderr: '',
+        ),
+      )
+      ..serverResponses.add(
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":17,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+          stderr: '',
+        ),
       );
     final gateway = RealSkillsGateway(
       processRunner: runner,
@@ -323,9 +362,11 @@ void main() {
 
     expect(agents.installed.single.id, 'codex');
     expect(runner.calls, hasLength(1));
-    expect(runner.calls.single.arguments, ['agents', '--output', 'json']);
+    expect(runner.calls.single.arguments, ['version', '--output', 'json']);
+    expect(runner.starts, 1);
+    expect(runner.sessions.single.calls.single, ['agents', '--output', 'json']);
 
-    runner.result = const ProcessOutput(
+    runner.sessions.single.result = const ProcessOutput(
       exitCode: 0,
       stdout:
           '{"schemaVersion":2,"product":"skillsgo","version":"old","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[]}',

@@ -26,7 +26,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 16,
+            'appProtocolVersion': 17,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -133,7 +133,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 16,
+          'appProtocolVersion': 17,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -161,7 +161,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 16,
+            'appProtocolVersion': 17,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -189,7 +189,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 16,
+          'appProtocolVersion': 17,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -218,7 +218,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 16,
+          'appProtocolVersion': 17,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -245,7 +245,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 16,
+            'appProtocolVersion': 17,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -286,5 +286,101 @@ void main() {
       ),
     );
     expect(runner.lastArguments, ['version', '--output', 'json']);
+  });
+
+  test('App commands reuse one CLI Server session', () async {
+    final runner = FakeCliServerRunner()
+      ..responses.add(
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '0.1.0',
+            'appProtocolVersion': 17,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        ),
+      );
+    final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    runner.serverResponses.addAll([
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+    ]);
+    expect((await gateway.detectCli()).isReady, isTrue);
+    await gateway.inspectAgents();
+    await gateway.inspectAgents();
+
+    expect(runner.starts, 1);
+    expect(runner.sessions.single.calls, [
+      ['agents', '--output', 'json'],
+      ['agents', '--output', 'json'],
+    ]);
+    expect(runner.calls, hasLength(1));
+  });
+
+  test('a dead CLI Server is rebuilt for the next command', () async {
+    final runner = FakeCliServerRunner();
+    final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bundle/skillsgo',
+    );
+
+    runner.serverResponses.add(
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+    );
+    await gateway.inspectAgents();
+    runner.sessions.single.isClosed = true;
+    runner.serverResponses.add(
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+    );
+    await gateway.inspectAgents();
+
+    expect(runner.starts, 2);
+  });
+
+  test('concurrent cold commands share detection and Server startup', () async {
+    final runner = FakeCliServerRunner()
+      ..responses.add(
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '0.1.0',
+            'appProtocolVersion': 17,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        ),
+      );
+    final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
+    runner.serverResponses.addAll([
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+      ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
+    ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    await Future.wait([gateway.inspectAgents(), gateway.inspectAgents()]);
+
+    expect(runner.calls, hasLength(1));
+    expect(runner.starts, 1);
+    expect(runner.sessions.single.calls, hasLength(2));
   });
 }
