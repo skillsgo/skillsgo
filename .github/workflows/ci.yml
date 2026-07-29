@@ -1,10 +1,11 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, and blocking known-vulnerability enforcement for every maintained product boundary.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, architecture-specific macOS candidate artifacts on main, and blocking known-vulnerability enforcement for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -180,9 +181,11 @@ jobs:
           - name: macOS arm64
             os: macos-15
             target: macos
+            architecture: arm64
           - name: macOS x64
             os: macos-15-intel
             target: macos
+            architecture: x86_64
           - name: Windows x64
             os: windows-2025
             target: windows
@@ -219,7 +222,12 @@ jobs:
       - name: Install App dependencies
         run: flutter pub get
 
+      - name: Build architecture-specific macOS App
+        if: matrix.target == 'macos'
+        run: make -C .. build-app-macos-${{ matrix.architecture }}
+
       - name: Build desktop App
+        if: matrix.target != 'macos'
         run: flutter build ${{ matrix.target }} --release
 
       - name: Run bundled CLI smoke journey
@@ -229,6 +237,23 @@ jobs:
       - name: Run bundled CLI smoke journey under Xvfb
         if: matrix.target == 'linux'
         run: xvfb-run -a flutter test -d linux integration_test/bundled_cli_smoke_test.dart
+
+      - name: Package architecture-specific macOS candidate
+        if: matrix.target == 'macos' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: |
+          package="SkillsGo_macos_${{ matrix.architecture }}"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/macos-${{ matrix.architecture }}/Build/Products/Release/SkillsGo.app" \
+            "build/${package}.zip"
+
+      - name: Upload architecture-specific macOS candidate
+        if: matrix.target == 'macos' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: app-macos-${{ matrix.architecture }}
+          path: app/build/SkillsGo_macos_${{ matrix.architecture }}.zip
+          if-no-files-found: error
+          retention-days: 7
 
   web:
     name: Web

@@ -20,7 +20,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
-| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Signed and notarized macOS DMG plus checksums |
+| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Separate signed and notarized macOS arm64 and x86_64 DMGs plus checksums |
 | CLI | `cli/` | `cli/vX.Y.Z` | tag | Deferred standalone binary matrix |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
@@ -99,14 +99,14 @@ Stable releases update full, minor, major, and `latest` container tags. Pre-rele
 
 Manual dispatch and App pull-request smoke tests may produce expiring, explicitly unsigned GitHub Actions artifacts. Candidate builds do not create GitHub Releases.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version, executable contract, and single-architecture Mach-O layout before packaging. Successful `main` CI runs retain separate `SkillsGo_macos_arm64.zip` and `SkillsGo_macos_x86_64.zip` candidates for seven days.
 
 ## App Production Release
 
 An `app/vX.Y.Z` release remains disabled until all of the following steps are available:
 
 1. Validate the tag against `pubspec.yaml`.
-2. Build a Universal App or explicit arm64 and x64 artifacts.
+2. Build separate arm64 and x86_64 Apps and matching DMGs; do not publish a Universal App.
 3. Build and embed the matching SkillsGo CLI.
 4. Sign with a Developer ID Application certificate.
 5. Submit to the Apple Notary Service.

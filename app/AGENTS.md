@@ -22,9 +22,23 @@ flutter analyze
 flutter test
 flutter run -d macos
 flutter build macos --release
+./macos/scripts/build_arch.sh arm64
+./macos/scripts/build_arch.sh x86_64
 flutter build windows --release
 flutter build linux --release
 ```
+
+Canonical release builds run from the repository root:
+
+```bash
+make build-app-macos-arm64
+make build-app-macos-x86_64
+make build-app-macos
+```
+
+- `build-app-macos-arm64` produces an arm64-only App under `app/build/macos-arm64/Build/Products/Release/SkillsGo.app`.
+- `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
+- `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
 
 ## Workspace Map
 
@@ -36,7 +50,7 @@ flutter build linux --release
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
 | `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS, Windows, and Linux Journeys registered into one default suite executable and orchestrated by `/e2e/app` against real CLI plus Journey-isolated Hub/schema/filesystem boundaries. |
-| `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
+| `macos/` | macOS runner, architecture-specific desktop packaging integration, and the build-time bundled CLI bridge. |
 | `windows/` | Windows x64 runner and build-time bundled CLI integration. |
 | `linux/` | Linux x64 runner and build-time bundled CLI integration. |
 | `docs/` | App-specific specifications, plans, and decisions. |
