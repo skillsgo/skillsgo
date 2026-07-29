@@ -1,19 +1,26 @@
 PODS:
+  - cupertino_http (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - quickjs_engine (0.1.0):
     - FlutterMacOS
 
 DEPENDENCIES:
+  - cupertino_http (from `Flutter/ephemeral/.symlinks/plugins/cupertino_http/darwin`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - quickjs_engine (from `Flutter/ephemeral/.symlinks/plugins/quickjs_engine/macos`)
 
 EXTERNAL SOURCES:
+  cupertino_http:
+    :path: Flutter/ephemeral/.symlinks/plugins/cupertino_http/darwin
   FlutterMacOS:
     :path: Flutter/ephemeral
   quickjs_engine:
     :path: Flutter/ephemeral/.symlinks/plugins/quickjs_engine/macos
 
 SPEC CHECKSUMS:
+  cupertino_http: 94ac07f5ff090b8effa6c5e2c47871d48ab7c86c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   quickjs_engine: f985c2ebce29b932af6f64239b329efeb91c1e6a
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SharedPreferences, temporary filesystem boundaries, controlled CLI output, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies appearance, language, reminder, one-time adoption-introduction, independent Hub/Cloud Origins, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
+ * [OUTPUT]: Specifies appearance including persistent first-run wallpaper selection, language, reminder, one-time adoption-introduction, independent Hub/Cloud Origins, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
  * [POS]: Serves as the preferences, onboarding, and project contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -128,6 +128,19 @@ void main() {
     final gateway = RealSkillsGateway();
 
     expect(await gateway.loadFolderTheme(), '#FFFFFF');
+  });
+
+  test('first launch selects and persists one wallpaper', () async {
+    final gateway = RealSkillsGateway();
+
+    final selected = await gateway.loadWallpaper();
+
+    expect(AppWallpaper.values, contains(selected));
+    expect(
+      (await SharedPreferences.getInstance()).getString('wallpaper'),
+      selected.name,
+    );
+    expect(await RealSkillsGateway().loadWallpaper(), selected);
   });
 
   test('reminder settings persist with user-safe defaults', () async {

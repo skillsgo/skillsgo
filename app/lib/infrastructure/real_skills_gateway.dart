@@ -1,16 +1,19 @@
 /*
- * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, the independently configured Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed long-lived CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, platform-native macOS HTTP plus portable IO HTTP for independently configured Cloud ranking reads, the local filesystem, secure randomness, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
+ * [OUTPUT]: Provides typed long-lived CLI-backed Mandatory Onboarding, Hub Find/detail, system-proxy-aware Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:cupertino_http/cupertino_http.dart';
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,6 +85,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     String? appVersion,
     DirectoryPathsPicker? directoryPathsPicker,
     ProjectPathInspector? projectPathInspector,
+    http.Client Function()? cloudHttpClientFactory,
     this._projectIconResolver = const ProjectIconResolver(),
   }) : _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = kReleaseMode ? null : initialCliPath,
@@ -98,7 +102,9 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
        _cloudBase = _originUri(cloudBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
-       _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
+       _projectPathInspector = projectPathInspector ?? _inspectProjectPath,
+       _cloudHttpClientFactory =
+           cloudHttpClientFactory ?? _platformCloudHttpClient;
 
   final ProcessRunner _runner;
   CliServerSession? _cliServerSession;
@@ -115,6 +121,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final DirectoryPathsPicker _directoryPathsPicker;
   final ProjectPathInspector _projectPathInspector;
   final ProjectIconResolver _projectIconResolver;
+  final http.Client Function() _cloudHttpClientFactory;
   String? _cliPath;
   bool _hubOriginLoaded = false;
   bool _cloudOriginLoaded = false;
@@ -124,6 +131,10 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }) async => (await file_selector.getDirectoryPaths(
     initialDirectory: initialDirectory,
   )).whereType<String>().toList(growable: false);
+
+  static http.Client _platformCloudHttpClient() => Platform.isMacOS
+      ? CupertinoClient.defaultSessionConfiguration()
+      : http.Client();
 
   static Future<({ProjectAccessState state, String? diagnostic})>
   _inspectProjectPath(String path) async {
@@ -276,6 +287,7 @@ class RealSkillsGateway extends _RealSkillsGatewayCore
     super.appVersion,
     super.directoryPathsPicker,
     super.projectPathInspector,
+    super.cloudHttpClientFactory,
     super.projectIconResolver,
   });
 }

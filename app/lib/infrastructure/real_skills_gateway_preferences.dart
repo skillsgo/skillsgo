@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, SharedPreferences, CLI user-config project commands, directory pickers, project inspection, App locale, Hub health CLI command, and Cloud ranking HTTP protocol.
- * [OUTPUT]: Provides appearance, language, reminder, onboarding, CLI-owned Added Project access, independent Hub/Cloud origin configuration, risk policy, and App-version persistence operations.
+ * [INPUT]: Depends on the shared gateway state, SharedPreferences, secure randomness, CLI user-config project commands, directory pickers, project inspection, App locale, Hub health CLI command, and Cloud ranking HTTP protocol.
+ * [OUTPUT]: Provides appearance with one-time randomized wallpaper initialization, language, reminder, onboarding, CLI-owned Added Project access, independent Hub/Cloud origin configuration, risk policy, and App-version persistence operations.
  * [POS]: Serves as the local preference and CLI-backed project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -101,9 +101,14 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
   @override
   Future<AppWallpaper> loadWallpaper() async {
-    final saved = (await SharedPreferences.getInstance()).getString(
-      _wallpaperKey,
-    );
+    final preferences = await SharedPreferences.getInstance();
+    final saved = preferences.getString(_wallpaperKey);
+    if (saved == null) {
+      final wallpaper = AppWallpaper
+          .values[Random.secure().nextInt(AppWallpaper.values.length)];
+      await preferences.setString(_wallpaperKey, wallpaper.name);
+      return wallpaper;
+    }
     return AppWallpaper.values.firstWhere(
       (wallpaper) => wallpaper.name == saved,
       orElse: () => AppWallpaper.sun,
