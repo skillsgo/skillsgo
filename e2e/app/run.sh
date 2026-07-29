@@ -68,7 +68,15 @@ case "${postgres_runtime}" in
     readonly postgres_bin_dir
     readonly postgres_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
     "${postgres_bin_dir}/initdb" -D "${run_dir}/postgres" -U skillsgo --auth=trust >/dev/null
-    "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "-h 127.0.0.1 -p ${postgres_port}" start >/dev/null
+    postgres_options="-h 127.0.0.1 -p ${postgres_port}"
+    if [[ "${flutter_device}" == "linux" ]]; then
+      postgres_options+=" -k ${run_dir}"
+    fi
+    readonly postgres_options
+    if ! "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "${postgres_options}" start >/dev/null; then
+      cat "${run_dir}/postgres.log" >&2
+      exit 1
+    fi
     "${postgres_bin_dir}/createdb" -h 127.0.0.1 -p "${postgres_port}" -U skillsgo skillsgo
     readonly database_dsn="postgres://skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
     readonly psql_binary="${postgres_bin_dir}/psql"
