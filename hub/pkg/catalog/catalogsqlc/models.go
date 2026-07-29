@@ -17,6 +17,8 @@ type Localization struct {
 	Lang          string      `json:"lang"`
 	ResultKind    string      `json:"result_kind"`
 	TextContent   pgtype.Text `json:"text_content"`
+	ErrorKind     pgtype.Text `json:"error_kind"`
+	ErrorMessage  pgtype.Text `json:"error_message"`
 	PromptVersion string      `json:"prompt_version"`
 	UpdatedAt     time.Time   `json:"updated_at"`
 }
@@ -87,10 +89,8 @@ type Version struct {
 	CommitSha string `json:"commit_sha"`
 	// Package root tree captured by this Version.
 	TreeSha string `json:"tree_sha"`
-	// Canonical h1 checksum of the Package ZIP.
+	// Canonical coordinate-bound h1 checksum of the normalized Package Artifact tree.
 	Sum string `json:"sum"`
-	// Exact Package ZIP size in bytes.
-	ArchiveSize int64 `json:"archive_size"`
 	// Source commit time exposed as Package Info time.
 	CommitTime time.Time `json:"commit_time"`
 	CreatedAt  time.Time `json:"created_at"`

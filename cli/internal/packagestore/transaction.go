@@ -34,7 +34,7 @@ type Options struct {
 	PackagesRoot       string
 	PackagePath        string
 	Version            string
-	Archive            []byte
+	Entries            []protocolartifact.Entry
 	Sum                string
 	Members            []string
 	SkillNames         map[string]string
@@ -81,7 +81,8 @@ func Prepare(options Options) (*Transaction, error) {
 	if err != nil || parsed.String() != options.PackagePath || !protocolversion.IsImmutable(options.Version) {
 		return nil, fmt.Errorf("invalid immutable Package coordinate %s@%s", options.PackagePath, options.Version)
 	}
-	actual, err := protocolartifact.PackageSum(options.Archive, options.PackagePath, options.Version)
+	entries := options.Entries
+	actual, err := protocolartifact.PackageEntriesSum(entries, options.PackagePath, options.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +103,7 @@ func Prepare(options Options) (*Transaction, error) {
 		return nil, cause
 	}
 	moduleTarget := CoordinatePath(options.PackagesRoot, options.PackagePath, options.Version)
-	moduleTemporary, err := materialize(options.Archive, options.PackagePath, options.Version, moduleTarget, nil)
+	moduleTemporary, err := materialize(entries, moduleTarget, nil)
 	if err != nil {
 		return fail(err)
 	}
@@ -190,7 +191,7 @@ func Prepare(options Options) (*Transaction, error) {
 		}
 		legacy := CoordinatePath(projection.Root, options.PackagePath, options.Version)
 		if _, statErr := os.Lstat(legacy); statErr == nil {
-			baseline, materializeErr := materialize(options.Archive, options.PackagePath, options.Version, legacy, func(path string) bool {
+			baseline, materializeErr := materialize(entries, legacy, func(path string) bool {
 				member, isManifest := memberForManifest(path, members)
 				return !isManifest || (member != "" && selected[member])
 			})
@@ -236,7 +237,7 @@ func Prepare(options Options) (*Transaction, error) {
 		}
 		legacy := CoordinatePath(projection.Root, options.PackagePath, options.Version)
 		if _, statErr := os.Lstat(legacy); statErr == nil {
-			baseline, materializeErr := materialize(options.Archive, options.PackagePath, options.Version, legacy, func(path string) bool {
+			baseline, materializeErr := materialize(entries, legacy, func(path string) bool {
 				member, isManifest := memberForManifest(path, members)
 				return !isManifest || (member != "" && previous[member])
 			})
@@ -447,7 +448,7 @@ func reconcileRemoval(baseline, target string, replaceConflict bool) (preparedPa
 	return preparedPath{target: target, backup: placeholder, action: pathDelete}, nil
 }
 
-func materialize(archive []byte, packagePath, version, target string, keep func(string) bool) (string, error) {
+func materialize(source []protocolartifact.Entry, target string, keep func(string) bool) (string, error) {
 	parent := filepath.Dir(target)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", err
@@ -462,16 +463,16 @@ func materialize(archive []byte, packagePath, version, target string, keep func(
 			_ = os.RemoveAll(temporary)
 		}
 	}()
-	entries := make([]protocolartifact.Entry, 0)
-	_, err = protocolartifact.WalkPackage(archive, packagePath, version, func(entry protocolartifact.Entry) error {
-		if entry.Directory || (keep != nil && !keep(entry.Path)) {
-			return nil
-		}
-		entries = append(entries, entry)
-		return nil
-	})
+	validated, err := protocolartifact.ValidateEntries(source)
 	if err != nil {
 		return "", err
+	}
+	entries := make([]protocolartifact.Entry, 0, len(validated))
+	for _, entry := range validated {
+		if entry.Directory || (keep != nil && !keep(entry.Path)) {
+			continue
+		}
+		entries = append(entries, entry)
 	}
 	for _, entry := range entries {
 		if entry.IsSymlink() {

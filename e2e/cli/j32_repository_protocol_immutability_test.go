@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on deterministic Repository tags and public Package JSON list, revision-resolving Info, and immutable ZIP routes.
- * [OUTPUT]: Provides black-box coverage for JSON version listing, revision-resolving metadata, query/distribution separation, legacy-route rejection, and immutable responses after a source tag moves.
+ * [INPUT]: Depends on deterministic Repository tags and public Package JSON list, revision-resolving Info, and static Git Artifact repositories.
+ * [OUTPUT]: Provides black-box coverage for JSON version listing, revision-resolving metadata, query/distribution separation, legacy-route rejection, and immutable Artifact tags after a source tag moves.
  * [POS]: Serves as the Repository wire-protocol immutability journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,14 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	require.Equal(t, 0, exact.exitCode, exact.output)
 	require.Contains(t, exact.output, `"kind":"Package"`)
 	require.Contains(t, exact.output, `"version":"v1.0.0"`)
+	var exactInfo struct {
+		ArtifactRepository string `json:"artifactRepository"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(exact.output), &exactInfo), exact.output)
+	require.NotEmpty(t, exactInfo.ArtifactRepository)
+	artifactTagBefore := execInContainer(t, ctx, container, "git", "ls-remote", exactInfo.ArtifactRepository, "refs/tags/v1.0.0")
+	require.Equal(t, 0, artifactTagBefore.exitCode, artifactTagBefore.output)
+	require.NotEmpty(t, strings.TrimSpace(artifactTagBefore.output))
 	commit := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/collection", "rev-parse", "v1.0.0^{commit}")
 	require.Equal(t, 0, commit.exitCode, commit.output)
 	byCommit := execInContainer(t, ctx, container, "wget", "-qO-", base+"/versions/"+strings.TrimSpace(commit.output)+"")
@@ -56,15 +64,12 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 		removed := execInContainer(t, ctx, container, "wget", "-qO-", nestedBase+suffix)
 		require.NotEqual(t, 0, removed.exitCode, removed.output)
 	}
-	zipBefore := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/versions/v1.0.0.zip | sha256sum")
-	require.Equal(t, 0, zipBefore.exitCode, zipBefore.output)
-
 	move := execInContainer(t, ctx, container, "sh", "-c", "git --git-dir=/e2e/git/group/subgroup/collection update-ref refs/tags/v1.0.0 $(git --git-dir=/e2e/git/group/subgroup/collection rev-parse v1.1.0^{commit})")
 	require.Equal(t, 0, move.exitCode, move.output)
 	exactAfter := execInContainer(t, ctx, container, "wget", "-qO-", base+"/versions/v1.0.0")
 	require.Equal(t, 0, exactAfter.exitCode, exactAfter.output)
 	require.JSONEq(t, exact.output, exactAfter.output)
-	zipAfter := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/versions/v1.0.0.zip | sha256sum")
-	require.Equal(t, 0, zipAfter.exitCode, zipAfter.output)
-	require.Equal(t, zipBefore.output, zipAfter.output)
+	artifactTagAfter := execInContainer(t, ctx, container, "git", "ls-remote", exactInfo.ArtifactRepository, "refs/tags/v1.0.0")
+	require.Equal(t, 0, artifactTagAfter.exitCode, artifactTagAfter.output)
+	require.Equal(t, artifactTagBefore.output, artifactTagAfter.output)
 }

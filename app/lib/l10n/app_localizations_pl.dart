@@ -442,9 +442,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get addProject => 'Dodaj projekt';
 
   @override
-  String get relocateProject => 'Przenieść się';
-
-  @override
   String get removeFromList => 'Usuń z listy';
 
   @override
@@ -472,21 +469,21 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Katalog mógł zostać przeniesiony lub jego wolumen może być w trybie offline. Przenieś go lub usuń tylko odniesienie do aplikacji.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Wymagane jest pozwolenie na projekt';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo nie może sprawdzić tego wybranego katalogu głównego. Przyznaj dostęp, przenosząc go za pomocą selektora katalogów.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'Katalog projektu jest niedostępny';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo zachował to odniesienie do projektu. Sprawdź ścieżkę lub wolumin, a następnie przenieś go.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Kontrola…';

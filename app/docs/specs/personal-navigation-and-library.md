@@ -40,7 +40,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 7. As a desktop user, I want dynamic rail content to scroll, so that many projects or Agents do not make navigation unusable.
 8. As a user switching between top-level destinations, I want each destination to retain its subpage, query, scroll position, and input state, so that navigation does not destroy my work.
 9. As a user running an installation or update, I want the operation to continue when I navigate elsewhere, so that the App behaves like a desktop tool rather than a disposable page.
-10. As a reduced-motion user, I want navigation motion to degrade to immediate changes or short fades, so that the interface remains comfortable.
+10. As a desktop user, I want navigation motion to remain consistent across routes, so that spatial relationships stay predictable.
 11. As a user looking for a capability, I want to search by name, description, source, and capability terms, so that I can find a relevant Skill without knowing its exact identifier.
 12. As a user who wants established Skills, I want an all-time Ranking view, so that I can see widely installed Skills.
 13. As a user following current adoption, I want a Trending view based on the latest 24 hours, so that I can see what the ecosystem is using now.
@@ -112,7 +112,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Manifest, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
 77. As a project user, I want projects restored after App restart, so that navigation remains stable.
 78. As a project user, I want removing a project from SkillsGo to leave its files untouched, so that navigation cleanup is not destructive.
-79. As a user with a moved project, I want a Relocate action, so that its identity and history can be recovered.
+79. As a user with an inaccessible project, I want its reference preserved until I explicitly remove it, so that transient filesystem failures do not silently erase configuration.
 80. As a user with an inaccessible project, I want a diagnosable state instead of silent removal, so that permission and storage problems are understandable.
 81. As a privacy-conscious user, I want SkillsGo to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
 82. As a user with no Installed Agent, I want discovery to remain available, so that I can evaluate Skills before configuring an Agent.
@@ -121,7 +121,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 85. As a user configuring the product, I want separate General, Agents, Hub, Installation Policy, Storage, and About settings, so that unrelated concerns do not accumulate on one page.
 86. As a user of a self-hosted Hub, I want to configure and test a custom Hub Origin, so that the App is not locked to the official deployment.
 87. As a user diagnosing the App, I want the App and bundled CLI versions visible together, so that compatibility problems are actionable.
-88. As an accessibility user, I want reduced transparency, reduced motion, keyboard navigation, and semantic labels supported throughout the new routes, so that visual polish does not reduce usability.
+88. As an accessibility user, I want reduced transparency, keyboard navigation, and semantic labels supported throughout the new routes, so that visual polish does not reduce usability.
 89. As a maintainer, I want all local mutations to remain owned by the SkillsGo CLI, so that Flutter and terminal workflows cannot diverge into separate package managers.
 90. As a maintainer, I want App-to-CLI communication to use stable structured contracts, so that localized human output never breaks the GUI.
 91. As a maintainer, I want every operation result associated with an explicit Installation Target, so that partial failure and retry are deterministic.
@@ -130,11 +130,11 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 
 ## Implementation Decisions
 
-- Keep Discover, Library, and Settings as the only top-level destinations. Use the existing white selected capsule and spring movement while preserving reduced-motion behavior.
+- Keep Discover, Library, and Settings as the only top-level destinations. Use the existing white selected capsule and spring movement consistently.
 - Use the shared floating rounded left-rail shell for Library and Settings. Rail items use visible labels; the rail is not an icon-only clone of Burrow. Discover keeps its compact collection navigation above the result surface.
 - Discover rail order is Search, Ranking, Trending, and Hot. Search is the initial route.
 - Library rail order is All Skills, Global, and every Added Project. All Skills and Global remain fixed at the top, only the Added Project list scrolls, and Add Project remains pinned at the bottom. Fixed dividers separate the scrollable project list from both the leading destinations and footer action; neither divider moves with project scrolling. The project list uses one slim, rounded desktop scrollbar that does not compete with project labels or selected capsules; the platform must not add a second hover scrollbar. Added Project rows use a compact desktop density while the fixed destinations and Add Project retain their larger navigation targets. The toolbar owns search, update status, and a combinable Agent multi-select; it does not repeat project selection. An empty Added Project uses a concise, project-name-independent title and a Browse Skills action that returns to Discover without setup guidance.
-- Present the first eligible Batch Adoption plan in the active Library as a one-time, persisted Before/After introduction. Keep the illustration count-bound, localized, accessible, reduced-motion-aware, and separate from authorization; both Confirm and Skip complete the introduction, while the existing counted action remains the permanent manual entry.
+- Present the first eligible Batch Adoption plan in the active Library as a one-time, persisted Before/After introduction. Keep the illustration count-bound, localized, accessible, and separate from authorization; both Confirm and Skip complete the introduction, while the existing counted action remains the permanent manual entry.
 - Settings rail order is General, Reminders, Agents, and Advanced. Advanced ends with an explicit local Library refresh that rescans local inventory without mutating installations.
 - Preserve each top-level destination's last subroute, search input, scroll position, and in-flight operations for the current session. Detail navigation carries an explicit origin so Back restores the source view.
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
@@ -182,7 +182,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Test that removing an Added Project leaves its directory, Workspace Manifest, Workspace Manifest, and Agent Skill directories unchanged.
 - Test session navigation state at the Widget seam rather than private state objects.
 - Preserve the existing no-shell execution tests and add hostile Skill ID, name, and path inputs to confirm they remain plain arguments.
-- Manual desktop acceptance covers bundled CLI discovery, directory-picker permissions, a real multi-Agent matrix operation, partial failure presentation, keyboard navigation, reduced motion, and App restart with restored Added Projects.
+- Manual desktop acceptance covers bundled CLI discovery, directory-picker permissions, a real multi-Agent matrix operation, partial failure presentation, keyboard navigation, and App restart with restored Added Projects.
 
 ## Out of Scope
 

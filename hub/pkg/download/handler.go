@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, and cache-control middleware.
- * [OUTPUT]: Registers the Package versions collection, revision-resolving metadata route, and immutable ZIP route under the public v1 API.
+ * [OUTPUT]: Registers the Package versions collection and revision-resolving metadata route under the public v1 API.
  * [POS]: Serves as the HTTP routing boundary for the Hub download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,9 +51,6 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 	}
 	noCache := middleware.FiberCacheControl(movableVersionCacheControl)
 	registerMethods(r, "/api/v1/+/versions", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
-	zipHandler := LogEntryHandler(ZipHandler, opts)
-	r.Get("/api/v1/+/versions/:version.zip", zipHandler)
-	r.All("/api/v1/+/versions/:version.zip", methodNotAllowed(http.MethodGet))
 	registerMethods(r, "/api/v1/+/versions/:version", http.MethodGet, LogEntryHandler(InfoHandler, opts))
 }
 

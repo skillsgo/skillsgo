@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter animation, blur, reduced-motion settings, native SkillsGo buttons, and Portal Labs SplitButtonInteraction motion values.
+ * [INPUT]: Depends on Flutter animation, blur, native SkillsGo buttons, and Portal Labs SplitButtonInteraction motion values.
  * [OUTPUT]: Provides the persistent management-to-confirm morph that reveals Cancel while preserving one primary button identity.
  * [POS]: Serves as the Library-local vendored adaptation of Portal Labs 0.34.0 SplitButtonInteraction for External Adoption Review.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -58,9 +58,7 @@ class _PortalMorphingAdoptionButtonState
   void didUpdateWidget(covariant _PortalMorphingAdoptionButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.expanded == widget.expanded || collapsing) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller.value = widget.expanded ? 1 : 0;
-    } else if (widget.expanded) {
+    if (widget.expanded) {
       controller.forward();
     } else {
       controller.reverse();
@@ -70,11 +68,7 @@ class _PortalMorphingAdoptionButtonState
   Future<void> collapse() async {
     if (collapsing) return;
     collapsing = true;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      controller.value = 0;
-    } else {
-      await controller.reverse();
-    }
+    await controller.reverse();
     if (mounted) widget.onCollapseComplete();
     collapsing = false;
   }
@@ -127,9 +121,7 @@ class _PortalMorphingAdoptionButtonState
             ),
             SizedBox(width: 8 * visual),
             AnimatedSize(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 420),
+              duration: const Duration(milliseconds: 420),
               curve: Curves.easeOutCubic,
               alignment: AlignmentDirectional.centerStart,
               child: SizedBox(

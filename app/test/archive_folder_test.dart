@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter widget testing and the locally vendored Portal Labs Archive Folder public interaction contract.
- * [OUTPUT]: Specifies front-child composition beneath the Portal glass border, dark-surface-visible ambient shadow, caller-controlled text colors, optional toggle interaction, open/close behavior, fixed archive-label geometry, archive-item presence, and reduced-motion behavior.
+ * [OUTPUT]: Specifies front-child composition beneath the Portal glass border, dark-surface-visible ambient shadow, caller-controlled text colors, optional toggle interaction, open/close behavior, fixed archive-label geometry, and archive-item presence.
  * [POS]: Serves as the focused regression suite for the exact vendored Archive Folder and its sole additive frontChild extension.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,39 +13,31 @@ import 'package:skillsgo/ui/archive_folder/archive_item.dart';
 Widget _folder({
   required ValueChanged<bool> onToggle,
   required ValueChanged<int> onItemTap,
-  bool reduceMotion = false,
   Color titleColor = Colors.white,
   Color subtitleColor = Colors.white70,
   bool toggleEnabled = true,
 }) => MaterialApp(
-  home: MediaQuery(
-    data: MediaQueryData(disableAnimations: reduceMotion),
-    child: Center(
-      child: ArchiveFolder(
-        title: 'Skills',
-        subtitles: [
-          ArchiveFolderSubtitle(label: 'Status', dotColor: Colors.red),
-        ],
-        style: ArchiveFolderStyle(
-          orientation: ArchiveFolderOrientation.vertical,
-          titleStyle: TextStyle(color: titleColor),
-          subtitleStyle: TextStyle(color: subtitleColor),
-          animationDuration: reduceMotion
-              ? Duration.zero
-              : const Duration(milliseconds: 300),
-          enableHaptics: false,
-        ),
-        onToggle: onToggle,
-        toggleEnabled: toggleEnabled,
-        onItemTap: onItemTap,
-        frontChild: const ColoredBox(
-          key: Key('archive-front-child'),
-          color: Colors.transparent,
-        ),
-        items: const [
-          ColoredBox(key: Key('archive-pain-item'), color: Colors.white),
-        ],
+  home: Center(
+    child: ArchiveFolder(
+      title: 'Skills',
+      subtitles: [ArchiveFolderSubtitle(label: 'Status', dotColor: Colors.red)],
+      style: ArchiveFolderStyle(
+        orientation: ArchiveFolderOrientation.vertical,
+        titleStyle: TextStyle(color: titleColor),
+        subtitleStyle: TextStyle(color: subtitleColor),
+        animationDuration: const Duration(milliseconds: 300),
+        enableHaptics: false,
       ),
+      onToggle: onToggle,
+      toggleEnabled: toggleEnabled,
+      onItemTap: onItemTap,
+      frontChild: const ColoredBox(
+        key: Key('archive-front-child'),
+        color: Colors.transparent,
+      ),
+      items: const [
+        ColoredBox(key: Key('archive-pain-item'), color: Colors.white),
+      ],
     ),
   ),
 );
@@ -207,19 +199,4 @@ void main() {
       expect(toggles, [true, false]);
     },
   );
-
-  testWidgets('reduced motion opens the folder without transitional frames', (
-    tester,
-  ) async {
-    final toggles = <bool>[];
-    await tester.pumpWidget(
-      _folder(onToggle: toggles.add, onItemTap: (_) {}, reduceMotion: true),
-    );
-
-    await tester.tap(find.text('Skills'));
-    await tester.pump();
-
-    expect(toggles, [true]);
-    expect(tester.binding.hasScheduledFrame, isFalse);
-  });
 }

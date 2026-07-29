@@ -11,6 +11,8 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/go-git/go-git/v6 v6.0.0-alpha.4
+	github.com/gofrs/flock v0.13.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/spf13/cobra v1.10.2

@@ -66,7 +66,6 @@ abstract interface class SkillsGateway {
   Future<List<AddedProject>> loadAddedProjects();
   Future<AddedProject> resolveProjectIcon(AddedProject project);
   Future<List<AddedProject>> addProjects();
-  Future<AddedProject?> relocateProject(String id);
   Future<void> removeProject(String id);
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
@@ -102,4 +101,6 @@ abstract interface class SkillsGateway {
   Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   );
+  Future<UpdateCheckCache?> loadUpdateCheckCache();
+  Future<void> saveUpdateCheckCache(UpdateCheckCache cache);
 }

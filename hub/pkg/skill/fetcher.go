@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Defines source revision, complete Repository Artifact snapshots, and validated Repository member metadata.
+ * [OUTPUT]: Defines source revision, complete validated Package Artifact trees, and Repository member metadata.
  * [POS]: Serves as the source boundary between Repository publication orchestration and Git resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,9 +8,9 @@ package skill
 
 import (
 	"context"
-	"io"
 	"time"
 
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 )
 
@@ -37,10 +37,8 @@ type RepositorySnapshot struct {
 	CommitSHA   string
 	TreeSHA     string
 	CommitTime  time.Time
-	Archive     io.ReadCloser
-	ArchiveMD5  []byte
+	Entries     []protocolartifact.Entry
 	Sum         string
-	ArchiveSize int64
 	Members     []RepositoryMember
 }
 

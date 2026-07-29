@@ -29,7 +29,6 @@ CREATE TABLE versions (
   commit_sha TEXT NOT NULL,
   tree_sha TEXT NOT NULL,
   sum TEXT NOT NULL,
-  archive_size BIGINT NOT NULL CHECK (archive_size > 0),
   commit_time TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(package_id, version),
@@ -47,6 +46,7 @@ CREATE TABLE skills (
   description TEXT NOT NULL DEFAULT '',
   description_digest TEXT NOT NULL,
   document_digest TEXT NOT NULL,
+  source_language TEXT NOT NULL DEFAULT '',
   UNIQUE(version_id, path)
 );
 
@@ -66,14 +66,14 @@ COMMENT ON COLUMN versions.version IS 'Canonical immutable Package Version.';
 COMMENT ON COLUMN versions.ref IS 'Source ref resolved when the Version was published.';
 COMMENT ON COLUMN versions.commit_sha IS 'Source commit captured by this Version.';
 COMMENT ON COLUMN versions.tree_sha IS 'Package root tree captured by this Version.';
-COMMENT ON COLUMN versions.sum IS 'Canonical h1 checksum of the Package ZIP.';
-COMMENT ON COLUMN versions.archive_size IS 'Exact Package ZIP size in bytes.';
+COMMENT ON COLUMN versions.sum IS 'Canonical coordinate-bound h1 checksum of the normalized Package Artifact tree.';
 COMMENT ON COLUMN versions.commit_time IS 'Source commit time exposed as Package Info time.';
 
 COMMENT ON TABLE skills IS 'Skill members contained by one immutable Package Version.';
 COMMENT ON COLUMN skills.name IS 'Canonical Skill name read from SKILL.md.';
 COMMENT ON COLUMN skills.path IS 'Package-relative directory containing SKILL.md; unique within the Version.';
 COMMENT ON COLUMN skills.description IS 'Searchable Skill description read from SKILL.md.';
+COMMENT ON COLUMN skills.source_language IS 'Detected BCP 47 source language for the immutable SKILL.md document; empty when undetermined or mixed.';
 
 CREATE INDEX skills_version_id ON skills(version_id);
 CREATE INDEX skills_name_lower ON skills(lower(name));
@@ -83,17 +83,21 @@ CREATE TABLE localizations (
   resource_kind TEXT NOT NULL CHECK (resource_kind IN ('package_description','skill_description','skill_document')),
   source_digest TEXT NOT NULL,
   lang TEXT NOT NULL,
-  result_kind TEXT NOT NULL CHECK (result_kind IN ('translated','source')),
+  result_kind TEXT NOT NULL CHECK (result_kind IN ('translated','source','failed')),
   text_content TEXT,
+  error_kind TEXT,
+  error_message TEXT,
   prompt_version TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(resource_kind, source_digest, lang),
-  CHECK (
-    (result_kind='source' AND text_content IS NULL)
+  CONSTRAINT localizations_content_check CHECK (
+    (result_kind='source' AND text_content IS NULL AND error_kind IS NULL AND error_message IS NULL)
     OR
-    (result_kind='translated' AND resource_kind IN ('package_description','skill_description') AND text_content IS NOT NULL)
+    (result_kind='translated' AND resource_kind IN ('package_description','skill_description') AND text_content IS NOT NULL AND error_kind IS NULL AND error_message IS NULL)
     OR
-    (result_kind='translated' AND resource_kind='skill_document' AND text_content IS NULL)
+    (result_kind='translated' AND resource_kind='skill_document' AND text_content IS NULL AND error_kind IS NULL AND error_message IS NULL)
+    OR
+    (result_kind='failed' AND text_content IS NULL AND error_kind IS NOT NULL AND error_message IS NOT NULL)
   )
 );
 

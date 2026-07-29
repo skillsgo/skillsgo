@@ -1,13 +1,12 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart' as file_selector;
@@ -32,7 +31,6 @@ part 'real_skills_gateway_target_management.dart';
 part 'real_skills_gateway_updates.dart';
 part 'real_skills_gateway_failures.dart';
 
-typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
 typedef DirectoryPathsPicker =
     Future<List<String>> Function({String? initialDirectory});
 typedef ProjectPathInspector =
@@ -48,12 +46,12 @@ const _themeModeKey = 'theme_mode';
 const _languageKey = 'language';
 const _updateReminderKey = 'reminder_update_available';
 const _securityReminderKey = 'reminder_security_advisory';
+const _updateCheckCacheKey = 'update_check_cache_v1';
 const _allowCriticalOverrideKey = 'allow_critical_risk_override';
-const _addedProjectsKey = 'added_projects_v1';
 const _onboardingCompletedKey = 'onboarding_completed_v1';
 const _onboardingStepKey = 'onboarding_step_v1';
 const _startupHandshakeSchemaVersion = 1;
-const _appProtocolVersion = 15;
+const _appProtocolVersion = 16;
 
 Uri _originUri(String origin) {
   final value = origin.trim();
@@ -79,7 +77,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     String? expectedCliOS,
     String hubBaseUrl = 'https://hub.skillsgo.ai',
     String? appVersion,
-    DirectoryPicker? directoryPicker,
     DirectoryPathsPicker? directoryPathsPicker,
     ProjectPathInspector? projectPathInspector,
     this._projectIconResolver = const ProjectIconResolver(),
@@ -91,7 +88,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
        _defaultHubBase = _originUri(hubBaseUrl),
        _hubBase = _originUri(hubBaseUrl),
        _injectedAppVersion = appVersion,
-       _directoryPicker = directoryPicker ?? _pickDirectory,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
@@ -102,16 +98,12 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
   final String? _injectedAppVersion;
-  final DirectoryPicker _directoryPicker;
   final DirectoryPathsPicker _directoryPathsPicker;
   final ProjectPathInspector _projectPathInspector;
   final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
   bool _hubOriginLoaded = false;
   HubRuntime? _hubRuntime;
-
-  static Future<String?> _pickDirectory({String? initialDirectory}) =>
-      file_selector.getDirectoryPath(initialDirectory: initialDirectory);
 
   static Future<List<String>> _pickDirectories({
     String? initialDirectory,
@@ -255,7 +247,6 @@ class RealSkillsGateway extends _RealSkillsGatewayCore
     super.expectedCliOS,
     super.hubBaseUrl,
     super.appVersion,
-    super.directoryPicker,
     super.directoryPathsPicker,
     super.projectPathInspector,
     super.projectIconResolver,

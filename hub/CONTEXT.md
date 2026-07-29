@@ -41,11 +41,11 @@ An add-time Go-compatible query: an exact semantic version, semantic-version pre
 _Avoid_: persisted branch, `latest`, version range, refresh subscription, raw transport URL
 
 **Package Distribution API**:
-The immutable distribution surface rooted at `/api/v1/{packagePath}`. It exposes `/api/v1/{packagePath}/versions`, `/api/v1/{packagePath}/versions/{version}`, and `/api/v1/{packagePath}/versions/{version}.zip`.
+The metadata surface rooted at `/api/v1/{packagePath}`. It exposes `/api/v1/{packagePath}/versions` and `/api/v1/{packagePath}/versions/{version}`; Artifact bytes are standard static Git repository objects served from the repository URL in Package Info.
 _Avoid_: Go Proxy, `/mod`, `@v`, product API, Skill ZIP endpoint
 
 **Package Publication**:
-The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one Package ZIP, and one Package Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.
+The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one tagged Git Artifact tree, and one Package Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.
 _Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source validation
 
 **Package History Backfill**:
@@ -73,11 +73,11 @@ An explicit add-time resolution of a semantic Tag, branch, commit hash, or exact
 _Avoid_: branch subscription, persisted branch, mutable artifact
 
 **Package Info**:
-The standalone deterministic metadata resource for one Package Version. It contains schema kind, Package Path, canonical Version, commit time, Package Sum, archive size, and the complete path-ordered `{name, path}` Skill membership. Source ref, commit/tree identities, descriptions, `SKILL.md` frontmatter, mutable assessments, and source enrichment remain outside this distribution document.
+The standalone deterministic metadata resource for one Package Version. It contains schema kind, Package Path, canonical Version, commit time, Package Sum, Artifact Repository URL, and the complete path-ordered `{name, path}` Skill membership. Source ref, commit/tree identities, descriptions, `SKILL.md` frontmatter, mutable assessments, and source enrichment remain outside this distribution document.
 _Avoid_: database record dump, Skill Info document, editorial member list, per-Skill artifact manifest
 
 **Package Artifact**:
-The complete safe Git-tracked tree for one immutable Package Version, distributed as one ZIP and authenticated by one Package Sum. Relative symlinks whose fully resolved targets remain inside the same Package are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
+The complete safe Git-tracked tree for one immutable Package Version, stored under a parentless synthetic commit and immutable tag in the Package's standard bare Git Artifact Repository and authenticated by one Package Sum. Relative symlinks whose fully resolved targets remain inside the same Package are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
 _Avoid_: Skill artifact, live repository directory, mutable cache entry
 
 **Source Presentation**:
@@ -115,7 +115,3 @@ _Avoid_: Skill stars, quality score, recommendation score
 **Source Updated At**:
 The source commit time of the Package Version containing a Skill member. It describes when the served source revision changed, not when the Hub fetched or indexed it.
 _Avoid_: Hub update time, cache refresh time, repository API updated_at
-
-**Archive Size**:
-The exact byte length of the deterministic Package ZIP served by the Hub for one immutable Package Version.
-_Avoid_: extracted directory size, source repository size, transport-compressed response size

@@ -30,9 +30,7 @@ class _SkillCardState extends State<SkillCard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final radius = BorderRadius.circular(14);
-    final duration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 120);
+    final duration = const Duration(milliseconds: 120);
     return MouseRegion(
       onEnter: (_) => setState(() => hovered = true),
       onExit: (_) => setState(() => hovered = false),

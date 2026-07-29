@@ -26,6 +26,7 @@ require (
 	github.com/gobuffalo/envy v1.10.2
 	github.com/gobuffalo/httptest v1.5.2
 	github.com/gofiber/fiber/v3 v3.4.0
+	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0

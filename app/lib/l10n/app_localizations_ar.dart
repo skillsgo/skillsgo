@@ -445,9 +445,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addProject => 'أضف المشروع';
 
   @override
-  String get relocateProject => 'تغيير الموقع';
-
-  @override
   String get removeFromList => 'إزالة من القائمة';
 
   @override
@@ -475,21 +472,21 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'ربما نُقل المجلد أو أصبحت وحدة التخزين غير متصلة. غيّر موقعه أو أزل مرجع التطبيق فقط.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'يلزم إذن للوصول إلى مجلد المشروع';
 
   @override
   String get projectPermissionMessage =>
-      'يتعذر على SkillsGo فحص هذا المجلد. حدده مجددًا عبر منتقي المجلدات لمنح الإذن.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'دليل المشروع غير قابل للوصول';
 
   @override
   String get projectInaccessibleMessage =>
-      'احتفظ SkillsGo بمرجع المشروع هذا. تحقق من المسار أو وحدة التخزين، ثم قم بنقله.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'جارٍ التحقق…';

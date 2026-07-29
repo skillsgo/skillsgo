@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Library journey library, Riverpod Library state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, global-default location state with reduced-motion-aware body transitions, lifecycle, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
+ * [INPUT]: Depends on the Library journey library, Riverpod Library and App-scoped update-check state, navigation routes, selection state, and shared layout widgets.
+ * [OUTPUT]: Provides the public LibraryScreen, global-default location state with reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,9 +45,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     with SingleTickerProviderStateMixin {
   void updateState(VoidCallback change) => setState(change);
   Object? actionError;
-  bool checking = false;
-  Object? updateCheckError;
-  Map<String, UpdateAvailability> updates = const {};
   CommandResult? result;
   final operatingSkills = <String>{};
   final scrollController = ScrollController();
@@ -68,8 +65,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   List<BatchAdoptionPreview> activeAdoptionPreviews = const [];
   List<_AdoptionReviewSelection> activeAdoptionSelections = const [];
   InstalledSkill? selectedDetailSkill;
-  ReminderSettings? reminderSettings;
-  bool _reminderInitializationStarted = false;
   bool detailTransitioning = false;
   late final AnimationController detailTransition;
 
@@ -107,16 +102,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool get loading =>
       _library.isLoading || (_library.value?.refreshing ?? false);
 
+  UpdateCheckState get _updateCheck =>
+      ref.read(updateCheckProvider).value ?? const UpdateCheckState();
+  bool get checking => _updateCheck.checking;
+  Object? get updateCheckError => _updateCheck.error;
+  Map<String, UpdateAvailability> get updates => _updateCheck.results;
+
   @override
   Widget build(BuildContext context) {
     ref.watch(libraryProvider);
+    ref.watch(updateCheckProvider);
     ref.listen(libraryProvider, (_, next) {
       if (next.value != null) _reconcileLibraryState();
     });
-    if (skills != null && !_reminderInitializationStarted) {
-      _reminderInitializationStarted = true;
-      unawaited(_initializeReminders());
-    }
     final selected = _selectedSkills;
     final visibleSkills = _visibleSkills;
     final visibleSelectedCount = visibleSkills
@@ -128,15 +126,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         visibleSkills.isNotEmpty &&
         visibleSelectedCount == visibleSkills.length;
     final someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
-    final updateableSelected = selected.where(
-      (skill) =>
-          updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
-    );
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final detailSkill = selectedDetailSkill;
-    final availableUpdateCount = updates.values
-        .where((availability) => availability.state == UpdateState.available)
-        .length;
     return SkillsDestinationLayout(
       bodyTransitionKey: selectedLocation,
       overlay: Positioned(
@@ -147,13 +137,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           alignment: Alignment.bottomCenter,
           child: _LibrarySelectionBarTransition(
             key: const Key('library-selection-bar-switcher'),
-            disableAnimations: disableAnimations,
             child: selected.isEmpty || adoptionReviewVisible
                 ? null
                 : _LibrarySelectionBar(
                     key: const ValueKey('selection-bar-visible'),
                     selectedCount: selected.length,
-                    updateableCount: updateableSelected.length,
                     operating: selected.any(
                       (skill) => operatingSkills.contains(skill.name),
                     ),
@@ -162,7 +150,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       removalConfirming = false;
                       selectedSkillKeys.clear();
                     }),
-                    onUpdate: _updateSelectedSkills,
                     onRequestRemove: _requestSelectedRemoval,
                     onCancelRemove: _cancelSelectedRemoval,
                     onConfirmRemove: _confirmSelectedRemoval,
@@ -226,27 +213,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (reminderSettings?.updateAvailable == true &&
-                        availableUpdateCount > 0) ...[
-                      const SizedBox(height: 14),
-                      InkWell(
-                        key: const Key('library-update-reminder'),
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => setState(() => updatesOnly = true),
-                        child: SkillsAlert(
-                          icon: const HugeIcon(
-                            icon: HugeIcons.strokeRoundedDownload04,
-                            strokeWidth: 1.8,
-                          ),
-                          title: Text(
-                            context.l10n.availableUpdatesReminder(
-                              availableUpdateCount,
-                            ),
-                          ),
-                          description: Text(context.l10n.openAvailableUpdates),
-                        ),
-                      ),
-                    ],
                     if (result != null) ...[
                       const SizedBox(height: 14),
                       OperationPanel(result: result!),
@@ -298,6 +264,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                       : context.l10n.selectCurrentResults,
                                   child: adoptionReviewVisible
                                       ? const SizedBox.shrink()
+                                      : updatesOnly
+                                      ? const SizedBox.shrink()
                                       : SkillsCheckbox(
                                           key: const Key(
                                             'library-select-visible',
@@ -334,9 +302,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         const SizedBox(width: 4),
                         _LibraryScopeToggle(
                           updatesOnly: updatesOnly,
+                          updateCount: _packageUpdateCards.length,
                           onChanged: (value) {
                             setState(() => updatesOnly = value);
-                            if (value) unawaited(checkUpdates());
+                            if (value) {
+                              unawaited(
+                                checkUpdates(
+                                  trigger: UpdateCheckTrigger.updatesView,
+                                ),
+                              );
+                            }
                           },
                         ),
                         const SizedBox(width: 4),
@@ -365,18 +340,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           if (detailSkill != null)
             SlideTransition(
               key: const Key('library-detail-surface'),
-              position: disableAnimations
-                  ? const AlwaysStoppedAnimation(Offset.zero)
-                  : Tween<Offset>(
-                      begin: const Offset(1, 0),
-                      end: Offset.zero,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: detailTransition,
-                        curve: Curves.easeOutCubic,
-                        reverseCurve: Curves.easeOutCubic,
-                      ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: detailTransition,
+                      curve: Curves.easeOutCubic,
+                      reverseCurve: Curves.easeOutCubic,
                     ),
+                  ),
               child: ColoredBox(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: LocalDetailScreen(
@@ -384,7 +358,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   skill: detailSkill,
                   projects: projects,
                   initialUpdate:
-                      updates[libraryUpdateKey(detailSkill)] ??
+                      updates[libraryScopeUpdateKey(detailSkill)] ??
                       const UpdateAvailability(state: UpdateState.unknown),
                   onBack: () => unawaited(_closeDetail()),
                   onRemoved: _closeRemovedDetail,

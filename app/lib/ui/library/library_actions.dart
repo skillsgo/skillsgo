@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package updates, inline removal state, the localized Adoption story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, direct Package update with inventory refresh, inline-confirmed removal, and detail transitions.
+ * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package mutations, the App-scoped update coordinator, inline removal state, the localized Adoption story, and navigation animation.
+ * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with coordinated preview refresh, inline-confirmed removal, and detail transitions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -71,62 +71,28 @@ extension _LibraryActions on _LibraryScreenState {
     });
   }
 
-  Future<void> _updateSelectedSkills() async {
-    updateState(() => removalConfirming = false);
-    final selected = _selectedSkills
-        .where(
-          (skill) =>
-              updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
-        )
-        .toList(growable: false);
-    final packages = <String, ({InstalledSkill skill, String toVersion})>{};
-    for (final skill in selected) {
-      final availability = updates[libraryUpdateKey(skill)]!;
-      final key = '${skill.packagePath}\u0000${availability.toVersion}';
-      final current = packages[key];
-      if (current == null) {
-        packages[key] = (skill: skill, toVersion: availability.toVersion);
-        continue;
-      }
-      final targets = <String, SkillInstallationTarget>{
-        for (final target in current.skill.targets)
-          installedTargetKey(target): target,
-        for (final target in skill.targets) installedTargetKey(target): target,
-      };
-      packages[key] = (
-        skill: current.skill.withTargets(targets.values.toList()),
-        toVersion: availability.toVersion,
-      );
-    }
-    if (packages.isEmpty) return;
-    updateState(
-      () => operatingSkills.addAll(selected.map((skill) => skill.name)),
-    );
+  Future<void> _updatePackageCard(_PackageUpdateCardData package) async {
+    if (operatingSkills.contains(package.packagePath)) return;
+    updateState(() => operatingSkills.add(package.packagePath));
     updateState(() => result = null);
     try {
-      for (final package in packages.values) {
-        if (!mounted) return;
-        await widget.gateway.updatePackage(
-          package.skill,
-          toVersion: package.toVersion,
-        );
-      }
+      await widget.gateway.updatePackage(
+        package.skill,
+        toVersion: package.toVersion,
+      );
       await load();
-      await checkUpdates();
-      if (mounted) updateState(selectedSkillKeys.clear);
+      await checkUpdates(trigger: UpdateCheckTrigger.mutation);
     } catch (caught) {
       result = exceptionResult(caught);
       try {
         await load();
-        await checkUpdates();
+        await checkUpdates(trigger: UpdateCheckTrigger.mutation);
       } on Object {
         // Preserve the original mutation failure; refresh is best effort.
       }
     } finally {
       if (mounted) {
-        updateState(
-          () => operatingSkills.removeAll(selected.map((skill) => skill.name)),
-        );
+        updateState(() => operatingSkills.remove(package.packagePath));
       }
     }
   }
@@ -155,16 +121,6 @@ extension _LibraryActions on _LibraryScreenState {
       if (project.id == id) return project;
     }
     return null;
-  }
-
-  Future<void> _relocateProject(AddedProject project) async {
-    try {
-      final relocated = await widget.gateway.relocateProject(project.id);
-      if (relocated == null || !mounted) return;
-      await load();
-    } on Object catch (caught) {
-      if (mounted) updateState(() => actionError = caught);
-    }
   }
 
   Future<void> _addProject() async {
@@ -285,39 +241,15 @@ extension _LibraryActions on _LibraryScreenState {
     });
   }
 
-  Future<void> checkUpdates() async {
-    if (skills == null || checking) return;
-    updateState(() {
-      checking = true;
-      updateCheckError = null;
-      updates = {
-        for (final skill in skills!)
-          libraryUpdateKey(skill): UpdateAvailability(
-            state: skill.provenance == LibraryProvenance.hub
-                ? UpdateState.checking
-                : UpdateState.unsupported,
-          ),
-      };
-    });
+  Future<void> checkUpdates({required UpdateCheckTrigger trigger}) async {
+    if (skills == null) return;
     try {
-      updates = await widget.gateway.checkUpdates(skills!);
-    } catch (caught) {
-      updateCheckError = caught;
-      updates = {
-        for (final skill in skills!)
-          libraryUpdateKey(skill): const UpdateAvailability(
-            state: UpdateState.failed,
-          ),
-      };
+      await ref
+          .read(updateCheckProvider.notifier)
+          .check(skills!, trigger: trigger);
+    } on Object {
+      // The coordinator retains stale results and exposes the failure state.
     }
-    if (mounted) updateState(() => checking = false);
-  }
-
-  Future<void> _initializeReminders() async {
-    final settings = await widget.gateway.loadReminderSettings();
-    if (!mounted) return;
-    updateState(() => reminderSettings = settings);
-    if (settings.updateAvailable) await checkUpdates();
   }
 
   Future<void> _removeSkills(List<InstalledSkill> selected) async {
@@ -372,7 +304,7 @@ extension _LibraryActions on _LibraryScreenState {
         }
         updateState(() => selectedSkillKeys.removeAll(succeeded));
         await load();
-        await checkUpdates();
+        await checkUpdates(trigger: UpdateCheckTrigger.mutation);
       }
     } catch (caught) {
       result = exceptionResult(caught);
@@ -391,11 +323,9 @@ extension _LibraryActions on _LibraryScreenState {
       selectedDetailSkill = skill;
       detailTransitioning = true;
     });
-    if (MediaQuery.disableAnimationsOf(context)) {
-      detailTransition.value = 1;
-    } else {
-      await detailTransition.forward(from: 0);
-    }
+
+    await detailTransition.forward(from: 0);
+
     if (!mounted || selectedDetailSkill?.inventoryKey != skill.inventoryKey) {
       return;
     }
@@ -405,11 +335,9 @@ extension _LibraryActions on _LibraryScreenState {
   Future<void> _closeDetail() async {
     if (selectedDetailSkill == null) return;
     updateState(() => detailTransitioning = true);
-    if (MediaQuery.disableAnimationsOf(context)) {
-      detailTransition.value = 0;
-    } else {
-      await detailTransition.reverse();
-    }
+
+    await detailTransition.reverse();
+
     if (!mounted) return;
     updateState(() {
       selectedDetailSkill = null;
@@ -473,7 +401,7 @@ extension _LibraryActions on _LibraryScreenState {
     final visible = <InstalledSkill>[];
     for (final visibleSkill in _locationAndAgentProjectedSkills) {
       if (updatesOnly &&
-          updates[libraryUpdateKey(visibleSkill)]?.state !=
+          updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
               UpdateState.available) {
         continue;
       }

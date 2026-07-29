@@ -65,7 +65,7 @@ flutter build macos --release
 - The active Folder body and tab are one foreground object and use `folderBody`; inactive Folder tabs use `folderTabInactive`.
 - Do not hard-code `Colors.white`, `Colors.black`, or a fixed dark page background for ordinary interface content. Explicit colors are allowed only for stable semantic status, source brand identity, raw user color previews, or other meaning that must not change with the theme.
 - Keep discovery cards neutral. Express themed hover state through borders, actions, focus, or restrained accent treatment instead of repainting a large card with an accent container.
-- Theme controls must update immediately, preserve the selected seed, support localization and reduced motion, and remain usable with keyboard and assistive technology.
+- Theme controls must update immediately, preserve the selected seed, support localization, and remain usable with keyboard and assistive technology.
 - Any new or materially changed UI component must be validated in Light and Dark modes with both low- and high-chroma seeds. Text and icon contrast must use the generated matching semantic roles rather than manual guesses.
 
 ## Asynchronous Interaction Policy
@@ -77,7 +77,7 @@ flutter build macos --release
 - Independent data dependencies must render and fail independently. A slow optional dependency must not delay primary content or an interactive surface.
 - Preserve the last valid local Library inventory during Hub failures and the last valid discovery or detail content during refresh failures when its identity remains valid.
 - Long-running mutations may lock their own submit control, but must publish progress and keep safe navigation or cancellation paths available.
-- New journeys that depend on asynchronous data require widget tests proving next-frame feedback, stable content during refresh, explicit empty/error recovery, and reduced-motion plus accessibility semantics.
+- New journeys that depend on asynchronous data require widget tests proving next-frame feedback, stable content during refresh, explicit empty/error recovery, and accessibility semantics.
 
 ## Documentation Routing
 

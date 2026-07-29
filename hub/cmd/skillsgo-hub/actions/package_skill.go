@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on canonical Package paths, Version Query parsing, demand publication, source-language-bearing Skill rows, content-addressed source/localized Markdown storage, and Fiber routing.
  * [OUTPUT]: Provides GET /api/v1/{packagePath}/versions/{version}/skills?path={path}[&lang={lang}] with digest-resolved source or localized display content plus translation provenance.
- * [POS]: Serves as the version-scoped Skill member projection over immutable Package metadata, ZIP distribution, and global presentation localizations.
+ * [POS]: Serves as the version-scoped Skill member projection over immutable Package metadata, Git distribution, and global presentation localizations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -105,7 +105,7 @@ func moduleSkillHandler(metadata *catalog.Catalog, materializer repositoryMateri
 			c.Set(fiber.HeaderCacheControl, "public, max-age=31536000, immutable")
 		}
 		return writeJSON(c, fiber.StatusOK, protocolapi.PackageVersionSkill{
-			PackagePath: packagePath, Version: version, Time: identity.CommitTime, ArchiveSize: identity.ArchiveSize,
+			PackagePath: packagePath, Version: version, Time: identity.CommitTime,
 			Name: member.Name, Path: member.Path, Description: description, Content: string(content), SourceLanguage: member.SourceLanguage, Translated: wasTranslated,
 		})
 	}

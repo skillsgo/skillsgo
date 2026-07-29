@@ -220,19 +220,14 @@ class _MermaidWebViewDiagramState extends State<MermaidWebViewDiagram> {
       widget.source,
     ).clamp(widget.minHeight, widget.maxHeight);
     final height = result?.height.clamp(widget.minHeight, widget.maxHeight);
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return AnimatedSize(
-      duration: disableAnimations
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       child: SizedBox(
         key: const Key('mermaid-webview-diagram'),
         height: height ?? estimatedHeight,
         child: AnimatedSwitcher(
-          duration: disableAnimations
-              ? Duration.zero
-              : const Duration(milliseconds: 140),
+          duration: const Duration(milliseconds: 140),
           child: result == null
               ? const _MermaidSkeleton(key: ValueKey('mermaid-skeleton'))
               : Padding(
@@ -300,7 +295,6 @@ class _MermaidSkeletonState extends State<_MermaidSkeleton>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       label: '正在渲染 Mermaid 图表',
       child: Padding(
@@ -308,7 +302,7 @@ class _MermaidSkeletonState extends State<_MermaidSkeleton>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => Opacity(
-            opacity: disableAnimations ? .65 : _controller.value,
+            opacity: _controller.value,
             child: CustomPaint(
               painter: _MermaidSkeletonPainter(scheme),
               child: const SizedBox.expand(),

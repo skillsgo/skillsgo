@@ -21,7 +21,7 @@ type DocumentTranslator interface {
 func (t *OpenAITranslator) TranslateDocument(ctx context.Context, source []byte, sourceLang, targetLang string) (Result, error) {
 	_, body, err := skillmanifest.Split(source)
 	if err != nil {
-		return Result{}, err
+		return Result{}, Permanent(err)
 	}
 	bodyText := strings.TrimSpace(string(body))
 	result, err := t.translate(ctx, bodyText, sourceLang, targetLang, documentMaxOutputTokens(bodyText), t.documentTemperature, "Agent Skill Markdown body")
@@ -29,10 +29,10 @@ func (t *OpenAITranslator) TranslateDocument(ctx context.Context, source []byte,
 		return Result{}, err
 	}
 	if strings.HasPrefix(result.Content, "---\n") {
-		return Result{}, fmt.Errorf("translated document contains frontmatter")
+		return Result{}, Permanent(fmt.Errorf("translated document contains frontmatter"))
 	}
 	if !sameFencedCode(bodyText, result.Content) {
-		return Result{}, fmt.Errorf("translated document changed fenced code")
+		return Result{}, Permanent(fmt.Errorf("translated document changed fenced code"))
 	}
 	return result, nil
 }

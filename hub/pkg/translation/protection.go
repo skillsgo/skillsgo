@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on untrusted Markdown containing fenced code, inline code, link destinations, and URLs.
- * [OUTPUT]: Provides deterministic protected placeholders plus strict restoration of byte-identical technical spans.
+ * [OUTPUT]: Provides deterministic protected placeholders plus validated restoration of byte-identical technical spans after harmless tag-format normalization.
  * [POS]: Serves as the lossless boundary around LLM translation and keeps cache prefixes stable across target locales.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,7 +24,7 @@ var (
 	inlineCodePattern  = regexp.MustCompile("`+[^`\\n]+`+")
 	linkTargetPattern  = regexp.MustCompile(`\]\([^\n)]*\)`)
 	bareURLPattern     = regexp.MustCompile(`(?:https?|ftp)://[^\s>)]+`)
-	placeholderPattern = regexp.MustCompile(`<skillsgo-protected-[0-9]{6}/>`)
+	placeholderPattern = regexp.MustCompile(`(?i)(?:<|&lt;)\s*skillsgo-protected-([0-9]{6})\s*/?\s*(?:>|&gt;)`)
 )
 
 func protectMarkdown(source string) protectedMarkdown {
@@ -54,15 +54,28 @@ func protectMarkdown(source string) protectedMarkdown {
 }
 
 func (p protectedMarkdown) restore(translated string) (string, error) {
-	for index, value := range p.values {
-		placeholder := fmt.Sprintf("<skillsgo-protected-%06d/>", index+1)
-		if strings.Count(translated, placeholder) != 1 {
-			return "", fmt.Errorf("translation changed protected placeholder %s", placeholder)
+	matches := placeholderPattern.FindAllStringSubmatchIndex(translated, -1)
+	counts := make([]int, len(p.values))
+	for _, match := range matches {
+		var identifier int
+		if _, err := fmt.Sscanf(translated[match[2]:match[3]], "%d", &identifier); err != nil || identifier < 1 || identifier > len(p.values) {
+			return "", fmt.Errorf("translation contained an unknown protected placeholder")
 		}
-		translated = strings.Replace(translated, placeholder, value, 1)
+		counts[identifier-1]++
 	}
+	for index, count := range counts {
+		if count != 1 {
+			return "", fmt.Errorf("translation changed protected placeholder <skillsgo-protected-%06d/>", index+1)
+		}
+	}
+	translated = placeholderPattern.ReplaceAllStringFunc(translated, func(placeholder string) string {
+		match := placeholderPattern.FindStringSubmatch(placeholder)
+		var identifier int
+		_, _ = fmt.Sscanf(match[1], "%d", &identifier)
+		return p.values[identifier-1]
+	})
 	if placeholderPattern.MatchString(translated) {
-		return "", fmt.Errorf("translation contained an unknown protected placeholder")
+		return "", fmt.Errorf("translation retained a protected placeholder")
 	}
 	return translated, nil
 }

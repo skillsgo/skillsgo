@@ -8,6 +8,6 @@
 
 ## Architectural Boundary
 
-This module owns the local commit state machine shared by Package add, update, remove, restore, and adoption-through-add. It coordinates already prepared filesystem transactions, immutable Info cache writes, and paired Workspace publication, but must not resolve Hub selectors, choose Skills or Agents, or construct Scope Package Store projections. Reverse rollback applies to prepared filesystem transactions; immutable cache writes are safe idempotent residue.
+This module owns the local commit state machine shared by Package add, update, remove, restore, and adoption-through-add. It coordinates already prepared direct-Projection transactions, immutable Info cache writes, and paired Workspace publication, but must not resolve Hub selectors, choose Skills or Agents, or construct Projections. Reverse rollback applies to prepared filesystem transactions; immutable cache writes are safe idempotent residue.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

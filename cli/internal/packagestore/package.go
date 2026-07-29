@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on a coordinate Scope Package Store directory, its locked Package identity/version/Sum, and the shared Package Artifact format.
- * [OUTPUT]: Verifies a Package Store, reconstructs its canonical Package ZIP including safe symlinks, and verifies direct Agent Skill links plus legacy deterministic projections without inferring publication membership from arbitrary SKILL.md files.
- * [POS]: Serves as the trusted local read boundary from authoritative Scope Package Store back into projection transactions.
+ * [INPUT]: Depends on a coordinate Scope Package Tree directory, its locked Package identity/version/Sum, and the shared Package Artifact format.
+ * [OUTPUT]: Verifies a derived Scope Package Tree, reconstructs canonical entries including safe symlinks, and verifies Agent member links plus deterministic projections.
+ * [POS]: Serves as the trusted local read boundary from a lock-verified Scope Package Tree back into projection transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package packagestore
@@ -14,7 +14,7 @@ import (
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
-func ReadVerifiedPackage(packagesRoot, packagePath, version, expectedSum string) ([]byte, error) {
+func ReadVerifiedPackage(packagesRoot, packagePath, version, expectedSum string) ([]protocolartifact.Entry, error) {
 	root := CoordinatePath(packagesRoot, packagePath, version)
 	actualSum, err := protocolartifact.PackageDirectorySum(root, packagePath, version)
 	if err != nil {
@@ -65,20 +65,20 @@ func ReadVerifiedPackage(packagesRoot, packagePath, version, expectedSum string)
 	if err != nil {
 		return nil, fmt.Errorf("read Scope Package Store %s@%s: %w", packagePath, version, err)
 	}
-	archive, err := protocolartifact.BuildPackage(packagePath, version, entries)
+	entries, err = protocolartifact.ValidateEntries(entries)
 	if err != nil {
 		return nil, err
 	}
-	rebuiltSum, err := protocolartifact.PackageSum(archive, packagePath, version)
+	rebuiltSum, err := protocolartifact.PackageEntriesSum(entries, packagePath, version)
 	if err != nil || rebuiltSum != expectedSum {
 		return nil, fmt.Errorf("rebuilt Scope Package Store Sum mismatch for %s@%s", packagePath, version)
 	}
-	return archive, nil
+	return entries, nil
 }
 
 // VerifyProjection compares an existing Package Projection with the exact
 // projection derived from verified artifact bytes and immutable membership.
-func VerifyProjection(root, packagePath, version string, archive []byte, members, selected []string) error {
+func VerifyProjection(root, packagePath, version string, entries []protocolartifact.Entry, members, selected []string) error {
 	memberSet, err := validateMembers(members)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func VerifyProjection(root, packagePath, version string, archive []byte, members
 		return err
 	}
 	target := CoordinatePath(root, packagePath, version)
-	expected, err := materialize(archive, packagePath, version, target, func(path string) bool {
+	expected, err := materialize(entries, target, func(path string) bool {
 		member, isManifest := memberForManifest(path, memberSet)
 		return !isManifest || (member != "" && selectedSet[member])
 	})

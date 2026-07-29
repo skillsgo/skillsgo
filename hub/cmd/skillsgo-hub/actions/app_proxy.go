@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, immutable artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, and Huma documentation projection.
- * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, best-effort initial Repository metadata, version-scoped Skill content, typed OpenAPI documentation, immutable Package routes, and authenticated Backfill administration with shared task infrastructure.
+ * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, static disk delivery, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, local static Git delivery, Repository metadata, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,9 +8,11 @@ package actions
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	staticmiddleware "github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
@@ -42,7 +44,6 @@ func addProxyRoutesWithCatalog(
 	adminRouter fiber.Router,
 	adminEnabled bool,
 ) error {
-	s = storage.WithImmutableWrites(s)
 	if taskRuntime == nil {
 		taskRuntime = taskqueue.NewSynchronous()
 	}
@@ -50,8 +51,10 @@ func addProxyRoutesWithCatalog(
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", getReadinessHandler(s))
 	r.Get("/version", versionHandler)
-	r.Get("/catalog", catalogHandler(s))
 	r.Get("/robots.txt", robotsHandler(c))
+	if c.StorageType == "disk" && c.Storage.Disk != nil {
+		r.Use("/packages/*", staticmiddleware.New(filepath.Join(c.Storage.Disk.RootPath, "packages"), staticmiddleware.Config{ByteRange: true, CacheDuration: -1}))
+	}
 
 	fs := afero.NewOsFs()
 
@@ -72,7 +75,7 @@ func addProxyRoutesWithCatalog(
 		return err
 	}
 
-	dp := download.New(&download.Opts{Storage: s, Lister: lister, NetworkMode: c.NetworkMode})
+	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
 		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
 		if err := metadataCache.RegisterTask(); err != nil {
@@ -82,10 +85,11 @@ func addProxyRoutesWithCatalog(
 			repositoryFetcher,
 			s,
 			metadata,
+			withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
 			withCurrentPublicationObserver(metadataCache.RefreshInitial),
 		)
-		registerPackageSkillRoute(r, metadata, publisher, s.(storage.SkillContentStore))
-		dp = withPackageInfo(dp, metadata, publisher)
+		registerPackageSkillRoute(r, metadata, publisher, s)
+		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
 		if adminEnabled {
 			if metadata.PostgresPool() == nil {
 				return fmt.Errorf("Package Backfill administration requires PostgreSQL")

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies update discovery, direct Package update delegation, failure retention, and refreshed installed versions.
+ * [OUTPUT]: Specifies Package-card update discovery, one-card direct Package update delegation, failure retention, and refreshed installed versions.
  * [POS]: Serves as the rendered Package-update journey suite without App-owned Update Plan UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -72,21 +72,20 @@ void main() {
     final gateway = FakeSkillsGateway(libraryEntries: const [updateSkill]);
     await openUpdates(tester, gateway);
 
-    expect(find.text('local-skill'), findsOneWidget);
-    await tester.tap(
-      find.byKey(
-        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
-      ),
-    );
-    await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('library-update-selected')),
-          )
-          .onPressed,
-      isNotNull,
+      find.byKey(
+        const ValueKey('library-package-update-github.com/test/skills'),
+      ),
+      findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('subscription-switch-badge-Updates')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Retired Skill'), findsOneWidget);
+    expect(find.textContaining('skills/retired/SKILL.md'), findsNothing);
+    expect(find.text('local-skill'), findsNothing);
+    expect(find.byKey(const Key('library-select-visible')), findsNothing);
   });
 
   testWidgets(
@@ -97,12 +96,10 @@ void main() {
       await tester.tap(
         find.byKey(
           const ValueKey(
-            'library-select-hub:github.com/test/skills:local-skill',
+            'library-package-update-action-github.com/test/skills',
           ),
         ),
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('library-update-selected')));
       await tester.pumpAndSettle();
 
       expect(gateway.updateCalls, 1);
@@ -115,27 +112,24 @@ void main() {
     },
   );
 
-  testWidgets('selected members of one Package trigger one Package update', (
+  testWidgets('members of one Package render one Package update card', (
     tester,
   ) async {
     final gateway = FakeSkillsGateway(
       libraryEntries: const [updateSkill, secondPackageMember],
     );
     await openUpdates(tester, gateway);
-    await tester.tap(
+    expect(
       find.byKey(
-        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
+        const ValueKey('library-package-update-github.com/test/skills'),
       ),
+      findsOneWidget,
     );
     await tester.tap(
       find.byKey(
-        const ValueKey(
-          'library-select-hub:github.com/test/skills:second-skill',
-        ),
+        const ValueKey('library-package-update-action-github.com/test/skills'),
       ),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('library-update-selected')));
     await tester.pumpAndSettle();
 
     expect(gateway.updateCalls, 1);
@@ -156,12 +150,13 @@ void main() {
         ),
       );
       await openUpdates(tester, gateway);
-      final selector = find.byKey(
-        const ValueKey('library-select-hub:github.com/test/skills:local-skill'),
+      await tester.tap(
+        find.byKey(
+          const ValueKey(
+            'library-package-update-action-github.com/test/skills',
+          ),
+        ),
       );
-      await tester.tap(selector);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('library-update-selected')));
       await tester.pumpAndSettle();
 
       expect(gateway.updateCalls, 1);
@@ -172,7 +167,23 @@ void main() {
   testWidgets('installed detail refreshes target versions after update', (
     tester,
   ) async {
-    final gateway = FakeSkillsGateway(libraryEntries: const [updateSkill]);
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [updateSkill],
+      updateCheckCache: UpdateCheckCache(
+        checkedAt: DateTime.now().toUtc(),
+        results: {
+          for (final target in updateSkill.targets)
+            packageScopeUpdateKey(
+              updateSkill.packagePath,
+              target.scope,
+              target.projectRoot,
+            ): const UpdateAvailability(
+              state: UpdateState.available,
+              toVersion: 'v2',
+            ),
+        },
+      ),
+    );
     await tester.binding.setSurfaceSize(const Size(1400, 900));
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();

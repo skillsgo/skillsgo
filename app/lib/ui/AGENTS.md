@@ -14,6 +14,7 @@
 - `install_operation_controller.dart`: owns the compact Installation Request interface, direct atomic Package submission for the selected version, aggregate execution success, and error state through a Riverpod family.
 - `installation_flows.dart` and `installation/`: expose remote detail, installation selection, exact removal, progress, result, and retry surfaces as one independent journey library.
 - `library_controller.dart`: owns immutable Library content, stable Entry queries, targeted post-mutation reconciliation, initial-load, stale-refresh, and load-error transitions through Riverpod.
+- `update_check_controller.dart`: owns the App-scoped persisted update-preview cache, freshness policies, and single-flight CLI check shared by lifecycle and Library/detail consumers.
 - `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Adoption, and Package target actions behind one screen library.
 - `language_identity_icon.dart`: centralizes presentation-language identity, locally vendored Circle Flags asset mapping, and the system-language fallback shared by language selectors.
 - `agent_logo.dart`: centralizes Agent ID-to-SVG identity mapping and the themed initial fallback shared by installation and Library navigation.
@@ -25,11 +26,11 @@
 - `color_scheme_inspector.dart` and `color_inspector/`: retain the standalone developer inspector for generated Material 3 roles; it is intentionally not routed into user Settings.
 - `install_location_popover.dart` and `install_location/`: expose the shared anchored installation selector while hiding menu anchoring, async loading, scope selection, location cards, and cancellation-preserving destructive confirmation handoff.
 - `install_location_island/`: vendors and adapts Portal Labs' Todo List Interaction into the composable installation scope, project, and Agent selector.
-- `nested_navigation.dart` and `navigation/`: render the accessible side rail and reusable icon/image/multilingual-fallback navigation buttons, layout-stable composited selected coloring, item densities, fixed sections, optional localized section labels, selected capsule motion, desktop layout, App-centered interactive overlays, destination-wide foreground surfaces, and reduced-motion-aware secondary-body entrances.
+- `nested_navigation.dart` and `navigation/`: render the accessible side rail and reusable icon/image/multilingual-fallback navigation buttons, layout-stable composited selected coloring, item densities, fixed sections, optional localized section labels, selected capsule motion, desktop layout, App-centered interactive overlays, destination-wide foreground surfaces, and animated secondary-body entrances.
 - `onboarding_screen.dart` and `onboarding/`: expose the blocking two-step clean-install journey while hiding welcome, Agent inventory, project selection, and project-row rendering.
 - `native_components.dart` and `native/`: expose the Material-only desktop component layer while partitioning buttons/loading, cards/selection, and feedback/input controls.
 - `primary_folder_shell.dart`: adapts Portal Labs' MIT-licensed FolderTabs shape and spring motion into an accessible, full-height SkillsGo shell that preserves destination page state.
-- `physics_collision_field.dart`: vendors and adapts Portal Labs' Physics Collision Card into a deterministic, reduced-motion-aware interaction primitive for explanatory product scenes.
+- `physics_collision_field.dart`: vendors and adapts Portal Labs' Physics Collision Card into a deterministic interaction primitive for explanatory product scenes.
 - `archive_folder/`: vendors Portal Labs' Archive Folder, ArchiveItem, and style, adding structured front copy, an arbitrary front-surface child slot, and opt-in fixed label geometry for reusable product content.
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
 - `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
@@ -38,7 +39,7 @@
 - `mermaid_webview_diagram.dart`: owns the single App-scoped official Mermaid.js 11.16.0 WebView queue, themed skeletons, PNG cache, and self-sizing block presentation.
 - `mermaid/`: vendors and evolves the MIT-licensed `flutter_mermaid` 0.1.0 pure-Dart parser, layout, painter, and widget implementation against the pinned Mermaid 11.16.0 compatibility baseline.
 - `stacked_toast.dart`: vendors Portal Labs' stacked spring interaction and adapts it into compact, theme-aware transient operation feedback with desktop top-right and mobile top-center responsive placement.
-- `subscription_segmented_switch.dart`: vendors the Portal Labs Subscription Pricing Picker period toggle as a controlled, HugeIcons-based two-option Library filter.
+- `subscription_segmented_switch.dart`: vendors the Portal Labs Subscription Pricing Picker period toggle as a controlled, HugeIcons-based two-option Library filter with optional bounded breathing status badges.
 
 ## Architectural Boundary
 
@@ -60,12 +61,12 @@ Every asynchronous UI owner must model and render these states explicitly:
 
 Implementation rules:
 
-- Skeletons are reusable semantic components from the native component layer, use neutral design tokens, preserve final radii and spacing, respect reduced motion, and are excluded from the accessibility tree. The containing region announces one localized loading label.
+- Skeletons are reusable semantic components from the native component layer, use neutral design tokens, preserve final radii and spacing, and are excluded from the accessibility tree. The containing region announces one localized loading label.
 - Discovery cold loads use card-shaped skeletons with the same responsive grid as real Skill cards. Pagination and collection refresh retain existing cards.
 - Library cold loads use row/card skeletons for local CLI inspection. Re-detection and Hub enrichment retain the last local inventory.
 - Skill detail renders summary-known identity and navigation immediately; instructions, evidence, files, installation targets, and Package data may load as independent skeleton regions.
 - Installation surfaces open on the initiating frame using known Skill summary data. Agent targets, Added Projects, risk policy, remote detail, and Package Skills load inside the surface; optional Package enumeration cannot block location selection.
 - Avoid global modal spinners when the final layout is known. Avoid skeletons for sub-150 ms local state changes, button presses, or mutations with determinate progress.
-- Tests must assert skeleton geometry keys, next-frame surface visibility, stale-content preservation, localized loading/error semantics, and replacement without layout overflow. Animation tests must also cover `MediaQuery.disableAnimations`.
+- Tests must assert skeleton geometry keys, next-frame surface visibility, stale-content preservation, localized loading/error semantics, and replacement without layout overflow.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

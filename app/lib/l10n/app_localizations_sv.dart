@@ -441,9 +441,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get addProject => 'Lägg till projekt';
 
   @override
-  String get relocateProject => 'Förflytta';
-
-  @override
   String get removeFromList => 'Ta bort från listan';
 
   @override
@@ -471,21 +468,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'Katalogen kan ha flyttats eller dess volym kan vara offline. Flytta den eller ta bort endast dess appreferens.';
+      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
 
   @override
   String get projectPermissionTitle => 'Projekttillstånd krävs';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo kan inte inspektera denna valda rot. Ge åtkomst genom att flytta den via katalogväljaren.';
+      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
 
   @override
   String get projectInaccessibleTitle => 'Projektkatalogen är otillgänglig';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo behöll denna projektreferens. Kontrollera sökvägen eller volymen och flytta den sedan.';
+      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
 
   @override
   String get checking => 'Kontroll…';

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on fully resolved current and desired Package artifacts, caller-selected Projection state, immutable Info cache identity, and optional Workspace manifest/lock publication.
- * [OUTPUT]: Provides the shared Package reconcile preparation plus the ordinary commit wrapper for Store, Projections, immutable Info, manifest, and lock mutations.
+ * [INPUT]: Depends on fully resolved current and desired Package trees, caller-selected Projection state, immutable Info cache identity, and optional Workspace manifest/lock publication.
+ * [OUTPUT]: Provides shared direct-Projection reconcile preparation plus the ordinary commit wrapper for Projections, immutable Info, manifest, and lock mutations.
  * [POS]: Serves as the command-internal desired-state engine shared by add, update, install, and adopt-through-add without owning their user intent or interaction policy.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,11 +14,12 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 type packageCoordinateState struct {
 	resource    *hub.PackageResource
-	archive     []byte
+	entries     []protocolartifact.Entry
 	projections []packagestore.Projection
 	sum         string
 }
@@ -44,7 +45,7 @@ func preparePackageReconcile(request packageReconcileRequest) (packagemutation.P
 		PackagesRoot:       request.packagesRoot,
 		PackagePath:        request.packagePath,
 		Version:            desired.Info.Version,
-		Archive:            request.desired.archive,
+		Entries:            request.desired.entries,
 		Sum:                packageCoordinateSum(request.desired),
 		Members:            desiredMembers,
 		SkillNames:         packageSkillNames(desired.Members),
@@ -62,7 +63,7 @@ func preparePackageReconcile(request packageReconcileRequest) (packagemutation.P
 			PackagesRoot:       request.packagesRoot,
 			PackagePath:        request.packagePath,
 			Version:            current.Info.Version,
-			Archive:            request.current.archive,
+			Entries:            request.current.entries,
 			Sum:                packageCoordinateSum(*request.current),
 			Members:            packageMemberPaths(current),
 			SkillNames:         packageSkillNames(current.Members),

@@ -1,220 +1,78 @@
 /*
- * [INPUT]: Depends on the compliance package imports and contracts declared in this file.
- * [OUTPUT]: Provides the compliance package behavior implemented by tests.go.
- * [POS]: Serves as maintained source in the compliance package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on storage.Backend and provider-specific cleanup callbacks.
+ * [OUTPUT]: Provides reusable behavioral tests for Git repository and Skill-content persistence.
+ * [POS]: Serves as the architecture-level compliance suite shared by every storage backend.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package compliance
 
 import (
-	"bytes"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
-	"io"
-	"math/rand"
+	"path/filepath"
 	"testing"
+	"time"
 
-	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/skillsgo/skillsgo/hub/pkg/gitartifact"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
 )
 
-// RunTests takes a backend implementation and runs compliance tests
-// against the interface.
-func RunTests(t *testing.T, b storage.Backend, clearBackend func() error) {
-	require.NoError(t, clearBackend(), "pre-clearing backend failed")
-	defer require.NoError(t, clearBackend(), "post-clearing backend failed")
-	testNotFound(t, b)
-	testList(t, b)
-	testListSuffix(t, b)
-	testDelete(t, b)
-	testGet(t, b)
-	testExists(t, b)
-	testShouldNotExist(t, b)
-}
-
-// testNotFound ensures that a storage Backend
-// returns a KindNotFound error when asking for
-// non existing modules.
-func testNotFound(t *testing.T, b storage.Backend) {
-	mod, ver := "github.com/skillsgo/skillsgo/hub", "yyy"
-	ctx := t.Context()
-
-	err := b.Delete(ctx, mod, ver)
-	require.Error(t, err)
-	require.Equal(t, errors.KindNotFound, errors.Kind(err))
-
-	_, err = b.Info(ctx, mod, ver)
-	require.Error(t, err)
-	require.Equal(t, errors.KindNotFound, errors.Kind(err))
-
-	vs, err := b.List(ctx, mod)
-	require.NoError(t, err)
-	require.Equal(t, 0, len(vs))
-
-	_, err = b.Zip(ctx, mod, ver)
-	require.Error(t, err)
-	require.Equal(t, errors.KindNotFound, errors.Kind(err))
-}
-
-// testListPrefixes makes sure that if you have two modules, such as
-// github.com/one/two and github.com/one/two-suffix, then the versions
-// should not be mixed just because they share a similar prefix.
-func testListSuffix(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-
-	modVers := map[string][]string{
-		"github.com/one/two":       {"v1.1.0", "v1.2.0", "v1.3.0"},
-		"github.com/one/two/v2":    {"v2.1.0"},
-		"github.com/one/two-other": {"v0.9.0"},
-		"github.com/one":           {}, // not a module but a valid query, so no versions
-	}
-	for modname, versions := range modVers {
-		for _, version := range versions {
-			mock := getMockPackage()
-			err := b.Save(
-				ctx,
-				modname,
-				version,
-				mock.Zip,
-				mock.ZipMD5,
-				mock.Info,
-			)
-			require.NoError(t, err, "Save for storage failed")
-		}
-	}
-	defer func() {
-		for modname, versions := range modVers {
-			for _, version := range versions {
-				b.Delete(ctx, modname, version)
-			}
-		}
-	}()
-	for modname, versions := range modVers {
-		retVersions, err := b.List(ctx, modname)
+func RunTests(t *testing.T, backend storage.Backend, clear func() error) {
+	t.Helper()
+	require.NoError(t, clear())
+	require.NoError(t, backend.Ready(t.Context()))
+	t.Run("skill content is immutable and idempotent", func(t *testing.T) {
+		content := []byte("# Demo\n")
+		digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
+		created, err := backend.PutSkillContentIfAbsent(t.Context(), digest, content)
 		require.NoError(t, err)
-		if len(versions) == 0 {
-			require.Empty(t, retVersions)
-		} else {
-			require.Equal(t, versions, retVersions)
-		}
+		require.True(t, created)
+		created, err = backend.PutSkillContentIfAbsent(t.Context(), digest, content)
+		require.NoError(t, err)
+		require.False(t, created)
+		stored, err := backend.SkillContent(t.Context(), digest)
+		require.NoError(t, err)
+		require.Equal(t, content, stored)
+		require.NoError(t, backend.PutLocalizedSkillContent(t.Context(), digest, "p1", "zh-Hans-CN", []byte("# 示例\n")))
+		localized, err := backend.LocalizedSkillContent(t.Context(), digest, "p1", "zh-Hans-CN")
+		require.NoError(t, err)
+		require.Equal(t, []byte("# 示例\n"), localized)
+	})
+	t.Run("repository round trip", func(t *testing.T) {
+		source := filepath.Join(t.TempDir(), "source.git")
+		_, _, err := gitartifact.Publish(source, "github.com/acme/demo", "v1.0.0", time.Unix(1, 0).UTC(), []protocolartifact.Entry{{Path: "SKILL.md", Contents: []byte("# Demo\n"), Mode: 0o644}})
+		require.NoError(t, err)
+		require.NoError(t, backend.PublishGitRepository(t.Context(), "github.com/acme/demo", source))
+		destination := filepath.Join(t.TempDir(), "demo.git")
+		found, err := backend.HydrateGitRepository(t.Context(), "github.com/acme/demo", destination)
+		require.NoError(t, err)
+		require.True(t, found)
+		repository, err := git.PlainOpen(destination)
+		require.NoError(t, err)
+		reference, err := repository.Reference(plumbing.NewTagReferenceName("v1.0.0"), true)
+		require.NoError(t, err)
+		commit, err := repository.CommitObject(reference.Hash())
+		require.NoError(t, err)
+		tree, err := commit.Tree()
+		require.NoError(t, err)
+		file, err := tree.File("SKILL.md")
+		require.NoError(t, err)
+		contents, err := file.Contents()
+		require.NoError(t, err)
+		require.Equal(t, "# Demo\n", contents)
+	})
+}
+
+func RunBenchmarks(b *testing.B, backend storage.Backend, clear func() error) {
+	content := []byte("# Benchmark\n")
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
+	b.ResetTimer()
+	for range b.N {
+		_, _ = backend.PutSkillContentIfAbsent(b.Context(), digest, content)
 	}
-}
-
-// testList tests that a storage Backend returns
-// the exact list of versions that are saved.
-func testList(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-
-	modname := "github.com/skillsgo/skillsgo/hub"
-	versions := []string{"v1.1.0", "v1.2.0", "v1.3.0"}
-	for _, version := range versions {
-		mock := getMockPackage()
-		err := b.Save(
-			ctx,
-			modname,
-			version,
-			mock.Zip,
-			mock.ZipMD5,
-			mock.Info,
-		)
-		require.NoError(t, err, "Save for storage failed")
-	}
-	defer func() {
-		for _, ver := range versions {
-			b.Delete(ctx, modname, ver)
-		}
-	}()
-	retVersions, err := b.List(ctx, modname)
-	require.NoError(t, err)
-	require.Equal(t, versions, retVersions)
-}
-
-// testGet saves and retrieves a module successfully.
-func testGet(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-	modname := "github.com/skillsgo/skillsgo/hub"
-	ver := "v1.2.3"
-	mock := getMockPackage()
-	zipBts, _ := io.ReadAll(mock.Zip)
-	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
-	defer b.Delete(ctx, modname, ver)
-
-	info, err := b.Info(ctx, modname, ver)
-	require.NoError(t, err)
-	require.Equal(t, mock.Info, info)
-
-	zip, err := b.Zip(ctx, modname, ver)
-	require.NoError(t, err)
-	givenZipBts, err := io.ReadAll(zip)
-	require.NoError(t, err)
-	require.Equal(t, zipBts, givenZipBts)
-	require.Equal(t, int64(len(zipBts)), zip.Size())
-}
-
-func testExists(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-	modname := "github.com/skillsgo/skillsgo/hub"
-	ver := "v1.2.3"
-	mock := getMockPackage()
-	zipBts, _ := io.ReadAll(mock.Zip)
-	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
-	defer b.Delete(ctx, modname, ver)
-	checker := storage.WithChecker(b)
-	exists, err := checker.Exists(ctx, modname, ver)
-	require.NoError(t, err)
-	require.Equal(t, true, exists)
-}
-
-func testShouldNotExist(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-	mod := "github.com/gomods/shouldNotExist"
-	ver := "v1.2.3-pre.1"
-	mock := getMockPackage()
-	zipBts, _ := io.ReadAll(mock.Zip)
-	err := b.Save(ctx, mod, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
-	require.NoError(t, err, "should successfully safe a mock module")
-	defer b.Delete(ctx, mod, ver)
-
-	prefixVer := "v1.2.3-pre"
-
-	exists, err := storage.WithChecker(b).Exists(ctx, mod, prefixVer)
-	require.NoError(t, err)
-	if exists {
-		t.Fatal("a non existing version that has the same prefix of an existing version should not exist")
-	}
-}
-
-// testDelete tests that a module can be deleted from a
-// storage Backend and the Exists method returns false
-// afterwards.
-func testDelete(t *testing.T, b storage.Backend) {
-	ctx := t.Context()
-	modname := "github.com/skillsgo/skillsgo/hub"
-	version := fmt.Sprintf("%s%d", "delete", rand.Int())
-
-	mock := getMockPackage()
-	err := b.Save(ctx, modname, version, mock.Zip, mock.ZipMD5, mock.Info)
-	require.NoError(t, err)
-
-	err = b.Delete(ctx, modname, version)
-	require.NoError(t, err)
-
-	exists, err := storage.WithChecker(b).Exists(ctx, modname, version)
-	require.NoError(t, err)
-	require.Equal(t, false, exists)
-}
-
-type artifactFixture struct {
-	Zip    io.ReadCloser
-	ZipMD5 []byte
-	Info   []byte
-}
-
-func getMockPackage() *artifactFixture {
-	return &artifactFixture{
-		Info:   []byte("123"),
-		Zip:    io.NopCloser(bytes.NewReader([]byte("789"))),
-		ZipMD5: md5.New().Sum([]byte("789")),
-	}
+	_ = clear
 }

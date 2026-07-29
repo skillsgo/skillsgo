@@ -29,6 +29,7 @@ const (
 	maxBackfillDiagnostics  = 10
 	backfillReconcileEvery  = time.Hour
 	backfillStaleAfter      = 2 * time.Hour
+	packageBackfillTimeout  = 2 * time.Hour
 )
 
 type packageBackfillArgs struct {
@@ -37,6 +38,8 @@ type packageBackfillArgs struct {
 }
 
 func (packageBackfillArgs) Kind() string { return "module_history_backfill" }
+
+func (packageBackfillArgs) JobTimeout() time.Duration { return packageBackfillTimeout }
 
 type packageBackfillReconcileArgs struct{}
 

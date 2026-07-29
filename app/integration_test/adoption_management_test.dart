@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
+ * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and the CLI user config projects section.
  * [OUTPUT]: Verifies exact All/User/Project adoption counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -64,15 +64,12 @@ void registerAdoptionManagementJourney() {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
       await preferences.setBool('batch_adoption_prompt_seen_v1', true);
-      await preferences.setString(
-        'added_projects_v1',
-        jsonEncode([
-          {
-            'id': 'adoption-project',
-            'name': 'adoption-project',
-            'path': projectRoot.path,
-          },
-        ]),
+      final configFile = File('$sandbox/home/.skillsgo/config.yaml');
+      configFile.parent.createSync(recursive: true);
+      configFile.writeAsStringSync(
+        'schemaVersion: 1\n'
+        'projects:\n'
+        '  - ${jsonEncode(projectRoot.path)}\n',
       );
 
       await skillsgo.runSkillsGoApp(

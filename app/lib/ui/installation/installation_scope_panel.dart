@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation targets, Added Projects, localized Agent labels, target health chips, and expandable Material presentation.
- * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries with reduced-motion-safe detail expansion.
+ * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries with animated detail expansion.
  * [POS]: Serves as the installed-target scope summary segment of detail journeys.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -128,7 +128,6 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
             ),
           )
         : const SizedBox.shrink();
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Column(
@@ -225,9 +224,7 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
                           const SizedBox(width: 8),
                           AnimatedRotation(
                             turns: expanded ? .5 : 0,
-                            duration: MediaQuery.disableAnimationsOf(context)
-                                ? Duration.zero
-                                : const Duration(milliseconds: 180),
+                            duration: const Duration(milliseconds: 180),
                             child: HugeIcon(
                               icon: HugeIcons.strokeRoundedArrowDown01,
                               size: 14,
@@ -246,15 +243,12 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
               ),
             ),
           ),
-          if (disableAnimations)
-            targetDetails
-          else
-            AnimatedSize(
-              alignment: AlignmentDirectional.topStart,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              child: targetDetails,
-            ),
+          AnimatedSize(
+            alignment: AlignmentDirectional.topStart,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: targetDetails,
+          ),
         ],
       ),
     );

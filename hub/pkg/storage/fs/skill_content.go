@@ -11,7 +11,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash/fnv"
 	"path/filepath"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
@@ -19,6 +21,8 @@ import (
 	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 	"github.com/spf13/afero"
 )
+
+var contentWriteLocks [256]sync.Mutex
 
 func (s *storageImpl) PutSkillContentIfAbsent(ctx context.Context, sourceDigest string, content []byte) (bool, error) {
 	const op errors.Op = "fs.PutSkillContentIfAbsent"
@@ -32,11 +36,9 @@ func (s *storageImpl) PutSkillContentIfAbsent(ctx context.Context, sourceDigest 
 	if err := s.filesystem.MkdirAll(s.filesystemPathDir(location), 0o777); err != nil {
 		return false, errors.E(op, err)
 	}
-	release, err := s.acquireArtifactWriteLock(ctx, location)
-	if err != nil {
-		return false, errors.E(op, err)
-	}
-	defer release()
+	lock := contentWriteLock(location)
+	lock.Lock()
+	defer lock.Unlock()
 	existing, readErr := afero.ReadFile(s.filesystem, location)
 	if readErr == nil {
 		if bytes.Equal(existing, content) {
@@ -63,11 +65,9 @@ func (s *storageImpl) PutLocalizedSkillContent(ctx context.Context, sourceDigest
 	if err := s.filesystem.MkdirAll(s.filesystemPathDir(location), 0o777); err != nil {
 		return errors.E(op, err)
 	}
-	release, err := s.acquireArtifactWriteLock(ctx, location)
-	if err != nil {
-		return errors.E(op, err)
-	}
-	defer release()
+	lock := contentWriteLock(location)
+	lock.Lock()
+	defer lock.Unlock()
 	existing, readErr := afero.ReadFile(s.filesystem, location)
 	if readErr == nil {
 		if bytes.Equal(existing, content) {
@@ -109,3 +109,9 @@ func (s *storageImpl) SkillContent(_ context.Context, sourceDigest string) ([]by
 }
 
 func (s *storageImpl) filesystemPathDir(location string) string { return filepath.Dir(location) }
+
+func contentWriteLock(location string) *sync.Mutex {
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(location))
+	return &contentWriteLocks[hash.Sum32()%uint32(len(contentWriteLocks))]
+}

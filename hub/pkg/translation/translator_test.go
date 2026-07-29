@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an HTTP test server implementing the configured OpenAI-compatible chat-completions contract.
- * [OUTPUT]: Specifies pure translation requests, disabled thinking, fixed temperature, strict result parsing, and upstream failures.
+ * [OUTPUT]: Specifies pure translation requests, disabled thinking, fixed temperature, conservative result-wrapper parsing, bounded format correction, and upstream failures.
  * [POS]: Serves as network-adapter contract coverage for description translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,6 +47,35 @@ func TestParseTranslationResultRejectsTextOutsideEnvelope(t *testing.T) {
 	}
 }
 
+func TestParseTranslationResultNormalizesHarmlessOuterWrappers(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+	}{
+		{name: "byte order mark", raw: "\ufeff<skillsgo-translation-result>审查变更</skillsgo-translation-result>"},
+		{name: "XML code fence", raw: "```xml\n<skillsgo-translation-result>审查变更</skillsgo-translation-result>\n```"},
+		{name: "plain code fence", raw: "```\n<skillsgo-translation-result>审查变更</skillsgo-translation-result>\n```"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := parseTranslationResult(test.raw)
+			require.NoError(t, err)
+			require.Equal(t, "审查变更", result)
+		})
+	}
+}
+
+func TestParseTranslationResultRejectsUnsafeWrappers(t *testing.T) {
+	for _, raw := range []string{
+		"Here is the translation:\n<skillsgo-translation-result>x</skillsgo-translation-result>",
+		"```json\n<skillsgo-translation-result>x</skillsgo-translation-result>\n```",
+		"<skillsgo-translation-result>x</skillsgo-translation-result><skillsgo-translation-result>y</skillsgo-translation-result>",
+	} {
+		_, err := parseTranslationResult(raw)
+		require.Error(t, err)
+	}
+}
+
 func TestOpenAITranslatorPropagatesUpstreamFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		http.Error(response, `{}`, http.StatusTooManyRequests)
@@ -54,6 +83,46 @@ func TestOpenAITranslatorPropagatesUpstreamFailure(t *testing.T) {
 	defer server.Close()
 	_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "en", "zh-Hans-CN")
 	require.ErrorContains(t, err, "429")
+}
+
+func TestOpenAITranslatorRetriesOneInvalidModelFormat(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		attempts++
+		var body struct {
+			Messages []struct {
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		response.Header().Set("Content-Type", "application/json")
+		content := "裸露的翻译"
+		if attempts == 2 {
+			require.Contains(t, body.Messages[0].Content, "format-correction attempt")
+			content = "<skillsgo-translation-result>有效翻译</skillsgo-translation-result>"
+		}
+		_ = json.NewEncoder(response).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": content}}}})
+	}))
+	defer server.Close()
+
+	result, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "en", "zh-Hans-CN")
+	require.NoError(t, err)
+	require.Equal(t, Result{Content: "有效翻译"}, result)
+	require.Equal(t, 2, attempts)
+}
+
+func TestOpenAITranslatorBoundsInvalidModelFormatAttempts(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		attempts++
+		response.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(response).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": "still invalid"}}}})
+	}))
+	defer server.Close()
+
+	_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "en", "zh-Hans-CN")
+	require.ErrorContains(t, err, "exactly one result envelope")
+	require.Equal(t, translationValidationAttempts, attempts)
 }
 
 func indexOf(t *testing.T, value, part string) int {
