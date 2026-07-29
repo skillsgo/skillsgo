@@ -375,8 +375,14 @@ func enforceRepositoryDiskLimit(root string) error {
 		limit = parsed
 	}
 	var total int64
-	return filepath.WalkDir(root, func(_ string, entry os.DirEntry, walkErr error) error {
+	return filepath.WalkDir(root, func(current string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
+			// Git maintenance lock files may disappear between directory read and
+			// lstat. A vanished descendant consumes no cache budget; the root
+			// itself must still exist.
+			if current != root && os.IsNotExist(walkErr) {
+				return nil
+			}
 			return walkErr
 		}
 		if !entry.Type().IsRegular() {
@@ -384,6 +390,9 @@ func enforceRepositoryDiskLimit(root string) error {
 		}
 		info, err := entry.Info()
 		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
 			return err
 		}
 		total += info.Size()
