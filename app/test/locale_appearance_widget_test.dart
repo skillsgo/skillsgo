@@ -48,10 +48,16 @@ void main() {
       (background.image as AssetImage).assetName,
       'assets/backgrounds/earth-starfield.png',
     );
-    await tester.runAsync(
-      () => presentationReady.future.timeout(const Duration(seconds: 2)),
-    );
-    await tester.pump();
+    for (
+      var attempt = 0;
+      attempt < 200 && !presentationReady.isCompleted;
+      attempt += 1
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
     expect(presentationReadyCount, 1);
     await tester.pump(const Duration(seconds: 3));
     expect(presentationReadyCount, 1);
