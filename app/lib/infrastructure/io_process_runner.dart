@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Dart process, stream, UTF-8, timeout, working-directory, and child-environment primitives plus the App process contract and App-wide structured logger.
- * [OUTPUT]: Provides the production ProcessRunner adapter with structured arguments, optional stdin, streamed stdout, bounded execution, process-scope isolation, and self-identifying sanitized CLI completion telemetry including bounded readable request/response previews.
- * [POS]: Serves as the local operating-system process adapter used by the CLI machine-protocol module and as the process event source for App diagnostics.
+ * [OUTPUT]: Provides one-shot startup probes plus a correlated long-lived CLI Server session with stdin, streamed stdout, bounded execution, synchronous dead-session marking, crash fan-out, and sanitized telemetry.
+ * [POS]: Serves as the operating-system process and NDJSON session adapter beneath the App's CLI lifecycle capability.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
@@ -244,7 +244,9 @@ final class _IoCliServerSession implements CliServerSession {
       await _process.stdin.flush();
     } on Object catch (error) {
       _pending.remove(id);
-      return _transportFailure('Cannot write to CLI Server: $error');
+      final output = _transportFailure('Cannot write to CLI Server: $error');
+      _abort(output);
+      return output;
     }
     late ProcessOutput output;
     try {
@@ -253,12 +255,12 @@ final class _IoCliServerSession implements CliServerSession {
       );
     } on TimeoutException {
       _pending.remove(id);
-      _process.kill();
       output = const ProcessOutput(
         exitCode: 124,
         stdout: '',
         stderr: 'Command timed out.',
       );
+      _abort(output);
     }
     IoProcessRunner._logCompletion(
       invocationId,
@@ -310,9 +312,13 @@ final class _IoCliServerSession implements CliServerSession {
   }
 
   void _fail(Object error) {
+    _abort(_transportFailure('Invalid CLI Server stream: $error'));
+  }
+
+  void _abort(ProcessOutput output) {
     if (_isClosed) return;
     _isClosed = true;
-    _finishPending(_transportFailure('Invalid CLI Server stream: $error'));
+    _finishPending(output);
     _process.kill();
   }
 

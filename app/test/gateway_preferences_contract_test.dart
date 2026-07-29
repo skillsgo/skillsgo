@@ -21,6 +21,10 @@ class _ManagedProjectsRunner implements ProcessRunner {
   final projects = <String, ({String name, String root})>{};
 
   @override
+  Future<CliServerSession> startCliServer(String executable) async =>
+      _ManagedProjectsSession(this, executable);
+
+  @override
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {
@@ -78,6 +82,31 @@ class _ManagedProjectsRunner implements ProcessRunner {
     }),
     stderr: '',
   );
+}
+
+class _ManagedProjectsSession implements CliServerSession {
+  _ManagedProjectsSession(this.runner, this.executable);
+
+  final _ManagedProjectsRunner runner;
+  final String executable;
+
+  @override
+  bool isClosed = false;
+
+  @override
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  }) => runner.run(
+    executable,
+    arguments,
+    stdin: stdin,
+    onStdoutLine: onStdoutLine,
+  );
+
+  @override
+  Future<void> close() async => isClosed = true;
 }
 
 void main() {

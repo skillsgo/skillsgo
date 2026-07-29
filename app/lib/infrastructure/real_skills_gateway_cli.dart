@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, ProcessRunner, startup handshake schema, and typed CLI failures.
- * [OUTPUT]: Provides CLI detection, developer override persistence, required-path resolution, and structured command execution.
+ * [OUTPUT]: Provides one-shot CLI compatibility detection, developer override persistence, required-path resolution, coalesced CLI Server startup, structured command execution, and dead-session replacement.
  * [POS]: Serves as the CLI lifecycle capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -119,7 +119,7 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
     void Function(String line)? onStdoutLine,
   }) async {
     if (_cliPath == null) {
-      final status = await detectCli();
+      final status = await _detectCliOnce();
       if (!status.isReady) {
         throw SkillsException(
           status.message ?? 'The SkillsGo CLI is not ready. Open Settings.',
@@ -130,16 +130,9 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
       }
     }
     final executable = _requiredCli;
-    final output = _runner is CliServerRunner
-        ? await (await _requireCliServer(
-            executable,
-          )).run(arguments, stdin: stdin, onStdoutLine: onStdoutLine)
-        : await _runner.run(
-            executable,
-            arguments,
-            stdin: stdin,
-            onStdoutLine: onStdoutLine,
-          );
+    final output = await (await _requireCliServer(
+      executable,
+    )).run(arguments, stdin: stdin, onStdoutLine: onStdoutLine);
     if (_cliServerSession?.isClosed ?? false) {
       _cliServerSession = null;
       _cliServerStart = null;
@@ -147,12 +140,24 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
     return CommandResult(command: [executable, ...arguments], output: output);
   }
 
+  Future<CliStatus> _detectCliOnce() async {
+    final current = _cliDetection;
+    if (current != null) return current;
+    final detection = detectCli();
+    _cliDetection = detection;
+    try {
+      return await detection;
+    } finally {
+      _cliDetection = null;
+    }
+  }
+
   Future<CliServerSession> _requireCliServer(String executable) async {
     final current = _cliServerSession;
     if (current != null && !current.isClosed) return current;
     final starting = _cliServerStart;
     if (starting != null) return starting;
-    final future = (_runner as CliServerRunner).startCliServer(executable);
+    final future = _runner.startCliServer(executable);
     _cliServerStart = future;
     try {
       final session = await future;

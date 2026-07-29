@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed long-lived CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -71,7 +71,7 @@ Uri _originUri(String origin) {
 abstract class _RealSkillsGatewayCore implements SkillsGateway {
   _RealSkillsGatewayCore({
     ProcessRunner? processRunner,
-    String? initialCliPath,
+    @visibleForTesting String? initialCliPath,
     String? bundledCliPath,
     this.allowDeveloperCliOverride = !kReleaseMode,
     String? expectedCliOS,
@@ -81,7 +81,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     ProjectPathInspector? projectPathInspector,
     this._projectIconResolver = const ProjectIconResolver(),
   }) : _runner = processRunner ?? const IoProcessRunner(),
-       _cliPath = initialCliPath,
+       _cliPath = kReleaseMode ? null : initialCliPath,
        _bundledCliPath =
            bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
@@ -94,6 +94,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final ProcessRunner _runner;
   CliServerSession? _cliServerSession;
   Future<CliServerSession>? _cliServerStart;
+  Future<CliStatus>? _cliDetection;
   final Uri _defaultHubBase;
   Uri _hubBase;
   final String _bundledCliPath;
