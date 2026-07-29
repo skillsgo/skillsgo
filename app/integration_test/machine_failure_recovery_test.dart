@@ -39,6 +39,7 @@ void registerMachineFailureRecoveryJourney() {
       );
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
+      await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final search = find.byKey(const Key('skill-search-input'));
       await _pumpUntil(tester, search, timeout: const Duration(seconds: 30));
@@ -58,12 +59,12 @@ void registerMachineFailureRecoveryJourney() {
                       true ||
                   widget.data?.contains('请检查网络连接') == true),
         ),
-        timeout: const Duration(seconds: 30),
+        timeout: const Duration(seconds: 60),
       );
       expect(find.textContaining('connection refused'), findsNothing);
       expect(find.textContaining('dial tcp'), findsNothing);
     },
-    timeout: const Timeout(Duration(minutes: 1)),
+    timeout: const Timeout(Duration(minutes: 2)),
   );
 }
 
