@@ -348,12 +348,13 @@ jobs:
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb postgresql postgresql-client
           echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(pg_config --bindir)" >> "$GITHUB_ENV"
 
-      - name: Install Windows PostgreSQL
+      - name: Configure Windows PostgreSQL
         if: matrix.target == 'windows'
         shell: pwsh
         run: |
-          choco install postgresql18 --no-progress -y --params "'/Password:skillsgo'"
-          "SKILLSGO_E2E_POSTGRES_BIN_DIR=C:/Program Files/PostgreSQL/18/bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if (-not $env:PGBIN) { throw "The Windows runner does not expose its bundled PostgreSQL binaries." }
+          $postgresBin = $env:PGBIN.Replace('\', '/')
+          "SKILLSGO_E2E_POSTGRES_BIN_DIR=$postgresBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run rendered desktop journeys
         shell: bash
