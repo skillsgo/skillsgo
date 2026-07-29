@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, Catalog, Source Repository fetchers and metadata, native Fiber routing, static disk delivery, and Huma documentation projection.
+ * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers and metadata, native Fiber routing, static disk delivery, and Huma documentation projection.
  * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, local static Git delivery, Repository metadata, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -30,7 +30,7 @@ func addProxyRoutes(
 	l *log.Logger,
 	c *config.Config,
 ) error {
-	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, false)
+	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, nil, false)
 }
 
 func addProxyRoutesWithCatalog(
@@ -40,12 +40,16 @@ func addProxyRoutesWithCatalog(
 	l *log.Logger,
 	c *config.Config,
 	metadata *catalog.Catalog,
+	backgroundMetadata *catalog.Catalog,
 	taskRuntime *taskqueue.Runtime,
 	adminRouter fiber.Router,
 	adminEnabled bool,
 ) error {
 	if taskRuntime == nil {
 		taskRuntime = taskqueue.NewSynchronous()
+	}
+	if backgroundMetadata == nil {
+		backgroundMetadata = metadata
 	}
 	r.Get("/", proxyHomeHandler(c))
 	r.Get("/healthz", healthHandler)
@@ -77,8 +81,10 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
-		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
-		if err := metadataCache.RegisterTask(); err != nil {
+		metadataSource := newGitHubRepositoryMetadataReader(c.GitHubTokens())
+		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, metadataSource)
+		backgroundMetadataCache := newQueuedRepositoryMetadataCache(backgroundMetadata, taskRuntime, metadataSource)
+		if err := backgroundMetadataCache.RegisterTask(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
 		}
 		publisher := newPackagePublisher(
@@ -91,10 +97,16 @@ func addProxyRoutesWithCatalog(
 		registerPackageSkillRoute(r, metadata, publisher, s)
 		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
 		if adminEnabled {
-			if metadata.PostgresPool() == nil {
+			if backgroundMetadata.PostgresPool() == nil {
 				return fmt.Errorf("Package Backfill administration requires PostgreSQL")
 			}
-			backfills := newRepositoryBackfillService(metadata, taskRuntime, lister, publisher, l)
+			backgroundPublisher := newPackagePublisher(
+				repositoryFetcher,
+				s,
+				backgroundMetadata,
+				withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
+			)
+			backfills := newRepositoryBackfillService(backgroundMetadata, taskRuntime, lister, backgroundPublisher, l)
 			if err := backfills.Register(); err != nil {
 				return fmt.Errorf("register Package Backfill task: %w", err)
 			}
