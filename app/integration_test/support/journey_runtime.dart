@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, Flutter diagnostics, deterministic English App language, and SharedPreferences.
- * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation and forwarded App/Hub diagnostics while preserving the real App-to-CLI-to-Hub boundary.
+ * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation, CLI-backed Project registration, and forwarded App/Hub diagnostics while preserving the real App-to-CLI-to-Hub boundary.
  * [POS]: Serves as the reusable runtime fixture for the single-process cross-platform App E2E suite and focused Journey execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/infrastructure/bundled_cli_locator.dart';
 import 'package:skillsgo/infrastructure/io_process_runner.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
 
@@ -20,6 +21,7 @@ final class JourneyRuntime {
     required this.sandbox,
     required this.hubOrigin,
     required this.gateway,
+    required this.childEnvironment,
     required this._hubProcess,
     required this._hubLogSinks,
   });
@@ -28,6 +30,7 @@ final class JourneyRuntime {
   final Directory sandbox;
   final String hubOrigin;
   final RealSkillsGateway gateway;
+  final Map<String, String> childEnvironment;
   final Process? _hubProcess;
   final List<IOSink> _hubLogSinks;
 
@@ -140,9 +143,25 @@ final class JourneyRuntime {
       sandbox: sandbox,
       hubOrigin: hubOrigin,
       gateway: gateway,
+      childEnvironment: childEnvironment,
       hubProcess: hubProcess,
       hubLogSinks: hubLogSinks,
     );
+  }
+
+  Future<void> registerProject(Directory project) async {
+    final result = await Process.run(
+      bundledCliPathFor(
+        operatingSystem: Platform.operatingSystem,
+        executable: Platform.resolvedExecutable,
+      ),
+      ['project', 'add', project.path, '--output', 'json'],
+      workingDirectory: '${sandbox.path}/project',
+      environment: childEnvironment,
+    );
+    if (result.exitCode != 0) {
+      throw StateError('Register Journey project failed: ${result.stderr}');
+    }
   }
 
   Future<void> close() async {
