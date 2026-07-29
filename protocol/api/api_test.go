@@ -36,7 +36,7 @@ func TestFindJSONContract(t *testing.T) {
 
 func TestPackageInfoJSONContract(t *testing.T) {
 	now := time.Date(2026, 7, 21, 1, 2, 3, 0, time.UTC)
-	repository := PackageInfo{SchemaVersion: SchemaVersion, Kind: KindPackage, PackagePath: "github.com/o/r", Version: "v1.0.0", Time: now, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 42, Skills: []PackageSkill{{Name: "demo", Path: "skills/demo"}}}
+	repository := PackageInfo{SchemaVersion: PackageInfoSchemaVersion, Kind: KindPackage, PackagePath: "github.com/o/r", Version: "v1.0.0", Time: now, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []PackageSkill{{Name: "demo", Path: "skills/demo"}}}
 	repositoryJSON, err := json.Marshal(repository)
 	if err != nil {
 		t.Fatal(err)
@@ -81,18 +81,18 @@ func TestPackageVersionSkillTranslationProvenanceJSONContract(t *testing.T) {
 	}
 }
 
-func TestPackageUpdateJSONContract(t *testing.T) {
-	request := PackageUpdateCheckRequest{SchemaVersion: SchemaVersion, Packages: []PackageCoordinate{{PackagePath: "github.com/o/r"}}}
+func TestCurrentPackagesJSONContract(t *testing.T) {
+	request := CurrentPackagesRequest{SchemaVersion: SchemaVersion, Packages: []PackageCoordinate{{PackagePath: "github.com/o/r"}}}
 	if _, err := json.Marshal(request); err != nil {
 		t.Fatal(err)
 	}
-	updates := PackageUpdateCheckResponse{Packages: []PackageUpdateCheckItem{{PackagePath: request.Packages[0].PackagePath, LatestVersion: "v1.1.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []PackageSkill{{Name: "demo", Path: "demo"}}, Status: UpdateAvailable}, {PackagePath: "example.com/o/r", Skills: []PackageSkill{}, Status: UpdateUnsupported}}}
+	updates := CurrentPackagesResponse{Packages: []CurrentPackage{{PackagePath: request.Packages[0].PackagePath, Version: "v1.1.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []PackageSkill{{Name: "demo", Path: "demo"}}, Status: PackagePublished}, {PackagePath: "example.com/o/r", Skills: []PackageSkill{}, Status: PackageUnavailable}}}
 	updateJSON, err := json.Marshal(updates)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(updateJSON), `"latestVersion":""`) {
-		t.Fatalf("empty update candidates were not omitted: %s", updateJSON)
+	if strings.Contains(string(updateJSON), `"version":""`) {
+		t.Fatalf("empty current publications were not omitted: %s", updateJSON)
 	}
 }
 

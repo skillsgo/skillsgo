@@ -18,6 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 type packageInstallResult struct {
@@ -81,7 +82,7 @@ func ensureOnePackage(ctx context.Context, root string, globalScope bool, catalo
 	if infoErr == nil {
 		resource, infoErr = hub.ParsePackageInfo(packagePath, infoBytes)
 	}
-	archive, restored := []byte(nil), false
+	entries, restored := []protocolartifact.Entry(nil), false
 	if _, err := os.Lstat(packageDir); os.IsNotExist(err) {
 		fetched, fetchErr := client.FetchPackageWithProgress(ctx, packagePath, dependency.Version, nil)
 		if fetchErr != nil {
@@ -91,13 +92,13 @@ func ensureOnePackage(ctx context.Context, root string, globalScope bool, catalo
 		if resource.Info.Version != dependency.Version || resource.Info.Sum != locked.Sum {
 			return "", packageDir, fmt.Errorf("exact Package %s@%s conflicts with skills-lock.yaml", packagePath, dependency.Version)
 		}
-		archive = resource.ZIP
+		entries = resource.Entries
 		restored = true
 	} else if err != nil {
 		return "", packageDir, err
 	} else {
 		var readErr error
-		archive, readErr = packagestore.ReadVerifiedPackage(scopeContext.packagesRoot, packagePath, dependency.Version, locked.Sum)
+		entries, readErr = packagestore.ReadVerifiedPackage(scopeContext.packagesRoot, packagePath, dependency.Version, locked.Sum)
 		if readErr != nil {
 			return "", packageDir, readErr
 		}
@@ -129,7 +130,7 @@ func ensureOnePackage(ctx context.Context, root string, globalScope bool, catalo
 		packagePath:  packagePath,
 		packagesRoot: scopeContext.packagesRoot,
 		infoRoot:     scopeContext.infoRoot,
-		desired:      packageCoordinateState{resource: resource, archive: archive, projections: projections, sum: locked.Sum},
+		desired:      packageCoordinateState{resource: resource, entries: entries, projections: projections, sum: locked.Sum},
 		operation:    "Package install",
 	}); err != nil {
 		return "", packageDir, err

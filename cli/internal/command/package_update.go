@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on shared validated Package Scope inputs, declared Package dependencies, one Catalog-backed Package update batch or explicit immutable target, verified current Scope Package Stores and Info, Agent Adapter roots, and the shared Package reconciler.
+ * [INPUT]: Depends on shared validated Package Scope inputs, declared Package dependencies, one Catalog-backed current Package Publication batch or explicit immutable target, verified current Scope Package Stores and Info, Agent Adapter roots, and the shared Package reconciler.
  * [OUTPUT]: Provides mutation-free Package update previews plus confirmed single-Package or best-effort scope-wide execution that consumes previewed immutable targets, preserves available persisted Skill selectors and Agents, reports removed Skills with canonical current name/path identity, binds execution to current declaration state, and reports complete per-Package outcomes.
  * [POS]: Serves as the Package update intent and interaction adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -302,9 +302,9 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 	if len(allPaths) == 0 && len(failed) == 0 {
 		return fmt.Errorf("no Packages are installed in Managed Scopes")
 	}
-	resolved := map[string]hub.PackageUpdateItem{}
+	resolved := map[string]hub.CurrentPackage{}
 	if len(allPaths) > 0 {
-		items, checkErr := client.PackageUpdates(cmd.Context(), allPaths)
+		items, checkErr := client.CurrentPackages(cmd.Context(), allPaths)
 		if checkErr != nil {
 			return checkErr
 		}
@@ -374,7 +374,7 @@ func previewPackageUpdates(ctx context.Context, root string, globalScope bool, c
 	return previewPackageUpdatesResolved(ctx, root, globalScope, client, packagePaths, queries, nil)
 }
 
-func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope bool, client *hub.Client, packagePaths []string, queries map[string]string, resolved map[string]hub.PackageUpdateItem) ([]packageUpdateReport, error) {
+func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope bool, client *hub.Client, packagePaths []string, queries map[string]string, resolved map[string]hub.CurrentPackage) ([]packageUpdateReport, error) {
 	manifest, lock, err := loadValidatedWorkspaceState(root)
 	if err != nil {
 		return nil, err
@@ -391,11 +391,11 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 	}
 	latestByPath := resolved
 	if latestByPath == nil {
-		latestByPath = map[string]hub.PackageUpdateItem{}
+		latestByPath = map[string]hub.CurrentPackage{}
 	}
 	if len(latestPaths) > 0 {
 		if resolved == nil {
-			items, checkErr := client.PackageUpdates(ctx, latestPaths)
+			items, checkErr := client.CurrentPackages(ctx, latestPaths)
 			if checkErr != nil {
 				return nil, checkErr
 			}
@@ -436,12 +436,12 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 		var targetMembers []protocolapi.PackageSkill
 		if queries[packagePath] == "latest" {
 			item := latestByPath[packagePath]
-			if item.Status != protocolapi.UpdateAvailable {
+			if item.Status != protocolapi.PackagePublished {
 				report.Error = "Package is not available in the published Catalog"
 				reports = append(reports, report)
 				continue
 			}
-			targetVersion, targetSum, targetMembers = item.LatestVersion, item.Sum, item.Skills
+			targetVersion, targetSum, targetMembers = item.Version, item.Sum, item.Skills
 		} else {
 			resource, resolveErr := client.Package(ctx, packagePath, queries[packagePath])
 			if resolveErr != nil {
@@ -654,8 +654,8 @@ func preparePackageUpdate(ctx context.Context, root string, globalScope bool, ca
 			packagePath:  packagePath,
 			packagesRoot: scopeContext.packagesRoot,
 			infoRoot:     scopeContext.infoRoot,
-			desired:      packageCoordinateState{resource: resource, archive: resource.ZIP, projections: newProjections},
-			current:      &packageCoordinateState{resource: oldResource, archive: oldArchive, projections: oldRemoved, sum: locked.Sum},
+			desired:      packageCoordinateState{resource: resource, entries: resource.Entries, projections: newProjections},
+			current:      &packageCoordinateState{resource: oldResource, entries: oldArchive, projections: oldRemoved, sum: locked.Sum},
 			workspace:    &packagemutation.WorkspaceState{Root: root, Manifest: currentManifest, Lock: currentLock},
 			operation:    "Package update",
 		})

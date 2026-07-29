@@ -9,7 +9,6 @@ package command
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,19 +25,20 @@ import (
 
 func TestAddExactPackageVersionCreatesWorkspacePackageStoreAndSelectedProjection(t *testing.T) {
 	packagePath, version := "github.com/example/skills", "v1.2.3"
-	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
+	entries := []protocolartifact.Entry{
 		{Path: "README.md", Contents: []byte("shared"), Mode: 0o644},
 		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root.\n---\n# Root\n"), Mode: 0o644},
 		{Path: "skills/design/SKILL.md", Contents: []byte("---\nname: design\ndescription: Design.\n---\n# Design\n"), Mode: 0o644},
 		{Path: "skills/review/SKILL.md", Contents: []byte("---\nname: review\ndescription: Review.\n---\n# Review\n"), Mode: 0o644},
-	})
+	}
+	archive, err := protocolartifact.BuildPackage(packagePath, version, entries)
 	require.NoError(t, err)
 	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
 	info := protocolapi.PackageInfo{
-		SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
-		Time: now, Sum: sum, ArchiveSize: int64(len(archive)),
+		SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
+		Time: now, Sum: sum, ArtifactRepository: commandTestArtifactRepository(t, packagePath, version, entries),
 		Skills: []protocolapi.PackageSkill{
 			{Name: "root", Path: "."},
 			{Name: "design", Path: "skills/design"},
@@ -51,9 +51,6 @@ func TestAddExactPackageVersionCreatesWorkspacePackageStoreAndSelectedProjection
 		switch request.URL.Path {
 		case "/api/v1/" + packagePath + "/versions/" + version:
 			_, _ = writer.Write(infoBytes)
-		case "/api/v1/" + packagePath + "/versions/" + version + ".zip":
-			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
-			_, _ = writer.Write(archive)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -284,14 +281,14 @@ func TestAddSwitchesPackageVersionAtomicallyAndPreservesSelectedSkills(t *testin
 		sum, err := protocolartifact.PackageSum(archive, packagePath, fixture.version)
 		require.NoError(t, err)
 		info, err := json.Marshal(protocolapi.PackageInfo{
-			SchemaVersion: 1,
-			Kind:          protocolapi.KindPackage,
-			PackagePath:   packagePath,
-			Version:       fixture.version,
-			Time:          time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
-			Sum:           sum,
-			ArchiveSize:   int64(len(archive)),
-			Skills:        fixture.skills,
+			SchemaVersion:      protocolapi.PackageInfoSchemaVersion,
+			Kind:               protocolapi.KindPackage,
+			PackagePath:        packagePath,
+			Version:            fixture.version,
+			Time:               time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
+			Sum:                sum,
+			ArtifactRepository: commandTestArtifactRepository(t, packagePath, fixture.version, fixture.entries),
+			Skills:             fixture.skills,
 		})
 		require.NoError(t, err)
 		artifacts[fixture.version] = artifact{info: info, archive: archive}
@@ -303,9 +300,6 @@ func TestAddSwitchesPackageVersionAtomicallyAndPreservesSelectedSkills(t *testin
 			switch request.URL.Path {
 			case base:
 				_, _ = writer.Write(artifact.info)
-				return
-			case base + ".zip":
-				_, _ = writer.Write(artifact.archive)
 				return
 			}
 		}
@@ -371,15 +365,15 @@ func TestAddSwitchesPackageVersionAtomicallyAndPreservesSelectedSkills(t *testin
 
 func TestAddPackageSumMismatchLeavesNoWorkspaceState(t *testing.T) {
 	packagePath, version := "github.com/example/skills", "v1.2.3"
-	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
+	entries := []protocolartifact.Entry{
 		{Path: "skills/design/SKILL.md", Contents: []byte("---\nname: design\ndescription: Design.\n---\n# Design\n"), Mode: 0o644},
-	})
-	require.NoError(t, err)
+	}
 	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
 	info := protocolapi.PackageInfo{
-		SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
-		Time: now,
-		Sum:  "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: int64(len(archive)),
+		SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
+		Time:               now,
+		Sum:                "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+		ArtifactRepository: commandTestArtifactRepository(t, packagePath, version, entries),
 		Skills: []protocolapi.PackageSkill{
 			{Name: "design", Path: "skills/design"},
 		},
@@ -390,9 +384,6 @@ func TestAddPackageSumMismatchLeavesNoWorkspaceState(t *testing.T) {
 		switch request.URL.Path {
 		case "/api/v1/" + packagePath + "/versions/" + version:
 			_, _ = writer.Write(infoBytes)
-		case "/api/v1/" + packagePath + "/versions/" + version + ".zip":
-			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
-			_, _ = writer.Write(archive)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -410,7 +401,7 @@ func TestAddPackageSumMismatchLeavesNoWorkspaceState(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(previous) })
 	var output bytes.Buffer
 	err = Execute([]string{"add", packagePath + "@" + version, "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output)
-	require.ErrorContains(t, err, "Hub Repository Sum mismatch")
+	require.ErrorContains(t, err, "Hub returned a Package Sum mismatch")
 
 	require.NoFileExists(t, filepath.Join(workspace, project.WorkspaceManifestName))
 	require.NoFileExists(t, filepath.Join(workspace, project.DependencyLockName))
@@ -428,17 +419,18 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	}
 	releases := map[string]release{}
 	for _, version := range []string{oldVersion, newVersion} {
-		archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
+		entries := []protocolartifact.Entry{
 			{Path: "README.md", Contents: []byte("Package " + version), Mode: 0o644},
 			{Path: "skills/alpha/SKILL.md", Contents: []byte("---\nname: alpha\ndescription: Alpha.\n---\n# " + version + "\n"), Mode: 0o644},
 			{Path: "skills/beta/SKILL.md", Contents: []byte("---\nname: beta\ndescription: Beta.\n---\n# " + version + "\n"), Mode: 0o644},
-		})
+		}
+		archive, err := protocolartifact.BuildPackage(packagePath, version, entries)
 		require.NoError(t, err)
 		sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 		require.NoError(t, err)
 		now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
-		info, err := json.Marshal(protocolapi.PackageInfo{SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
-			Time: now, Sum: sum, ArchiveSize: int64(len(archive)),
+		info, err := json.Marshal(protocolapi.PackageInfo{SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
+			Time: now, Sum: sum, ArtifactRepository: commandTestArtifactRepository(t, packagePath, version, entries),
 			Skills: []protocolapi.PackageSkill{
 				{Name: "alpha", Path: "skills/alpha"},
 				{Name: "beta", Path: "skills/beta"},
@@ -448,18 +440,18 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 	}
 	packageCheckRequests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/api/v1/packages/check-update" {
+		if request.URL.Path == "/api/v1/packages/current" {
 			packageCheckRequests++
-			var check protocolapi.PackageUpdateCheckRequest
+			var check protocolapi.CurrentPackagesRequest
 			require.NoError(t, json.NewDecoder(request.Body).Decode(&check))
-			response := protocolapi.PackageUpdateCheckResponse{Packages: make([]protocolapi.PackageUpdateCheckItem, 0, len(check.Packages))}
+			response := protocolapi.CurrentPackagesResponse{Packages: make([]protocolapi.CurrentPackage, 0, len(check.Packages))}
 			for _, coordinate := range check.Packages {
 				if coordinate.PackagePath != packagePath {
-					response.Packages = append(response.Packages, protocolapi.PackageUpdateCheckItem{PackagePath: coordinate.PackagePath, Skills: []protocolapi.PackageSkill{}, Status: protocolapi.UpdateUnsupported})
+					response.Packages = append(response.Packages, protocolapi.CurrentPackage{PackagePath: coordinate.PackagePath, Skills: []protocolapi.PackageSkill{}, Status: protocolapi.PackageUnavailable})
 					continue
 				}
-				response.Packages = append(response.Packages, protocolapi.PackageUpdateCheckItem{PackagePath: packagePath, LatestVersion: newVersion,
-					Sum: releases[newVersion].sum, Skills: []protocolapi.PackageSkill{{Name: "alpha", Path: "skills/alpha"}, {Name: "beta", Path: "skills/beta"}}, Status: protocolapi.UpdateAvailable})
+				response.Packages = append(response.Packages, protocolapi.CurrentPackage{PackagePath: packagePath, Version: newVersion,
+					Sum: releases[newVersion].sum, Skills: []protocolapi.PackageSkill{{Name: "alpha", Path: "skills/alpha"}, {Name: "beta", Path: "skills/beta"}}, Status: protocolapi.PackagePublished})
 			}
 			require.NoError(t, json.NewEncoder(writer).Encode(response))
 			return
@@ -472,10 +464,6 @@ func TestUpdatePackageReplacesCoordinateAndPreservesSelections(t *testing.T) {
 			switch request.URL.Path {
 			case "/api/v1/" + packagePath + "/versions/" + version:
 				_, _ = writer.Write(item.info)
-				return
-			case "/api/v1/" + packagePath + "/versions/" + version + ".zip":
-				writer.Header().Set("Content-Length", fmt.Sprint(len(item.archive)))
-				_, _ = writer.Write(item.archive)
 				return
 			}
 		}

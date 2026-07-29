@@ -40,7 +40,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, currently including explicit Managed Workspace projects shared by CLI cross-Scope operations and the App. |
 | `internal/packagemutation/` | Ordered local Package mutation commits spanning prepared Package Store/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
 | `internal/infocache/` | User-level disposable exact immutable Package Info bytes used for checksum-verified offline restore across all scopes. |
-| `internal/hub/` | Client for add-time Package Version Queries followed by exact Package Version metadata/ZIP resources, typed membership, bounded download, and Package h1 verification. |
+| `internal/hub/` | Client for add-time Package Version Queries followed by exact Package Version metadata and dumb-HTTP Git Artifact repositories, typed membership, local Pack caching, and Package h1 verification. |
 | `internal/source/` | Package ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
 | `internal/packagestore/` | Complete ordinary-file Package Store extraction and deterministic per-Agent Package Projection transactions. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |

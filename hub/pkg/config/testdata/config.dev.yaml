@@ -191,7 +191,7 @@ StatsExporter: "prometheus"
 # available at the time of requesting versions.
 NetworkMode: "strict"
 
-# ArtifactOrigin optionally redirects immutable Repository ZIP responses after publication.
+# ArtifactOrigin is the public CDN origin hosting static Git Artifact repositories.
 # Info and list responses always remain on the Hub origin.
 # Env override: SKILLSGO_HUB_ARTIFACT_ORIGIN
 ArtifactOrigin: ""

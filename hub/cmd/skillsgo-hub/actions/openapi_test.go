@@ -70,11 +70,10 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 		{http.MethodGet, "/api/v1/skills/find"},
 		{http.MethodPost, "/api/v1/skills/find-candidates"},
 		{http.MethodPost, "/api/v1/skills/batch"},
-		{http.MethodPost, "/api/v1/packages/check-update"},
+		{http.MethodPost, "/api/v1/packages/current"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}"},
 		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}/skills"},
-		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}.zip"},
 	} {
 		_, found := document.Paths[expected.path][strings.ToLower(expected.method)]
 		require.True(t, found, "%s %s", expected.method, expected.path)
@@ -120,7 +119,7 @@ func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
 	require.Equal(t, "skills/productivity/grill-me", detailExample["path"])
 	require.Contains(t, detailExample["content"], "name: grill-me")
 
-	for _, route := range []string{"/api/v1/skills/find-candidates", "/api/v1/skills/batch", "/api/v1/packages/check-update"} {
+	for _, route := range []string{"/api/v1/skills/find-candidates", "/api/v1/skills/batch", "/api/v1/packages/current"} {
 		operation := operationDocument(t, paths, route, "post")
 		request := operation["requestBody"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["example"]
 		encoded, err := json.Marshal(request)

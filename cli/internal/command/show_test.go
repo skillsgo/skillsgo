@@ -237,7 +237,7 @@ func TestShowClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
 			http.NotFound(writer, request)
 			return
 		}
-		_, _ = writer.Write([]byte(`{"schemaVersion":2,"kind":"Package","packagePath":"github.com/example/skills","version":"v1.2.3"}`))
+		_, _ = writer.Write([]byte(`{"schemaVersion":3,"kind":"Package","packagePath":"github.com/example/skills","version":"v1.2.3"}`))
 	}))
 	defer server.Close()
 

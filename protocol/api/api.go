@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, canonical Skill and Package coordinates, and package-level update DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, canonical Skill and Package coordinates, and current Package Publication DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,10 +16,11 @@ import (
 )
 
 const SchemaVersion = 1
+const PackageInfoSchemaVersion = 2
 const (
-	KindPackage       = "Package"
-	UpdateAvailable   = "available"
-	UpdateUnsupported = "unsupported"
+	KindPackage        = "Package"
+	PackagePublished   = "published"
+	PackageUnavailable = "unavailable"
 )
 
 type PackageSkill struct {
@@ -27,14 +28,14 @@ type PackageSkill struct {
 	Path string `json:"path" yaml:"path"`
 }
 type PackageInfo struct {
-	SchemaVersion int            `json:"schemaVersion"`
-	Kind          string         `json:"kind"`
-	PackagePath   string         `json:"packagePath"`
-	Version       string         `json:"version"`
-	Time          time.Time      `json:"time"`
-	Sum           string         `json:"sum"`
-	ArchiveSize   int64          `json:"archiveSize"`
-	Skills        []PackageSkill `json:"skills"`
+	SchemaVersion      int            `json:"schemaVersion"`
+	Kind               string         `json:"kind"`
+	PackagePath        string         `json:"packagePath"`
+	Version            string         `json:"version"`
+	Time               time.Time      `json:"time"`
+	Sum                string         `json:"sum"`
+	ArtifactRepository string         `json:"artifactRepository"`
+	Skills             []PackageSkill `json:"skills"`
 }
 type PackageVersionsResponse struct {
 	Versions []string `json:"versions"`
@@ -43,7 +44,6 @@ type PackageVersionSkill struct {
 	PackagePath    string    `json:"packagePath"`
 	Version        string    `json:"version"`
 	Time           time.Time `json:"time"`
-	ArchiveSize    int64     `json:"archiveSize"`
 	Name           string    `json:"name"`
 	Path           string    `json:"path"`
 	Description    string    `json:"description"`
@@ -131,19 +131,19 @@ func (coordinate PackageCoordinate) Valid() bool {
 	return err == nil && parsed.String() == coordinate.PackagePath
 }
 
-type PackageUpdateCheckRequest struct {
+type CurrentPackagesRequest struct {
 	SchemaVersion int                 `json:"schemaVersion"`
 	Packages      []PackageCoordinate `json:"packages"`
 }
 
-type PackageUpdateCheckItem struct {
-	PackagePath   string         `json:"packagePath"`
-	LatestVersion string         `json:"latestVersion,omitempty"`
-	Sum           string         `json:"sum,omitempty"`
-	Skills        []PackageSkill `json:"skills"`
-	Status        string         `json:"status"`
+type CurrentPackage struct {
+	PackagePath string         `json:"packagePath"`
+	Version     string         `json:"version,omitempty"`
+	Sum         string         `json:"sum,omitempty"`
+	Skills      []PackageSkill `json:"skills"`
+	Status      string         `json:"status"`
 }
 
-type PackageUpdateCheckResponse struct {
-	Packages []PackageUpdateCheckItem `json:"packages"`
+type CurrentPackagesResponse struct {
+	Packages []CurrentPackage `json:"packages"`
 }

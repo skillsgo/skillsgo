@@ -1,17 +1,14 @@
 /*
- * [INPUT]: Depends on globally deduplicated Catalog document candidates, content-addressed Skill storage, the configured language set, a document translator, and task-scoped cancellation.
- * [OUTPUT]: Provides one SHA-256-grouped, LLM-idempotent document batch with a shared four-request concurrency bound.
- * [POS]: Serves as the bounded-concurrency domain handler between River, S3-compatible Skill Markdown objects, and Catalog localization identity.
+ * [INPUT]: Depends on missing/stale Catalog document candidates, content-addressed Skill storage, configured locales, one document translator, and task-scoped cancellation.
+ * [OUTPUT]: Provides bounded document work discovery and one idempotent document-plus-locale translation operation.
+ * [POS]: Serves as the single-item document translation domain handler; durable dispatch, concurrency, timeout, and retry belong to taskqueue/River.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package translation
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
@@ -19,122 +16,72 @@ import (
 )
 
 type DocumentStore interface {
-	DocumentTranslationCandidates(context.Context, string, int) ([]catalog.DocumentTranslationCandidate, error)
+	DocumentTranslationCandidates(context.Context, string, string, int) ([]catalog.DocumentTranslationCandidate, error)
 	UpsertDocumentLocalization(context.Context, string, string, string, string) error
 }
+
+type DocumentWork struct{ SourceDigest, Lang, PromptVersion string }
 
 type DocumentWorker struct {
 	store         DocumentStore
 	contents      storage.SkillContentStore
 	translator    DocumentTranslator
 	analyzer      *LanguageAnalyzer
-	logger        Logger
 	langs         []string
 	promptVersion string
 	batch         int
 }
 
-type documentWork struct {
-	SourceDigest string
-	Langs        []string
+func NewDocumentWorker(store DocumentStore, contents storage.SkillContentStore, translator DocumentTranslator, analyzer *LanguageAnalyzer, langs []string, promptVersion string, batch int) *DocumentWorker {
+	return &DocumentWorker{store: store, contents: contents, translator: translator, analyzer: analyzer, langs: append([]string(nil), langs...), promptVersion: promptVersion, batch: batch}
 }
 
-func NewDocumentWorker(store DocumentStore, contents storage.SkillContentStore, translator DocumentTranslator, analyzer *LanguageAnalyzer, logger Logger, langs []string, promptVersion string, batch int) *DocumentWorker {
-	return &DocumentWorker{store: store, contents: contents, translator: translator, analyzer: analyzer, logger: logger, langs: append([]string(nil), langs...), promptVersion: promptVersion, batch: batch}
-}
-
-func (w *DocumentWorker) plan(ctx context.Context) ([]documentWork, error) {
-	type workItem struct {
-		langs []string
-	}
-	grouped := make(map[string]*workItem)
-	order := make([]string, 0, w.batch)
+func (w *DocumentWorker) Plan(ctx context.Context) ([]DocumentWork, error) {
+	work := make([]DocumentWork, 0, w.batch)
 	for _, lang := range w.langs {
-		candidates, err := w.store.DocumentTranslationCandidates(ctx, lang, w.batch)
+		remaining := w.batch - len(work)
+		if remaining == 0 {
+			break
+		}
+		candidates, err := w.store.DocumentTranslationCandidates(ctx, lang, w.promptVersion, remaining)
 		if err != nil {
 			return nil, fmt.Errorf("scan document translation candidates for %s: %w", lang, err)
 		}
 		for _, candidate := range candidates {
-			item := grouped[candidate.DocumentDigest]
-			if item == nil {
-				if len(order) == w.batch {
-					continue
-				}
-				item = &workItem{}
-				grouped[candidate.DocumentDigest] = item
-				order = append(order, candidate.DocumentDigest)
+			if len(work) == w.batch {
+				break
 			}
-			item.langs = append(item.langs, lang)
+			work = append(work, DocumentWork{SourceDigest: candidate.DocumentDigest, Lang: lang, PromptVersion: w.promptVersion})
 		}
-	}
-	work := make([]documentWork, 0, len(order))
-	for _, digest := range order {
-		work = append(work, documentWork{SourceDigest: digest, Langs: append([]string(nil), grouped[digest].langs...)})
 	}
 	return work, nil
 }
 
-func (w *DocumentWorker) RunOnce(ctx context.Context) error {
-	work, err := w.plan(ctx)
+func (w *DocumentWorker) RunOne(ctx context.Context, item DocumentWork) error {
+	source, err := w.contents.SkillContent(ctx, item.SourceDigest)
 	if err != nil {
 		return err
 	}
-	semaphore := make(chan struct{}, 4)
-	var group sync.WaitGroup
-	var failuresMu sync.Mutex
-	var failures []error
-	for _, item := range work {
-		digest := item.SourceDigest
-		source, readErr := w.contents.SkillContent(ctx, digest)
-		if readErr != nil {
-			failures = append(failures, readErr)
-			continue
-		}
-		if actual := catalog.ContentDigest(source); actual != digest {
-			failures = append(failures, fmt.Errorf("stored Skill content digest mismatch: expected %s, got %s", digest, actual))
-			continue
-		}
-		_, body, splitErr := skillmanifest.Split(source)
-		if splitErr != nil {
-			failures = append(failures, splitErr)
-			continue
-		}
-		analysis := w.analyzer.AnalyzeMarkdown(body)
-		for _, lang := range item.Langs {
-			lang := lang
-			semaphore <- struct{}{}
-			group.Add(1)
-			go func() {
-				defer group.Done()
-				defer func() { <-semaphore }()
-				if runErr := w.runLanguage(ctx, source, digest, analysis, lang); runErr != nil {
-					w.logger.Warnf("document translation failed for %s to %s: %v", digest, lang, runErr)
-					failuresMu.Lock()
-					failures = append(failures, runErr)
-					failuresMu.Unlock()
-				}
-			}()
-		}
+	if actual := catalog.ContentDigest(source); actual != item.SourceDigest {
+		return Permanent(fmt.Errorf("stored Skill content digest mismatch: expected %s, got %s", item.SourceDigest, actual))
 	}
-	group.Wait()
-	return errors.Join(failures...)
-}
-
-func (w *DocumentWorker) runLanguage(ctx context.Context, source []byte, digest string, analysis LanguageAnalysis, lang string) error {
-	if !analysis.RequiresTranslation(lang) {
-		return w.store.UpsertDocumentLocalization(ctx, lang, digest, catalog.LocalizationSource, w.promptVersion)
+	_, body, err := skillmanifest.Split(source)
+	if err != nil {
+		return Permanent(err)
 	}
-	if _, readErr := w.contents.LocalizedSkillContent(ctx, digest, w.promptVersion, lang); readErr == nil {
-		return w.store.UpsertDocumentLocalization(ctx, lang, digest, catalog.LocalizationTranslated, w.promptVersion)
+	analysis := w.analyzer.AnalyzeMarkdown(body)
+	if !analysis.RequiresTranslation(item.Lang) {
+		return w.store.UpsertDocumentLocalization(ctx, item.Lang, item.SourceDigest, catalog.LocalizationSource, item.PromptVersion)
 	}
-	requestCtx, cancel := context.WithTimeout(ctx, 180*time.Second)
-	result, err := w.translator.TranslateDocument(requestCtx, source, analysis.SourceLabel(), lang)
-	cancel()
+	if _, readErr := w.contents.LocalizedSkillContent(ctx, item.SourceDigest, item.PromptVersion, item.Lang); readErr == nil {
+		return w.store.UpsertDocumentLocalization(ctx, item.Lang, item.SourceDigest, catalog.LocalizationTranslated, item.PromptVersion)
+	}
+	result, err := w.translator.TranslateDocument(ctx, source, analysis.SourceLabel(), item.Lang)
 	if err != nil {
 		return err
 	}
-	if err := w.contents.PutLocalizedSkillContent(ctx, digest, w.promptVersion, lang, []byte(result.Content)); err != nil {
+	if err := w.contents.PutLocalizedSkillContent(ctx, item.SourceDigest, item.PromptVersion, item.Lang, []byte(result.Content)); err != nil {
 		return err
 	}
-	return w.store.UpsertDocumentLocalization(ctx, lang, digest, catalog.LocalizationTranslated, w.promptVersion)
+	return w.store.UpsertDocumentLocalization(ctx, item.Lang, item.SourceDigest, catalog.LocalizationTranslated, item.PromptVersion)
 }

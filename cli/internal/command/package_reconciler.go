@@ -14,11 +14,12 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 type packageCoordinateState struct {
 	resource    *hub.PackageResource
-	archive     []byte
+	entries     []protocolartifact.Entry
 	projections []packagestore.Projection
 	sum         string
 }
@@ -44,7 +45,7 @@ func preparePackageReconcile(request packageReconcileRequest) (packagemutation.P
 		PackagesRoot:       request.packagesRoot,
 		PackagePath:        request.packagePath,
 		Version:            desired.Info.Version,
-		Archive:            request.desired.archive,
+		Entries:            request.desired.entries,
 		Sum:                packageCoordinateSum(request.desired),
 		Members:            desiredMembers,
 		SkillNames:         packageSkillNames(desired.Members),
@@ -62,7 +63,7 @@ func preparePackageReconcile(request packageReconcileRequest) (packagemutation.P
 			PackagesRoot:       request.packagesRoot,
 			PackagePath:        request.packagePath,
 			Version:            current.Info.Version,
-			Archive:            request.current.archive,
+			Entries:            request.current.entries,
 			Sum:                packageCoordinateSum(*request.current),
 			Members:            packageMemberPaths(current),
 			SkillNames:         packageSkillNames(current.Members),

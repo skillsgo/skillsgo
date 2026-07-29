@@ -8,9 +8,9 @@ package actions
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -20,7 +20,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
-	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"golang.org/x/sync/singleflight"
@@ -61,8 +60,15 @@ func withCurrentPublicationObserver(observer func(context.Context, string)) pack
 	}
 }
 
+func withArtifactRepositoryRoot(root string) packagePublisherOption {
+	return func(publisher *modulePublisher) {
+		publisher.publication.root = root
+	}
+}
+
 func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog, options ...packagePublisherOption) *modulePublisher {
-	publisher := &modulePublisher{fetcher: fetcher, publication: newPackagePublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second, languageAnalyzer: translation.NewLanguageAnalyzer()}
+	artifactRoot := filepath.Join(os.TempDir(), "skillsgo-git-artifacts")
+	publisher := &modulePublisher{fetcher: fetcher, publication: newPackagePublicationCommit(backend, metadata, artifactRoot), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second, languageAnalyzer: translation.NewLanguageAnalyzer()}
 	for _, option := range options {
 		option(publisher)
 	}
@@ -195,37 +201,19 @@ func (p *modulePublisher) materialize(ctx context.Context, packagePath, query st
 }
 
 func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
-	if snapshot.Archive == nil || snapshot.ArchiveSize <= 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
+	if len(snapshot.Entries) == 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
 		return "", fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query)
 	}
-	archive, err := io.ReadAll(io.LimitReader(snapshot.Archive, protocolartifact.MaxArchiveBytes+1))
-	if err != nil {
-		return "", fmt.Errorf("read Package Artifact: %w", err)
-	}
-	if int64(len(archive)) != snapshot.ArchiveSize || len(archive) > protocolartifact.MaxArchiveBytes {
-		return "", fmt.Errorf("Package Artifact size mismatch for %s@%s", packagePath, snapshot.Version)
-	}
-	if sum, sumErr := protocolartifact.PackageSum(archive, packagePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
+	if sum, sumErr := protocolartifact.PackageEntriesSum(snapshot.Entries, packagePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
 		return "", fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version)
 	}
 
 	published := make([]catalog.Skill, 0, len(snapshot.Members))
 	skillContents := make([]moduleSkillContent, 0, len(snapshot.Members))
-	release := protocolapi.PackageInfo{
-		SchemaVersion: protocolapi.SchemaVersion,
-		Kind:          protocolapi.KindPackage,
-		PackagePath:   packagePath,
-		Version:       snapshot.Version,
-		Time:          snapshot.CommitTime,
-		Sum:           snapshot.Sum,
-		ArchiveSize:   snapshot.ArchiveSize,
-		Skills:        make([]protocolapi.PackageSkill, 0, len(snapshot.Members)),
-	}
 	for _, member := range snapshot.Members {
 		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" || len(member.Content) == 0 {
 			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query)
 		}
-		release.Skills = append(release.Skills, protocolapi.PackageSkill{Name: member.Manifest.Name, Path: member.Path})
 		sourceLanguage := ""
 		_, body, splitErr := protocolmanifest.Split(member.Content)
 		if splitErr != nil {
@@ -239,16 +227,11 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 		})
 		skillContents = append(skillContents, moduleSkillContent{digest: catalog.ContentDigest(member.Content), content: member.Content})
 	}
-	releaseInfo, err := json.Marshal(release)
-	if err != nil {
-		return "", fmt.Errorf("encode Package Info: %w", err)
-	}
-
 	version := catalog.PackageVersion{
 		Version: snapshot.Version, Ref: snapshot.Ref, CommitSHA: snapshot.CommitSHA, TreeSHA: snapshot.TreeSHA,
-		Sum: snapshot.Sum, ArchiveSize: snapshot.ArchiveSize, CommitTime: snapshot.CommitTime,
+		Sum: snapshot.Sum, CommitTime: snapshot.CommitTime,
 	}
-	created, err := p.publication.Publish(ctx, packagePath, version, archive, snapshot.ArchiveMD5, releaseInfo, published, skillContents, visibility)
+	created, err := p.publication.Publish(ctx, packagePath, version, snapshot.Entries, published, skillContents, visibility)
 	if err != nil {
 		return "", err
 	}
@@ -265,10 +248,5 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 }
 
 func closeRepositorySnapshot(snapshot *skill.RepositorySnapshot) {
-	if snapshot == nil {
-		return
-	}
-	if snapshot.Archive != nil {
-		_ = snapshot.Archive.Close()
-	}
+	// Repository snapshots own in-memory validated entries and need no cleanup.
 }

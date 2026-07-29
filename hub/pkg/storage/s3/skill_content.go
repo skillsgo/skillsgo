@@ -15,10 +15,15 @@ import (
 	"path"
 	"unicode/utf8"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 )
+
+const immutableContentCacheControl = "public, max-age=31536000, immutable"
 
 var _ storage.SkillContentStore = (*Storage)(nil)
 
@@ -103,6 +108,27 @@ func (s *Storage) readSkillContentObject(ctx context.Context, location string) (
 		return nil, fmt.Errorf("stored Skill content is invalid")
 	}
 	return content, nil
+}
+
+func (s *Storage) createObject(ctx context.Context, location, contentType string, content []byte) (bool, error) {
+	length := int64(len(content))
+	_, err := s.s3API.PutObject(ctx, &awss3.PutObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(location), Body: bytes.NewReader(content), ContentLength: &length, ContentType: aws.String(contentType), CacheControl: aws.String(immutableContentCacheControl), IfNoneMatch: aws.String("*")})
+	if err == nil {
+		return true, nil
+	}
+	var apiErr smithy.APIError
+	if errors.AsErr(err, &apiErr) && (apiErr.ErrorCode() == "PreconditionFailed" || apiErr.ErrorCode() == "ConditionalRequestConflict") {
+		return false, nil
+	}
+	return false, err
+}
+
+func (s *Storage) open(ctx context.Context, location string) (io.ReadCloser, error) {
+	output, err := s.s3API.GetObject(ctx, &awss3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(location)})
+	if err != nil {
+		return nil, err
+	}
+	return output.Body, nil
 }
 
 func skillContentObjectName(sourceDigest string) (string, error) {

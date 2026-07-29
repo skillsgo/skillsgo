@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on one canonical Package input, Package version metadata/ZIP resources, deterministic name-or-path Skill selection, explicit Agent selection, shared validated Package Scope inputs, physical Agent Adapter roots, the shared Package reconciler, and an internal reviewed-adoption replacement authorization.
+ * [INPUT]: Depends on one canonical Package input, Package metadata and Git Artifact entries, deterministic name-or-path Skill selection, explicit Agent selection, shared validated Package Scope inputs, physical Agent Adapter roots, the shared Package reconciler, and an internal reviewed-adoption replacement authorization.
  * [OUTPUT]: Provides executor-selected dry-run preview or confirmed exact Package add intent for Workspace or User scope, including natural target-version member removal, reviewed-adoption conflict replacement, idempotency, and stable machine results.
  * [POS]: Serves as the Package add intent and interaction adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -135,7 +135,7 @@ func preparePackageAdd(cmd *cobra.Command, catalog *agent.Catalog, reference sou
 			projections[index].PreviousSelected = append([]string(nil), oldPaths...)
 			projections[index].PreviousVersion = existing.Version
 		}
-		current = &packageCoordinateState{resource: oldResource, archive: oldResource.ZIP, projections: removed}
+		current = &packageCoordinateState{resource: oldResource, entries: oldResource.Entries, projections: removed}
 	}
 	manifest.Dependencies[reference.PackagePath] = dependency
 	lock.Dependencies[reference.PackagePath] = project.LockedPackage{Version: resource.Info.Version, Sum: resource.Info.Sum}
@@ -143,7 +143,7 @@ func preparePackageAdd(cmd *cobra.Command, catalog *agent.Catalog, reference sou
 		packagePath:      reference.PackagePath,
 		packagesRoot:     scopeContext.packagesRoot,
 		infoRoot:         scopeContext.infoRoot,
-		desired:          packageCoordinateState{resource: resource, archive: resource.ZIP, projections: projections},
+		desired:          packageCoordinateState{resource: resource, entries: resource.Entries, projections: projections},
 		current:          current,
 		workspace:        &packagemutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
 		replaceConflicts: replaceConflicts,

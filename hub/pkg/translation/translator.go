@@ -85,7 +85,7 @@ func (t *OpenAITranslator) translate(ctx context.Context, source, sourceLang, ta
 		params.SetExtraFields(map[string]any{"thinking": map[string]string{"type": t.thinking}})
 		completion, err := t.client.Chat.Completions.New(ctx, params)
 		if err != nil {
-			return Result{}, err
+			return Result{}, classifyProviderError(err)
 		}
 		if len(completion.Choices) == 0 {
 			return Result{}, fmt.Errorf("translation response contained no choices")
@@ -102,7 +102,7 @@ func (t *OpenAITranslator) translate(ctx context.Context, source, sourceLang, ta
 		}
 		return Result{Content: content}, nil
 	}
-	return Result{}, validationErr
+	return Result{}, Permanent(validationErr)
 }
 
 func parseTranslationResult(raw string) (string, error) {

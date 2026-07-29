@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Uses a fake Catalog store, deterministic Translator, and no-op logger.
- * [OUTPUT]: Specifies translation persistence identity, partial failure propagation, digest, locale, and prompt-version behavior without network access.
- * [POS]: Serves as task-handler contract coverage for retryable description translation.
+ * [INPUT]: Uses fake Catalog and Translator dependencies plus deterministic language analysis.
+ * [OUTPUT]: Specifies bounded description dispatch planning, single-item persistence, source passthrough, and permanent model-validation propagation.
+ * [POS]: Serves as network-free contract coverage for single-item description translation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package translation
@@ -16,10 +16,9 @@ import (
 )
 
 type workerStore struct {
-	candidates []catalog.TranslationCandidate
-	saved      []catalog.LocalizedDescription
-	scanErr    error
-	saveErr    error
+	candidates       []catalog.TranslationCandidate
+	saved            []catalog.LocalizedDescription
+	scanErr, saveErr error
 }
 
 func (s *workerStore) TranslationCandidates(context.Context, string, string, int) ([]catalog.TranslationCandidate, error) {
@@ -30,64 +29,43 @@ func (s *workerStore) UpsertLocalizedDescription(_ context.Context, item catalog
 	return s.saveErr
 }
 
-func TestWorkerReturnsFailuresSoRiverCanRetryOnlyRemainingCandidates(t *testing.T) {
-	translateErr := errors.New("translator unavailable")
-	store := &workerStore{candidates: []catalog.TranslationCandidate{
-		{ResourceKind: catalog.LocalizedSkill, ResourceID: "good", Description: "Good", ContentDigest: catalog.DescriptionDigest("Good")},
-		{ResourceKind: catalog.LocalizedSkill, ResourceID: "retry", Description: "Retry", ContentDigest: catalog.DescriptionDigest("Retry")},
-	}}
-	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, _, _ string) (Result, error) {
-		if source == "Retry" {
-			return Result{}, translateErr
-		}
-		return Result{Content: "成功"}, nil
-	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100)
-
-	err := worker.RunOnce(t.Context())
-	require.ErrorIs(t, err, translateErr)
-	require.Len(t, store.saved, 1)
-	require.Equal(t, catalog.DescriptionDigest("Good"), store.saved[0].SourceDigest)
-
-	scanErr := errors.New("catalog unavailable")
-	require.ErrorIs(t, NewWorker(&workerStore{scanErr: scanErr}, translatorFunc(nil), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100).RunOnce(t.Context()), scanErr)
-}
-
-func TestWorkerReturnsPersistenceFailureForRiverRetry(t *testing.T) {
-	saveErr := errors.New("catalog write failed")
-	store := &workerStore{saveErr: saveErr, candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedPackage, ResourceID: "github.com/acme/skills", Description: "Acme Skills", ContentDigest: catalog.DescriptionDigest("Acme Skills"),
-	}}}
-	worker := NewWorker(store, translatorFunc(func(context.Context, string, string, string) (Result, error) {
-		return Result{Content: "Acme 技能"}, nil
-	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-Hans-CN"}, "description-v1", 100)
-	require.ErrorIs(t, worker.RunOnce(t.Context()), saveErr)
-}
-
 type translatorFunc func(context.Context, string, string, string) (Result, error)
 
 func (f translatorFunc) Translate(ctx context.Context, source, sourceLang, locale string) (Result, error) {
 	return f(ctx, source, sourceLang, locale)
 }
 
-type testLogger struct{}
+func TestWorkerPlanBoundsTranslationIdentitiesAcrossLocales(t *testing.T) {
+	store := &workerStore{candidates: []catalog.TranslationCandidate{{ResourceKind: catalog.LocalizedSkill, ResourceID: "review", Description: "Review", ContentDigest: "digest"}}}
+	worker := NewWorker(store, translatorFunc(nil), NewLanguageAnalyzer(), []string{"zh-Hans-CN", "ja"}, "description-v1", 1)
+	work, err := worker.Plan(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, []DescriptionWork{{ResourceKind: catalog.LocalizedSkill, ResourceID: "review", Description: "Review", SourceDigest: "digest", Lang: "zh-Hans-CN", PromptVersion: "description-v1"}}, work)
+}
 
-func (testLogger) Infof(string, ...any) {}
-func (testLogger) Warnf(string, ...any) {}
-
-func TestWorkerPersistsPresentationOnlyDescription(t *testing.T) {
-	store := &workerStore{candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review", Description: "Review changes", ContentDigest: catalog.DescriptionDigest("Review changes"),
-	}}}
+func TestWorkerRunOnePersistsOnlyItsOwnIdentity(t *testing.T) {
+	store := &workerStore{}
 	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, _, locale string) (Result, error) {
 		require.Equal(t, "Review changes", source)
-		require.Equal(t, "zh-CN", locale)
+		require.Equal(t, "zh-Hans-CN", locale)
 		return Result{Content: "审查变更"}, nil
-	}), NewLanguageAnalyzer(), testLogger{}, []string{"zh-CN"}, "description-v1", 100)
+	}), NewLanguageAnalyzer(), nil, "description-v1", 10)
+	err := worker.RunOne(t.Context(), DescriptionWork{ResourceKind: catalog.LocalizedSkill, ResourceID: "review", Description: "Review changes", SourceDigest: "digest", Lang: "zh-Hans-CN", PromptVersion: "description-v1"})
+	require.NoError(t, err)
+	require.Equal(t, []catalog.LocalizedDescription{{ResourceKind: catalog.LocalizedSkill, Lang: "zh-Hans-CN", ResultKind: catalog.LocalizationTranslated, Description: "审查变更", SourceDigest: "digest", PromptVersion: "description-v1"}}, store.saved)
+}
 
-	require.NoError(t, worker.RunOnce(t.Context()))
-	require.Equal(t, []catalog.LocalizedDescription{{
-		ResourceKind: catalog.LocalizedSkill,
-		Lang:         "zh-CN", ResultKind: catalog.LocalizationTranslated, Description: "审查变更",
-		SourceDigest: catalog.DescriptionDigest("Review changes"), PromptVersion: "description-v1",
-	}}, store.saved)
+func TestWorkerRunOneDoesNotCoupleIndependentFailures(t *testing.T) {
+	want := errors.New("translator unavailable")
+	worker := NewWorker(&workerStore{}, translatorFunc(func(context.Context, string, string, string) (Result, error) { return Result{}, want }), NewLanguageAnalyzer(), nil, "description-v1", 10)
+	err := worker.RunOne(t.Context(), DescriptionWork{ResourceKind: catalog.LocalizedSkill, ResourceID: "only-this-item", Description: "Translate me", SourceDigest: "digest", Lang: "zh-Hans-CN", PromptVersion: "description-v1"})
+	require.ErrorIs(t, err, want)
+}
+
+func TestPermanentClassificationSurvivesWorkerWrapping(t *testing.T) {
+	worker := NewWorker(&workerStore{}, translatorFunc(func(context.Context, string, string, string) (Result, error) {
+		return Result{}, Permanent(errors.New("bad envelope"))
+	}), NewLanguageAnalyzer(), nil, "description-v1", 10)
+	err := worker.RunOne(t.Context(), DescriptionWork{ResourceKind: catalog.LocalizedSkill, ResourceID: "bad", Description: "Translate", SourceDigest: "digest", Lang: "zh-Hans-CN", PromptVersion: "description-v1"})
+	require.True(t, IsPermanent(err))
 }

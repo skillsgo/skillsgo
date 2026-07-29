@@ -45,8 +45,8 @@ source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), s
 updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(package_path);
 
 -- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id;
 
 -- name: InsertSkill :exec
 INSERT INTO skills (
@@ -72,7 +72,7 @@ WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: PackageVersion :one
 SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
-       mv.sum, mv.archive_size, mv.commit_time, mv.created_at
+       mv.sum, mv.commit_time, mv.created_at
 FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
@@ -115,7 +115,14 @@ INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_con
 VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind=excluded.result_kind,text_content=excluded.text_content,
-prompt_version=excluded.prompt_version,updated_at=excluded.updated_at;
+prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,updated_at=excluded.updated_at;
+
+-- name: UpsertLocalizationFailure :exec
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,updated_at)
+VALUES ($1,$2,$3,'failed',$4,$5,$6,$7)
+ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
+result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
+error_kind=excluded.error_kind,error_message=excluded.error_message,updated_at=excluded.updated_at;
 
 -- name: PackageLocalizedDescription :one
 SELECT l.text_content
@@ -262,11 +269,13 @@ WITH documents AS (
   GROUP BY mvs.document_digest
 )
 SELECT documents.document_digest,
-       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS prompt_version
+       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS stored_prompt_version
 FROM documents
 LEFT JOIN localizations l
   ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
-ORDER BY documents.is_current DESC,documents.document_digest;
+WHERE l.source_digest IS NULL OR l.prompt_version<>sqlc.arg(target_prompt_version)
+ORDER BY documents.is_current DESC,documents.document_digest
+LIMIT sqlc.arg(page_limit);
 
 -- name: SearchLocalizedSkills :many
 SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,

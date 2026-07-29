@@ -21,7 +21,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
 type azureBlobStoreClient struct {
@@ -87,11 +86,15 @@ func newBlobStoreClient(accountURL *url.URL, accountName, accountKey, credScope,
 	return cl, nil
 }
 
-// Storage implements (github.com/skillsgo/skillsgo/hub/pkg/storage).Saver and
-// also provides a function to fetch the location of a module.
+// Storage persists static Git repositories and content-addressed Skill documents.
 type Storage struct {
 	client  *azureBlobStoreClient
 	timeout time.Duration
+}
+
+func (s *Storage) Ready(ctx context.Context) error {
+	_, err := s.client.containerURL.GetProperties(ctx, azblob.LeaseAccessConditions{})
+	return err
 }
 
 // New creates a new azure blobs storage.
@@ -132,7 +135,19 @@ func (c *azureBlobStoreClient) BlobExists(ctx context.Context, path string) (boo
 }
 
 // ReadBlob returns a storage.SizeReadCloser for the contents of a blob.
-func (c *azureBlobStoreClient) ReadBlob(ctx context.Context, path string) (storage.SizeReadCloser, error) {
+type sizeReadCloser interface {
+	io.ReadCloser
+	Size() int64
+}
+
+type sizedReader struct {
+	io.ReadCloser
+	size int64
+}
+
+func (reader *sizedReader) Size() int64 { return reader.size }
+
+func (c *azureBlobStoreClient) ReadBlob(ctx context.Context, path string) (sizeReadCloser, error) {
 	const op errors.Op = "azureblob.ReadBlob"
 	blobURL := c.containerURL.NewBlockBlobURL(path)
 	downloadResponse, err := blobURL.Download(ctx, 0, 0, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
@@ -141,7 +156,7 @@ func (c *azureBlobStoreClient) ReadBlob(ctx context.Context, path string) (stora
 	}
 	rc := downloadResponse.Body(azblob.RetryReaderOptions{})
 	size := downloadResponse.ContentLength()
-	return storage.NewSizer(rc, size), nil
+	return &sizedReader{ReadCloser: rc, size: size}, nil
 }
 
 // ListBlobs will list all blobs which has the given prefix.

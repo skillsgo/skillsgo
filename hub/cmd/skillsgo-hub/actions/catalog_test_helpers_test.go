@@ -37,7 +37,7 @@ func publishActionTestSkills(ctx context.Context, metadata *catalog.Catalog, ite
 	}
 	identity := catalog.PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "test-module-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, CommitTime: time.Unix(1, 0).UTC(),
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
 	}
 	return metadata.PublishPackageVersionWithVisibility(ctx, item.PackagePath, identity, candidates, catalog.CurrentPublication)
 }
