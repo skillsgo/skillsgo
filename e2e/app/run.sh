@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation and a compact Windows sandbox root.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -33,8 +33,13 @@ if (( ${#journeys[@]} == 0 )); then
   journeys=("${repository_root}/app/integration_test/app_e2e_suite_test.dart")
 fi
 
-temp_root="${TMPDIR:-/tmp}"
-readonly run_dir="$(mktemp -d "${temp_root%/}/skillsgo-app-e2e.XXXXXX")"
+if [[ "${flutter_device}" == "windows" ]]; then
+  temp_template="/c/sg.XXXXXX"
+else
+  temp_root="${TMPDIR:-/tmp}"
+  temp_template="${temp_root%/}/skillsgo-app-e2e.XXXXXX"
+fi
+readonly run_dir="$(mktemp -d "${temp_template}")"
 readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"

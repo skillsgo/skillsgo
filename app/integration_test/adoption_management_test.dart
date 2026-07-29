@@ -72,18 +72,6 @@ void registerAdoptionManagementJourney() {
         'projects:\n'
         '  - ${jsonEncode(projectRoot.path)}\n',
       );
-      final configuredProjects = await runtime.gateway.loadAddedProjects();
-      expect(configuredProjects, hasLength(1));
-      final initialInventory = await runtime.gateway.listInstalled(
-        projects: configuredProjects,
-      );
-      expect(
-        initialInventory.where(
-          (skill) => skill.provenance == LibraryProvenance.external,
-        ),
-        hasLength(2),
-      );
-
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
         gateway: runtime.gateway,
@@ -91,6 +79,20 @@ void registerAdoptionManagementJourney() {
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
+      final settingsDestination = find.byKey(
+        const ValueKey('primary-destination-settings'),
+      );
+      await _pumpUntil(tester, settingsDestination);
+      await tester.tap(settingsDestination);
+      final advancedSettings = find.text('Advanced');
+      await _pumpUntil(tester, advancedSettings);
+      await tester.tap(advancedSettings);
+      final refreshLibrary = find.byKey(const Key('refresh-local-library'));
+      await _pumpUntil(tester, refreshLibrary);
+      await tester.ensureVisible(refreshLibrary);
+      await tester.pumpAndSettle();
+      await tester.tap(refreshLibrary);
+      await _pumpUntil(tester, find.text('Local Library refreshed.'));
       final libraryDestination = find.byKey(
         const ValueKey('primary-destination-library'),
       );

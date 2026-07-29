@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free and Windows-long-path-safe controlled Git transport, manifest validation, and SkillsGo artifact assembly.
+ * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
  * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -303,7 +303,7 @@ func controlledGitEnvironment(environment []string) []string {
 		"GIT_PROTOCOL_FROM_USER": true, "GIT_SSH": true, "GIT_SSH_COMMAND": true,
 		"GIT_TERMINAL_PROMPT": true, "GCM_INTERACTIVE": true, "SSH_ASKPASS": true,
 	}
-	filtered := make([]string, 0, len(environment)+11)
+	filtered := make([]string, 0, len(environment)+8)
 	for _, entry := range environment {
 		key, _, _ := strings.Cut(entry, "=")
 		if blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
@@ -312,9 +312,6 @@ func controlledGitEnvironment(environment []string) []string {
 		filtered = append(filtered, entry)
 	}
 	return append(filtered,
-		"GIT_CONFIG_COUNT=1",
-		"GIT_CONFIG_KEY_0=core.longpaths",
-		"GIT_CONFIG_VALUE_0=true",
 		"GIT_CONFIG_NOSYSTEM=1",
 		"GIT_CONFIG_GLOBAL="+os.DevNull,
 		"GIT_TERMINAL_PROMPT=0",
