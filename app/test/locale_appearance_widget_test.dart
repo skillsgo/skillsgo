@@ -1,9 +1,10 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Locale, folder theme, appearance mode, wallpaper, and Bloom preset behavior.
+ * [INPUT]: Uses Dart asynchronous completion, SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies startup presentation readiness, Locale, folder theme, appearance mode, wallpaper, and Bloom preset behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
+import 'dart:async';
 import 'dart:ui' show BoxHeightStyle, PointerDeviceKind;
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,42 @@ import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  testWidgets('startup presentation resolves the persisted wallpaper safely', (
+    tester,
+  ) async {
+    var presentationReadyCount = 0;
+    final presentationReady = Completer<void>();
+
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(wallpaper: AppWallpaper.earth),
+        onStartupPresentationReady: () async {
+          presentationReadyCount += 1;
+          if (!presentationReady.isCompleted) presentationReady.complete();
+        },
+      ),
+    );
+
+    expect(presentationReadyCount, 0);
+
+    await tester.pumpAndSettle();
+
+    final background = tester.widget<Image>(
+      find.byKey(const Key('app-wallpaper')),
+    );
+    expect(
+      (background.image as AssetImage).assetName,
+      'assets/backgrounds/earth-starfield.png',
+    );
+    await tester.runAsync(
+      () => presentationReady.future.timeout(const Duration(seconds: 2)),
+    );
+    await tester.pump();
+    expect(presentationReadyCount, 1);
+    await tester.pump(const Duration(seconds: 3));
+    expect(presentationReadyCount, 1);
+  });
+
   testWidgets('follows the system locale and renders Simplified Chinese', (
     tester,
   ) async {

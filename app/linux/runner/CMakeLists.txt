@@ -1,3 +1,7 @@
+# [INPUT]: Depends on the Flutter Linux build, GTK, generated plugin registration, and the parent bundle configuration.
+# [OUTPUT]: Builds the SkillsGo GTK runner executable with its native dependencies.
+# [POS]: Serves as the native runner target inside the Linux desktop integration module.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 cmake_minimum_required(VERSION 3.13)
 project(runner LANGUAGES CXX)
 
