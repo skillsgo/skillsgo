@@ -16,7 +16,7 @@ import (
 
 func TestCatalogContainsOfficialSupportedAgents(t *testing.T) {
 	catalog := NewCatalog(Paths{Home: "/home/user", ConfigHome: "/home/user/.config"})
-	require.Len(t, catalog.All(), 75)
+	require.Len(t, catalog.All(), 74)
 	codex, ok := catalog.Get("codex")
 	require.True(t, ok)
 	require.Equal(t, filepath.Join("/home/user", ".codex", "skills"), codex.GlobalDir)
@@ -139,12 +139,12 @@ func TestCatalogAcceptsIsolatedTestAgent(t *testing.T) {
 	got, ok := catalog.Get("test-agent")
 	require.True(t, ok)
 	require.Equal(t, testAgent, got)
-	require.Len(t, catalog.All(), 76)
+	require.Len(t, catalog.All(), 75)
 
 	official := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 	_, ok = official.Get("test-agent")
 	require.False(t, ok)
-	require.Len(t, official.All(), 75)
+	require.Len(t, official.All(), 74)
 }
 
 func TestSkillRootsSeparateManagedRootFromReadOnlyDiscoveryRoots(t *testing.T) {
