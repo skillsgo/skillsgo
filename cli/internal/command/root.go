@@ -36,6 +36,10 @@ func defaultHubURL() string {
 }
 
 func Execute(args []string, stdout, stderr io.Writer) error {
+	return ExecuteWithInput(args, strings.NewReader(""), stdout, stderr)
+}
+
+func ExecuteWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	appi18n.Configure(languageArgument(args))
 	machineStdout := &machineOutputWriter{Writer: stdout}
 	root, err := newRootCommand(machineStdout, stderr)
@@ -43,6 +47,7 @@ func Execute(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	root.SetArgs(normalizeMultiValueFlags(args))
+	root.SetIn(stdin)
 	err = root.Execute()
 	mode := machineOutputMode(args)
 	if err == nil || mode == "" || machineStdout.HasCompletedResult(mode) {

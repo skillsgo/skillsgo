@@ -304,13 +304,23 @@ void main() {
     },
   );
 
-  test('Onboarding Agent inspection uses one bundled CLI command', () async {
-    final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout:
-            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":16,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
-        stderr: '',
+  test('Onboarding Agent inspection uses the bundled CLI Server', () async {
+    final runner = FakeCliServerRunner()
+      ..responses.add(
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":17,"os":"darwin","architecture":"arm64"}',
+          stderr: '',
+        ),
+      )
+      ..serverResponses.add(
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":17,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+          stderr: '',
+        ),
       );
     final gateway = RealSkillsGateway(
       processRunner: runner,
@@ -322,9 +332,11 @@ void main() {
 
     expect(agents.installed.single.id, 'codex');
     expect(runner.calls, hasLength(1));
-    expect(runner.calls.single.arguments, ['agents', '--output', 'json']);
+    expect(runner.calls.single.arguments, ['version', '--output', 'json']);
+    expect(runner.starts, 1);
+    expect(runner.sessions.single.calls.single, ['agents', '--output', 'json']);
 
-    runner.result = const ProcessOutput(
+    runner.sessions.single.result = const ProcessOutput(
       exitCode: 0,
       stdout:
           '{"schemaVersion":2,"product":"skillsgo","version":"old","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[]}',

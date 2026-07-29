@@ -11,13 +11,24 @@ import 'dart:io';
 import '../domain/skills_gateway.dart';
 import 'logging/app_logger.dart';
 
-class IoProcessRunner implements ProcessRunner {
+class IoProcessRunner implements ProcessRunner, CliServerRunner {
   const IoProcessRunner({this.workingDirectory, this.environment});
 
   final String? workingDirectory;
   final Map<String, String>? environment;
 
   static const commandTimeout = Duration(minutes: 2);
+
+  @override
+  Future<CliServerSession> startCliServer(String executable) async {
+    final process = await Process.start(
+      executable,
+      const ['server', '--stdio'],
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    return _IoCliServerSession(process, executable);
+  }
 
   @override
   Future<ProcessOutput> run(
@@ -177,4 +188,174 @@ class IoProcessRunner implements ProcessRunner {
       appLogger.warning('gateway.cli', 'invocation_failed', data);
     }
   }
+}
+
+final class _IoCliServerSession implements CliServerSession {
+  _IoCliServerSession(this._process, this._executable) {
+    _process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(_receive, onError: _fail, onDone: _closed);
+    _process.stderr.transform(utf8.decoder).listen(_serverStderr.write);
+    unawaited(_process.exitCode.then((_) => _closed()));
+  }
+
+  final Process _process;
+  final String _executable;
+  final _pending = <String, _PendingCliServerRequest>{};
+  final _serverStderr = StringBuffer();
+  var _nextID = 0;
+  var _isClosed = false;
+
+  @override
+  bool get isClosed => _isClosed;
+
+  @override
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  }) async {
+    if (_isClosed) return _transportFailure('CLI Server is closed.');
+    final invocationId = appLogger.nextId('invocation');
+    final stopwatch = Stopwatch()..start();
+    final sanitizedArguments = appLogger.sanitizeCliArguments(arguments);
+    appLogger.info('gateway.cli', 'server_invocation_started', {
+      'invocationId': invocationId,
+      'executable': _executable.split(Platform.pathSeparator).last,
+      'arguments': sanitizedArguments,
+      'hasStdin': stdin != null,
+      if (stdin != null) 'stdinBytes': utf8.encode(stdin).length,
+      'streaming': onStdoutLine != null,
+    });
+    final id = '${++_nextID}';
+    final request = _PendingCliServerRequest(onStdoutLine);
+    _pending[id] = request;
+    try {
+      _process.stdin.writeln(
+        jsonEncode({
+          'schemaVersion': 1,
+          'id': id,
+          'arguments': arguments,
+          'stdin': ?stdin,
+          if (onStdoutLine != null) 'streamStdout': true,
+        }),
+      );
+      await _process.stdin.flush();
+    } on Object catch (error) {
+      _pending.remove(id);
+      return _transportFailure('Cannot write to CLI Server: $error');
+    }
+    late ProcessOutput output;
+    try {
+      output = await request.result.future.timeout(
+        IoProcessRunner.commandTimeout,
+      );
+    } on TimeoutException {
+      _pending.remove(id);
+      _process.kill();
+      output = const ProcessOutput(
+        exitCode: 124,
+        stdout: '',
+        stderr: 'Command timed out.',
+      );
+    }
+    IoProcessRunner._logCompletion(
+      invocationId,
+      _executable.split(Platform.pathSeparator).last,
+      sanitizedArguments,
+      stopwatch,
+      output,
+      timedOut: output.exitCode == 124,
+      processError: output.exitCode == 127,
+    );
+    return output;
+  }
+
+  void _receive(String line) {
+    try {
+      final document = jsonDecode(line);
+      if (document is! Map<String, dynamic> ||
+          document['schemaVersion'] != 1 ||
+          document['id'] is! String) {
+        throw const FormatException('Invalid CLI Server response.');
+      }
+      final id = document['id'] as String;
+      final request = _pending[id];
+      if (document['type'] == 'stdout') {
+        if (document['line'] is! String) {
+          throw const FormatException('Invalid CLI Server stdout event.');
+        }
+        request?.onStdoutLine?.call(document['line'] as String);
+        return;
+      }
+      if (document['type'] != 'result' ||
+          document['exitCode'] is! int ||
+          document['stdout'] is! String ||
+          document['stderr'] is! String) {
+        throw const FormatException('Invalid CLI Server response.');
+      }
+      final completed = _pending.remove(id);
+      if (completed == null) return;
+      completed.result.complete(
+        ProcessOutput(
+          exitCode: document['exitCode'] as int,
+          stdout: document['stdout'] as String,
+          stderr: document['stderr'] as String,
+        ),
+      );
+    } on Object catch (error) {
+      _fail(error);
+    }
+  }
+
+  void _fail(Object error) {
+    if (_isClosed) return;
+    _isClosed = true;
+    _finishPending(_transportFailure('Invalid CLI Server stream: $error'));
+    _process.kill();
+  }
+
+  void _closed() {
+    if (_isClosed) return;
+    _isClosed = true;
+    final diagnostic = _serverStderr.toString().trim();
+    _finishPending(
+      _transportFailure(
+        diagnostic.isEmpty
+            ? 'CLI Server exited.'
+            : 'CLI Server exited: $diagnostic',
+      ),
+    );
+  }
+
+  void _finishPending(ProcessOutput output) {
+    final pending = _pending.values.toList(growable: false);
+    _pending.clear();
+    for (final request in pending) {
+      if (!request.result.isCompleted) request.result.complete(output);
+    }
+  }
+
+  ProcessOutput _transportFailure(String message) => ProcessOutput(
+    exitCode: 127,
+    stdout: '',
+    stderr: '$_executable: $message',
+  );
+
+  @override
+  Future<void> close() async {
+    if (_isClosed) return;
+    _isClosed = true;
+    await _process.stdin.close();
+    _process.kill();
+    _finishPending(_transportFailure('CLI Server was closed.'));
+  }
+}
+
+final class _PendingCliServerRequest {
+  _PendingCliServerRequest(this.onStdoutLine);
+
+  final void Function(String line)? onStdoutLine;
+  final result = Completer<ProcessOutput>();
 }

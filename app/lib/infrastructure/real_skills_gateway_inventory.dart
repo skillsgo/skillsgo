@@ -9,10 +9,8 @@ part of 'real_skills_gateway.dart';
 mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
   @override
   Future<AgentCatalog> inspectOnboardingAgents() async {
-    final arguments = const ['agents', '--output', 'json'];
-    final output = await _runner.run(_bundledCliPath, arguments);
     return _parseAgentCatalog(
-      CommandResult(command: [_bundledCliPath, ...arguments], output: output),
+      await _runCli(const ['agents', '--output', 'json']),
       requireHandshake: true,
     );
   }

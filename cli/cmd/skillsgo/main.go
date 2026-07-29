@@ -14,6 +14,13 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "server" && os.Args[2] == "--stdio" {
+		if err := command.Serve(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := command.Execute(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(command.ExitCode(err))

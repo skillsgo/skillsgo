@@ -42,3 +42,56 @@ class FakeProcessRunner implements ProcessRunner {
     return response;
   }
 }
+
+class FakeCliServerRunner extends FakeProcessRunner implements CliServerRunner {
+  int starts = 0;
+  final sessions = <FakeCliServerSession>[];
+  final serverResponses = <ProcessOutput>[];
+
+  @override
+  Future<CliServerSession> startCliServer(String executable) async {
+    starts++;
+    final session = FakeCliServerSession(executable);
+    session.responses.addAll(serverResponses);
+    serverResponses.clear();
+    sessions.add(session);
+    return session;
+  }
+}
+
+class FakeCliServerSession implements CliServerSession {
+  FakeCliServerSession(this.executable);
+
+  final String executable;
+  final calls = <List<String>>[];
+  final stdins = <String?>[];
+  final responses = <ProcessOutput>[];
+  ProcessOutput result = const ProcessOutput(
+    exitCode: 0,
+    stdout: '',
+    stderr: '',
+  );
+
+  @override
+  bool isClosed = false;
+
+  @override
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  }) async {
+    calls.add(List.of(arguments));
+    stdins.add(stdin);
+    final response = responses.isNotEmpty ? responses.removeAt(0) : result;
+    if (onStdoutLine != null) {
+      for (final line in const LineSplitter().convert(response.stdout)) {
+        onStdoutLine(line);
+      }
+    }
+    return response;
+  }
+
+  @override
+  Future<void> close() async => isClosed = true;
+}
