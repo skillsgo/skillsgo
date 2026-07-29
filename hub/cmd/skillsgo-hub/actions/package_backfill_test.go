@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Package Backfill validation, immutable-version filtering, and bounded diagnostics.
- * [OUTPUT]: Verifies canonical batch input, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
+ * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
  * [POS]: Serves as the fast behavior contract for Package History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
@@ -23,6 +24,10 @@ import (
 )
 
 type backfillAdministrationStub struct{}
+
+func TestPackageBackfillUsesExplicitLongRunningTimeout(t *testing.T) {
+	require.Equal(t, 2*time.Hour, packageBackfillArgs{}.JobTimeout())
+}
 
 func (backfillAdministrationStub) Submit(_ context.Context, packagePath string) (catalog.BackfillRun, bool, error) {
 	if packagePath == "github.com/acme/failing" {

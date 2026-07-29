@@ -158,7 +158,9 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	taskRuntime := taskqueue.NewSynchronous()
 	if pool := metadata.PostgresPool(); pool != nil {
 		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
-			QueueWorkers: taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
+			JobTimeout:           translationJobTimeout,
+			RescueStuckJobsAfter: 15 * time.Minute,
+			QueueWorkers:         taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
 		})
 		if err != nil {
 			cancelWorkers()
