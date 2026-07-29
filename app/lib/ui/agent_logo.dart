@@ -53,7 +53,6 @@ class AgentLogo extends StatelessWidget {
     'forgecode' => 'assets/agent-logos/forgecode.svg',
     'goose' => 'assets/agent-logos/goose.svg',
     'hermes-agent' => 'assets/agent-logos/hermes-agent.svg',
-    'iflow-cli' => 'assets/agent-logos/iflow-cli.svg',
     'inference-sh' => 'assets/agent-logos/inference-sh.svg',
     'junie' => 'assets/agent-logos/junie.svg',
     'kilo' => 'assets/agent-logos/kilo-code.svg',
