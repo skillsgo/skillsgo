@@ -91,7 +91,11 @@ void registerAdoptionManagementJourney() {
       await _pumpUntil(tester, refreshLibrary);
       await tester.ensureVisible(refreshLibrary);
       await tester.pumpAndSettle();
-      await tester.tap(refreshLibrary);
+      final refreshButton = tester.widget<SkillsButton>(refreshLibrary);
+      expect(refreshButton.enabled, isTrue);
+      expect(refreshButton.onPressed, isNotNull);
+      refreshButton.onPressed!();
+      await tester.pump();
       await _pumpUntil(tester, find.text('Local Library refreshed.'));
       final libraryDestination = find.byKey(
         const ValueKey('primary-destination-library'),
