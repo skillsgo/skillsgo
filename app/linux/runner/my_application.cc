@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on GTK, Flutter Linux, generated plugin registration, the shared 1120x760 desktop launch geometry, and the application icon installed beside the relocatable bundle.
+ * [OUTPUT]: Provides native Linux application creation, stable launch geometry, bundled icon loading, Flutter hosting, and plugin registration.
+ * [POS]: Serves as the GTK application implementation in the Linux desktop runner.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
@@ -14,6 +20,18 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+static void set_window_icon(GtkWindow* window) {
+  g_autofree gchar* executable_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (executable_path == nullptr) {
+    return;
+  }
+
+  g_autofree gchar* executable_dir = g_path_get_dirname(executable_path);
+  g_autofree gchar* icon_path =
+      g_build_filename(executable_dir, "data", "skillsgo.png", nullptr);
+  gtk_window_set_icon_from_file(window, icon_path, nullptr);
+}
+
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
@@ -24,6 +42,7 @@ static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  set_window_icon(window);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -52,7 +71,7 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "skillsgo");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  gtk_window_set_default_size(window, 1120, 760);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

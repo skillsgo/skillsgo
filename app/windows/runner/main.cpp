@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Win32, Flutter Windows, runner utilities, and the shared 1120x760 desktop launch geometry.
+ * [OUTPUT]: Provides the Windows process entry point and creates the initially hidden Flutter host window.
+ * [POS]: Serves as the native Windows bootstrap before the first Flutter frame makes the window visible.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
@@ -26,7 +32,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  Win32Window::Size size(1120, 760);
   if (!window.Create(L"skillsgo", origin, size)) {
     return EXIT_FAILURE;
   }

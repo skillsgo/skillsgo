@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGo design tokens, App wallpaper assets, Loading Animation Widget, and Flutter Material primitives.
- * [OUTPUT]: Provides backgrounds, wallpaper asset mapping, semantic ColorScheme roles, content frames, editorial titles, loading shapes, cards, status chips, trust/risk chips, capsule buttons, and search icon primitives.
+ * [OUTPUT]: Provides semantic-solid-backed backgrounds, wallpaper asset mapping, semantic ColorScheme roles, content frames, editorial titles, loading shapes, cards, status chips, trust/risk chips, capsule buttons, and search icon primitives.
  * [POS]: Serves as the visual foundation segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,7 @@ class SkillsBackground extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
     children: [
+      ColoredBox(color: Theme.of(context).colorScheme.surface),
       Image.asset(
         key: const Key('app-wallpaper'),
         wallpaper.assetPath,
