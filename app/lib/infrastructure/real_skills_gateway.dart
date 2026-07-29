@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
+ * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
  * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,6 +16,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
+import 'bundled_cli_locator.dart';
 import 'io_process_runner.dart';
 import 'logging/app_logger.dart';
 import 'project_icon_resolver.dart';
@@ -83,7 +84,11 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }) : _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
        _bundledCliPath =
-           bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
+           bundledCliPath ??
+           bundledCliPathFor(
+             operatingSystem: Platform.operatingSystem,
+             executable: Platform.resolvedExecutable,
+           ),
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
        _defaultHubBase = _originUri(hubBaseUrl),
        _hubBase = _originUri(hubBaseUrl),
@@ -187,10 +192,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
 
   @override
   Stream<DiagnosticLogEntry> watchDiagnosticLogs() => appLogger.events;
-
-  static String _bundledPathFor(String executable) => p.normalize(
-    p.join(p.dirname(executable), '..', 'Resources', 'bin', 'skillsgo'),
-  );
 
   static String get _goOperatingSystem => switch (Platform.operatingSystem) {
     'macos' => 'darwin',
