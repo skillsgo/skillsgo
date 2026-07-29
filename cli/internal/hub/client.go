@@ -136,6 +136,20 @@ func (c *Client) FetchPackageWithProgress(ctx context.Context, packagePath, quer
 	if err != nil {
 		return nil, err
 	}
+	entries, err := c.FetchPackageEntries(ctx, resource, progress)
+	if err != nil {
+		return nil, err
+	}
+	resource.Entries = entries
+	return resource, nil
+}
+
+// FetchPackageEntries restores the Git tree described by already validated
+// exact Package metadata. It avoids a second metadata request on cache rebuilds.
+func (c *Client) FetchPackageEntries(ctx context.Context, resource *PackageResource, progress func(current, total int64)) ([]protocolartifact.Entry, error) {
+	if resource == nil {
+		return nil, &ProtocolError{Err: fmt.Errorf("Package Info is required to fetch Artifact content")}
+	}
 	if progress != nil {
 		progress(0, -1)
 	}
@@ -151,12 +165,11 @@ func (c *Client) FetchPackageWithProgress(ctx context.Context, packagePath, quer
 	if err != nil {
 		return nil, err
 	}
-	actual, err := protocolartifact.PackageEntriesSum(entries, packagePath, resource.Info.Version)
+	actual, err := protocolartifact.PackageEntriesSum(entries, resource.Info.PackagePath, resource.Info.Version)
 	if err != nil || actual != resource.Info.Sum {
-		return nil, fmt.Errorf("Hub returned a Package Sum mismatch for %s@%s", packagePath, resource.Info.Version)
+		return nil, fmt.Errorf("Hub returned a Package Sum mismatch for %s@%s", resource.Info.PackagePath, resource.Info.Version)
 	}
-	resource.Entries = entries
-	return resource, nil
+	return entries, nil
 }
 
 func ParsePackageInfo(packagePath string, infoBytes []byte) (*PackageResource, error) {

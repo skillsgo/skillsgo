@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, JourneyRuntime isolation, onboarding preferences, a disposable Hub/schema, the bundled CLI, and the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies Package search, the stable Package-wide installation action, bundled-CLI dry-run-to-apply execution, YAML/Lock state, Scope Package Store, and ordinary-file Package Projections.
+ * [OUTPUT]: Verifies Package search, the stable Package-wide installation action, bundled-CLI dry-run-to-apply execution, global YAML/Lock state, global Scope Package Store, and member-symlink Package Projections.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -105,7 +105,7 @@ void registerRepositoryInstallAllJourney() {
       );
       expect(
         File(
-          '${home.path}/.skillsgo/packages/$coordinate/skills/resourceful/references/guide.md',
+          '${home.path}/.agents/.skillsgo/packages/$coordinate/skills/resourceful/references/guide.md',
         ).existsSync(),
         isTrue,
       );
@@ -154,5 +154,13 @@ Future<void> _pumpUntil(
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(finder, findsWidgets);
+  expect(
+    finder,
+    findsWidgets,
+    reason: tester
+        .widgetList<Text>(find.byType(Text))
+        .map((widget) => widget.data)
+        .whereType<String>()
+        .join(' | '),
+  );
 }

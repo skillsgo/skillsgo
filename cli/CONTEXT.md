@@ -44,13 +44,17 @@ _Avoid_: managed binding, manifest field, receipt, cached visibility database
 An Agent environment detected on the current machine through its Agent Adapter. Detection is independent of whether the Agent currently has any Skills.
 _Avoid_: active Agent, Agent with Skills
 
-**Scope Package Store**:
-The authoritative filesystem copy of a verified Package Artifact within one installation scope. It preserves only artifact symlinks that resolve inside the same Package and revalidates them during extraction. Workspace Scope stores Package Store under `.skillsgo/packages`; Global Scope stores it under `~/.skillsgo/packages`. Version one does not share a Store across scopes.
-_Avoid_: shared Store, Agent Skill directory, mutable working copy
+**Package Provider**:
+The single capability boundary for exact locked Package dependencies. Metadata requests read or rebuild `~/.skillsgo/cache/info`; content requests additionally read or rebuild `~/.skillsgo/cache/packages`. Consumers never require cache entries to preexist and never read cache paths directly.
+_Avoid_: command-specific cache repair, Package Store authority, movable-version restore
+
+**Scope Package Tree**:
+The complete verified expansion of one locked Package Artifact inside its declaration Scope. Project Scope uses `<project>/.skillsgo/packages`; Global Scope uses `~/.agents/.skillsgo/packages`. It is derived from Manifest, Lock, and Git content, but a differing existing tree remains a protected Local Modification rather than disposable bytes.
+_Avoid_: `~/.skillsgo/packages`, shared cross-Scope Store, portable authority
 
 **Package Projection**:
-The deterministic Agent-visible entry generated for one selected Skill and physical Managed Skill Root. Its stable path is `<managed-root>/<canonical-skill-name>` and it is a relative symlink to that member inside the same Scope's verified immutable Package Store, preserving Package-relative resources without exposing Package coordinates as Agent Skill names. A Package coordinate directory is Store state, never an Agent-visible projection.
-_Avoid_: external symlink, independent Skill artifact, editable fork
+The deterministic Agent-visible relative symlink generated at `<managed-root>/<canonical-skill-name>` to one selected member inside the same Scope's complete Package Tree. This preserves access to Package-relative shared resources without exposing Package coordinates as Agent Skill names.
+_Avoid_: external symlink, independent member copy, editable fork
 
 **Global Scope**:
 The installation scope that projects Skills into an Agent's Global Skill directory for the current operating-system user.
@@ -81,7 +85,7 @@ The `~/.agents` directory that owns Global Scope `skills.yaml` and `skills-lock.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
 **Global State Root**:
-The `~/.skillsgo` directory that owns the user-level SkillsGo configuration, Global Scope Package Stores, the cross-scope disposable cache, ephemeral plans, and other SkillsGo-private state.
+The `~/.skillsgo` directory that owns user-level configuration, disposable read-through metadata/Git caches, ephemeral plans, and other SkillsGo-private state. Global declarations and Global Scope Package Trees live under `~/.agents`, so deleting this root leaves them and Agent Projections intact; required shared cache entries are rebuilt on demand.
 _Avoid_: Global Declaration Root, Agent configuration root
 
 **SkillsGo User Configuration**:
@@ -109,13 +113,13 @@ The rule that one physical Agent target path can expose only one selected Skill 
 _Avoid_: automatic rename, same-path coexistence
 
 **Local Modification**:
-A difference between a Package Projection and the deterministic view derived from its authoritative Scope Package Store and selected members. Ordinary unconfirmed add, update, remove, and restore report the conflict and never overwrite or absorb changed files. An add executed with `--yes` and a reviewed Batch Adoption are explicit user authorizations for transactional replacement with rollback protection.
+A difference between a Scope Package Tree or member Projection and its deterministic view derived from exact locked Git content. Explicit verification and every mutation compare against that content. Ordinary unconfirmed add, update, remove, and restore never overwrite changed files; `--yes` and reviewed Batch Adoption are narrow transactional replacement authorization.
 _Avoid_: fork, automatically merged change, silent repair
 
 **Package Reconcile**:
-The shared desired-state engine beneath add, update, install, and adopt-through-add. Command adapters resolve user intent into current and desired immutable Package coordinates, selected Skills, Agents, Scope Projections, and optional declaration state; the reconciler prepares one Plan for Store, Projection, immutable Info, Manifest, and Lock changes. Apply commits that Plan atomically, while dry-run validates and discards the same prepared Plan. Update preserves the complete declared Package selection, install restores the exact locked declaration, and adopt appends External retirement to the same prepared Plan.
+The shared desired-state engine beneath add, update, install, and adopt-through-add. Commands resolve current and desired immutable Package coordinates, selected Skills, Agents, Scope Package Trees, member Projections, and optional declaration state; the reconciler prepares one Plan for Tree, Projection, immutable Info, Manifest, and Lock changes. Apply commits atomically while dry-run validates and discards the same Plan.
 _Avoid_: command recursion, per-Skill version, duplicated transaction assembly, implicit overwrite, localized-output parsing
 
 **Package Member Removal**:
-A state-bound Package transaction that removes one selected member from a declared dependency, updates the Workspace Manifest, regenerates the Dependency Lock, Scope Package Store, and every affected Package Projection, and leaves unrelated Package members selected. Local Modifications reject the transaction without overwrite.
+A state-bound Package transaction that reacquires exact locked content, removes one selected member from a declared dependency, updates Manifest and Lock, and reconciles the Scope Package Tree plus every affected member Projection while leaving unrelated members selected. Local Modifications reject the transaction without overwrite.
 _Avoid_: exact-target managed removal, name-only deletion, partial Package mutation, automatic healing

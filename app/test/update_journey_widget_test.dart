@@ -167,7 +167,23 @@ void main() {
   testWidgets('installed detail refreshes target versions after update', (
     tester,
   ) async {
-    final gateway = FakeSkillsGateway(libraryEntries: const [updateSkill]);
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [updateSkill],
+      updateCheckCache: UpdateCheckCache(
+        checkedAt: DateTime.now().toUtc(),
+        results: {
+          for (final target in updateSkill.targets)
+            packageScopeUpdateKey(
+              updateSkill.packagePath,
+              target.scope,
+              target.projectRoot,
+            ): const UpdateAvailability(
+              state: UpdateState.available,
+              toVersion: 'v2',
+            ),
+        },
+      ),
+    );
     await tester.binding.setSurfaceSize(const Size(1400, 900));
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();

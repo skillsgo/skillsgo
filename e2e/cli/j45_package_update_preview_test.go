@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the public SkillsGo-owned versioned Package, its immutable v1.2.0/v1.3.0 releases, Package-fresh latest resolution, and Scope-by-Package dry-run update previews.
- * [OUTPUT]: Provides black-box coverage that one installed Package receives its immutable latest candidate without mutation.
- * [POS]: Serves as the Catalog-fresh Package update-preview journey across the CLI and Hub.
+ * [INPUT]: Depends on the public SkillsGo-owned versioned Package, an explicitly published v1.2.0 Catalog release, an unrequested upstream v1.3.0 release, and Scope-by-Package dry-run update previews.
+ * [OUTPUT]: Provides black-box coverage that update previews remain Catalog-only and do not implicitly resolve or publish newer upstream versions.
+ * [POS]: Serves as the Catalog-current Package update-preview journey across the CLI and Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2e_test
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJ45CatalogFreshPackageUpdatePreview(t *testing.T) {
+func TestJ45CatalogCurrentPackageUpdatePreview(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	const packagePath = "github.com/skillsgo/e2e-versioned-skills"
@@ -40,6 +40,6 @@ func TestJ45CatalogFreshPackageUpdatePreview(t *testing.T) {
 	require.Equal(t, "package-update-preview", report.Phase)
 	require.Equal(t, packagePath, report.PackagePath)
 	require.Equal(t, "v1.2.0", report.FromVersion)
-	require.Equal(t, "v1.3.0", report.ToVersion)
-	require.Equal(t, "update_available", report.Status)
+	require.Equal(t, "v1.2.0", report.ToVersion)
+	require.Equal(t, "up_to_date", report.Status)
 }

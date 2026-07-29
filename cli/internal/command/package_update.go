@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on shared validated Package Scope inputs, declared Package dependencies, one Catalog-backed current Package Publication batch or explicit immutable target, verified current Scope Package Stores and Info, Agent Adapter roots, and the shared Package reconciler.
- * [OUTPUT]: Provides mutation-free Package update previews plus confirmed single-Package or best-effort scope-wide execution that consumes previewed immutable targets, preserves available persisted Skill selectors and Agents, reports removed Skills with canonical current name/path identity, binds execution to current declaration state, and reports complete per-Package outcomes.
+ * [INPUT]: Depends on shared validated Package Scope inputs, declared Package dependencies, Catalog-backed target Publications, read-through exact Package metadata/content, Agent Adapter roots, and the shared direct-Projection reconciler.
+ * [OUTPUT]: Provides declaration-preserving previews plus confirmed single-Package or best-effort scope-wide direct-Projection reconciliation, including automatic disposable-cache restoration and Local Modification protection.
  * [POS]: Serves as the Package update intent and interaction adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,6 +25,7 @@ import (
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/packagemutation"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -158,7 +159,7 @@ func newPackageUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			prepared := make([]preparedPackageUpdate, 0, len(packagePaths))
 			for index, packagePath := range packagePaths {
 				preview := previews[index]
-				if preview.Status != "update_available" {
+				if preview.Status != "update_available" && preview.Status != "up_to_date" {
 					prepared = append(prepared, preparedPackageUpdate{report: preview})
 					continue
 				}
@@ -341,7 +342,7 @@ func runAllScopeUpdates(cmd *cobra.Command, catalog *agent.Catalog, client *hub.
 		prepared = append(prepared, preparedPackageUpdate{report: item})
 	}
 	for _, item := range scoped {
-		if item.preview.Status != "update_available" {
+		if item.preview.Status != "update_available" && item.preview.Status != "up_to_date" {
 			prepared = append(prepared, preparedPackageUpdate{report: item.preview})
 			continue
 		}
@@ -405,6 +406,7 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 		}
 	}
 	reports := make([]packageUpdateReport, 0, len(packagePaths))
+	provider := packageprovider.Provider{Client: client, Info: infocache.Cache{Root: scopeContext.infoRoot}}
 	for _, packagePath := range packagePaths {
 		dependency, declared := manifest.Dependencies[packagePath]
 		locked, lockedOK := lock.Dependencies[packagePath]
@@ -420,13 +422,7 @@ func previewPackageUpdatesResolved(ctx context.Context, root string, globalScope
 		report.Agents = append([]string(nil), dependency.Agents...)
 		report.SelectedSkills = len(dependency.Skills)
 		report.SelectedAgents = len(dependency.Agents)
-		currentInfoBytes, currentInfoErr := (infocache.Cache{Root: scopeContext.infoRoot}).Get(packagePath, dependency.Version, "package.info")
-		if currentInfoErr != nil {
-			report.Error = fmt.Sprintf("read current immutable Package Info: %v", currentInfoErr)
-			reports = append(reports, report)
-			continue
-		}
-		currentResource, currentInfoErr := hub.ParsePackageInfo(packagePath, currentInfoBytes)
+		currentResource, currentInfoErr := provider.Metadata(ctx, packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum})
 		if currentInfoErr != nil {
 			report.Error = currentInfoErr.Error()
 			reports = append(reports, report)
@@ -593,15 +589,8 @@ func preparePackageUpdate(ctx context.Context, root string, globalScope bool, ca
 	if err != nil {
 		return packageUpdateReport{}, nil, err
 	}
-	oldArchive, err := packagestore.ReadVerifiedPackage(scopeContext.packagesRoot, packagePath, dependency.Version, locked.Sum)
-	if err != nil {
-		return packageUpdateReport{}, nil, fmt.Errorf("verify current Package Store before update: %w", err)
-	}
-	oldInfoBytes, err := (infocache.Cache{Root: scopeContext.infoRoot}).Get(packagePath, dependency.Version, "package.info")
-	if err != nil {
-		return packageUpdateReport{}, nil, fmt.Errorf("read current immutable Package Info: %w", err)
-	}
-	oldResource, err := hub.ParsePackageInfo(packagePath, oldInfoBytes)
+	provider := packageprovider.Provider{Client: client, Info: infocache.Cache{Root: scopeContext.infoRoot}}
+	oldResource, err := provider.Content(ctx, packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum}, nil)
 	if err != nil {
 		return packageUpdateReport{}, nil, err
 	}
@@ -655,7 +644,7 @@ func preparePackageUpdate(ctx context.Context, root string, globalScope bool, ca
 			packagesRoot: scopeContext.packagesRoot,
 			infoRoot:     scopeContext.infoRoot,
 			desired:      packageCoordinateState{resource: resource, entries: resource.Entries, projections: newProjections},
-			current:      &packageCoordinateState{resource: oldResource, entries: oldArchive, projections: oldRemoved, sum: locked.Sum},
+			current:      &packageCoordinateState{resource: oldResource, entries: oldResource.Entries, projections: oldRemoved, sum: locked.Sum},
 			workspace:    &packagemutation.WorkspaceState{Root: root, Manifest: currentManifest, Lock: currentLock},
 			operation:    "Package update",
 		})

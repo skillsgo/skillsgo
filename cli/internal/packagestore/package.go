@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on a coordinate Scope Package Store directory, its locked Package identity/version/Sum, and the shared Package Artifact format.
- * [OUTPUT]: Verifies a Package Store, reconstructs canonical Package entries including safe symlinks, and verifies direct Agent Skill links plus legacy deterministic projections without inferring publication membership from arbitrary SKILL.md files.
- * [POS]: Serves as the trusted local read boundary from authoritative Scope Package Store back into projection transactions.
+ * [INPUT]: Depends on a coordinate Scope Package Tree directory, its locked Package identity/version/Sum, and the shared Package Artifact format.
+ * [OUTPUT]: Verifies a derived Scope Package Tree, reconstructs canonical entries including safe symlinks, and verifies Agent member links plus deterministic projections.
+ * [POS]: Serves as the trusted local read boundary from a lock-verified Scope Package Tree back into projection transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package packagestore

@@ -17,10 +17,10 @@ type Localization struct {
 	Lang          string      `json:"lang"`
 	ResultKind    string      `json:"result_kind"`
 	TextContent   pgtype.Text `json:"text_content"`
-	PromptVersion string      `json:"prompt_version"`
-	UpdatedAt     time.Time   `json:"updated_at"`
 	ErrorKind     pgtype.Text `json:"error_kind"`
 	ErrorMessage  pgtype.Text `json:"error_message"`
+	PromptVersion string      `json:"prompt_version"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 // Canonical Skill Packages and mutable source/discovery state.

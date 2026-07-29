@@ -36,6 +36,7 @@ import 'project_identity_icon.dart';
 import 'skill_markdown_view.dart';
 import 'subscription_segmented_switch.dart';
 import 'ui_support.dart';
+import 'update_check_controller.dart';
 
 part 'library/library_screen_core.dart';
 part 'library/library_actions.dart';

@@ -24,7 +24,7 @@ func gitRepositoryPrefix(packagePath string) (string, error) {
 	if packagePath == "" || strings.HasPrefix(packagePath, "/") || strings.Contains(packagePath, "\\") || strings.Contains(packagePath, "../") {
 		return "", fmt.Errorf("invalid Git Artifact Package Path")
 	}
-	return "git/" + packagePath + ".git/", nil
+	return "packages/" + packagePath + "/", nil
 }
 
 func (s *Storage) HydrateGitRepository(ctx context.Context, packagePath, destination string) (bool, error) {

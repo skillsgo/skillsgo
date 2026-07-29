@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package updates, inline removal state, the localized Adoption story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with inventory refresh, inline-confirmed removal, and detail transitions.
+ * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package mutations, the App-scoped update coordinator, inline removal state, the localized Adoption story, and navigation animation.
+ * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with coordinated preview refresh, inline-confirmed removal, and detail transitions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -81,12 +81,12 @@ extension _LibraryActions on _LibraryScreenState {
         toVersion: package.toVersion,
       );
       await load();
-      await checkUpdates();
+      await checkUpdates(trigger: UpdateCheckTrigger.mutation);
     } catch (caught) {
       result = exceptionResult(caught);
       try {
         await load();
-        await checkUpdates();
+        await checkUpdates(trigger: UpdateCheckTrigger.mutation);
       } on Object {
         // Preserve the original mutation failure; refresh is best effort.
       }
@@ -241,49 +241,15 @@ extension _LibraryActions on _LibraryScreenState {
     });
   }
 
-  Future<void> checkUpdates() async {
-    if (skills == null || checking) return;
-    updateState(() {
-      checking = true;
-      updateCheckError = null;
-      updates = {
-        for (final skill in skills!)
-          for (final target in skill.targets)
-            packageScopeUpdateKey(
-              skill.packagePath,
-              target.scope,
-              target.projectRoot,
-            ): UpdateAvailability(
-              state: skill.provenance == LibraryProvenance.hub
-                  ? UpdateState.checking
-                  : UpdateState.unsupported,
-            ),
-      };
-    });
+  Future<void> checkUpdates({required UpdateCheckTrigger trigger}) async {
+    if (skills == null) return;
     try {
-      updates = await widget.gateway.checkUpdates(skills!);
-    } catch (caught) {
-      updateCheckError = caught;
-      updates = {
-        for (final skill in skills!)
-          for (final target in skill.targets)
-            packageScopeUpdateKey(
-              skill.packagePath,
-              target.scope,
-              target.projectRoot,
-            ): const UpdateAvailability(
-              state: UpdateState.failed,
-            ),
-      };
+      await ref
+          .read(updateCheckProvider.notifier)
+          .check(skills!, trigger: trigger);
+    } on Object {
+      // The coordinator retains stale results and exposes the failure state.
     }
-    if (mounted) updateState(() => checking = false);
-  }
-
-  Future<void> _initializeReminders() async {
-    final settings = await widget.gateway.loadReminderSettings();
-    if (!mounted) return;
-    updateState(() => reminderSettings = settings);
-    if (settings.updateAvailable) await checkUpdates();
   }
 
   Future<void> _removeSkills(List<InstalledSkill> selected) async {
@@ -338,7 +304,7 @@ extension _LibraryActions on _LibraryScreenState {
         }
         updateState(() => selectedSkillKeys.removeAll(succeeded));
         await load();
-        await checkUpdates();
+        await checkUpdates(trigger: UpdateCheckTrigger.mutation);
       }
     } catch (caught) {
       result = exceptionResult(caught);

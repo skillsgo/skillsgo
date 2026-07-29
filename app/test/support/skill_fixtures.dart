@@ -13,7 +13,6 @@ SkillDetail withoutInstallationTargets(SkillDetail detail) => SkillDetail(
   packagePath: detail.packagePath,
   version: detail.version,
   time: detail.time,
-  archiveSize: detail.archiveSize,
   description: detail.description,
 );
 

@@ -1,12 +1,13 @@
 /*
- * [INPUT]: Depends on atomically recovered strict YAML/Lock state, Scope Package Store, user-level immutable Package Info, Agent Adapter roots, and deterministic Package Projection verification.
- * [OUTPUT]: Adds Package-managed Skill inventory entries with Package Store-backed descriptions and direct canonical-name Agent Skill link health, without receipts, Store artifacts, materialization modes, or Hub access.
+ * [INPUT]: Depends on atomically recovered strict YAML/Lock state, read-through exact Package metadata/content, Scope Package Trees, Agent Adapter roots, and member-link Projections.
+ * [OUTPUT]: Adds Package-managed Skill inventory entries with Tree-backed descriptions and verified Projection health without treating shared acquisition caches as authority.
  * [POS]: Serves as the authoritative managed half of local Library inventory alongside External discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package inventory
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -14,8 +15,8 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
-	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
@@ -31,12 +32,7 @@ type PackageProjectionState struct {
 	managedRoot string
 }
 
-func addPackageInstallations(entries map[string]*Entry, accounted map[string]bool, roots []declarationRoot, catalog *agent.Catalog) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	infoRoot := infocache.DefaultRoot(home)
+func addPackageInstallations(ctx context.Context, entries map[string]*Entry, accounted map[string]bool, roots []declarationRoot, catalog *agent.Catalog, packages *packageprovider.Provider, verifyContent bool) error {
 	for _, declaration := range roots {
 		manifest, lock, found, err := project.LoadWorkspaceState(declaration.root)
 		if err != nil {
@@ -53,16 +49,18 @@ func addPackageInstallations(entries map[string]*Entry, accounted map[string]boo
 			packagesRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "packages"), agent.ScopeProject
 			projectRoot := declaration.root
 			if declaration.scope == install.ScopeGlobal {
-				packagesRoot, agentScope, projectRoot = filepath.Join(declaration.stateRoot, "packages"), agent.ScopeGlobal, ""
+				agentScope, projectRoot = agent.ScopeGlobal, ""
 			}
 			_, moduleErr := packagestore.ReadVerifiedPackage(packagesRoot, packagePath, dependency.Version, locked.Sum)
-			infoBytes, infoErr := (infocache.Cache{Root: infoRoot}).Get(packagePath, dependency.Version, "package.info")
-			if infoErr != nil {
-				return fmt.Errorf("read immutable Package Info for inventory: %w", infoErr)
-			}
-			resource, err := hub.ParsePackageInfo(packagePath, infoBytes)
+			resource, err := packages.Metadata(ctx, packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum})
 			if err != nil {
 				return err
+			}
+			if verifyContent {
+				resource, err = packages.Content(ctx, packageprovider.LockedPackage{PackagePath: packagePath, Version: dependency.Version, Sum: locked.Sum}, nil)
+				if err != nil {
+					return err
+				}
 			}
 			members := make([]string, 0, len(resource.Members))
 			for _, member := range resource.Members {
@@ -101,10 +99,9 @@ func addPackageInstallations(entries map[string]*Entry, accounted map[string]boo
 				}
 				for _, projection := range projectionStates {
 					projectionPath := filepath.Join(projection.managedRoot, member.Info.Name)
-					packageDir := memberPackagePath
 					health := PackageSkillTargetHealth(moduleErr, packagestore.CoordinatePath(packagesRoot, packagePath, dependency.Version), projectionPath, member.Info.Path)
 					entry.Targets = append(entry.Targets, Target{Scope: declaration.scope, ProjectRoot: projectRoot, Agent: projection.agentID,
-						Path: projectionPath, CanonicalPath: packageDir, Version: dependency.Version, Health: health})
+						Path: projectionPath, CanonicalPath: memberPackagePath, Version: dependency.Version, Health: health})
 					entry.Agents = appendUnique(entry.Agents, projection.agentID)
 					accounted[targetKey(projection.agentID, declaration.scope, projectionPath)] = true
 					if health != HealthHealthy && entry.Health == HealthHealthy {
@@ -125,28 +122,6 @@ func PackageSkillTargetHealth(packageErr error, packageRoot, projectionPath, mem
 		return HealthLocalModification
 	}
 	if err := packagestore.VerifySkillProjection(packageRoot, projectionPath, memberPath); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return HealthMissing
-		}
-		return HealthLocalModification
-	}
-	return HealthHealthy
-}
-
-func PackageTargetHealth(moduleErr error, packageRoot, projectionRoot string, members, selected []string) Health {
-	if moduleErr != nil {
-		if errors.Is(moduleErr, os.ErrNotExist) {
-			return HealthMissing
-		}
-		return HealthLocalModification
-	}
-	if _, err := os.Lstat(projectionRoot); err != nil {
-		if os.IsNotExist(err) {
-			return HealthMissing
-		}
-		return HealthUnreadable
-	}
-	if err := packagestore.VerifyProjectionDirectory(packageRoot, projectionRoot, members, selected); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return HealthMissing
 		}

@@ -15,10 +15,10 @@
 Environment: "development"
 
 # Mode declares whether this Hub is self-hosted or connected to SkillsGo Cloud.
-# CloudOrigin is required only for cloud mode.
+# CloudOrigin defaults to https://cloud.skillsgo.ai.
 # Env overrides: SKILLSGO_HUB_MODE and SKILLSGO_HUB_CLOUD_ORIGIN
 Mode: "selfhost"
-CloudOrigin: ""
+CloudOrigin: "https://cloud.skillsgo.ai"
 
 # SkillCacheDir stores persistent Git Repository mirrors and temporary publication snapshots.
 # If empty, Hub uses ~/.skillsgo/hub/cache.
@@ -191,8 +191,8 @@ StatsExporter: "prometheus"
 # available at the time of requesting versions.
 NetworkMode: "strict"
 
-# ArtifactOrigin is the public CDN origin hosting static Git Artifact repositories.
-# Info and list responses always remain on the Hub origin.
+# ArtifactOrigin optionally overrides the public origin hosting static Git Artifact repositories.
+# When empty, Package Info uses the Hub request origin; configure it to send Artifact traffic directly to a CDN or object store.
 # Env override: SKILLSGO_HUB_ARTIFACT_ORIGIN
 ArtifactOrigin: ""
 

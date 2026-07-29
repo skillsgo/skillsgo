@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses shared controls and state from FakeSkillsGatewayCore plus domain gateway models.
- * [OUTPUT]: Provides installed inventory, local detail, and update-state inspection behavior.
+ * [OUTPUT]: Provides installed inventory, local detail, persisted update-check cache, and controllable update-state inspection behavior.
  * [POS]: Serves as one capability facet of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -118,7 +118,10 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
   Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
+    updateChecks++;
     if (updateCheckErrors.isNotEmpty) throw updateCheckErrors.removeAt(0);
+    final pending = updateCheckCompleter;
+    if (pending != null) return pending.future;
     return {
       for (final skill in skills)
         for (final target in skill.targets)
@@ -137,5 +140,13 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
             ],
           ),
     };
+  }
+
+  @override
+  Future<UpdateCheckCache?> loadUpdateCheckCache() async => updateCheckCache;
+
+  @override
+  Future<void> saveUpdateCheckCache(UpdateCheckCache cache) async {
+    updateCheckCache = cache;
   }
 }

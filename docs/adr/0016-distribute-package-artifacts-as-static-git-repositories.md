@@ -48,14 +48,14 @@ The implementation intentionally provides no artifact migration or wire compatib
 The Artifact Repository URL is derived from the canonical Package Path under one deployment-discovered origin:
 
 ```text
-{ArtifactGitOrigin}/{packagePath}.git
+{ArtifactOrigin}/packages/{packagePath}
 ```
 
 For example:
 
 ```text
 Package Path: github.com/mattpocock/skills
-Repository:   https://cdn.skillsgo.ai/git/github.com/mattpocock/skills.git
+Repository:   https://cdn.skillsgo.ai/packages/github.com/mattpocock/skills
 ```
 
 Package Info does not enumerate Pack offsets, object locations, or delta bases. Git owns those physical details. Package Info exposes the complete Artifact Repository URL; Package Path determines the repository location and immutable Version determines the tag.

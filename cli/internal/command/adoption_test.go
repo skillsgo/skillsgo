@@ -86,7 +86,7 @@ func TestAdoptReinstallsExactMemberAndRemovesExternal(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "adopted", report.Results[0].Status)
-	require.NoDirExists(t, external)
+	require.FileExists(t, filepath.Join(external, "SKILL.md"))
 	manifest, _, err := loadWorkspaceState(filepath.Join(home, ".agents"))
 	require.NoError(t, err)
 	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[packagePath].Skills)
@@ -260,7 +260,7 @@ func TestAdoptKeepsIndependentDestinationWhenAnotherExternalIsBroken(t *testing.
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"adopted", "failed"}, []string{report.Results[0].Status, report.Results[1].Status})
-	require.NoDirExists(t, global)
+	require.FileExists(t, filepath.Join(global, "SKILL.md"))
 	info, err := os.Lstat(broken)
 	require.NoError(t, err)
 	require.NotZero(t, info.Mode()&os.ModeSymlink)
@@ -321,8 +321,8 @@ func TestAdoptBatchesMembersWithTheSamePackageDestination(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"adopted", "adopted"}, []string{report.Results[0].Status, report.Results[1].Status})
-	require.NoDirExists(t, alpha)
-	require.NoDirExists(t, beta)
+	require.FileExists(t, filepath.Join(alpha, "SKILL.md"))
+	require.FileExists(t, filepath.Join(beta, "SKILL.md"))
 	manifest, _, err := loadWorkspaceState(filepath.Join(home, ".agents"))
 	require.NoError(t, err)
 	require.Equal(t, []string{"skills/alpha", "skills/beta"}, manifest.Dependencies[packagePath].Skills)

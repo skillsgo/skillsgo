@@ -751,6 +751,34 @@ func (q *Queries) PackagePublicationCommit(ctx context.Context, arg PackagePubli
 	return commit_sha, err
 }
 
+const packagePublishedVersions = `-- name: PackagePublishedVersions :many
+SELECT mv.version
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
+WHERE m.path=$1
+ORDER BY mv.version
+`
+
+func (q *Queries) PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error) {
+	rows, err := q.db.Query(ctx, packagePublishedVersions, packagePath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const packageVersion = `-- name: PackageVersion :one
 SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
        mv.sum, mv.commit_time, mv.created_at
@@ -1575,7 +1603,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

@@ -98,6 +98,25 @@ func TestPublishAndCloneParentlessArtifactVersionsOverDumbHTTP(t *testing.T) {
 	if got := packFiles(t, repositoryPath); len(got) != 2 {
 		t.Fatalf("idempotent publication Packs = %v, want 2", got)
 	}
+	head, err := artifactRepository.Reference(plumbing.HEAD, false)
+	if err != nil || head.Target() != plumbing.NewBranchReferenceName("main") {
+		t.Fatalf("Artifact HEAD = %v, %v; want refs/heads/main", head, err)
+	}
+	freshRepository, err := git.PlainCloneContext(t.Context(), filepath.Join(t.TempDir(), "fresh"), &git.CloneOptions{
+		URL: server.URL + "/github.com/example/skills.git", NoCheckout: true, ReferenceName: plumbing.NewBranchReferenceName("main"), Tags: git.AllTags,
+		ClientOptions: []client.Option{client.WithTransport("http", transport)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range []string{"v1.0.0", "v1.1.0"} {
+		if _, err := Entries(freshRepository, version); err != nil {
+			t.Fatalf("fresh clone Entries(%s): %v", version, err)
+		}
+	}
+	requestMu.Lock()
+	packRequests = make(map[string]int)
+	requestMu.Unlock()
 
 	err = clone.FetchContext(t.Context(), &git.FetchOptions{
 		RefSpecs:      []config.RefSpec{"+refs/tags/v1.1.0:refs/tags/v1.1.0"},

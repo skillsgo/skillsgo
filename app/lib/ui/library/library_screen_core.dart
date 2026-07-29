@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Library journey library, Riverpod Library state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, global-default location state with reduced-motion-aware body transitions, lifecycle, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
+ * [INPUT]: Depends on the Library journey library, Riverpod Library and App-scoped update-check state, navigation routes, selection state, and shared layout widgets.
+ * [OUTPUT]: Provides the public LibraryScreen, global-default location state with reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,9 +45,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     with SingleTickerProviderStateMixin {
   void updateState(VoidCallback change) => setState(change);
   Object? actionError;
-  bool checking = false;
-  Object? updateCheckError;
-  Map<String, UpdateAvailability> updates = const {};
   CommandResult? result;
   final operatingSkills = <String>{};
   final scrollController = ScrollController();
@@ -68,8 +65,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   List<BatchAdoptionPreview> activeAdoptionPreviews = const [];
   List<_AdoptionReviewSelection> activeAdoptionSelections = const [];
   InstalledSkill? selectedDetailSkill;
-  ReminderSettings? reminderSettings;
-  bool _reminderInitializationStarted = false;
   bool detailTransitioning = false;
   late final AnimationController detailTransition;
 
@@ -107,16 +102,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool get loading =>
       _library.isLoading || (_library.value?.refreshing ?? false);
 
+  UpdateCheckState get _updateCheck =>
+      ref.read(updateCheckProvider).value ?? const UpdateCheckState();
+  bool get checking => _updateCheck.checking;
+  Object? get updateCheckError => _updateCheck.error;
+  Map<String, UpdateAvailability> get updates => _updateCheck.results;
+
   @override
   Widget build(BuildContext context) {
     ref.watch(libraryProvider);
+    ref.watch(updateCheckProvider);
     ref.listen(libraryProvider, (_, next) {
       if (next.value != null) _reconcileLibraryState();
     });
-    if (skills != null && !_reminderInitializationStarted) {
-      _reminderInitializationStarted = true;
-      unawaited(_initializeReminders());
-    }
     final selected = _selectedSkills;
     final visibleSkills = _visibleSkills;
     final visibleSelectedCount = visibleSkills
@@ -308,7 +306,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           updatesOnly: updatesOnly,
                           onChanged: (value) {
                             setState(() => updatesOnly = value);
-                            if (value) unawaited(checkUpdates());
+                            if (value) {
+                              unawaited(
+                                checkUpdates(
+                                  trigger: UpdateCheckTrigger.updatesView,
+                                ),
+                              );
+                            }
                           },
                         ),
                         const SizedBox(width: 4),

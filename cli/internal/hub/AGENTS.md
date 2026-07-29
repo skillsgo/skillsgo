@@ -4,7 +4,7 @@
 ## Members
 
 - `client.go`: resolves exact versions or movable Version Queries through `/{packagePath}/versions/{version}`, follows Package Info to static Git Artifact repositories, resolves member names deterministically while preserving exact Skill path selectors, forwards version-scoped Skill Find plus source-language candidate and current-Package product APIs, validates strict provider-neutral `/api/v1` reads, verifies Package identity/Sum, and exposes typed HTTP failures.
-- `git_artifact.go`: uses go-git v6 with forced dumb HTTP to read one exact parentless tag from CDN-hosted static repository files and restores validated Package entries without invoking system Git.
+- `git_artifact.go`: uses go-git v6 with forced dumb HTTP to read one exact parentless tag from CDN-hosted static repository files, automatically rebuilds one corrupt disposable repository coordinate, and restores validated Package entries without invoking system Git.
 - `client_test.go`: specifies strict Repository transport contracts, hostile response rejection, retries, and download progress.
 
 ## Architectural Boundary

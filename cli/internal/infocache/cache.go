@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical resource identity, immutable version and kind, exact protocol bytes, and filesystem atomicity.
- * [OUTPUT]: Provides identity-checked immutable Info get/put operations with per-entry singleflight and crash-safe publication.
+ * [OUTPUT]: Provides identity-checked immutable Info get/put/replace operations with per-entry serialization and crash-safe publication.
  * [POS]: Serves as the user-level disposable exact-metadata cache shared by every installation scope between Workspace restoration and Hub protocol access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,6 +56,16 @@ func (c Cache) Get(resource, version, kind string) ([]byte, error) {
 }
 
 func (c Cache) Put(resource, version, kind string, info []byte) error {
+	return c.write(resource, version, kind, info, false)
+}
+
+// Replace publishes trusted immutable bytes after a cache miss or corrupt cache
+// entry. The cache is disposable; authority remains with the exact Hub resource.
+func (c Cache) Replace(resource, version, kind string, info []byte) error {
+	return c.write(resource, version, kind, info, true)
+}
+
+func (c Cache) write(resource, version, kind string, info []byte, replace bool) error {
 	path := c.path(resource, version, kind)
 	lockValue, _ := entryLocks.LoadOrStore(path, &sync.Mutex{})
 	lock := lockValue.(*sync.Mutex)
@@ -66,7 +76,7 @@ func (c Cache) Put(resource, version, kind string, info []byte) error {
 			return fmt.Errorf("immutable Info changed for %s@%s", resource, version)
 		}
 		return nil
-	} else if !errors.Is(err, ErrNotFound) {
+	} else if !errors.Is(err, ErrNotFound) && !replace {
 		return err
 	}
 	if !json.Valid(info) {
@@ -100,6 +110,9 @@ func (c Cache) Put(resource, version, kind string, info []byte) error {
 	}
 	if err := temporary.Close(); err != nil {
 		return err
+	}
+	if replace {
+		_ = os.Remove(path)
 	}
 	return os.Rename(temporaryPath, path)
 }

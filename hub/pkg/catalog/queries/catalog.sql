@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, exact-path immutable Package Version Skill, batch current-Package update projection, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -102,6 +102,13 @@ FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
 WHERE m.path=sqlc.arg(package_path) AND mvs.path=sqlc.arg(path)
+ORDER BY mv.version;
+
+-- name: PackagePublishedVersions :many
+SELECT mv.version
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
+WHERE m.path=sqlc.arg(package_path)
 ORDER BY mv.version;
 
 -- name: PackagePublicationCommit :one

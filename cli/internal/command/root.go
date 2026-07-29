@@ -272,6 +272,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 type removalOptions struct {
 	global bool
 	agents []string
+	hubURL string
 }
 
 func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
@@ -331,7 +332,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			if !yes {
 				return fmt.Errorf("%s", appi18n.T("remove.error.confirm"))
 			}
-			if handled, err := tryRemoveVersionSkills(cmd, catalog, args, options.agents, options.global, projectRoot, all); handled {
+			if handled, err := tryRemoveVersionSkills(cmd, catalog, args, options.agents, options.global, projectRoot, all, options.hubURL); handled {
 				return err
 			}
 			names := map[string]bool{}
@@ -346,6 +347,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, appi18n.Pick("Remove from selected Agent (repeatable)", "从指定 Agent 移除（可重复）"))
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, appi18n.T("remove.flag.confirm"))
 	cmd.Flags().BoolVar(&all, "all", false, appi18n.Pick("Remove every Skill in the selected scope", "移除所选范围内的全部 Skill"))
+	cmd.Flags().StringVar(&options.hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	addExactOperationFlags(cmd, &exact)
 	return cmd
 }

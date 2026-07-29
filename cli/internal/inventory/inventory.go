@@ -1,12 +1,13 @@
 /*
- * [INPUT]: Depends on strict Package YAML/Lock state, Scope Package Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
- * [OUTPUT]: Provides inventory v7 Package-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
+ * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, and read-only target filesystem metadata.
+ * [OUTPUT]: Provides inventory v7 Package-managed and External Library reconciliation with explicit projects, direct-Projection target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package inventory
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
 
@@ -81,6 +83,9 @@ type Options struct {
 	IncludeGlobal bool
 	Projects      []string
 	Catalog       *agent.Catalog
+	Context       context.Context
+	Packages      *packageprovider.Provider
+	VerifyContent bool
 }
 
 func Build(options Options) (Report, error) {
@@ -90,6 +95,15 @@ func Build(options Options) (Report, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return Report{}, err
+	}
+	ctx := options.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	packages := options.Packages
+	if packages == nil {
+		fallback := packageprovider.Default(home, nil)
+		packages = &fallback
 	}
 	projectRoots, err := normalizeProjectRoots(options.Projects)
 	if err != nil {
@@ -108,7 +122,7 @@ func Build(options Options) (Report, error) {
 	for _, root := range projectRoots {
 		roots = append(roots, declarationRoot{root: root, scope: install.ScopeProject})
 	}
-	if err := addPackageInstallations(entries, accountedTargets, roots, options.Catalog); err != nil {
+	if err := addPackageInstallations(ctx, entries, accountedTargets, roots, options.Catalog, packages, options.VerifyContent); err != nil {
 		return Report{}, err
 	}
 	addExternalInstallations(

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, and the inventory domain report builder.
+ * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, and the inventory domain report builder.
  * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external JSON serialization, and path-rich adaptive Human summaries.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,8 +17,10 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +31,7 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	var includeGlobal bool
 	var projects []string
 	var output string
+	var hubURL string
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   appi18n.T("list.short"),
@@ -42,10 +45,17 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 				}
 				projects = []string{cwd}
 			}
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			provider := packageprovider.Default("", client)
 			report, err := inventory.Build(inventory.Options{
 				IncludeGlobal: includeGlobal,
 				Projects:      projects,
 				Catalog:       catalog,
+				Context:       cmd.Context(),
+				Packages:      &provider,
 			})
 			if errors.Is(err, inventory.ErrEmptyProjectRoot) {
 				return errors.New(appi18n.T("list.error.empty_project"))
@@ -96,5 +106,6 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().BoolVarP(&includeGlobal, "global", "g", false, appi18n.T("list.flag.global"))
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("list.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	return cmd
 }

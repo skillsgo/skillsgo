@@ -231,6 +231,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(libraryLocation('Project Alpha'));
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
 
       expect(find.text('Can’t connect to SkillsGo'), findsOneWidget);
       expect(find.text('hub-demo'), findsOneWidget);

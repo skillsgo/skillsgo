@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, Mandatory Onboarding, Riverpod feature state, split feature view parts, localized copy, Flutter rendering direction and spring physics, HugeIcons, multi_dropdown, shared Agent, Added Project, and language identity components, the vendored Portal Labs subscription switch, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the first-launch gate, desktop shell composition, cross-destination navigation actions, and shared UI contracts consumed by split Discover, Library, Settings, and mutation-flow views.
+ * [INPUT]: Depends on SkillsGateway contracts, Mandatory Onboarding, Riverpod feature state including the App-scoped update coordinator, split feature view parts, localized copy, Flutter rendering direction and spring physics, HugeIcons, multi_dropdown, shared Agent, Added Project, and language identity components, the vendored Portal Labs subscription switch, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
+ * [OUTPUT]: Provides the first-launch gate, desktop shell composition, lifecycle-aware stale update checks, cross-destination navigation actions, and shared UI contracts consumed by split Discover, Library, Settings, and mutation-flow views.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,6 +24,7 @@ import 'discover_screen.dart';
 import 'library_screen.dart';
 import 'settings_screen.dart';
 import 'ui_support.dart';
+import 'update_check_controller.dart';
 
 enum _Destination { discover, library, settings }
 
@@ -44,6 +45,7 @@ class _AppShellState extends ConsumerState<AppShell>
   OnboardingState? onboardingState;
   Object? onboardingError;
   bool _mainShellInitialized = false;
+  Timer? _startupUpdateTimer;
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   void dispose() {
+    _startupUpdateTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -64,6 +67,7 @@ class _AppShellState extends ConsumerState<AppShell>
       unawaited(
         ref.read(agentCatalogProvider.notifier).refreshIfStaleSilently(),
       );
+      unawaited(_checkUpdates(UpdateCheckTrigger.automatic));
     }
   }
 
@@ -84,6 +88,23 @@ class _AppShellState extends ConsumerState<AppShell>
     _mainShellInitialized = true;
     ref.read(agentCatalogProvider);
     unawaited(_detectCli());
+    _startupUpdateTimer = Timer(
+      const Duration(seconds: 2),
+      () => unawaited(_checkUpdates(UpdateCheckTrigger.automatic)),
+    );
+  }
+
+  Future<void> _checkUpdates(UpdateCheckTrigger trigger) async {
+    try {
+      final settings = await widget.gateway.loadReminderSettings();
+      if (!settings.updateAvailable) return;
+      final library = await ref.read(libraryProvider.future);
+      await ref
+          .read(updateCheckProvider.notifier)
+          .check(library.skills, trigger: trigger);
+    } on Object {
+      // Update discovery is optional and must never interrupt App navigation.
+    }
   }
 
   void _completeOnboarding(bool openLibrary) {

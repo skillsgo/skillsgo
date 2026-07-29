@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, and the unified read-only inventory reconciliation domain.
+ * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, the Hub origin, and the unified inventory reconciliation domain with read-through metadata restoration.
  * [OUTPUT]: Provides `skillsgo verify` health verification and `skillsgo why` direct declaration/target explanations in human or JSON form.
- * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Package Stores, declarations, or Projections.
+ * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating declarations or Projections; explicit verify may rebuild disposable dependency caches.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -14,8 +14,10 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
+	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
@@ -42,6 +44,7 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 	var includeGlobal bool
 	var projects []string
 	var output string
+	var hubURL string
 	cmd := &cobra.Command{
 		Use:     "verify",
 		Short:   appi18n.T("verify.short"),
@@ -52,7 +55,12 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog})
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			provider := packageprovider.Default("", client)
+			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog, Context: cmd.Context(), Packages: &provider, VerifyContent: true})
 			if err != nil {
 				return err
 			}
@@ -73,6 +81,7 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 		},
 	}
 	addInspectionFlags(cmd, &includeGlobal, &projects, &output)
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	return cmd
 }
 
@@ -80,6 +89,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 	var includeGlobal bool
 	var projects []string
 	var output string
+	var hubURL string
 	cmd := &cobra.Command{
 		Use:     "why <skill-name>",
 		Short:   appi18n.T("why.short"),
@@ -90,7 +100,12 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog})
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			provider := packageprovider.Default("", client)
+			reconciled, err := inventory.Build(inventory.Options{IncludeGlobal: user, Projects: roots, Catalog: catalog, Context: cmd.Context(), Packages: &provider})
 			if err != nil {
 				return err
 			}
@@ -129,6 +144,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 		},
 	}
 	addInspectionFlags(cmd, &includeGlobal, &projects, &output)
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	return cmd
 }
 

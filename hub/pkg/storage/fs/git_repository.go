@@ -21,7 +21,7 @@ func (s *storageImpl) gitRepositoryLocation(packagePath string) (string, error) 
 	if packagePath == "" || filepath.IsAbs(packagePath) || strings.Contains(packagePath, "\\") {
 		return "", fmt.Errorf("invalid Git Artifact Package Path")
 	}
-	return s.containedLocation("git", filepath.FromSlash(packagePath)+".git")
+	return s.containedLocation("packages", filepath.FromSlash(packagePath))
 }
 
 func (s *storageImpl) HydrateGitRepository(_ context.Context, packagePath, destination string) (bool, error) {

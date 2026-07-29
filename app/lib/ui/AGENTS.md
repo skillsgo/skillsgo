@@ -14,6 +14,7 @@
 - `install_operation_controller.dart`: owns the compact Installation Request interface, direct atomic Package submission for the selected version, aggregate execution success, and error state through a Riverpod family.
 - `installation_flows.dart` and `installation/`: expose remote detail, installation selection, exact removal, progress, result, and retry surfaces as one independent journey library.
 - `library_controller.dart`: owns immutable Library content, stable Entry queries, targeted post-mutation reconciliation, initial-load, stale-refresh, and load-error transitions through Riverpod.
+- `update_check_controller.dart`: owns the App-scoped persisted update-preview cache, freshness policies, and single-flight CLI check shared by lifecycle and Library/detail consumers.
 - `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Adoption, and Package target actions behind one screen library.
 - `language_identity_icon.dart`: centralizes presentation-language identity, locally vendored Circle Flags asset mapping, and the system-language fallback shared by language selectors.
 - `agent_logo.dart`: centralizes Agent ID-to-SVG identity mapping and the themed initial fallback shared by installation and Library navigation.

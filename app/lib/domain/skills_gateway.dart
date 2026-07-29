@@ -101,4 +101,6 @@ abstract interface class SkillsGateway {
   Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   );
+  Future<UpdateCheckCache?> loadUpdateCheckCache();
+  Future<void> saveUpdateCheckCache(UpdateCheckCache cache);
 }
