@@ -33,7 +33,7 @@ class SkillsBackground extends StatelessWidget {
 
 extension AppWallpaperAsset on AppWallpaper {
   String get assetPath =>
-      'assets/backgrounds/${this == AppWallpaper.sun ? 'solar' : name}-starfield.png';
+      'assets/backgrounds/${this == AppWallpaper.sun ? 'solar' : name}-starfield.webp';
 }
 
 extension SkillsColorRoles on ColorScheme {
