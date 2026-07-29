@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on all maintained rendered macOS App Journey registrations and the Flutter integration-test binding.
- * [OUTPUT]: Registers every App E2E Journey in one Flutter test executable so App, Xcode, and bundled CLI compilation occur once per suite.
+ * [INPUT]: Depends on all maintained rendered cross-platform App Journey registrations and the Flutter integration-test binding.
+ * [OUTPUT]: Registers every App E2E Journey in one Flutter test executable so the App and bundled CLI compile once per host platform suite.
  * [POS]: Serves as the default aggregate entry point orchestrated by e2e/app/run.sh while individual Journey files remain focusable.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

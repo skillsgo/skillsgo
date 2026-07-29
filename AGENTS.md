@@ -50,7 +50,7 @@ skillsgo/
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
 - Protocol: Go; use `gofmt` and `go test ./...` from `protocol/`.
 - Web: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `web/`.
-- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for macOS desktop App+CLI+Hub journeys, or `make test-e2e` for both.
+- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for the host desktop App+CLI+Hub journeys on macOS, Windows, or Linux, or `make test-e2e` for both suites.
 - Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
 - Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
 

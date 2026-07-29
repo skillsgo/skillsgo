@@ -56,7 +56,7 @@ Hub       → gofmt + go vet + go test -race + Hub build
 Web       → frozen install + typecheck + production build
 Dependencies → OSV scan of every supported lockfile, including Dart `pubspec.lock`
 CLI E2E   → isolated Linux container journeys across CLI and Hub
-App E2E   → rendered four-target startup smoke plus complete macOS journeys across App, bundled CLI, and native Hub
+App E2E   → rendered four-target startup smoke plus complete macOS, Windows, and Linux journeys across App, bundled CLI, and native Hub
 ```
 
 CI receives read-only repository permissions, cancels only superseded pull-request runs, and never cancels main or merge-queue validation. Third-party actions are pinned to full commit SHAs and updated through Dependabot.

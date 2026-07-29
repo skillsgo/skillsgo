@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, native or Docker PostgreSQL, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one native Hub binary, and executes all selected App Journeys through one Flutter/Xcode test build with Journey-scoped runtime isolation.
+# [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -9,10 +9,24 @@ set -euo pipefail
 readonly workspace_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly repository_root="$(cd "${workspace_dir}/../.." && pwd)"
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "App E2E requires macOS Flutter desktop support; skipping on $(uname -s)."
-  exit 0
-fi
+case "$(uname -s)" in
+  Darwin)
+    readonly flutter_device="macos"
+    readonly hub_binary_name="skillsgo-hub"
+    ;;
+  Linux)
+    readonly flutter_device="linux"
+    readonly hub_binary_name="skillsgo-hub"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    readonly flutter_device="windows"
+    readonly hub_binary_name="skillsgo-hub.exe"
+    ;;
+  *)
+    echo "Unsupported App E2E host: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
 
 journeys=("$@")
 if (( ${#journeys[@]} == 0 )); then
@@ -80,14 +94,14 @@ case "${postgres_runtime}" in
     ;;
 esac
 
-readonly hub_binary="${run_dir}/skillsgo-hub"
+readonly hub_binary="${run_dir}/${hub_binary_name}"
 (
   cd "${repository_root}/hub"
   CGO_ENABLED=0 go build -trimpath -o "${hub_binary}" ./cmd/skillsgo-hub
 )
 
 cd "${repository_root}/app"
-env \
+test_environment=(env \
   HOME="${run_dir}/app-home" \
   CFFIXED_USER_HOME="${run_dir}/app-home" \
   XDG_CONFIG_HOME="${run_dir}/app-home/.config" \
@@ -99,7 +113,10 @@ env \
   SKILLSGO_E2E_ROOT="${run_dir}" \
   SKILLSGO_E2E_DATABASE_DSN="${database_dsn}" \
   SKILLSGO_E2E_PSQL="${psql_binary}" \
-  SKILLSGO_E2E_HUB_BINARY="${hub_binary}" \
-  flutter test \
-    -d macos \
-    "${journeys[@]}"
+  SKILLSGO_E2E_HUB_BINARY="${hub_binary}")
+test_command=(flutter test -d "${flutter_device}" "${journeys[@]}")
+if [[ "${flutter_device}" == "linux" ]]; then
+  "${test_environment[@]}" xvfb-run -a "${test_command[@]}"
+else
+  "${test_environment[@]}" "${test_command[@]}"
+fi
