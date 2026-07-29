@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, deterministic English App language, and SharedPreferences.
+ * [INPUT]: Depends on suite-provided Hub/PostgreSQL binaries and DSN, the bundled CLI path, real process execution, isolated filesystem roots, Flutter diagnostics, deterministic English App language, and SharedPreferences.
  * [OUTPUT]: Provides per-Journey Home/Project/Agent/PostgreSQL-schema/Hub isolation and forwarded Hub diagnostics while preserving the real App-to-CLI-to-Hub boundary.
  * [POS]: Serves as the reusable runtime fixture for the single-process cross-platform App E2E suite and focused Journey execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/io_process_runner.dart';
@@ -104,11 +105,11 @@ final class JourneyRuntime {
       hubLogSinks.addAll([stdoutLog, stderrLog]);
       hubProcess.stdout.transform(utf8.decoder).listen((output) {
         stdoutLog.write(output);
-        stderr.write('[hub:$safeName] $output');
+        debugPrint('[hub:$safeName] ${output.trimRight()}');
       });
       hubProcess.stderr.transform(utf8.decoder).listen((output) {
         stderrLog.write(output);
-        stderr.write('[hub:$safeName] $output');
+        debugPrint('[hub:$safeName] ${output.trimRight()}');
       });
       await _waitForHub(hubOrigin, hubProcess, hubLog);
     }
