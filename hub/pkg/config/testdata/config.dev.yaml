@@ -196,11 +196,13 @@ NetworkMode: "strict"
 # Env override: SKILLSGO_HUB_ARTIFACT_ORIGIN
 ArtifactOrigin: ""
 
-# Database stores searchable Skill metadata. Artifact archives remain in Storage.
+# Database stores searchable Skill metadata. Foreground and background pools
+# share the database while retaining independent zero-minimum capacity limits.
 # PostgreSQL is the only supported Catalog database.
 Database:
   DSN: "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
-  MaxOpenConns: 10
+  MaxOpenConns: 20
+  BackgroundMaxOpenConns: 40
   ConnMaxLifetime: 1800
 
 # River partitions this total worker budget across source (60%), default (20%),

@@ -50,18 +50,20 @@ func main() {
 
 	logger := hublog.New(conf.CloudRuntime, logLvl, conf.LogFormat)
 	logger.WithFields(map[string]any{
-		"artifact_origin":      conf.ArtifactOrigin,
-		"environment":          conf.Environment,
-		"github_metadata_auth": len(conf.GitHubTokens()) > 0,
-		"log_format":           conf.LogFormat,
-		"log_level":            conf.LogLevel,
-		"network_mode":         conf.NetworkMode,
-		"stats_exporter":       conf.StatsExporter,
-		"storage_type":         conf.StorageType,
-		"task_queue_backend":   "river",
-		"task_queue_workers":   conf.TaskQueue.MaxWorkers,
-		"tls_configured":       conf.TLSCertFile != "" && conf.TLSKeyFile != "",
-		"trace_exporter":       conf.TraceExporter,
+		"artifact_origin":                     conf.ArtifactOrigin,
+		"database_background_max_connections": conf.Database.Background().MaxOpenConns,
+		"database_foreground_max_connections": conf.Database.MaxOpenConns,
+		"environment":                         conf.Environment,
+		"github_metadata_auth":                len(conf.GitHubTokens()) > 0,
+		"log_format":                          conf.LogFormat,
+		"log_level":                           conf.LogLevel,
+		"network_mode":                        conf.NetworkMode,
+		"stats_exporter":                      conf.StatsExporter,
+		"storage_type":                        conf.StorageType,
+		"task_queue_backend":                  "river",
+		"task_queue_workers":                  conf.TaskQueue.MaxWorkers,
+		"tls_configured":                      conf.TLSCertFile != "" && conf.TLSKeyFile != "",
+		"trace_exporter":                      conf.TraceExporter,
 	}).Infof("hub runtime configured")
 
 	// Route the standard library logger's output through our logger at the
