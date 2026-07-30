@@ -7,10 +7,32 @@
 package skill
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestDiscoverSkillCandidatesCoversEveryConventionalContainer(t *testing.T) {
+	for _, container := range conventionalSkillContainers {
+		t.Run(container, func(t *testing.T) {
+			flat := container + "/flat/SKILL.md"
+			categorized := container + "/category/skill/SKILL.md"
+			require.Equal(t, []string{categorized, flat}, discoverSkillCandidates([]string{
+				flat,
+				categorized,
+				"unrelated/catalog/deep/SKILL.md",
+			}))
+		})
+	}
+}
+
+func TestDiscoverSkillCandidatesIncludesDirectRootChildren(t *testing.T) {
+	require.Equal(t, []string{"standalone/SKILL.md"}, discoverSkillCandidates([]string{
+		"standalone/SKILL.md",
+		"unrelated/catalog/deep/SKILL.md",
+	}))
+}
 
 func TestDiscoverSkillCandidatesUsesRootSkillExclusively(t *testing.T) {
 	require.Equal(t, []string{"SKILL.md"}, discoverSkillCandidates([]string{
@@ -18,6 +40,10 @@ func TestDiscoverSkillCandidatesUsesRootSkillExclusively(t *testing.T) {
 		"skills/child/SKILL.md",
 		"packages/runtime/skills/runtime/SKILL.md",
 	}))
+}
+
+func TestDiscoverSkillCandidatesReturnsNoCandidatesForEmptyRepository(t *testing.T) {
+	require.Nil(t, discoverSkillCandidates(nil))
 }
 
 func TestDiscoverSkillCandidateTiersRetainsFallbackAfterRootAndConventions(t *testing.T) {
@@ -61,6 +87,28 @@ func TestDiscoverSkillCandidatesFallsBackToBoundedRecursiveSearch(t *testing.T) 
 	}))
 }
 
+func TestDiscoverSkillCandidatesSkipsEveryExcludedDirectoryAtEverySupportedTier(t *testing.T) {
+	files := []string{"catalog/product/valid/SKILL.md"}
+	for skipped := range recursiveDiscoverySkippedDirectories {
+		files = append(files,
+			fmt.Sprintf("%s/direct/SKILL.md", skipped),
+			fmt.Sprintf("catalog/%s/nested/SKILL.md", skipped),
+			fmt.Sprintf("skills/%s/nested/SKILL.md", skipped),
+			fmt.Sprintf("skills/category/%s/SKILL.md", skipped),
+		)
+	}
+	require.Equal(t, []string{"catalog/product/valid/SKILL.md"}, discoverSkillCandidates(files))
+}
+
+func TestDiscoverSkillCandidatesRequiresExactFilenameAndTreatsCaseVariantsAsFallbackPaths(t *testing.T) {
+	require.Equal(t, []string{"Skills/wrong-container/SKILL.md", "catalog/valid/SKILL.md"}, discoverSkillCandidates([]string{
+		"skill.md",
+		"skills/lower/skill.md",
+		"Skills/wrong-container/SKILL.md",
+		"catalog/valid/SKILL.md",
+	}))
+}
+
 func TestDiscoverSkillCandidatesIncludesClaudePluginManifestPaths(t *testing.T) {
 	marketplace := []byte(`{
 		"metadata": {"pluginRoot": "./plugins"},
@@ -75,6 +123,36 @@ func TestDiscoverSkillCandidatesIncludesClaudePluginManifestPaths(t *testing.T) 
 		"plugins/review/skills/default/SKILL.md",
 		"unrelated/example/SKILL.md",
 	}, pluginManifestDocuments{marketplace: marketplace}))
+}
+
+func TestPluginSkillContainersMatchesSkillsSHManifestSafetyMatrix(t *testing.T) {
+	tests := []struct {
+		name      string
+		documents pluginManifestDocuments
+		want      []string
+	}{
+		{name: "missing manifests"},
+		{name: "invalid manifests", documents: pluginManifestDocuments{marketplace: []byte("{"), plugin: []byte("[")}},
+		{name: "root plugin conventional directory", documents: pluginManifestDocuments{plugin: []byte(`{"name":"root"}`)}, want: []string{"skills"}},
+		{name: "root plugin explicit paths", documents: pluginManifestDocuments{plugin: []byte(`{"skills":["./custom/review","./","invalid","../escape"]}`)}, want: []string{"custom", "skills"}},
+		{name: "marketplace conventional and explicit paths", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{"source":"./plugins/review","skills":["./custom/check"]}]}`)}, want: []string{"plugins/review/custom", "plugins/review/skills"}},
+		{name: "marketplace plugin root", documents: pluginManifestDocuments{marketplace: []byte(`{"metadata":{"pluginRoot":"./plugins"},"plugins":[{"source":"./review"}]}`)}, want: []string{"plugins/review/skills"}},
+		{name: "marketplace omitted source uses root", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{}]}`)}, want: []string{"skills"}},
+		{name: "marketplace null source uses root", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{"source":null}]}`)}, want: []string{"skills"}},
+		{name: "remote source object is ignored", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{"source":{"source":"github","repo":"owner/repo"}}]}`)}},
+		{name: "invalid plugin root rejects marketplace", documents: pluginManifestDocuments{marketplace: []byte(`{"metadata":{"pluginRoot":"plugins"},"plugins":[{}]}`)}},
+		{name: "escaping plugin root rejects marketplace", documents: pluginManifestDocuments{marketplace: []byte(`{"metadata":{"pluginRoot":"./../../escape"},"plugins":[{}]}`)}},
+		{name: "invalid local source is ignored", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{"source":"plugins/review"},{"source":"../escape"},{"source":"./../../escape"}]}`)}},
+		{name: "duplicate directories are normalized", documents: pluginManifestDocuments{marketplace: []byte(`{"plugins":[{"source":"./review","skills":["./skills/one"]},{"source":"./review"}]}`)}, want: []string{"review/skills"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.want == nil {
+				tc.want = []string{}
+			}
+			require.Equal(t, tc.want, pluginSkillContainers(tc.documents))
+		})
+	}
 }
 
 func TestMinimalSkillDirectoriesRemovesDescendantsAndDuplicates(t *testing.T) {
@@ -101,6 +179,7 @@ func TestPackageArtifactPathsPreserveApplicablePluginManifests(t *testing.T) {
 		".cursor-plugin/plugin.json",
 		"plugins/review/.claude-plugin/plugin.json",
 		"plugins/other/.claude-plugin/plugin.json",
+		"plugins/review/unsupported/plugin.json",
 		"plugins/review/skills/check/SKILL.md",
 	}, []string{"plugins/review/skills/check"}))
 }

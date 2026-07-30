@@ -417,6 +417,29 @@ func TestRepositoryDiscoveryFallsThroughInvalidRootSkillToConventionalSkills(t *
 	require.NotContains(t, entryNames(snapshot.Entries), "SKILL.md")
 }
 
+func TestRepositoryDiscoveryFallsThroughInvalidRootAndConventionalTiersToRecursiveSkill(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.RemoveAll(filepath.Join(f.work, "skills")))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "SKILL.md"), []byte("# Invalid root Skill\n"), 0o644))
+	invalidConventional := filepath.Join(f.work, "skills", "invalid")
+	require.NoError(t, os.MkdirAll(invalidConventional, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(invalidConventional, "SKILL.md"), []byte("# Invalid conventional Skill\n"), 0o644))
+	f.writeSkill(t, "catalog/deep/recursive", "recursive", "valid recursive fallback")
+	f.commit(t, "add complete discovery fallback chain")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	require.Len(t, snapshot.Members, 1)
+	require.Equal(t, "recursive", snapshot.Members[0].Name)
+	require.Equal(t, "catalog/deep/recursive", snapshot.Members[0].Path)
+	require.Equal(t, "valid recursive fallback", snapshot.Members[0].Manifest.Description)
+	require.NotContains(t, entryNames(snapshot.Entries), "SKILL.md")
+	require.NotContains(t, entryNames(snapshot.Entries), "skills/invalid/SKILL.md")
+	require.Contains(t, entryNames(snapshot.Entries), "catalog/deep/recursive/SKILL.md")
+}
+
 func TestRepositoryDiscoveryInvalidShallowSkillDoesNotShadowValidNestedSkill(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	invalidParent := filepath.Join(f.work, "skills", "category")
