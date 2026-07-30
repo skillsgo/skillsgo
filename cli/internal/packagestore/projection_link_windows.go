@@ -40,11 +40,11 @@ func isProjectionLinkCandidate(info os.FileInfo) bool {
 func projectionLinkMatches(link, target string) (bool, error) {
 	buffer := make([]byte, windows.MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
 	if length, readErr := windows.Readlink(link, buffer); readErr == nil {
-		actual := string(buffer[:length])
+		actual := normalizeWindowsPath(string(buffer[:length]))
 		if !filepath.IsAbs(actual) {
 			actual = filepath.Join(filepath.Dir(link), actual)
 		}
-		if strings.EqualFold(filepath.Clean(actual), filepath.Clean(target)) {
+		if strings.EqualFold(filepath.Clean(actual), normalizeWindowsPath(target)) {
 			return true, nil
 		}
 	}
@@ -103,9 +103,14 @@ func windowsFinalPath(path string) (string, error) {
 		}
 		if int(length) < len(buffer) {
 			resolved := string(utf16.Decode(buffer[:length]))
-			resolved = strings.TrimPrefix(resolved, `\\?\`)
-			return filepath.Clean(resolved), nil
+			return normalizeWindowsPath(resolved), nil
 		}
 		buffer = make([]uint16, int(length)+1)
 	}
+}
+
+func normalizeWindowsPath(path string) string {
+	path = strings.TrimPrefix(path, `\??\`)
+	path = strings.TrimPrefix(path, `\\?\`)
+	return filepath.Clean(path)
 }
