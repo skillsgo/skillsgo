@@ -1,4 +1,11 @@
+---
+status: superseded
+superseded-by: 0019-compose-the-official-cloud-runtime-from-the-complete-hub
+---
+
 # ADR 0012: Compose Cloud Rankings with Hub Cards
+
+ADR-0019 supersedes this deployment and composition decision. Cloud now embeds the complete Hub Runtime, serves the unified protocol at `hub.skillsgo.ai`, and reads authoritative cards through the in-process Hub Catalog rather than Hub HTTP. The ownership distinction between Cloud metrics and Hub cards remains valid.
 
 ## Context
 

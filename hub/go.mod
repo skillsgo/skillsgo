@@ -41,7 +41,7 @@ require (
 	github.com/riverqueue/river v0.40.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0
 	github.com/riverqueue/river/rivertype v0.40.0
-	github.com/skillsgo/skillsgo/protocol v0.0.0
+	github.com/skillsgo/skillsgo/protocol v0.0.0-20260727042553-bc3aeacfe482
 	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.11.1
 	github.com/technosophos/moniker v0.0.0-20210218184952-3ea787d3943b

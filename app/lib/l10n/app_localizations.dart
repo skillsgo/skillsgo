@@ -1683,18 +1683,6 @@ abstract class AppLocalizations {
   /// **'Use the official Hub or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.'**
   String get hubSettingsDescription;
 
-  /// No description provided for @cloudSettingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Cloud Origin'**
-  String get cloudSettingsTitle;
-
-  /// No description provided for @cloudSettingsDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.'**
-  String get cloudSettingsDescription;
-
   /// No description provided for @testConnection.
   ///
   /// In en, this message translates to:
@@ -1880,12 +1868,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hub Origin saved and applied.'**
   String get hubOriginSaved;
-
-  /// No description provided for @cloudOriginSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Cloud Origin saved and applied.'**
-  String get cloudOriginSaved;
 
   /// No description provided for @policySaved.
   ///

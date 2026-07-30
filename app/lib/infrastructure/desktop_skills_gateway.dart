@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, platform-native macOS HTTP plus portable IO HTTP for independently configured Cloud ranking reads, the local filesystem, secure randomness, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed long-lived and recoverable CLI-backed Mandatory Onboarding, Hub Find/detail, system-proxy-aware Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
+ * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for all Hub and local business access, the local filesystem, secure randomness, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
+ * [OUTPUT]: Provides typed long-lived and recoverable CLI-backed Mandatory Onboarding, Hub Find/detail/rankings, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,10 +10,8 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:cupertino_http/cupertino_http.dart';
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,7 +42,6 @@ typedef ProjectPathInspector =
 
 const _customCliKey = 'custom_cli_path';
 const _hubOriginKey = 'hub_origin';
-const _cloudOriginKey = 'cloud_origin';
 const _folderThemeKey = 'folder_theme';
 const _wallpaperKey = 'wallpaper';
 const _themeModeKey = 'theme_mode';
@@ -81,11 +78,9 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
     this.allowDeveloperCliOverride = !kReleaseMode,
     String? expectedCliOS,
     String hubBaseUrl = 'https://hub.skillsgo.ai',
-    String cloudBaseUrl = 'https://cloud.skillsgo.ai',
     String? appVersion,
     DirectoryPathsPicker? directoryPathsPicker,
     ProjectPathInspector? projectPathInspector,
-    http.Client Function()? cloudHttpClientFactory,
     this._projectIconResolver = const ProjectIconResolver(),
   }) : _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = kReleaseMode ? null : initialCliPath,
@@ -98,13 +93,9 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
        _defaultHubBase = _originUri(hubBaseUrl),
        _hubBase = _originUri(hubBaseUrl),
-       _defaultCloudBase = _originUri(cloudBaseUrl),
-       _cloudBase = _originUri(cloudBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
-       _projectPathInspector = projectPathInspector ?? _inspectProjectPath,
-       _cloudHttpClientFactory =
-           cloudHttpClientFactory ?? _platformCloudHttpClient;
+       _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
   final ProcessRunner _runner;
   CliServerSession? _cliServerSession;
@@ -114,8 +105,6 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
   Completer<void>? _cliRequestsDrained;
   final Uri _defaultHubBase;
   Uri _hubBase;
-  final Uri _defaultCloudBase;
-  Uri _cloudBase;
   final String _bundledCliPath;
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
@@ -123,20 +112,14 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
   final DirectoryPathsPicker _directoryPathsPicker;
   final ProjectPathInspector _projectPathInspector;
   final ProjectIconResolver _projectIconResolver;
-  final http.Client Function() _cloudHttpClientFactory;
   String? _cliPath;
   bool _hubOriginLoaded = false;
-  bool _cloudOriginLoaded = false;
 
   static Future<List<String>> _pickDirectories({
     String? initialDirectory,
   }) async => (await file_selector.getDirectoryPaths(
     initialDirectory: initialDirectory,
   )).whereType<String>().toList(growable: false);
-
-  static http.Client _platformCloudHttpClient() => Platform.isMacOS
-      ? CupertinoClient.defaultSessionConfiguration()
-      : http.Client();
 
   static Future<({ProjectAccessState state, String? diagnostic})>
   _inspectProjectPath(String path) async {
@@ -163,8 +146,6 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
   }
 
   String get _hubOrigin => _hubBase.toString().replaceFirst(RegExp(r'/$'), '');
-  String get _cloudOrigin =>
-      _cloudBase.toString().replaceFirst(RegExp(r'/$'), '');
 
   Future<void> _ensureHubOrigin() async {
     if (_hubOriginLoaded) return;
@@ -178,20 +159,6 @@ abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
       }
     }
     _hubOriginLoaded = true;
-  }
-
-  Future<void> _ensureCloudOrigin() async {
-    if (_cloudOriginLoaded) return;
-    final preferences = await SharedPreferences.getInstance();
-    final saved = preferences.getString(_cloudOriginKey);
-    if (saved != null) {
-      try {
-        _cloudBase = _originUri(saved);
-      } on FormatException {
-        await preferences.remove(_cloudOriginKey);
-      }
-    }
-    _cloudOriginLoaded = true;
   }
 
   @override
@@ -286,11 +253,9 @@ class DesktopSkillsGateway extends _DesktopSkillsGatewayCore
     super.allowDeveloperCliOverride,
     super.expectedCliOS,
     super.hubBaseUrl,
-    super.cloudBaseUrl,
     super.appVersion,
     super.directoryPathsPicker,
     super.projectPathInspector,
-    super.cloudHttpClientFactory,
     super.projectIconResolver,
   });
 }

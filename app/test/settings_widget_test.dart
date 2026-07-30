@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, independent Hub/Cloud Origins, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, the single Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -510,54 +510,6 @@ void main() {
       findsOneWidget,
     );
     expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
-  });
-
-  testWidgets('Cloud Origin can be tested, saved, and reset independently', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    final gateway = FakeSkillsGateway();
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-settings')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Advanced'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.descendant(
-        of: find.byKey(const Key('cloud-origin')),
-        matching: find.byType(EditableText),
-      ),
-      'https://private-cloud.example',
-    );
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('cloud-origin-settings')),
-        matching: find.text('Test connection'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Connection ready'), findsWidgets);
-
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('cloud-origin-settings')),
-        matching: find.text('Save Origin'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(gateway.cloudOrigin, 'https://private-cloud.example');
-    expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
-
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('cloud-origin-settings')),
-        matching: find.text('Reset to default'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(gateway.cloudOrigin, 'https://cloud.skillsgo.ai');
   });
 
   testWidgets(

@@ -8,6 +8,7 @@ package actions
 
 import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
+	"github.com/skillsgo/skillsgo/hub/pkg/skillcard"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
@@ -30,13 +31,9 @@ func (skillCardProjection) Search(ranked []catalog.SearchSkill) []discoverySkill
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {
-	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
-		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
-		LatestVersion: item.LatestVersion}
+	return skillcard.Project(item)
 }
 
 func searchedSkillCard(item catalog.SearchSkill) discoverySkill {
-	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
-		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
-		LatestVersion: item.LatestVersion}
+	return skillcard.Project(item.Skill)
 }
