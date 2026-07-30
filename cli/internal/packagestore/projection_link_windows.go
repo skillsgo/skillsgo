@@ -55,11 +55,11 @@ func projectionLinkMatches(link, target string) (bool, error) {
 }
 
 func projectionContentMatchesBaseline(link, baseline string) (bool, error) {
-	actual, err := treeDigest(link)
+	actual, err := projectionDigestFromDirectory(link, nil)
 	if err != nil {
 		return false, err
 	}
-	expected, err := treeDigest(baseline)
+	expected, err := projectionDigestFromDirectory(baseline, nil)
 	if err != nil {
 		return false, err
 	}
