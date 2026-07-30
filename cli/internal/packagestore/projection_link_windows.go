@@ -39,9 +39,10 @@ func projectionLinkMatches(link, target string) (bool, error) {
 		if !filepath.IsAbs(actual) {
 			actual = filepath.Join(filepath.Dir(link), actual)
 		}
-		if strings.EqualFold(filepath.Clean(actual), normalizeWindowsPath(target)) {
-			return true, nil
-		}
+		return strings.EqualFold(
+			filepath.Clean(actual),
+			normalizeWindowsPath(target),
+		), nil
 	}
 	linkInfo, err := os.Stat(link)
 	if err != nil {
