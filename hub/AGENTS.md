@@ -9,7 +9,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 - Module: `github.com/skillsgo/skillsgo/hub`
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo-hub/main.go`
-- Reusable complete service assembly: `pkg/actions/`, exported through `pkg/runtime/` for symmetric standalone Hub and Cloud App embedding.
+- Reusable complete service assembly: `pkg/actions/`, exported through `pkg/runtime/` for symmetric standalone and caller-owned App embedding.
 - Public seam: the Fiber HTTP router and documented HTTP protocol
 - Product responsibility: resolve add-time Package Version Queries through Source Repositories, validate Skill manifests, publish immutable Package artifacts/releases, serve search and ordered Skill-card hydration, and expose protocol-complete empty community data for self-hosting.
 
@@ -38,8 +38,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
 | `pkg/community/` | Hub-owned optional community-data seam with a protocol-complete empty self-host implementation. |
-| `pkg/runtime/` | Complete exported Hub modules mounted symmetrically into caller-owned standalone Hub and official Cloud Fiber Apps. |
-| `pkg/skillcard/` | Reusable authoritative Catalog-to-protocol Skill card projection shared by Hub search and Cloud ranking hydration. |
+| `pkg/runtime/` | Complete exported Hub modules mounted symmetrically into caller-owned Fiber Apps. |
+| `pkg/skillcard/` | Reusable authoritative Catalog-to-protocol Skill card projection shared by Hub search and injected community ranking hydration. |
 | `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
 | `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh, and Package History Backfill, isolated from online traffic by a background Catalog pool while preserving caller-owned enqueue transactions. |
 | `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |

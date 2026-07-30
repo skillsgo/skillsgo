@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the public Cloud Mock handler and an isolated E2E-only observation route.
- * [OUTPUT]: Provides a standalone Cloud test process on port 3100 with observable and scenario-resettable accepted install events.
- * [POS]: Serves as the external Cloud boundary in public CLI-plus-Hub E2E journeys without reproducing private Cloud implementation.
+ * [INPUT]: Depends on the public Hub community mock handler and an isolated E2E-only observation route.
+ * [OUTPUT]: Provides a standalone community-contract test process on port 3100 with observable and scenario-resettable accepted install events.
+ * [POS]: Serves as the external event-observation boundary in public CLI-plus-Hub E2E journeys without reproducing consumer persistence.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package main

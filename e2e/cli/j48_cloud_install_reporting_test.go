@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on real CLI and Hub processes, the external public Cloud Mock process, and an installable fixture Skill.
- * [OUTPUT]: Provides black-box coverage for Hub Cloud discovery and post-commit CLI installation reporting.
- * [POS]: Serves as the Cloud-mode cross-process user journey while keeping the private Cloud implementation outside public CI.
+ * [INPUT]: Depends on real CLI and Hub processes, the external public community-contract observer, and an installable fixture Skill.
+ * [OUTPUT]: Provides black-box coverage for post-commit CLI installation reporting through the Hub protocol.
+ * [POS]: Serves as the cross-process reporting journey without assuming any injected community persistence implementation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2e_test

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the complete Hub application assembly, validated Hub configuration, Hub logging, Fiber, and the optional community-data factory.
  * [OUTPUT]: Applies Hub/River migrations without worker startup and mounts an embeddable lifecycle-managed Hub Runtime into a caller-owned Fiber App with the complete HTTP, Catalog, Artifact, River, Backfill, metadata, and translation capability set.
- * [POS]: Serves as the symmetric exported Hub-module seam used by both the standalone Hub App and the official Cloud App.
+ * [POS]: Serves as the symmetric exported Hub-module seam used by the standalone Hub App and caller-owned embedding Apps.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package runtime

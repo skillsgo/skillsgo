@@ -6,15 +6,15 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 ## Workspace Identity
 
 - Package: `github.com/skillsgo/skillsgo/e2e`
-- Runtime: Go test controller plus one reusable CLI/Hub/Cloud-Mock container and one PostgreSQL container shared by the serial suite; each Journey starts a Hub process against its own PostgreSQL schema, rebuilt local directories, and restored Git fixtures, while local runs build the image on demand and CI restores BuildKit layers
+- Runtime: Go test controller plus one reusable CLI/Hub/community-mock container and one PostgreSQL container shared by the serial suite; each Journey starts a Hub process against its own PostgreSQL schema, rebuilt local directories, and restored Git fixtures, while local runs build the image on demand and CI restores BuildKit layers
 - Test reporter: workspace-pinned `gotestsum`, which streams journey events during execution and retains the complete-run failure summary
 - Public seams: CLI process arguments and JSON output, Hub HTTP protocol, and user-visible filesystem state
 
 ## Members
 
-- `Dockerfile`: builds the CLI, Hub, and test-only Cloud mock Linux binaries into the reusable test image.
-- `entrypoint.sh`: initializes the mounted suite sandbox and Git baseline, starts the suite-scoped test-only Cloud process, and keeps the reusable runtime container available for Journey-scoped Hub processes.
-- `cloud-mock/main.go`: exposes the public Cloud Mock in a separate process plus an E2E-only event-observation endpoint.
+- `Dockerfile`: builds the CLI, Hub, and test-only community mock Linux binaries into the reusable test image.
+- `entrypoint.sh`: initializes the mounted suite sandbox and Git baseline, starts the suite-scoped test-only community process, and keeps the reusable runtime container available for Journey-scoped Hub processes.
+- `cloud-mock/main.go`: legacy path for the public community-contract mock and its E2E-only event-observation endpoint.
 - `git-fixtures.sh`: creates deterministic local Git remotes reached through the public Repository source path.
 - `git-wrapper.sh`: delegates to system Git while explicitly routing the fixture host to local bare repositories and adding deterministic latency for capacity-only source fixtures.
 - `environment_test.go`: owns suite-scoped runtime/PostgreSQL startup and whole-container cleanup, the private network and bind mount, serial Journey Hub/schema/filesystem/Git isolation, command execution, Repository artifact lookup, and assertion helpers.

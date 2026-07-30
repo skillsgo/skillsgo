@@ -13,8 +13,8 @@ The completion-gated first-launch journey that introduces SkillsGo and obtains e
 _Avoid_: optional setup, dismissible project guide, product tour
 
 **CLI-mediated Hub Access**:
-The rule that every Hub and local App operation crosses the bundled CLI machine protocol; the App never calls Hub HTTP directly. The App persists Hub and Cloud origins independently and may call the configured Cloud origin for ranking responses composed from Cloud-owned metrics and uncached Hub-owned Skill cards.
-_Avoid_: direct Hub client, Cloud-persisted Skill metadata
+The rule that every Hub and local App operation crosses the bundled CLI machine protocol; the App never calls Hub HTTP directly. The App persists one Hub Origin, and the CLI uses that Origin for the complete public v1 route surface.
+_Avoid_: direct Hub client, secondary service Origin
 
 **Presentation Locale**:
 The user's persisted App language choice, resolved from System or any supported UI language. Hub discovery and detail receive the canonical presentation `lang` owned by the shared Protocol language registry. Omitting `lang` requests source content. Presentation Language may select Hub-enriched descriptions and display-only Skill documents but never changes the Skill artifact installed or executed.
@@ -107,7 +107,3 @@ _Avoid_: sales-led adoption
 **skillsgo-app**:
 The open-source desktop client repository containing Personal and Team interactions, local orchestration, Agent presentation, and Hub access.
 _Avoid_: Personal client, Team client, open-source shell
-
-**skillsgo-cloud**:
-The closed-source team control plane for accounts, organizations, seats, policy, approval, audit, and private-source metadata. The public Hub does not depend on it.
-_Avoid_: official Hub, Team client

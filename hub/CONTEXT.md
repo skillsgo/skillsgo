@@ -104,10 +104,6 @@ _Avoid_: archive hash, Git tree SHA
 The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify sums.
 _Avoid_: Hub account, mirror name
 
-**Cloud Deployment Discovery**:
-The minimal public Hub declaration containing `mode` and, only in Cloud mode, the configured Cloud origin. It selects the independent Cloud data plane without becoming a capability-negotiation protocol.
-_Avoid_: capability matrix, Cloud proxy, shared database
-
 **Repository Popularity**:
 The source repository's current public star count, recorded as contextual discovery metadata. Every Skill in the same repository shares this repository-level signal; it is not a Skill rating.
 _Avoid_: Skill stars, quality score, recommendation score

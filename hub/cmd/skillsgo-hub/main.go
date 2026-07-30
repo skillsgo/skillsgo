@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on validated Hub configuration, safe structured logging, a caller-owned Fiber App, the complete exported Hub modules, listeners, and shutdown signals.
- * [OUTPUT]: Builds the standalone Hub App by mounting the same complete Hub modules used by Cloud, reports a non-secret effective profile, and performs coordinated shutdown.
- * [POS]: Serves as the self-hosted App composition root symmetric with the official Cloud App.
+ * [OUTPUT]: Builds the standalone Hub App by mounting the complete reusable Hub modules, reports a non-secret effective profile, and performs coordinated shutdown.
+ * [POS]: Serves as the self-hosted App composition root symmetric with any caller-owned embedding App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package main
