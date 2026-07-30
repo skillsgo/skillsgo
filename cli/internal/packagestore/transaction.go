@@ -662,6 +662,9 @@ func reconcileProjectionLink(target, desiredStore, baselineStore string, replace
 	baselineMatches := false
 	if baselineStore != "" {
 		baselineMatches, _ = existingProjectionLinkMatches(target, baselineStore)
+		if !baselineMatches {
+			baselineMatches, _ = projectionContentMatchesBaseline(target, baselineStore)
+		}
 	}
 	if !baselineMatches && !replaceConflict {
 		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
