@@ -711,8 +711,9 @@ func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, er
 	return moduleFromSQLC(stored), nil
 }
 
-// CurrentPackageVersion returns the immutable version selected by a Package's
-// current publication pointer without resolving a movable source query.
+// CurrentPackageVersion returns the highest-priority effective Version that
+// Hub has successfully published for a Package. Repository synchronization
+// advances this pointer; latest reads never resolve the upstream inline.
 func (c *Catalog) CurrentPackageVersion(ctx context.Context, packagePath string) (string, bool, error) {
 	parsed, err := skillpkg.ParsePackagePath(packagePath)
 	if err != nil || parsed.String() != packagePath {
