@@ -1,13 +1,13 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, target codecs, reviewed Target Operation Plans, and progress callbacks.
  * [OUTPUT]: Provides managed Package-member and External Installation removal planning, execution, target results, and progress translation.
- * [POS]: Serves as the Target Operation Plan capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the Target Operation Plan capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayTargetManagement
-    on _RealSkillsGatewayCore, _RealSkillsGatewayExecutionSupport {
+mixin _DesktopSkillsGatewayTargetManagement
+    on _DesktopSkillsGatewayCore, _DesktopSkillsGatewayExecutionSupport {
   @override
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,

@@ -1,12 +1,12 @@
 /*
  * [INPUT]: Depends on structured command results and the versioned CLI machine-error schema.
  * [OUTPUT]: Provides exit-code fallback translation and typed machine-failure decoding.
- * [POS]: Serves as the failure translation capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the failure translation capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayFailures on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayFailures on _DesktopSkillsGatewayCore {
   @override
   SkillsException _commandFailure(CommandResult result) {
     final machineFailure = _parseMachineFailure(result.output.stdout);

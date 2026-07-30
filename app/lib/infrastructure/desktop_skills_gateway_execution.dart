@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Depends on shared RealSkillsGateway CLI execution, target identity, JSON decoding, and NDJSON progress callbacks.
+ * [INPUT]: Depends on shared DesktopSkillsGateway CLI execution, target identity, JSON decoding, and NDJSON progress callbacks.
  * [OUTPUT]: Provides internal affected-binding integrity validation and the ordered NDJSON progress/final-payload execution envelope shared by target mutations.
  * [POS]: Serves as the private protocol-execution seam reused by Update and Target Management capabilities without exposing transport mechanics through SkillsGateway.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayExecutionSupport on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayExecutionSupport on _DesktopSkillsGatewayCore {
   void _validateAffectedBindings<T>(
     Iterable<T> items, {
     required InstallationPlanTarget Function(T item) targetOf,

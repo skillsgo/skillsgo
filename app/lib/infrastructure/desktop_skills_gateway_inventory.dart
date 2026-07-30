@@ -1,12 +1,12 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, strict inventory codecs, local filesystem inspection, and Library domain models.
  * [OUTPUT]: Provides Agent catalogs, unified local inventory, local Skill detail, and shared structured CLI invocation.
- * [POS]: Serves as the offline-capable local inventory capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the offline-capable local inventory capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
   @override
   Future<AgentCatalog> inspectOnboardingAgents() async {
     return _parseAgentCatalog(

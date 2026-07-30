@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on the shared RealSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
+ * [INPUT]: Depends on the shared DesktopSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
  * [OUTPUT]: Provides centralized machine-document envelope validation, minimal Package-install receipt validation, private strict CLI decoders, argument encoders, and schema invariants.
- * [POS]: Serves as the machine-protocol codec implementation inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the machine-protocol codec implementation inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
 Map<String, dynamic> _versionedDocument(
   Object? raw, {

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, platform-aware native window integration, Marionette debug instrumentation, build mode, App logging, and the real SkillsGateway with an optional preconfigured process-isolated instance.
+ * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, platform-aware native window integration, Marionette debug instrumentation, build mode, App logging, and DesktopSkillsGateway with an optional preconfigured process-isolated instance.
  * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, content-ready first-frame presentation, one-time macOS/Windows/Linux window initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
  * [POS]: Serves as the Flutter workspace process entry point, global observability bootstrap, and native-window presentation boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,7 +16,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'infrastructure/logging/app_logger.dart';
-import 'infrastructure/real_skills_gateway.dart';
+import 'infrastructure/desktop_skills_gateway.dart';
 import 'ui/brand.dart';
 
 const _debugHubBaseUrl = String.fromEnvironment(
@@ -45,7 +45,7 @@ Future<void> main() async {
 
 Future<void> runSkillsGoApp({
   bool initializeBinding = true,
-  RealSkillsGateway? gateway,
+  DesktopSkillsGateway? gateway,
   bool installGlobalErrorHandlers = false,
   bool manageInitialWindowVisibility = false,
 }) async {
@@ -73,7 +73,7 @@ Future<void> runSkillsGoApp({
     SkillsGoApp(
       gateway:
           gateway ??
-          RealSkillsGateway(
+          DesktopSkillsGateway(
             hubBaseUrl: kDebugMode
                 ? _debugHubBaseUrl
                 : 'https://hub.skillsgo.ai',

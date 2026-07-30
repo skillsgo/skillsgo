@@ -9,7 +9,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -34,7 +34,7 @@ void main() {
           }),
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         bundledCliPath:
             '/Applications/SkillsGo.app/Contents/Resources/bin/skillsgo',
@@ -66,7 +66,7 @@ void main() {
         stdout: '{"product":"not-skillsgo"}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -87,7 +87,7 @@ void main() {
         stdout: '',
         stderr: 'No such file',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -114,7 +114,7 @@ void main() {
         }),
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -141,7 +141,7 @@ void main() {
         }),
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -169,7 +169,7 @@ void main() {
           }),
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         bundledCliPath: '/bundle/skillsgo',
         allowDeveloperCliOverride: false,
@@ -197,7 +197,7 @@ void main() {
         }),
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: true,
@@ -226,7 +226,7 @@ void main() {
         }),
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -266,7 +266,7 @@ void main() {
           stderr: '',
         ),
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -301,7 +301,7 @@ void main() {
         ),
       );
     final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -327,7 +327,7 @@ void main() {
   test('a dead CLI Server is rebuilt for the next command', () async {
     final runner = FakeCliServerRunner();
     final agents = jsonEncode({'schemaVersion': 2, 'agents': <Object>[]});
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bundle/skillsgo',
     );
@@ -366,7 +366,7 @@ void main() {
       ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
       ProcessOutput(exitCode: 0, stdout: agents, stderr: ''),
     ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
@@ -384,7 +384,7 @@ void main() {
     'concurrent detection does not interrupt an active CLI request',
     () async {
       final runner = _BlockingCliServerRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bundle/skillsgo',
         bundledCliPath: '/bundle/skillsgo',
@@ -407,7 +407,7 @@ void main() {
 
   test('a failed concurrent detection preserves the active request', () async {
     final runner = _BlockingCliServerRunner(detectionSucceeds: false);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bundle/skillsgo',
       bundledCliPath: '/bundle/skillsgo',
@@ -431,7 +431,7 @@ void main() {
     'custom-path detection waits for and follows startup detection',
     () async {
       final runner = _QueuedDetectionRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         bundledCliPath: '/bundle/skillsgo',
         allowDeveloperCliOverride: true,
@@ -454,7 +454,7 @@ void main() {
     'safe read reconnects once after a CLI Server transport failure',
     () async {
       final runner = _RecoveringCliServerRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bundle/skillsgo',
       );
@@ -468,7 +468,7 @@ void main() {
     'mutating commands are not replayed after a transport failure',
     () async {
       final runner = _RecoveringCliServerRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bundle/skillsgo',
       );

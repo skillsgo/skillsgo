@@ -6,7 +6,7 @@
  */
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -23,7 +23,7 @@ void main() {
         (exitCode: 75, kind: SkillsFailureKind.timeout, offline: false),
         (exitCode: 1, kind: SkillsFailureKind.server, offline: false),
       ]) {
-        final gateway = RealSkillsGateway(
+        final gateway = DesktopSkillsGateway(
           processRunner: FakeProcessRunner()
             ..result = ProcessOutput(
               exitCode: testCase.exitCode,
@@ -47,7 +47,7 @@ void main() {
         );
       }
 
-      final malformed = RealSkillsGateway(
+      final malformed = DesktopSkillsGateway(
         processRunner: FakeProcessRunner()
           ..result = const ProcessOutput(
             exitCode: 0,
@@ -70,7 +70,7 @@ void main() {
   );
 
   test('CLI machine failures classify without localized stderr', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 69,
@@ -104,7 +104,7 @@ void main() {
   });
 
   test('Hub processing failures are not classified as offline', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 1,
@@ -130,7 +130,7 @@ void main() {
   test(
     'CLI machine failures tolerate unknown codes and additive fields',
     () async {
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: FakeProcessRunner()
           ..result = const ProcessOutput(
             exitCode: 1,
@@ -154,7 +154,7 @@ void main() {
   );
 
   test('malformed CLI machine failure is a protocol failure', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 69,
@@ -180,7 +180,7 @@ void main() {
   });
 
   test('CLI machine failure reads the final NDJSON line', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 75,

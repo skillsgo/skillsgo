@@ -24,16 +24,16 @@ import 'io_process_runner.dart';
 import 'logging/app_logger.dart';
 import 'project_icon_resolver.dart';
 
-part 'real_skills_gateway_codec.dart';
-part 'real_skills_gateway_cli.dart';
-part 'real_skills_gateway_preferences.dart';
-part 'real_skills_gateway_discovery.dart';
-part 'real_skills_gateway_inventory.dart';
-part 'real_skills_gateway_installation.dart';
-part 'real_skills_gateway_execution.dart';
-part 'real_skills_gateway_target_management.dart';
-part 'real_skills_gateway_updates.dart';
-part 'real_skills_gateway_failures.dart';
+part 'desktop_skills_gateway_codec.dart';
+part 'desktop_skills_gateway_cli.dart';
+part 'desktop_skills_gateway_preferences.dart';
+part 'desktop_skills_gateway_discovery.dart';
+part 'desktop_skills_gateway_inventory.dart';
+part 'desktop_skills_gateway_installation.dart';
+part 'desktop_skills_gateway_execution.dart';
+part 'desktop_skills_gateway_target_management.dart';
+part 'desktop_skills_gateway_updates.dart';
+part 'desktop_skills_gateway_failures.dart';
 
 typedef DirectoryPathsPicker =
     Future<List<String>> Function({String? initialDirectory});
@@ -73,8 +73,8 @@ Uri _originUri(String origin) {
   return Uri.parse(value.endsWith('/') ? value : '$value/');
 }
 
-abstract class _RealSkillsGatewayCore implements SkillsGateway {
-  _RealSkillsGatewayCore({
+abstract class _DesktopSkillsGatewayCore implements SkillsGateway {
+  _DesktopSkillsGatewayCore({
     ProcessRunner? processRunner,
     @visibleForTesting String? initialCliPath,
     String? bundledCliPath,
@@ -268,18 +268,18 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }
 }
 
-class RealSkillsGateway extends _RealSkillsGatewayCore
+class DesktopSkillsGateway extends _DesktopSkillsGatewayCore
     with
-        _RealSkillsGatewayCli,
-        _RealSkillsGatewayPreferences,
-        _RealSkillsGatewayDiscovery,
-        _RealSkillsGatewayInventory,
-        _RealSkillsGatewayInstallation,
-        _RealSkillsGatewayExecutionSupport,
-        _RealSkillsGatewayTargetManagement,
-        _RealSkillsGatewayUpdates,
-        _RealSkillsGatewayFailures {
-  RealSkillsGateway({
+        _DesktopSkillsGatewayCli,
+        _DesktopSkillsGatewayPreferences,
+        _DesktopSkillsGatewayDiscovery,
+        _DesktopSkillsGatewayInventory,
+        _DesktopSkillsGatewayInstallation,
+        _DesktopSkillsGatewayExecutionSupport,
+        _DesktopSkillsGatewayTargetManagement,
+        _DesktopSkillsGatewayUpdates,
+        _DesktopSkillsGatewayFailures {
+  DesktopSkillsGateway({
     super.processRunner,
     super.initialCliPath,
     super.bundledCliPath,
