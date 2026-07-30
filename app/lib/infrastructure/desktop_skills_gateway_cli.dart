@@ -1,12 +1,12 @@
 /*
  * [INPUT]: Depends on the shared gateway state, ProcessRunner, startup handshake schema, and typed CLI failures.
  * [OUTPUT]: Provides coalesced non-destructive CLI compatibility detection, developer override persistence, required-path resolution, coalesced CLI Server startup, structured command execution, safe-read transport recovery, and dead-session replacement.
- * [POS]: Serves as the CLI lifecycle capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the CLI lifecycle capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayCli on _DesktopSkillsGatewayCore {
   @override
   Future<CliStatus> detectCli({String? customPath}) {
     final current = _cliDetection;

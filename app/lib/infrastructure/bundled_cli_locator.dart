@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on platform-specific desktop bundle layouts and path normalization rules.
  * [OUTPUT]: Provides deterministic bundled SkillsGo CLI path resolution for macOS, Windows, and Linux.
- * [POS]: Serves as the shared packaging/runtime contract between desktop builds and RealSkillsGateway.
+ * [POS]: Serves as the shared packaging/runtime contract between desktop builds and DesktopSkillsGateway.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:path/path.dart' as p;

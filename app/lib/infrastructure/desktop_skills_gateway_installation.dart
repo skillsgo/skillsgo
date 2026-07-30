@@ -1,12 +1,12 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
  * [OUTPUT]: Provides single-Skill and atomic multi-Skill exact-path Package Store installation using minimal CLI success receipts, reviewed External adoption through the CLI, and explicit protocol-decode failure telemetry.
- * [POS]: Serves as the Installation Request capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the Installation Request capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
   @override
   Future<BatchAdoptionResult> adopt(List<AdoptionRequestItem> items) async {
     if (items.isEmpty) {

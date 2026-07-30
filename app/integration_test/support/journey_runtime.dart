@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/bundled_cli_locator.dart';
 import 'package:skillsgo/infrastructure/io_process_runner.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 
 final class JourneyRuntime {
   JourneyRuntime._({
@@ -29,7 +29,7 @@ final class JourneyRuntime {
   final String name;
   final Directory sandbox;
   final String hubOrigin;
-  final RealSkillsGateway gateway;
+  final DesktopSkillsGateway gateway;
   final Map<String, String> childEnvironment;
   final Process? _hubProcess;
   final List<IOSink> _hubLogSinks;
@@ -130,7 +130,7 @@ final class JourneyRuntime {
       'SKILLSGO_TEST_AGENT_HOME': '${sandbox.path}/test-agent',
       'SKILLSGO_HUB_URL': hubOrigin,
     };
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: IoProcessRunner(
         workingDirectory: '${sandbox.path}/project',
         environment: childEnvironment,

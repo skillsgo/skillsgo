@@ -1,10 +1,10 @@
 /*
  * [INPUT]: Depends on the shared gateway state, independently configured Cloud runtime, platform-native macOS HTTP and portable IO HTTP for direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
  * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
- * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
+ * [POS]: Serves as the public discovery capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
 bool _isCloudRankingDocument(Object? value) {
   if (value is! Map<String, dynamic> ||
@@ -39,7 +39,7 @@ const _sourceFindChunkSize = 80;
 const _sourceFindConcurrentChunks = 2;
 const _sourceFindRequestLimit = 5000;
 
-mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
+mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
   @override
   Future<DiscoveryPage> discover(
     DiscoveryCollection collection, {

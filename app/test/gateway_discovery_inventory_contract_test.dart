@@ -10,7 +10,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -47,7 +47,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -119,7 +119,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -185,7 +185,7 @@ void main() {
               '{"candidates":[[{"packagePath":"github.com/example/skills","versions":["v1.2.3","v1.1.0"],"path":"skills/ask-matt","name":"ask-matt","description":"Route requests.","imageUrl":"https://github.com/example.png?size=256"}]]}',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
       );
@@ -231,7 +231,7 @@ void main() {
         ),
       );
     }
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -270,7 +270,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
@@ -341,7 +341,7 @@ void main() {
             await request.response.close();
           });
         }
-        final gateway = RealSkillsGateway(
+        final gateway = DesktopSkillsGateway(
           processRunner: runner,
           initialCliPath: '/usr/local/bin/skillsgo',
           hubBaseUrl: 'https://hub.example.test',
@@ -401,7 +401,7 @@ void main() {
             stderr: '',
           ),
         ]);
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
         hubBaseUrl: 'https://hub.example.test',
@@ -459,7 +459,7 @@ void main() {
             stderr: '',
           ),
         ]);
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
         hubBaseUrl: 'https://hub.example.test',
@@ -502,7 +502,7 @@ void main() {
             r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -571,7 +571,7 @@ void main() {
             '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -589,7 +589,7 @@ void main() {
   });
 
   test('listInstalled rejects the obsolete inventory schema', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
@@ -610,7 +610,7 @@ void main() {
             '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -639,7 +639,7 @@ void main() {
           stderr: '',
         );
       const executable = r'/tmp/skillsgo bin;$(touch should-not-run)';
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: executable,
       );
@@ -671,7 +671,7 @@ void main() {
       '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":{"path":"/tmp","exists":true}}]}',
       '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":null},{"id":"codex","displayName":"Duplicate","installed":false,"supportedScopes":["project"],"globalTarget":null}]}',
     ]) {
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: FakeProcessRunner()
           ..result = ProcessOutput(exitCode: 0, stdout: body, stderr: ''),
         initialCliPath: '/usr/local/bin/skillsgo',

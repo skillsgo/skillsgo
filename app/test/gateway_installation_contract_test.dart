@@ -9,7 +9,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:skillsgo/infrastructure/logging/app_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,7 +35,7 @@ void main() {
         stdout: '{"schemaVersion":1,"phase":"unexpected"}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/Applications/SkillsGo.app/skillsgo',
     );
@@ -80,7 +80,7 @@ void main() {
 
   test('hostile write inputs remain exact arguments without a shell', () async {
     final runner = FakeProcessRunner();
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
     );
@@ -192,7 +192,7 @@ void main() {
           }),
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       );
@@ -242,7 +242,7 @@ void main() {
               '{"schemaVersion":1,"phase":"package-install","packagePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["existing/member","skills/alpha","nested/beta"],"agents":["codex"],"packageDir":"/tmp/packages","projections":[{"agents":["codex"],"path":"/tmp/alpha"},{"agents":["codex"],"path":"/tmp/beta"},{"agents":["codex"],"path":"/tmp/existing"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       );
@@ -302,7 +302,7 @@ void main() {
     final file = File('${directory.path}/SKILL.md');
     await file.writeAsString('# Local');
     final before = await file.lastModified();
-    final gateway = RealSkillsGateway(processRunner: FakeProcessRunner());
+    final gateway = DesktopSkillsGateway(processRunner: FakeProcessRunner());
 
     final detail = await gateway.loadLocalDetail(
       InstalledSkill(
@@ -326,7 +326,7 @@ void main() {
       final healthy = Directory('${root.path}/healthy');
       await healthy.create();
       await File('${healthy.path}/SKILL.md').writeAsString('# Healthy target');
-      final gateway = RealSkillsGateway(processRunner: FakeProcessRunner());
+      final gateway = DesktopSkillsGateway(processRunner: FakeProcessRunner());
 
       final detail = await gateway.loadLocalDetail(
         InstalledSkill(
@@ -382,7 +382,7 @@ void main() {
           file.path: await file.readAsBytes(),
       };
       final runner = FakeProcessRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
       );
@@ -429,7 +429,7 @@ void main() {
               '{"schemaVersion":1,"results":[{"inventoryKey":"external:demo","status":"adopted"},{"inventoryKey":"external:project-demo","status":"failed","reason":"install failed"}]}',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
         hubBaseUrl: 'https://must-not-be-used.example',
@@ -522,7 +522,7 @@ void main() {
             '{"schemaVersion":1,"results":[{"inventoryKey":"external:demo","status":"adopted"},{"inventoryKey":"external:demo","status":"adopted"}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
       hubBaseUrl: 'https://must-not-be-used.example',

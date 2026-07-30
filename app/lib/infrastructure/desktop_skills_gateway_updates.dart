@@ -1,13 +1,13 @@
 /*
  * [INPUT]: Depends on installed Package scope identity, an explicit immutable target version, CLI Package update, and mutation-free scope Package previews.
  * [OUTPUT]: Provides direct Package-level update commands followed by identity-only receipt validation, plus Scope-by-Package previews without Skill-level compatibility projection or Hub requests.
- * [POS]: Serves as the thin Package Update capability inside RealSkillsGateway while leaving preview and execution rules in the CLI.
+ * [POS]: Serves as the thin Package Update capability inside DesktopSkillsGateway while leaving preview and execution rules in the CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-part of 'real_skills_gateway.dart';
+part of 'desktop_skills_gateway.dart';
 
-mixin _RealSkillsGatewayUpdates
-    on _RealSkillsGatewayCore, _RealSkillsGatewayExecutionSupport {
+mixin _DesktopSkillsGatewayUpdates
+    on _DesktopSkillsGatewayCore, _DesktopSkillsGatewayExecutionSupport {
   List<String> _packageUpdateScopeArguments(
     InstallationScope scope,
     String projectRoot,

@@ -6,7 +6,7 @@
  */
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -40,7 +40,7 @@ void main() {
             '{"schemaVersion":1,"phase":"package-remove","skills":["demo"],"scope":"project"}\n',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
@@ -100,7 +100,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
@@ -166,7 +166,7 @@ void main() {
             stderr: '',
           ),
         ]);
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
       );
@@ -261,7 +261,7 @@ void main() {
 ''',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
       );
@@ -328,7 +328,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
@@ -407,7 +407,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
