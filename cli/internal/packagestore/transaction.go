@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, destination roots supplied by Agent Adapters, and an optional caller-owned authorization to replace conflicting Package paths.
+ * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, destination roots supplied by Agent Adapters, platform-native Projection links, and an optional caller-owned authorization to replace conflicting Package paths.
  * [OUTPUT]: Prepares, commits, finalizes, and rolls back complete Scope Package Stores plus direct canonical-name Agent Skill links, safely restoring Package-contained symlinks, migrating baseline-proven legacy coordinate projections, transactionally replacing authorized conflicts, and allowing callers to choose post-commit disposal for exact replaced targets.
  * [POS]: Serves as the filesystem transaction membrane between Package downloads and portable dependency-state persistence.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -648,7 +648,7 @@ func temporaryProjectionLink(target, storeTarget string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.Symlink(destination, temporaryPath); err != nil {
+	if err := createProjectionLink(destination, temporaryPath); err != nil {
 		return "", fmt.Errorf("create Agent Skill projection link: %w", err)
 	}
 	return temporaryPath, nil

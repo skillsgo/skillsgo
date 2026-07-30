@@ -53,8 +53,8 @@ The complete verified expansion of one locked Package Artifact inside its declar
 _Avoid_: `~/.skillsgo/packages`, shared cross-Scope Store, portable authority
 
 **Package Projection**:
-The deterministic Agent-visible relative symlink generated at `<managed-root>/<canonical-skill-name>` to one selected member inside the same Scope's complete Package Tree. This preserves access to Package-relative shared resources without exposing Package coordinates as Agent Skill names.
-_Avoid_: external symlink, independent member copy, editable fork
+The deterministic Agent-visible directory link generated at `<managed-root>/<canonical-skill-name>` to one selected member inside the same Scope's complete Package Tree. It is a relative symlink on macOS and Linux and an absolute directory junction on Windows. This preserves access to Package-relative shared resources without exposing Package coordinates as Agent Skill names.
+_Avoid_: external link, independent member copy, editable fork
 
 **Global Scope**:
 The installation scope that projects Skills into an Agent's Global Skill directory for the current operating-system user.
