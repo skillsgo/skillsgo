@@ -54,13 +54,13 @@ type PackageBackfillRun struct {
 	Status         string      `json:"status"`
 	StartedAt      *time.Time  `json:"started_at"`
 	CompletedAt    *time.Time  `json:"completed_at"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
 	PublishedCount int32       `json:"published_count"`
 	SkippedCount   int32       `json:"skipped_count"`
 	RejectedCount  int32       `json:"rejected_count"`
 	FailedCount    int32       `json:"failed_count"`
 	FailureCode    pgtype.Text `json:"failure_code"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
 }
 
 type PackageBackfillVersionOutcome struct {

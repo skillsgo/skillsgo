@@ -14,7 +14,7 @@ import (
 )
 
 const activeBackfillRun = `-- name: ActiveBackfillRun :one
-SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs
+SELECT id, package_path, status, started_at, completed_at, published_count, skipped_count, rejected_count, failed_count, failure_code, created_at, updated_at FROM package_backfill_runs
 WHERE package_path=$1 AND status IN ('queued','running')
 ORDER BY created_at DESC LIMIT 1
 `
@@ -28,19 +28,19 @@ func (q *Queries) ActiveBackfillRun(ctx context.Context, packagePath string) (Pa
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.PublishedCount,
 		&i.SkippedCount,
 		&i.RejectedCount,
 		&i.FailedCount,
 		&i.FailureCode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const backfillRunByID = `-- name: BackfillRunByID :one
-SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE id=$1
+SELECT id, package_path, status, started_at, completed_at, published_count, skipped_count, rejected_count, failed_count, failure_code, created_at, updated_at FROM package_backfill_runs WHERE id=$1
 `
 
 func (q *Queries) BackfillRunByID(ctx context.Context, id string) (PackageBackfillRun, error) {
@@ -52,13 +52,13 @@ func (q *Queries) BackfillRunByID(ctx context.Context, id string) (PackageBackfi
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.PublishedCount,
 		&i.SkippedCount,
 		&i.RejectedCount,
 		&i.FailedCount,
 		&i.FailureCode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -135,6 +135,20 @@ func (q *Queries) CurrentEffectiveVersion(ctx context.Context, packagePath strin
 	var i CurrentEffectiveVersionRow
 	err := row.Scan(&i.Version, &i.ContentSum)
 	return i, err
+}
+
+const currentPackageVersion = `-- name: CurrentPackageVersion :one
+SELECT mv.version
+FROM packages m
+JOIN versions mv ON mv.id=m.current_version_id
+WHERE m.path=$1
+`
+
+func (q *Queries) CurrentPackageVersion(ctx context.Context, packagePath string) (string, error) {
+	row := q.db.QueryRow(ctx, currentPackageVersion, packagePath)
+	var version string
+	err := row.Scan(&version)
+	return version, err
 }
 
 const currentPackageVersionForUpdate = `-- name: CurrentPackageVersionForUpdate :one
@@ -674,7 +688,7 @@ func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error 
 }
 
 const latestBackfillRun = `-- name: LatestBackfillRun :one
-SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1
+SELECT id, package_path, status, started_at, completed_at, published_count, skipped_count, rejected_count, failed_count, failure_code, created_at, updated_at FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) LatestBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error) {
@@ -686,13 +700,13 @@ func (q *Queries) LatestBackfillRun(ctx context.Context, packagePath string) (Pa
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.PublishedCount,
 		&i.SkippedCount,
 		&i.RejectedCount,
 		&i.FailedCount,
 		&i.FailureCode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1648,7 +1662,7 @@ func (q *Queries) SkillsByPathCoordinates(ctx context.Context, arg SkillsByPathC
 }
 
 const staleQueuedBackfillRuns = `-- name: StaleQueuedBackfillRuns :many
-SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
+SELECT id, package_path, status, started_at, completed_at, published_count, skipped_count, rejected_count, failed_count, failure_code, created_at, updated_at FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
 `
 
 type StaleQueuedBackfillRunsParams struct {
@@ -1671,13 +1685,13 @@ func (q *Queries) StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBa
 			&i.Status,
 			&i.StartedAt,
 			&i.CompletedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.PublishedCount,
 			&i.SkippedCount,
 			&i.RejectedCount,
 			&i.FailedCount,
 			&i.FailureCode,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1924,7 +1938,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, effective/equivalent Package Version publication and resolution, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, effective/equivalent Package Version publication and resolution, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -11,6 +11,12 @@ RETURNING *;
 
 -- name: PackageByPath :one
 SELECT * FROM packages WHERE path = sqlc.arg(package_path);
+
+-- name: CurrentPackageVersion :one
+SELECT mv.version
+FROM packages m
+JOIN versions mv ON mv.id=m.current_version_id
+WHERE m.path=sqlc.arg(package_path);
 
 -- name: PackagesDueForSourceMetadataRefresh :many
 SELECT id, path

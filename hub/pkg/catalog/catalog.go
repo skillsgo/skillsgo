@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -709,6 +709,23 @@ func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, er
 		return nil, err
 	}
 	return moduleFromSQLC(stored), nil
+}
+
+// CurrentPackageVersion returns the immutable version selected by a Package's
+// current publication pointer without resolving a movable source query.
+func (c *Catalog) CurrentPackageVersion(ctx context.Context, packagePath string) (string, bool, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return "", false, fmt.Errorf("invalid canonical Package Path %q", packagePath)
+	}
+	version, err := c.queries.CurrentPackageVersion(ctx, packagePath)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return version, true, nil
 }
 
 // PackagesDueForSourceMetadataRefresh returns one stable keyset page of

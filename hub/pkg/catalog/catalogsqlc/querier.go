@@ -16,6 +16,7 @@ type Querier interface {
 	BackfillVersionOutcomes(ctx context.Context, runID string) ([]PackageBackfillVersionOutcome, error)
 	CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error)
 	CurrentEffectiveVersion(ctx context.Context, packagePath string) (CurrentEffectiveVersionRow, error)
+	CurrentPackageVersion(ctx context.Context, packagePath string) (string, error)
 	CurrentPackageVersionForUpdate(ctx context.Context, packageID int64) (string, error)
 	CurrentPackagesByPaths(ctx context.Context, packagePaths []string) ([]CurrentPackagesByPathsRow, error)
 	CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error)
@@ -61,7 +62,7 @@ type Querier interface {
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Package, effective/equivalent Package Version publication and resolution, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)

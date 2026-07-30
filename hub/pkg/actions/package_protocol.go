@@ -102,6 +102,16 @@ func (p *moduleInfoProtocol) ensurePublished(ctx context.Context, packagePath, v
 }
 
 func (p *moduleInfoProtocol) ensurePublishedOnce(ctx context.Context, packagePath, version string) (string, error) {
+	if version == "latest" {
+		current, found, err := p.metadata.CurrentPackageVersion(ctx, packagePath)
+		if err != nil {
+			return "", err
+		}
+		if found {
+			logPackagePublicationLookup(ctx, packagePath, current, "hit")
+			return current, nil
+		}
+	}
 	members, err := p.metadata.VersionSkills(ctx, packagePath, version)
 	if err != nil {
 		return "", err
