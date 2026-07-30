@@ -246,7 +246,12 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
   Future<List<({String name, String path})>>
   _loadManagedProjectReferences() async {
-    final command = await _runCli(['project', 'list', '--output', 'json']);
+    final command = await _runCli([
+      'project',
+      'list',
+      '--output',
+      'json',
+    ], retryOnTransportFailure: true);
     if (!command.succeeded) throw _commandFailure(command);
     final raw = _decodeMachineDocument(
       command.output.stdout,
