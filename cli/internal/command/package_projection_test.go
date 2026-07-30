@@ -269,11 +269,11 @@ func TestClearingSharedCachePreservesAndRehydratesGlobalScope(t *testing.T) {
 	output, err := journey.run(t, "add", journey.packagePath+"@"+journey.version, "--global",
 		"--skill-path", "skills/design", "--agent", "codex", "--hub", journey.hubURL, "--output", "json")
 	require.NoError(t, err, output)
-	globalPackage := packagestore.CoordinatePath(filepath.Join(journey.home, ".agents", ".skillsgo", "packages"), journey.packagePath, journey.version)
+	globalPackage := packagestore.CoordinatePath(filepath.Join(journey.home, ".skillsgo", "packages"), journey.packagePath, journey.version)
 	globalProjection := filepath.Join(journey.home, ".codex", "skills", "design")
 	require.FileExists(t, filepath.Join(globalPackage, "skills", "review", "SKILL.md"))
 	require.FileExists(t, filepath.Join(globalProjection, "SKILL.md"))
-	require.NoError(t, os.RemoveAll(filepath.Join(journey.home, ".skillsgo")))
+	require.NoError(t, os.RemoveAll(filepath.Join(journey.home, ".skillsgo", "cache")))
 	readsBefore := journey.reads.Load()
 
 	output, err = journey.run(t, "list", "--global", "--hub", journey.hubURL, "--output", "json")
@@ -282,13 +282,13 @@ func TestClearingSharedCachePreservesAndRehydratesGlobalScope(t *testing.T) {
 	require.FileExists(t, filepath.Join(globalPackage, "skills", "review", "SKILL.md"))
 	require.FileExists(t, filepath.Join(globalProjection, "SKILL.md"))
 	require.DirExists(t, filepath.Join(journey.home, ".skillsgo", "cache", "info"))
-	require.NoDirExists(t, filepath.Join(journey.home, ".skillsgo", "packages"))
+	require.DirExists(t, filepath.Join(journey.home, ".skillsgo", "packages"))
 }
 
 func TestAnyCommandRebuildsOnlyItsRequiredCacheCapability(t *testing.T) {
 	journey := newProjectionJourney(t)
 	journey.add(t)
-	require.NoError(t, os.RemoveAll(filepath.Join(journey.home, ".skillsgo")))
+	require.NoError(t, os.RemoveAll(filepath.Join(journey.home, ".skillsgo", "cache")))
 	readsAfterAdd := journey.reads.Load()
 
 	var output bytes.Buffer

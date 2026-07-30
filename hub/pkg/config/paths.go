@@ -50,16 +50,16 @@ func resolveHubArtifactDir(configured string) (string, error) {
 		return filepath.Clean(configured), nil
 	}
 	if value := os.Getenv(hubHomeEnv); value != "" {
-		return filepath.Join(value, "storage", "artifacts"), nil
+		return filepath.Clean(value), nil
 	}
 	if value := os.Getenv(skillsGoHomeEnv); value != "" {
-		return filepath.Join(value, "hub", "storage", "artifacts"), nil
+		return filepath.Join(value, "hub"), nil
 	}
 	home, err := userHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve SkillsGo home directory: %w", err)
 	}
-	return filepath.Join(home, defaultSkillsGoDirectory, "hub", "storage", "artifacts"), nil
+	return filepath.Join(home, defaultSkillsGoDirectory, "hub"), nil
 }
 
 func userHomeDir() (string, error) {

@@ -22,6 +22,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	protocolcloud "github.com/skillsgo/skillsgo/protocol/cloud"
 	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	modmodule "golang.org/x/mod/module"
@@ -238,6 +239,14 @@ func (c *Client) readProductJSON(ctx context.Context, path string, query url.Val
 	return document, nil
 }
 
+func (c *Client) Rankings(ctx context.Context, kind protocolcloud.RankingKind, lang string, page, perPage int) (json.RawMessage, error) {
+	query := url.Values{"page": []string{strconv.Itoa(page)}, "perPage": []string{strconv.Itoa(perPage)}}
+	if lang != "" {
+		query.Set(protocolcloud.RankingLangQuery, lang)
+	}
+	return c.readProductJSON(ctx, protocolcloud.RankingsPath+string(kind), query)
+}
+
 func (c *Client) Discover(ctx context.Context, collection, search string, page, perPage int) (json.RawMessage, error) {
 	return c.DiscoverLocalized(ctx, collection, search, "", page, perPage)
 }
@@ -343,17 +352,6 @@ func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (jso
 
 func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
 	return c.Discover(ctx, "search", "skillsgo-settings-probe", 0, 1)
-}
-
-func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
-	var document json.RawMessage
-	if err := c.getJSON(ctx, c.baseURL+"/info", &document); err != nil {
-		return nil, err
-	}
-	if !json.Valid(document) || len(document) == 0 {
-		return nil, fmt.Errorf("Hub returned invalid JSON")
-	}
-	return document, nil
 }
 
 func (c *Client) CurrentPackages(ctx context.Context, packagePaths []string) ([]CurrentPackage, error) {

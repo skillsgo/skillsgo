@@ -25,7 +25,7 @@ import (
 )
 
 const artifactIdentity = "SkillsGo Hub"
-const artifactEmail = "hub@skillsgo.dev"
+const artifactEmail = "hub@skillsgo.ai"
 
 var ErrImmutableTagConflict = errors.New("immutable Artifact tag conflict")
 

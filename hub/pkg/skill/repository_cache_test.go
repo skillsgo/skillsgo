@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned Artifact tree assembly.
- * [OUTPUT]: Specifies shared repository caching, one-sync multi-revision visitation with precise source failure codes, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, skills.sh-compatible discovery precedence, one-sync multi-revision visitation with precise source failure codes, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, selected Skill-subtree Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,7 +45,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	runGit(t, "", "clone", f.origin, f.work)
 	runGit(t, f.work, "config", "user.name", "SkillsGo Test")
 	runGit(t, f.work, "config", "user.email", "skillsgo@example.com")
-	f.writeSkill(t, ".", "repo", "initial")
+	f.writeSkill(t, "skills/repo", "repo", "initial")
 	f.writeSkill(t, "skills/child", "child", "nested")
 	f.commit(t, "initial")
 	runGit(t, f.work, "tag", "v1.0.0")
@@ -98,7 +98,7 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	first, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 
-	f.writeSkill(t, ".", "repo", "changed")
+	f.writeSkill(t, "skills/repo", "repo", "changed")
 	f.commit(t, "change Skill")
 	runGit(t, f.work, "push", "origin", "HEAD")
 	second, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
@@ -211,7 +211,7 @@ func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {
 	require.Equal(t, "v1.0.0", tagged.Version)
 	require.Equal(t, "refs/tags/v1.0.0", tagged.Ref)
 
-	f.writeSkill(t, ".", "repo", "untagged change")
+	f.writeSkill(t, "skills/repo", "repo", "untagged change")
 	f.commit(t, "untagged change")
 	runGit(t, f.work, "push", "origin", "HEAD")
 	commit := strings.TrimSpace(runGit(t, f.work, "rev-parse", "HEAD"))
@@ -234,7 +234,7 @@ func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {
 
 func TestRevisionResolutionBasesPseudoVersionOnHighestAncestorTag(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	f.writeSkill(t, ".", "repo", "untagged descendant")
+	f.writeSkill(t, "skills/repo", "repo", "untagged descendant")
 	f.commit(t, "untagged descendant")
 	runGit(t, f.work, "push", "origin", "HEAD")
 
@@ -281,7 +281,7 @@ func TestPseudoVersionRemainsResolvableAfterItsCommitIsTagged(t *testing.T) {
 	require.Equal(t, beforeTag.Version, pinned.Version)
 	require.Equal(t, beforeTag.CommitSHA, pinned.CommitSHA)
 
-	f.writeSkill(t, ".", "repo", "after tag")
+	f.writeSkill(t, "skills/repo", "repo", "after tag")
 	f.commit(t, "after tag")
 	runGit(t, f.work, "push", "origin", "HEAD")
 	afterTag, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
@@ -400,6 +400,99 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	require.NotContains(t, names, "invalid")
 }
 
+func TestRepositoryDiscoveryFallsThroughInvalidRootSkillToConventionalSkills(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "SKILL.md"), []byte("# Invalid root Skill\n"), 0o644))
+	f.commit(t, "add invalid root candidate")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	paths := make([]string, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		paths = append(paths, member.Path)
+	}
+	require.Equal(t, []string{"skills/child", "skills/repo"}, paths)
+	require.NotContains(t, entryNames(snapshot.Entries), "SKILL.md")
+}
+
+func TestRepositoryDiscoveryFallsThroughInvalidRootAndConventionalTiersToRecursiveSkill(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.RemoveAll(filepath.Join(f.work, "skills")))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "SKILL.md"), []byte("# Invalid root Skill\n"), 0o644))
+	invalidConventional := filepath.Join(f.work, "skills", "invalid")
+	require.NoError(t, os.MkdirAll(invalidConventional, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(invalidConventional, "SKILL.md"), []byte("# Invalid conventional Skill\n"), 0o644))
+	f.writeSkill(t, "catalog/deep/recursive", "recursive", "valid recursive fallback")
+	f.commit(t, "add complete discovery fallback chain")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	require.Len(t, snapshot.Members, 1)
+	require.Equal(t, "recursive", snapshot.Members[0].Name)
+	require.Equal(t, "catalog/deep/recursive", snapshot.Members[0].Path)
+	require.Equal(t, "valid recursive fallback", snapshot.Members[0].Manifest.Description)
+	require.NotContains(t, entryNames(snapshot.Entries), "SKILL.md")
+	require.NotContains(t, entryNames(snapshot.Entries), "skills/invalid/SKILL.md")
+	require.Contains(t, entryNames(snapshot.Entries), "catalog/deep/recursive/SKILL.md")
+}
+
+func TestRepositoryDiscoveryInvalidShallowSkillDoesNotShadowValidNestedSkill(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	invalidParent := filepath.Join(f.work, "skills", "category")
+	require.NoError(t, os.MkdirAll(invalidParent, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(invalidParent, "SKILL.md"), []byte("# Invalid parent\n"), 0o644))
+	f.writeSkill(t, "skills/category/nested", "nested", "valid nested Skill")
+	f.commit(t, "add invalid parent and valid nested Skill")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	paths := make([]string, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		paths = append(paths, member.Path)
+	}
+	require.Contains(t, paths, "skills/category/nested")
+	require.NotContains(t, paths, "skills/category")
+}
+
+func TestRepositoryDiscoveryContainerRootSkillDoesNotShadowDirectChildren(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, "skills", "catalog", "catalog root")
+	f.commit(t, "add container root Skill")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	paths := make([]string, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		paths = append(paths, member.Path)
+	}
+	require.Equal(t, []string{"skills", "skills/child", "skills/repo"}, paths)
+}
+
+func TestRepositoryDiscoveryValidRootSkillIsExclusiveAndOwnsRepositoryRoot(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, ".", "root", "root package")
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "root-resource.txt"), []byte("root resource\n"), 0o644))
+	f.commit(t, "add valid root Skill")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	require.Len(t, snapshot.Members, 1)
+	require.Equal(t, "root", snapshot.Members[0].Name)
+	require.Equal(t, ".", snapshot.Members[0].Path)
+	require.Contains(t, entryNames(snapshot.Entries), "root-resource.txt")
+	require.Contains(t, entryNames(snapshot.Entries), "skills/child/SKILL.md")
+}
+
 func TestRepositoryDiscoveryPreservesDuplicateSkillNamesAtDistinctPaths(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	f.writeSkill(t, "skills/duplicate", "child", "duplicate canonical name")
@@ -418,7 +511,7 @@ func TestRepositoryDiscoveryPreservesDuplicateSkillNamesAtDistinctPaths(t *testi
 	require.Equal(t, []string{"skills/child", "skills/duplicate"}, paths)
 }
 
-func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *testing.T) {
+func TestRepositoryDiscoveryIncludesConventionalAgentSkillDirectories(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	f.writeSkill(t, ".claude/skills/release-skills", "release-skills", "installed dependency")
 	f.writeSkill(t, ".agents/skills/shared-skill", "shared-skill", "installed dependency")
@@ -433,19 +526,19 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 	for _, member := range snapshot.Members {
 		names = append(names, member.Name)
 	}
-	require.ElementsMatch(t, []string{"repo", "child"}, names)
+	require.ElementsMatch(t, []string{"repo", "child", "release-skills", "shared-skill", "local-skill"}, names)
 	artifactNames := entryNames(snapshot.Entries)
-	require.NotContains(t, artifactNames, ".claude/skills/release-skills/SKILL.md")
-	require.NotContains(t, artifactNames, ".agents/skills/shared-skill/SKILL.md")
-	require.NotContains(t, artifactNames, ".codex/skills/local-skill/SKILL.md")
+	require.Contains(t, artifactNames, ".claude/skills/release-skills/SKILL.md")
+	require.Contains(t, artifactNames, ".agents/skills/shared-skill/SKILL.md")
+	require.Contains(t, artifactNames, ".codex/skills/local-skill/SKILL.md")
 }
 
 func TestRepositoryArtifactUsesTrackedTreeAndExportIgnore(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	require.NoError(t, os.WriteFile(filepath.Join(f.work, ".gitignore"), []byte("untracked.txt\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(f.work, ".gitattributes"), []byte("excluded.txt export-ignore\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(f.work, "included.txt"), []byte("included\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(f.work, "excluded.txt"), []byte("excluded\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, ".gitattributes"), []byte("skills/repo/excluded.txt export-ignore\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "skills", "repo", "included.txt"), []byte("included\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "skills", "repo", "excluded.txt"), []byte("excluded\n"), 0o644))
 	f.commit(t, "add export rules")
 	require.NoError(t, os.WriteFile(filepath.Join(f.work, "untracked.txt"), []byte("worktree only\n"), 0o644))
 	runGit(t, f.work, "tag", "v1.1.0")
@@ -454,19 +547,37 @@ func TestRepositoryArtifactUsesTrackedTreeAndExportIgnore(t *testing.T) {
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
 	require.NoError(t, err)
 	names := entryNames(snapshot.Entries)
-	require.Contains(t, names, ".gitignore")
-	require.Contains(t, names, ".gitattributes")
-	require.Contains(t, names, "included.txt")
-	require.NotContains(t, names, "excluded.txt")
+	require.NotContains(t, names, ".gitignore")
+	require.NotContains(t, names, ".gitattributes")
+	require.Contains(t, names, "skills/repo/included.txt")
+	require.NotContains(t, names, "skills/repo/excluded.txt")
 	require.NotContains(t, names, "untracked.txt")
+}
+
+func TestRepositoryArtifactTreatsSkillDirectoryAsLiteralGitPathspec(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, "skills/[ab]", "literal-path", "literal pathspec")
+	require.NoError(t, os.MkdirAll(filepath.Join(f.work, "skills", "a"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "skills", "a", "secret.txt"), []byte("must not be published\n"), 0o644))
+	f.commit(t, "add pathspec-shaped Skill directory")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	names := entryNames(snapshot.Entries)
+	require.Contains(t, names, "skills/[ab]/SKILL.md")
+	require.NotContains(t, names, "skills/a/secret.txt")
 }
 
 func TestRepositoryArtifactPreservesInternalSymlinksAndSkipsUnsafeOnes(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	require.NoError(t, os.WriteFile(filepath.Join(f.work, "CLAUDE.md"), []byte("shared instructions\n"), 0o644))
-	require.NoError(t, os.Symlink("CLAUDE.md", filepath.Join(f.work, "AGENTS.md")))
-	require.NoError(t, os.Symlink("../../outside", filepath.Join(f.work, "outside-link")))
-	require.NoError(t, os.Symlink("missing.md", filepath.Join(f.work, "broken-link")))
+	skillDir := filepath.Join(f.work, "skills", "repo")
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "CLAUDE.md"), []byte("shared instructions\n"), 0o644))
+	require.NoError(t, os.Symlink("CLAUDE.md", filepath.Join(skillDir, "AGENTS.md")))
+	require.NoError(t, os.Symlink("../child/SKILL.md", filepath.Join(skillDir, "sibling-link")))
+	require.NoError(t, os.Symlink("../../../outside", filepath.Join(skillDir, "outside-link")))
+	require.NoError(t, os.Symlink("missing.md", filepath.Join(skillDir, "broken-link")))
 	f.commit(t, "add symlinks")
 	runGit(t, f.work, "tag", "v1.1.0")
 	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
@@ -477,12 +588,13 @@ func TestRepositoryArtifactPreservesInternalSymlinksAndSkipsUnsafeOnes(t *testin
 	for _, file := range snapshot.Entries {
 		entries[file.Path] = file
 	}
-	link, ok := entries["AGENTS.md"]
+	link, ok := entries["skills/repo/AGENTS.md"]
 	require.True(t, ok)
 	require.True(t, link.IsSymlink())
 	require.Equal(t, "CLAUDE.md", string(link.Contents))
-	require.NotContains(t, entries, "outside-link")
-	require.NotContains(t, entries, "broken-link")
+	require.NotContains(t, entries, "skills/repo/outside-link")
+	require.NotContains(t, entries, "skills/repo/broken-link")
+	require.NotContains(t, entries, "skills/repo/sibling-link")
 }
 
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
@@ -510,7 +622,7 @@ func TestRepositoryDiscoveryPackagesV2WithoutGoPackagePathSuffix(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "v2.2.10", snapshot.Version)
 	require.Len(t, snapshot.Members, 2)
-	require.Contains(t, entryNames(snapshot.Entries), "SKILL.md")
+	require.Contains(t, entryNames(snapshot.Entries), "skills/repo/SKILL.md")
 	require.Contains(t, entryNames(snapshot.Entries), "skills/child/SKILL.md")
 }
 
@@ -549,7 +661,7 @@ func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.
 	}
 	require.NotEmpty(t, childTree)
 
-	f.writeSkill(t, ".", "repo", "root changed only")
+	f.writeSkill(t, "skills/repo", "repo", "root changed only")
 	f.commit(t, "change root Skill only")
 	runGit(t, f.work, "push", "origin", "HEAD")
 	second, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "main")
@@ -661,7 +773,7 @@ func TestRepositoryTagListerObservesMovedTagAfterSharedCatalogExpires(t *testing
 	require.NoError(t, err)
 	require.Len(t, initial, 1)
 
-	f.writeSkill(t, ".", "repo", "moved tag")
+	f.writeSkill(t, "skills/repo", "repo", "moved tag")
 	f.commit(t, "move tag")
 	movedCommit := strings.TrimSpace(runGit(t, f.work, "rev-parse", "HEAD"))
 	runGit(t, f.work, "tag", "-f", "v1.0.0")
@@ -710,7 +822,7 @@ func TestRepositoryBackfillListerUsesUpToTwentyVersionsWithoutMixingTagsAndCommi
 	runGit(t, f.work, "tag", "-d", "v1.0.0")
 	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
 	for index := 0; index < 22; index++ {
-		f.writeSkill(t, ".", "repo", fmt.Sprintf("backfill commit %d", index))
+		f.writeSkill(t, "skills/repo", "repo", fmt.Sprintf("backfill commit %d", index))
 		f.commit(t, fmt.Sprintf("backfill commit %d", index))
 	}
 	runGit(t, f.work, "push", "origin", "HEAD")

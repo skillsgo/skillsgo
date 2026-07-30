@@ -16,7 +16,7 @@ import (
 
 func TestCatalogContainsOfficialSupportedAgents(t *testing.T) {
 	catalog := NewCatalog(Paths{Home: "/home/user", ConfigHome: "/home/user/.config"})
-	require.Len(t, catalog.All(), 74)
+	require.Len(t, catalog.All(), 77)
 	codex, ok := catalog.Get("codex")
 	require.True(t, ok)
 	require.Equal(t, filepath.Join("/home/user", ".codex", "skills"), codex.GlobalDir)
@@ -121,6 +121,42 @@ func TestSkillsSHSpecialDetectionRules(t *testing.T) {
 	require.Equal(t, []string{"reviewer", "writer"}, EveSubagents(cwd))
 }
 
+func TestSkillsSHCurrentAgentAdditionsResolveAndDetectTheirOfficialRoots(t *testing.T) {
+	home, config, cwd := t.TempDir(), t.TempDir(), t.TempDir()
+	grokHome := filepath.Join(home, "custom-grok")
+	t.Setenv("GROK_HOME", grokHome)
+	require.NoError(t, os.MkdirAll(grokHome, 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".iflow"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".config", "kimchi"), 0o755))
+	catalog := NewCatalog(Paths{Home: home, ConfigHome: config, CWD: cwd})
+
+	for _, testCase := range []struct {
+		id, display, projectDir, globalDir string
+	}{
+		{id: "grok", display: "Grok Build", projectDir: ".grok/skills", globalDir: filepath.Join(grokHome, "skills")},
+		{id: "iflow-cli", display: "iFlow CLI", projectDir: ".iflow/skills", globalDir: filepath.Join(home, ".iflow", "skills")},
+		{id: "kimchi", display: "Kimchi", projectDir: ".kimchi/skills", globalDir: filepath.Join(home, ".config", "kimchi", "harness", "skills")},
+	} {
+		t.Run(testCase.id, func(t *testing.T) {
+			definition, ok := catalog.Get(testCase.id)
+			require.True(t, ok)
+			require.Equal(t, testCase.display, definition.Display)
+			require.Equal(t, testCase.projectDir, definition.ProjectDir)
+			require.Equal(t, testCase.globalDir, definition.GlobalDir)
+			require.True(t, catalog.DetectInstalled(testCase.id))
+
+			global, supported := catalog.SkillRoots(testCase.id, ScopeGlobal, "")
+			require.True(t, supported)
+			require.Equal(t, testCase.globalDir, global.ManagedRoot)
+			require.Equal(t, []string{testCase.globalDir}, global.DiscoveryRoots)
+
+			project, supported := catalog.SkillRoots(testCase.id, ScopeProject, cwd)
+			require.True(t, supported)
+			require.Equal(t, filepath.Join(cwd, filepath.FromSlash(testCase.projectDir)), project.ManagedRoot)
+		})
+	}
+}
+
 func TestSkillsSHUniversalVisibility(t *testing.T) {
 	catalog := NewCatalog(Paths{Home: "/home/user", ConfigHome: "/home/user/.config", CWD: "/project"})
 	all, visible := catalog.Universal(false), catalog.Universal(true)
@@ -139,12 +175,12 @@ func TestCatalogAcceptsIsolatedTestAgent(t *testing.T) {
 	got, ok := catalog.Get("test-agent")
 	require.True(t, ok)
 	require.Equal(t, testAgent, got)
-	require.Len(t, catalog.All(), 75)
+	require.Len(t, catalog.All(), 78)
 
 	official := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 	_, ok = official.Get("test-agent")
 	require.False(t, ok)
-	require.Len(t, official.All(), 74)
+	require.Len(t, official.All(), 77)
 }
 
 func TestSkillRootsSeparateManagedRootFromReadOnlyDiscoveryRoots(t *testing.T) {

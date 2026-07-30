@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the mutable no-tag Repository fixture, public CLI Info resolution, Git tag publication, and a later default-branch commit.
- * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags C1, latest selects V1, and main at C2 selects an ancestor-based F2 without relying on private commit metadata.
+ * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags identical content, latest keeps the effective F1, and main at C2 selects an ancestor-based F2 without relying on private commit metadata.
  * [POS]: Serves as the no-tag-to-tag Repository lifecycle journey across Git, Hub, and CLI version queries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -59,7 +59,7 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 		want  string
 	}{
 		{name: "old F1 remains C1", query: f1.Version, want: f1.Version},
-		{name: "latest selects V1 at C1", query: "latest", want: "v1.0.0"},
+		{name: "latest keeps effective F1 when V1 is equivalent", query: "latest", want: f1.Version},
 		{name: "main selects F2 at C2", query: "main", want: "F2"},
 	}
 	currentCommitResult := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/movable", "rev-parse", "main")

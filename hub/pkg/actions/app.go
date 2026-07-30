@@ -17,11 +17,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/riverqueue/river"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
+	"github.com/skillsgo/skillsgo/hub/pkg/community"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -30,6 +32,35 @@ import (
 
 // Service is the name of the service that we want to tag our processes with.
 const Service = "hub"
+
+type CommunityFactory func(community.Catalog) (community.Store, error)
+
+type AppOption func(*appOptions)
+
+type Assembly struct {
+	Catalog           *catalog.Catalog
+	BackgroundCatalog *catalog.Catalog
+	Storage           storage.Backend
+	Community         community.Store
+}
+
+type appOptions struct {
+	communityFactory CommunityFactory
+	app              *fiber.App
+	assemblyReceiver func(Assembly)
+}
+
+func WithCommunityFactory(factory CommunityFactory) AppOption {
+	return func(options *appOptions) { options.communityFactory = factory }
+}
+
+func WithFiberApp(app *fiber.App) AppOption {
+	return func(options *appOptions) { options.app = app }
+}
+
+func WithAssemblyReceiver(receiver func(Assembly)) AppOption {
+	return func(options *appOptions) { options.assemblyReceiver = receiver }
+}
 
 func newFiberApp() *fiber.App {
 	return fiber.New(fiber.Config{ReadTimeout: 2 * time.Second})
@@ -41,9 +72,16 @@ func newFiberApp() *fiber.App {
 //
 // App returns the HTTP handler, a cleanup function that should be called
 // when the server is shutting down (to flush and stop exporters), and an error.
-func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
+func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) (*fiber.App, func(), error) {
 	noop := func() {}
-	r := newFiberApp()
+	options := appOptions{}
+	for _, option := range suppliedOptions {
+		option(&options)
+	}
+	r := options.app
+	if r == nil {
+		r = newFiberApp()
+	}
 	r.Use(mw.WithRequestID, mw.LogEntryMiddleware(logger), mw.RequestLogger)
 	r.Use(func(c fiber.Ctx) error {
 		ctx, span := otel.Tracer(Service).Start(c.Context(), c.Method()+" "+c.Path())
@@ -73,8 +111,6 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	if subRouter != nil {
 		proxyRouter = subRouter
 	}
-	registerInfoRoute(proxyRouter, conf)
-
 	// RegisterExporter will register an exporter where we will export our traces to.
 	// The error from the RegisterExporter would be nil if the tracer was specified by
 	// the user and the trace exporter was created successfully.
@@ -173,7 +209,18 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			return nil, cleanup, fmt.Errorf("creating task runtime: %w", err)
 		}
 	}
-	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, adminRouter, adminEnabled); err != nil {
+	communityStore := community.Store(community.NewEmptyStore())
+	if options.communityFactory != nil {
+		communityStore, err = options.communityFactory(metadata)
+		if err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("creating community data: %w", err)
+		}
+	}
+	if options.assemblyReceiver != nil {
+		options.assemblyReceiver(Assembly{Catalog: metadata, BackgroundCatalog: backgroundMetadata, Storage: store, Community: communityStore})
+	}
+	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, communityStore, adminRouter, adminEnabled); err != nil {
 		cancelWorkers()
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
 	}

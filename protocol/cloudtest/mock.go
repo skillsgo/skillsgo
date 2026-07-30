@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on net/http, public Cloud DTOs, and the shared presentation-language registry for deterministic test behavior.
- * [OUTPUT]: Provides an in-memory Cloud HTTP mock with idempotent install events plus configurable, language-validated ranking reads.
- * [POS]: Serves as the public client-test double; it deliberately contains no private Cloud persistence or ranking logic.
+ * [INPUT]: Depends on net/http, public Hub community DTOs, and the shared presentation-language registry for deterministic test behavior.
+ * [OUTPUT]: Provides an in-memory Hub community HTTP mock with idempotent install events plus configurable, language-validated ranking reads.
+ * [POS]: Serves as the public client-test double; it deliberately contains no consumer persistence or ranking logic.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package cloudtest

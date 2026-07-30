@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	staticmiddleware "github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
+	"github.com/skillsgo/skillsgo/hub/pkg/community"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
@@ -30,7 +31,7 @@ func addProxyRoutes(
 	l *log.Logger,
 	c *config.Config,
 ) error {
-	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, nil, false)
+	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, nil, nil, false)
 }
 
 func addProxyRoutesWithCatalog(
@@ -42,6 +43,7 @@ func addProxyRoutesWithCatalog(
 	metadata *catalog.Catalog,
 	backgroundMetadata *catalog.Catalog,
 	taskRuntime *taskqueue.Runtime,
+	communityStore community.Store,
 	adminRouter fiber.Router,
 	adminEnabled bool,
 ) error {
@@ -53,9 +55,10 @@ func addProxyRoutesWithCatalog(
 	}
 	r.Get("/", proxyHomeHandler(c))
 	r.Get("/healthz", healthHandler)
-	r.Get("/readyz", getReadinessHandler(s))
+	r.Get("/readyz", getReadinessHandler(s, metadata, backgroundMetadata, communityStore))
 	r.Get("/version", versionHandler)
 	r.Get("/robots.txt", robotsHandler(c))
+	registerCommunityRoutes(r, communityStore, func() time.Time { return time.Now().UTC() })
 	if c.StorageType == "disk" && c.Storage.Disk != nil {
 		r.Use("/packages/*", staticmiddleware.New(filepath.Join(c.Storage.Disk.RootPath, "packages"), staticmiddleware.Config{ByteRange: true, CacheDuration: -1}))
 	}

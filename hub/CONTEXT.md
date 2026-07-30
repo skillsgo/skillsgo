@@ -45,7 +45,7 @@ The metadata surface rooted at `/api/v1/{packagePath}`. It exposes `/api/v1/{pac
 _Avoid_: Go Proxy, `/mod`, `@v`, product API, Skill ZIP endpoint
 
 **Package Publication**:
-The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one tagged Git Artifact tree, and one Package Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.
+The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one tagged Git Artifact tree, and one Package Sum for a resolved source commit. Membership uses skills.sh-compatible convention-first discovery with bounded recursive fallback, and no partial accepted membership becomes visible.
 _Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source validation
 
 **Package History Backfill**:
@@ -77,7 +77,7 @@ The standalone deterministic metadata resource for one Package Version. It conta
 _Avoid_: database record dump, Skill Info document, editorial member list, per-Skill artifact manifest
 
 **Package Artifact**:
-The complete safe Git-tracked tree for one immutable Package Version, stored under a parentless synthetic commit and immutable tag in the Package's standard bare Git Artifact Repository and authenticated by one Package Sum. Relative symlinks whose fully resolved targets remain inside the same Package are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
+The minimal safe Git-tracked union of every accepted member's complete Skill directory subtree, the Source Repository's authored root `README.md` when present, plus applicable ancestor `.codex-plugin`, `.claude-plugin`, and `.cursor-plugin` manifests for one immutable Package Version, completed with deterministic missing root manifests for those three Agents, stored under a parentless synthetic commit and immutable tag in the Package's standard bare Git Artifact Repository, and authenticated by one Package Sum. Repository-relative paths remain stable. Relative symlinks whose fully resolved targets remain inside the same Package Artifact are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
 _Avoid_: Skill artifact, live repository directory, mutable cache entry
 
 **Source Presentation**:
@@ -103,10 +103,6 @@ _Avoid_: archive hash, Git tree SHA
 **Hub Origin**:
 The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify sums.
 _Avoid_: Hub account, mirror name
-
-**Cloud Deployment Discovery**:
-The minimal public Hub declaration containing `mode` and, only in Cloud mode, the configured Cloud origin. It selects the independent Cloud data plane without becoming a capability-negotiation protocol.
-_Avoid_: capability matrix, Cloud proxy, shared database
 
 **Repository Popularity**:
 The source repository's current public star count, recorded as contextual discovery metadata. Every Skill in the same repository shares this repository-level signal; it is not a Skill rating.

@@ -49,6 +49,7 @@ func addPackageInstallations(ctx context.Context, entries map[string]*Entry, acc
 			packagesRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "packages"), agent.ScopeProject
 			projectRoot := declaration.root
 			if declaration.scope == install.ScopeGlobal {
+				packagesRoot = filepath.Join(declaration.stateRoot, "packages")
 				agentScope, projectRoot = agent.ScopeGlobal, ""
 			}
 			_, moduleErr := packagestore.ReadVerifiedPackage(packagesRoot, packagePath, dependency.Version, locked.Sum)

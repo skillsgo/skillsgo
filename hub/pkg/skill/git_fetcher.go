@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, precise Source Failure Codes, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, skills.sh-compatible tiered Skill discovery with complete SKILL.md bytes, filtered Package Artifact assembly with applicable plugin manifests, precise Source Failure Codes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -104,82 +103,94 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureRevisionResolution, err)
 	}
-	listing, err := gitOutput(ctx, repoDir, "ls-tree", "-r", "--name-only", resolution.CommitSHA)
+	listing, err := gitOutputBytes(ctx, repoDir, "ls-tree", "-r", "-z", "--name-only", resolution.CommitSHA)
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err))
 	}
-	candidates := make([]string, 0)
-	for _, file := range strings.Split(listing, "\n") {
-		file = strings.TrimSpace(file)
-		if isRepositoryOwnedSkillCandidate(file) {
-			candidates = append(candidates, file)
+	files := strings.Split(string(listing), "\x00")
+	manifestContents := pluginManifestDocuments{}
+	for index, manifestPath := range []string{".claude-plugin/marketplace.json", ".claude-plugin/plugin.json"} {
+		if stringSliceContains(files, manifestPath) {
+			contents, readErr := gitFileContent(ctx, repoDir, resolution.CommitSHA, manifestPath)
+			if readErr != nil {
+				return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, readErr))
+			}
+			if index == 0 {
+				manifestContents.marketplace = contents
+			} else {
+				manifestContents.plugin = contents
+			}
 		}
 	}
-	sort.Strings(candidates)
-	if len(candidates) == 0 {
+	candidateTiers := discoverSkillCandidateTiers(files, manifestContents)
+	if len(candidateTiers) == 0 {
 		return nil, withSourceFailure(SourceFailureNoSkills, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound))
 	}
 	snapshot := &RepositorySnapshot{
 		PackagePath: packagePath, Version: resolution.Version,
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
-		Members: make([]RepositoryMember, 0, len(candidates)),
+		Members: make([]RepositoryMember, 0),
 	}
-	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA)
+	for _, tier := range candidateTiers {
+		tierMembers := make([]RepositoryMember, 0, len(tier.candidates))
+		for _, candidate := range tier.candidates {
+			directory := filepath.ToSlash(filepath.Dir(candidate))
+			memberResolution := *resolution
+			memberResolution.TreeSHA, err = gitOutput(ctx, repoDir, "rev-parse", resolution.CommitSHA+":"+directory)
+			if directory == "." {
+				memberResolution.TreeSHA = resolution.TreeSHA
+				err = nil
+			}
+			if err != nil {
+				return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err))
+			}
+			manifestSource, fetchErr := gitFileContent(ctx, repoDir, resolution.CommitSHA, candidate)
+			if fetchErr != nil {
+				return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, fetchErr))
+			}
+			manifestBytes, body, manifestErr := extractManifest(manifestSource)
+			if manifestErr == nil {
+				manifestErr = validateManifest(manifestBytes, body)
+			}
+			if manifestErr != nil {
+				continue
+			}
+			manifest, manifestErr := protocolmanifest.ValidatePublished(manifestSource)
+			if manifestErr != nil {
+				continue
+			}
+			tierMembers = append(tierMembers, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Content: append([]byte(nil), manifestSource...), Manifest: manifest})
+		}
+		tierMembers = shadowNestedMembers(tierMembers, tier.shadowParents)
+		if len(tierMembers) > 0 {
+			snapshot.Members = tierMembers
+			break
+		}
+	}
+	if len(snapshot.Members) == 0 {
+		return nil, withSourceFailure(SourceFailureInvalidManifest, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains Skill candidates but none has a valid manifest", errors.KindBadRequest))
+	}
+	directories := make([]string, len(snapshot.Members))
+	for index, member := range snapshot.Members {
+		directories[index] = member.Path
+	}
+	selection := selectPackageArtifact(files, directories)
+	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA, selection)
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureArtifactBuild, errors.E(op, err))
 	}
 	snapshot.Entries = entries
 	snapshot.Sum = sum
-	for _, candidate := range candidates {
-		directory := filepath.ToSlash(filepath.Dir(candidate))
-		memberResolution := *resolution
-		memberResolution.TreeSHA, err = gitOutput(ctx, repoDir, "rev-parse", resolution.CommitSHA+":"+directory)
-		if directory == "." {
-			memberResolution.TreeSHA = resolution.TreeSHA
-			err = nil
-		}
-		if err != nil {
-			return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err))
-		}
-		manifestSource, fetchErr := gitFileContent(ctx, repoDir, resolution.CommitSHA, candidate)
-		if fetchErr != nil {
-			return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, fetchErr))
-		}
-		manifestBytes, body, manifestErr := extractManifest(manifestSource)
-		if manifestErr == nil {
-			manifestErr = validateManifest(manifestBytes, body)
-		}
-		if manifestErr != nil {
-			if errors.Kind(manifestErr) == errors.KindBadRequest {
-				continue
-			}
-			continue
-		}
-		manifest, manifestErr := protocolmanifest.ValidatePublished(manifestSource)
-		if manifestErr != nil {
-			continue
-		}
-		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Content: append([]byte(nil), manifestSource...), Manifest: manifest})
-	}
-	if len(snapshot.Members) == 0 {
-		return nil, withSourceFailure(SourceFailureInvalidManifest, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains Skill candidates but none has a valid manifest", errors.KindBadRequest))
-	}
 	return snapshot, nil
 }
 
-func isRepositoryOwnedSkillCandidate(file string) bool {
-	if file == "SKILL.md" {
-		return true
-	}
-	if !strings.HasSuffix(file, "/SKILL.md") {
-		return false
-	}
-	for _, segment := range strings.Split(strings.TrimSuffix(file, "/SKILL.md"), "/") {
-		if strings.HasPrefix(segment, ".") {
-			return false
+func stringSliceContains(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 type repositoryMetadata struct {
@@ -729,12 +740,20 @@ func pseudoVersionForCommit(ctx context.Context, repoDir, commitSHA string, comm
 }
 
 func gitOutput(ctx context.Context, repoDir string, args ...string) (string, error) {
+	output, err := gitOutputBytes(ctx, repoDir, args...)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func gitOutputBytes(ctx context.Context, repoDir string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = repoDir
 	cmd.Env = controlledGitEnvironment(os.Environ())
 	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return strings.TrimSpace(string(output)), nil
+	return output, nil
 }

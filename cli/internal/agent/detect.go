@@ -74,6 +74,8 @@ func (c *Catalog) DetectInstalled(id string) bool {
 		return exists(filepath.Join(home, ".dexto"))
 	case "kimi-code-cli":
 		return exists(filepath.Join(home, ".kimi-code")) || exists(filepath.Join(home, ".kimi"))
+	case "kimchi":
+		return exists(filepath.Join(home, ".config", "kimchi"))
 	case "loaf":
 		return exists(filepath.Join(home, ".loaf"))
 	case "warp":

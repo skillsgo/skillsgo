@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on validated Hub configuration, safe structured logging, service assembly, listeners, and shutdown signals.
- * [OUTPUT]: Starts the Hub, reports a non-secret effective runtime profile, and performs coordinated shutdown.
- * [POS]: Serves as the process lifecycle and operator-observability entry point for the Hub.
+ * [INPUT]: Depends on validated Hub configuration, safe structured logging, a caller-owned Fiber App, the complete exported Hub modules, listeners, and shutdown signals.
+ * [OUTPUT]: Builds the standalone Hub App by mounting the complete reusable Hub modules, reports a non-secret effective profile, and performs coordinated shutdown.
+ * [POS]: Serves as the self-hosted App composition root symmetric with any caller-owned embedding App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package main
@@ -20,11 +20,11 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/cmd/skillsgo-hub/actions"
 	"github.com/skillsgo/skillsgo/hub/internal/shutdown"
 	"github.com/skillsgo/skillsgo/hub/pkg/build"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	hublog "github.com/skillsgo/skillsgo/hub/pkg/log"
+	hubruntime "github.com/skillsgo/skillsgo/hub/pkg/runtime"
 )
 
 var (
@@ -79,11 +79,12 @@ func main() {
 			"run it under an init such as tini or `docker/podman run --init` to avoid zombie processes")
 	}
 
-	handler, cleanup, err := actions.App(logger, conf)
+	handler := fiber.New(fiber.Config{ReadTimeout: 2 * time.Second})
+	runtime, err := hubruntime.Mount(handler, logger, conf)
 	if err != nil {
 		logger.Fatalf("Could not create App: %v", err)
 	}
-	defer cleanup()
+	defer runtime.Close()
 
 	if conf.EnablePprof {
 		go func() {

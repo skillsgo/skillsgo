@@ -33,17 +33,18 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	projectionRoot := filepath.Join(sandboxRoot, "project", ".agents", "skills")
 	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
-	for _, name := range []string{"root-suite", "alpha", "beta", "camel-case", "naming"} {
+	for _, name := range []string{"alpha", "beta", "camel-case", "naming"} {
 		require.NoError(t, os.Remove(filepath.Join(projectionRoot, name)))
 	}
 	restore := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
-	for _, name := range []string{"root-suite", "alpha", "beta", "camel-case", "naming"} {
+	for _, name := range []string{"alpha", "beta", "camel-case", "naming"} {
 		require.FileExists(t, filepath.Join(projectionRoot, name, "SKILL.md"))
 	}
 	require.NoFileExists(t, filepath.Join(projectionRoot, "invalid"))
-	require.FileExists(t, filepath.Join(packageDir, "skills", "invalid", "SKILL.md"))
-	shared := filepath.Join(projectionRoot, "root-suite", "runtime", "shared.sh")
+	require.NoFileExists(t, filepath.Join(packageDir, "skills", "invalid", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(packageDir, "runtime", "shared.sh"))
+	shared := filepath.Join(projectionRoot, "alpha", "SKILL.md")
 	before, err := os.Stat(shared)
 	require.NoError(t, err)
 	healthy := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
@@ -53,7 +54,7 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	require.Equal(t, before.ModTime(), after.ModTime())
 
 	const localChange = "user-owned projection change\n"
-	require.NoError(t, os.WriteFile(shared, []byte(localChange), 0o755))
+	require.NoError(t, os.WriteFile(shared, []byte(localChange), 0o644))
 	conflict := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
 	require.NotEqual(t, 0, conflict.exitCode, conflict.output)
 	require.Contains(t, conflict.output, "Local Modification")

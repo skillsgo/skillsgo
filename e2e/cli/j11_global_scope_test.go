@@ -24,10 +24,10 @@ func TestJ11GlobalScope(t *testing.T) {
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
-	packageDir := filepath.Join(declarationRoot, ".skillsgo", "packages", coordinate)
+	packageDir := filepath.Join(sandboxRoot, "home", ".skillsgo", "packages", coordinate)
 	projection := filepath.Join(sandboxRoot, "home", ".codex", "skills", "alpha")
 	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
-	require.FileExists(t, filepath.Join(packageDir, "SKILL.md"))
+	require.FileExists(t, filepath.Join(packageDir, "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skills.yaml"))

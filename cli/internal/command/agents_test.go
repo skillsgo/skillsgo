@@ -33,7 +33,7 @@ func TestAgentsJSONExposesCompleteSupportedCatalogAndInstalledTestAgent(t *testi
 	require.Equal(t, appProtocolVersion, report.AppProtocolVersion)
 	require.NotEmpty(t, report.OS)
 	require.NotEmpty(t, report.Architecture)
-	require.GreaterOrEqual(t, len(report.Agents), 74)
+	require.GreaterOrEqual(t, len(report.Agents), 77)
 	var testAgentFound bool
 	for _, status := range report.Agents {
 		if status.ID != "test-agent" {

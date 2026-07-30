@@ -371,14 +371,6 @@ The journey installs one selected member, observes declaration and Projection ev
 
 Status: implemented through the released CLI and Hub plus observable Package Store, Projection, and Workspace state by `j47_why_verify_test.go`.
 
-### J48 — Report a committed installation through a Cloud deployment
-
-As a user connected to a Cloud-mode Hub, I want a successful CLI installation to report one anonymous installation fact to the declared Cloud origin without changing the installation result.
-
-The journey starts real CLI and Hub processes plus a separate public-contract Cloud Mock process, verifies `hub info`, installs an immutable fixture Skill, and observes exactly one post-commit event containing the Skill coordinate, version, scope, and Agent.
-
-Status: implemented through released CLI and Hub processes plus the external Cloud Mock boundary by `j48_cloud_install_reporting_test.go`.
-
 ### J49 — Keep External Skills in place throughout Package preparation
 
 As a user adopting a skills.sh-style canonical Skill and Agent symlinks, I want the CLI to finish Package download, verification, and preparation before it moves any External path, so interruption during slow preparation leaves my installation untouched and retryable.

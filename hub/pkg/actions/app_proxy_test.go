@@ -14,11 +14,14 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/build"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	"github.com/skillsgo/skillsgo/protocol/cloud"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,6 +96,25 @@ func TestProxyRoutes(t *testing.T) {
 			}
 			require.NoError(t, json.NewDecoder(resp.Body).Decode(&document))
 			assert.Equal(t, "3.1.0", document.OpenAPI)
+		}},
+		{"POST", cloud.InstallEventsPath, `{"eventId":"0123456789abcdef","packagePath":"github.com/acme/skills","skillName":"demo","skillPath":"skills/demo","version":"v1.0.0","agents":["codex"],"scope":"global","cliVersion":"v1.0.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339) + `"}`, func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+			var response cloud.InstallEventResponse
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&response))
+			assert.False(t, response.Accepted)
+		}},
+		{"GET", cloud.RankingAllTime.Path() + "?page=0&perPage=20&lang=en", "", func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			var response cloud.RankingResponse
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&response))
+			assert.Equal(t, []cloud.RankingSkill{}, response.Skills)
+			assert.Equal(t, protocolapi.Pagination{Page: 0, PerPage: 20, HasMore: false}, response.Pagination)
+		}},
+		{"GET", cloud.RankingTrending.Path() + "?page=0&perPage=20", "", func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+		}},
+		{"GET", cloud.RankingHot.Path() + "?page=0&perPage=20", "", func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
 		}},
 	}
 

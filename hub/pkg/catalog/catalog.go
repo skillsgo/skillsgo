@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,8 +32,10 @@ import (
 func skillResourceID(packagePath, name string) string { return packagePath + ":" + name }
 
 type Catalog struct {
-	pool    *pgxpool.Pool
-	queries *catalogsqlc.Queries
+	pool                *pgxpool.Pool
+	queries             *catalogsqlc.Queries
+	schema              string
+	extensionSchemaName string
 }
 
 type CurrentPackage struct {
@@ -70,6 +72,12 @@ func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if !config.ValidDatabaseSchema(cfg.Schema) {
 		return nil, fmt.Errorf("invalid metadata database schema %q", cfg.Schema)
 	}
+	if cfg.ExtensionSchema == "" {
+		cfg.ExtensionSchema = config.DefaultDatabaseSchema
+	}
+	if !config.ValidDatabaseSchema(cfg.ExtensionSchema) {
+		return nil, fmt.Errorf("invalid metadata database extension schema %q", cfg.ExtensionSchema)
+	}
 	poolConfig, err := newPoolConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -82,7 +90,16 @@ func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		pool.Close()
 		return nil, fmt.Errorf("connect metadata database pool: %w", err)
 	}
-	return &Catalog{pool: pool, queries: catalogsqlc.New(pool)}, nil
+	var currentSchema string
+	if err := pool.QueryRow(ctx, `SELECT current_schema()`).Scan(&currentSchema); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("inspect metadata database search path: %w", err)
+	}
+	if currentSchema != cfg.Schema {
+		pool.Close()
+		return nil, fmt.Errorf("metadata database search path resolved schema %q, expected %q", currentSchema, cfg.Schema)
+	}
+	return &Catalog{pool: pool, queries: catalogsqlc.New(pool), schema: cfg.Schema, extensionSchemaName: cfg.ExtensionSchema}, nil
 }
 
 func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
@@ -90,10 +107,7 @@ func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
 	}
-	searchPath := cfg.Schema
-	if cfg.Schema != config.DefaultDatabaseSchema {
-		searchPath += "," + config.DefaultDatabaseSchema
-	}
+	searchPath := databaseSearchPath(cfg.Schema, cfg.ExtensionSchema)
 	poolConfig.ConnConfig.RuntimeParams["search_path"] = searchPath
 	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
 	poolConfig.MinConns = 0
@@ -103,6 +117,13 @@ func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
 	}
 	return poolConfig, nil
+}
+
+func databaseSearchPath(schema, extensionSchema string) string {
+	if extensionSchema == "" || extensionSchema == schema {
+		return schema + ",pg_catalog"
+	}
+	return schema + "," + extensionSchema + ",pg_catalog"
 }
 
 func (c *Catalog) Close() error {
@@ -331,12 +352,14 @@ type VersionSkill struct {
 
 // PackageVersion is one immutable source and Artifact identity owned by a Package.
 type PackageVersion struct {
-	Version    string
-	Ref        string
-	CommitSHA  string
-	TreeSHA    string
-	Sum        string
-	CommitTime time.Time
+	Version           string
+	Ref               string
+	CommitSHA         string
+	TreeSHA           string
+	ContentSum        string
+	EquivalentVersion string
+	Sum               string
+	CommitTime        time.Time
 }
 
 type PublicationVisibility string
@@ -367,7 +390,7 @@ func ValidatePackageVersion(packagePath string, version PackageVersion, skills [
 		return fmt.Errorf("Package publication requires at least one Skill")
 	}
 	if !protocolversion.IsImmutable(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" ||
-		!protocolartifact.ValidSum(version.Sum) || version.CommitTime.IsZero() {
+		!protocolartifact.ValidSum(version.ContentSum) || !protocolartifact.ValidSum(version.Sum) || version.EquivalentVersion != "" || version.CommitTime.IsZero() {
 		return fmt.Errorf("Package publication requires matching immutable artifact identity")
 	}
 	seenPaths := make(map[string]bool, len(skills))
@@ -409,7 +432,7 @@ func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beg
 			return err
 		}
 		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
-			existingVersion.TreeSha != version.TreeSHA || existingVersion.Sum != version.Sum ||
+			existingVersion.TreeSha != version.TreeSHA || existingVersion.ContentSum != version.ContentSum || textValue(existingVersion.Sum) != version.Sum ||
 			!existingVersion.CommitTime.Equal(version.CommitTime) {
 			return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
@@ -469,7 +492,13 @@ func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beg
 // WithPackagePublicationLock serializes one Package across Hub instances and
 // gives the callback a publisher that commits through the same pooled
 // connection. This prevents lock ownership from competing with its own write.
-func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath string, fn func(func(PackageVersion, []Skill, PublicationVisibility) error) error) error {
+type PackagePublicationWriter struct {
+	CurrentEffective func() (PackageVersion, bool, error)
+	Publish          func(PackageVersion, []Skill, PublicationVisibility) error
+	RecordEquivalent func(PackageVersion, string) error
+}
+
+func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath string, fn func(PackagePublicationWriter) error) error {
 	if fn == nil {
 		return errors.New("Package publication callback is required")
 	}
@@ -490,13 +519,25 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 		}
 		return c.publishPackageVersionWithVisibilityOn(ctx, connection, packagePath, version, skills, visibility)
 	}
-	return fn(publish)
+	current := func() (PackageVersion, bool, error) {
+		row, queryErr := catalogsqlc.New(connection).CurrentEffectiveVersion(ctx, packagePath)
+		if errors.Is(queryErr, pgx.ErrNoRows) {
+			return PackageVersion{}, false, nil
+		} else if queryErr != nil {
+			return PackageVersion{}, false, queryErr
+		}
+		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum}, true, nil
+	}
+	recordEquivalent := func(version PackageVersion, equivalent string) error {
+		return c.recordEquivalentVersionOn(ctx, connection, packagePath, version, equivalent)
+	}
+	return fn(PackagePublicationWriter{CurrentEffective: current, Publish: publish, RecordEquivalent: recordEquivalent})
 }
 
 func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, skills []Skill, createdAt time.Time) error {
 	versionRowID, err := q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: moduleRowID,
 		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
-		Sum: version.Sum, CommitTime: version.CommitTime, CreatedAt: createdAt})
+		ContentSum: version.ContentSum, Sum: nullableText(version.Sum), CommitTime: version.CommitTime, CreatedAt: createdAt})
 	if err != nil {
 		return err
 	}
@@ -513,6 +554,46 @@ func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRow
 		}
 	}
 	return nil
+}
+
+func (c *Catalog) recordEquivalentVersionOn(ctx context.Context, beginner transactionBeginner, packagePath string, version PackageVersion, equivalent string) error {
+	if !protocolversion.IsImmutable(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" || !protocolartifact.ValidSum(version.ContentSum) || equivalent == "" || equivalent == version.Version || version.CommitTime.IsZero() {
+		return fmt.Errorf("equivalent Package Version requires immutable source and content identity")
+	}
+	tx, err := beginner.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	q := c.queries.WithTx(tx)
+	parts := strings.SplitN(packagePath, "/", 2)
+	now := time.Now().UTC()
+	module, err := q.UpsertPackage(ctx, catalogsqlc.UpsertPackageParams{SourceHost: parts[0], SourcePath: parts[1], Path: packagePath, CreatedAt: now})
+	if err != nil {
+		return err
+	}
+	target, err := q.ObservedPackageVersion(ctx, catalogsqlc.ObservedPackageVersionParams{PackagePath: packagePath, Version: equivalent})
+	if err != nil {
+		return err
+	}
+	if target.EquivalentVersion.Valid || target.ContentSum != version.ContentSum {
+		return fmt.Errorf("equivalent Package Version %s@%s has no matching effective target %s", packagePath, version.Version, equivalent)
+	}
+	existing, err := q.ObservedPackageVersion(ctx, catalogsqlc.ObservedPackageVersionParams{PackagePath: packagePath, Version: version.Version})
+	if err == nil {
+		if existing.CommitSha != version.CommitSHA || existing.ContentSum != version.ContentSum || textValue(existing.EquivalentVersion) != equivalent {
+			return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
+		}
+		return tx.Commit(ctx)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	_, err = q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: module.ID, Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA, ContentSum: version.ContentSum, EquivalentVersion: nullableText(equivalent), CommitTime: version.CommitTime, CreatedAt: now})
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func promoteCurrentPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, packagePath, candidateVersion string, updatedAt time.Time) error {
@@ -549,7 +630,7 @@ func (c *Catalog) PackageVersionInfo(ctx context.Context, packagePath, version s
 	}
 	info := protocolapi.PackageInfo{
 		SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath,
-		Version: stored.Version, Time: stored.CommitTime, Sum: stored.Sum,
+		Version: stored.Version, Time: stored.CommitTime, Sum: textValue(stored.Sum),
 		Skills: make([]protocolapi.PackageSkill, 0, len(members)),
 	}
 	for _, member := range members {
@@ -574,7 +655,7 @@ func (c *Catalog) PackageVersionByCoordinate(ctx context.Context, packagePath, v
 	}
 	return PackageVersion{
 		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
-		Sum: stored.Sum, CommitTime: stored.CommitTime,
+		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), CommitTime: stored.CommitTime,
 	}, true, nil
 }
 
@@ -628,6 +709,24 @@ func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, er
 		return nil, err
 	}
 	return moduleFromSQLC(stored), nil
+}
+
+// CurrentPackageVersion returns the highest-priority effective Version that
+// Hub has successfully published for a Package. Repository synchronization
+// advances this pointer; latest reads never resolve the upstream inline.
+func (c *Catalog) CurrentPackageVersion(ctx context.Context, packagePath string) (string, bool, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return "", false, fmt.Errorf("invalid canonical Package Path %q", packagePath)
+	}
+	version, err := c.queries.CurrentPackageVersion(ctx, packagePath)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return version, true, nil
 }
 
 // PackagesDueForSourceMetadataRefresh returns one stable keyset page of

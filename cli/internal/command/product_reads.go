@@ -17,6 +17,7 @@ import (
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolcloud "github.com/skillsgo/skillsgo/protocol/cloud"
 	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 	"github.com/spf13/cobra"
 )
@@ -161,6 +162,45 @@ func newFindCommand() *cobra.Command {
 	return cmd
 }
 
+func newRankingsCommand() *cobra.Command {
+	var hubURL, lang, output string
+	var page, perPage int
+	cmd := &cobra.Command{
+		Use:     "rankings <all_time|trending|hot>",
+		Short:   appi18n.Pick("Read public Skill rankings", "读取公开 Skill 排名"),
+		Example: "  skillsgo rankings trending --page 0 --per-page 20 --output json",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
+			kind := protocolcloud.RankingKind(args[0])
+			if !kind.Valid() || page < 0 || perPage < 1 || perPage > 100 {
+				return fmt.Errorf("invalid ranking request")
+			}
+			canonical, err := canonicalLang(lang)
+			if err != nil {
+				return err
+			}
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			document, err := client.Rankings(cmd.Context(), kind, canonical, page, perPage)
+			if err != nil {
+				return err
+			}
+			return writeProductDocument(cmd, document)
+		},
+	}
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
+	cmd.Flags().IntVar(&page, "page", 0, "zero-based result page")
+	cmd.Flags().IntVar(&perPage, "per-page", 20, "results per page")
+	cmd.Flags().StringVar(&lang, "lang", "", "preferred presentation language")
+	cmd.Flags().StringVar(&output, "output", "json", "output format: human or json")
+	return cmd
+}
+
 type findInput struct {
 	Queries []protocolapi.CandidateQuery `json:"queries"`
 	Limit   int                          `json:"limit"`
@@ -237,46 +277,7 @@ func newHubFindCandidatesCommand() *cobra.Command {
 }
 
 func newHubCommand() *cobra.Command {
-	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub info\n  skillsgo hub check"}
-	info := &cobra.Command{
-		Use:     "info",
-		Short:   appi18n.Pick("Show Hub deployment information", "显示 Hub 部署信息"),
-		Args:    cobra.NoArgs,
-		Example: "  skillsgo hub info\n  skillsgo hub info --output json",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			output, _ := cmd.Flags().GetString("output")
-			if err := validateProductOutput(output); err != nil {
-				return err
-			}
-			hubURL, _ := cmd.Flags().GetString("hub")
-			client, err := hub.New(hubURL, nil)
-			if err != nil {
-				return err
-			}
-			document, err := client.HubInfo(cmd.Context())
-			if err != nil {
-				return err
-			}
-			if output == "json" {
-				return writeProductDocument(cmd, document)
-			}
-			var info struct {
-				Mode  string `json:"mode"`
-				Cloud string `json:"cloud"`
-			}
-			if err := json.Unmarshal(document, &info); err != nil {
-				return fmt.Errorf("decode Hub info: %w", err)
-			}
-			if info.Cloud != "" {
-				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\nCloud: %s\n", info.Mode, info.Cloud)
-			} else {
-				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\n", info.Mode)
-			}
-			return err
-		},
-	}
-	info.Flags().String("hub", defaultHubURL(), "Hub origin")
-	info.Flags().String("output", "human", "output format: human or json")
+	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub check"}
 	check := &cobra.Command{
 		Use:     "check",
 		Short:   appi18n.Pick("Check Hub connectivity", "检查 Hub 连通性"),
@@ -305,6 +306,6 @@ func newHubCommand() *cobra.Command {
 	}
 	check.Flags().String("hub", defaultHubURL(), "Hub origin")
 	check.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(info, check, newHubFindCandidatesCommand())
+	root.AddCommand(check, newHubFindCandidatesCommand())
 	return root
 }

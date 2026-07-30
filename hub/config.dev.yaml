@@ -14,11 +14,6 @@
 # Env override: SKILLSGO_HUB_ENVIRONMENT
 Environment: "development"
 
-# Mode defaults to selfhost. CloudOrigin defaults to https://cloud.skillsgo.ai.
-# Env overrides: SKILLSGO_HUB_MODE and SKILLSGO_HUB_CLOUD_ORIGIN
-Mode: "selfhost"
-CloudOrigin: "https://cloud.skillsgo.ai"
-
 # SkillCacheDir stores persistent Git Repository mirrors and temporary publication snapshots.
 # If empty, Hub uses ~/.skillsgo/hub/cache.
 # Override priority:
@@ -83,7 +78,7 @@ Timeout: 300
 
 # StorageType sets the type of storage backend the proxy will use.
 # Possible values are memory, disk, gcp, s3, r2, azureblob
-# Defaults to disk at ~/.skillsgo/hub/storage/artifacts when no config file is supplied
+# Defaults to disk at ~/.skillsgo/hub when no config file is supplied
 # Env override: SKILLSGO_HUB_STORAGE_TYPE
 StorageType: "disk"
 
@@ -241,7 +236,7 @@ Storage:
     Endpoint: "cdn.example.com"
 
   Disk:
-    # Empty uses ~/.skillsgo/hub/storage/artifacts (or the configured
+    # Empty uses ~/.skillsgo/hub (or the configured
     # SKILLSGO_HOME / SKILLSGO_HUB_HOME directory).
     # Env override: SKILLSGO_HUB_DISK_STORAGE_ROOT
     RootPath: ""

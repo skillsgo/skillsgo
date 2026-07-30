@@ -55,9 +55,9 @@ func TestResolveHubArtifactDir(t *testing.T) {
 		env        map[string]string
 		want       string
 	}{
-		{name: "user home default", want: filepath.Join(home, ".skillsgo", "hub", "storage", "artifacts")},
-		{name: "SkillsGo home", env: map[string]string{skillsGoHomeEnv: "/data/skillsgo"}, want: "/data/skillsgo/hub/storage/artifacts"},
-		{name: "Hub home", env: map[string]string{skillsGoHomeEnv: "/data/skillsgo", hubHomeEnv: "/srv/hub"}, want: "/srv/hub/storage/artifacts"},
+		{name: "user home default", want: filepath.Join(home, ".skillsgo", "hub")},
+		{name: "SkillsGo home", env: map[string]string{skillsGoHomeEnv: "/data/skillsgo"}, want: "/data/skillsgo/hub"},
+		{name: "Hub home", env: map[string]string{skillsGoHomeEnv: "/data/skillsgo", hubHomeEnv: "/srv/hub"}, want: "/srv/hub"},
 		{name: "configured disk root wins", configured: "/configured/artifacts", env: map[string]string{hubHomeEnv: "/srv/hub"}, want: "/configured/artifacts"},
 	}
 
@@ -87,7 +87,7 @@ func TestDefaultConfigUsesPersistentArtifactStorage(t *testing.T) {
 	require.NotNil(t, conf.Storage.Disk)
 	require.Equal(
 		t,
-		filepath.Join(home, ".skillsgo", "hub", "storage", "artifacts"),
+		filepath.Join(home, ".skillsgo", "hub"),
 		conf.Storage.Disk.RootPath,
 	)
 }

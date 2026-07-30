@@ -2,7 +2,7 @@
 
 > F1 Domain Map + F2 Workspace Map | Parent: `/AGENTS.md` | Manifest: `go.mod`
 
-This map governs the dependency-light Go protocol workspace shared by SkillsGo producers, consumers, and Cloud conformance tests.
+This map governs the dependency-light Go protocol workspace shared by SkillsGo producers, consumers, and public conformance tests.
 
 ## Workspace Identity
 
@@ -14,13 +14,13 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 
 | Path | Responsibility |
 | --- | --- |
-| `artifact/` | Package Artifact entry validation, immutable limits, safe paths and internal symlinks, legacy normalized ZIP traversal, and coordinate-bound Sums shared by producers and consumers. |
+| `artifact/` | Package Artifact entry validation, immutable limits, safe paths and internal symlinks, legacy normalized ZIP traversal, version-independent content Sums, and coordinate-bound Sums shared by producers and consumers. |
 | `api/` | Public CLI-to-Hub JSON DTOs, including canonical zero-based pagination, Package Version collections, single/batch Find documents, current Package Publications, Package-level Sum and Artifact Repository identity, canonical Package-member coordinates, Skill path metadata, schema constants, and statuses. |
-| `cloud/` | Public Cloud JSON DTOs, endpoint paths, Hub-card-plus-metric ranking vocabulary, and install-event semantics. |
-| `cloudtest/` | Test-only Cloud HTTP mock and executable conformance verifier; never imported by production packages. |
+| `cloud/` | Legacy package path for public Hub community JSON DTOs, endpoint paths, Hub-card-plus-metric ranking vocabulary, and install-event semantics. The path name is not an architecture or deployment boundary. |
+| `cloudtest/` | Test-only Hub community HTTP mock and executable conformance verifier; never imported by production packages. |
 | `locale/` | Canonical presentation-language normalization and the supported content-language registry. |
 | `packageidentity/` | Canonical public Package identity primitives, including Path parsing, formatting, and initial Source Repository URL derivation. |
-| `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and Cloud coordinates. |
+| `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and community ranking coordinates. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |
 | `version/` | Canonical immutable versions, stable/prerelease/pseudo current-version priority and ordered lists, stable-first release selection, and the closed typed add-time Package Version Query grammar. |
 

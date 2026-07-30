@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, chunked Package Publisher sessions, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms the selected canonical revisions through one source and Artifact session, persists explicit per-Version outcomes, retries transient failures, and reconciles abandoned Runs.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms selected canonical revisions through one source and Artifact session, records duplicate-content revisions as skipped equivalences, persists explicit per-Version outcomes, retries transient failures, and reconciles abandoned Runs.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and batched Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -171,6 +171,12 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 		}
 		if materializeErr == nil {
 			if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomePublished, ""); err != nil {
+				return err
+			}
+			continue
+		}
+		if errors.Is(materializeErr, errEquivalentPackageContent) {
+			if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomeSkipped, "duplicate_package_content"); err != nil {
 				return err
 			}
 			continue

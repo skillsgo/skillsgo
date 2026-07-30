@@ -43,7 +43,7 @@ func TestJ51AddDeduplicatesSharedPhysicalAgentRootAcrossLifecycle(t *testing.T) 
 
 	merged := execCLI(t, ctx, container,
 		"add", "fixtures.test/group/subgroup/collection@v1.0.0",
-		"--skill-path", "skills/general/ideation/naming", "--agent", "claude-code", "--output", "json",
+		"--skill-path", "skills/general/naming", "--agent", "claude-code", "--output", "json",
 	)
 	require.Equal(t, 0, merged.exitCode, merged.output)
 	require.FileExists(t, filepath.Join(canonicalRoot, "naming", "SKILL.md"))
@@ -52,7 +52,7 @@ func TestJ51AddDeduplicatesSharedPhysicalAgentRootAcrossLifecycle(t *testing.T) 
 	manifest, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "- skills/alpha")
-	require.Contains(t, string(manifest), "- skills/general/ideation/naming")
+	require.Contains(t, string(manifest), "- skills/general/naming")
 	require.Contains(t, string(manifest), "- claude-code")
 	require.Contains(t, string(manifest), "- zed")
 	lock, err := os.ReadFile(lockPath)
@@ -81,7 +81,7 @@ func TestJ51AddDeduplicatesSharedPhysicalAgentRootAcrossLifecycle(t *testing.T) 
 	require.NoError(t, err)
 	require.Contains(t, string(manifestAfterReplacement), "version: v1.1.0")
 	require.Contains(t, string(manifestAfterReplacement), "- skills/alpha")
-	require.Contains(t, string(manifestAfterReplacement), "- skills/general/ideation/naming")
+	require.Contains(t, string(manifestAfterReplacement), "- skills/general/naming")
 	require.Contains(t, string(manifestAfterReplacement), "- claude-code")
 	require.Contains(t, string(manifestAfterReplacement), "- zed")
 	require.Contains(t, string(lockAfterReplacement), "version: v1.1.0")

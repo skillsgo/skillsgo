@@ -4,7 +4,9 @@ status: accepted
 
 # Distribute Package Artifacts as static Git repositories
 
-SkillsGo currently publishes one complete deterministic ZIP for every immutable Package Version. This preserves the Package-level distribution model established by ADR-0010, but stores repeated files once per version even when adjacent versions differ only slightly. At community scale, historical publication and copied Skill collections can make immutable ZIP retention a larger cost than metadata or search. Serving those ZIPs through the Railway Hub also makes the application origin part of the artifact data path unless a separate artifact redirect is configured.
+ADR-0019 supersedes this decision's complete Source Repository snapshot boundary. Static Git distribution now stores a filtered Package tree containing the minimal union of accepted self-contained Skill directory subtrees and applicable plugin manifests; all Git object, Pack, tag, Sum, and dumb HTTP decisions remain unchanged.
+
+SkillsGo currently publishes one complete deterministic ZIP for every immutable Package Version. This preserves the Package-level distribution model established by ADR-0010, but stores repeated files once per version even when adjacent versions differ only slightly. At community scale, historical publication and copied Skill collections can make immutable ZIP retention a larger cost than metadata or search. Serving those ZIPs through the Hub application also makes the application origin part of the artifact data path unless a separate artifact redirect is configured.
 
 This proposal changes only the physical representation and transport of a Package Artifact. A Package remains the complete distribution, lock, Scope Package Store, and reconciliation unit. A Package Version remains an immutable safe snapshot of one Source Repository revision. Skills remain selectable members identified by their path inside that snapshot and are never independently archived or installed.
 
@@ -12,7 +14,7 @@ This proposal changes only the physical representation and transport of a Packag
 
 ### Current publication and installation
 
-The Hub resolves a Version Query to a canonical immutable semantic or pseudo-version, discovers the complete accepted Skill membership, builds the complete safe Git-tracked Package tree, serializes that tree as a deterministic ZIP, computes its Package `h1:`, and atomically publishes ZIP, Package Info, Catalog identity, and Skill document content. R2 may store the ZIP through its S3-compatible API, but storage selection and public download routing are independent. Without an artifact origin, ZIP bytes flow from R2 through Hub to the CLI. With an artifact origin, only eligible ZIP requests are redirected; Package Info and other Hub reads remain on the Hub origin.
+The Hub resolves a Version Query to a canonical immutable semantic or pseudo-version, discovers the complete accepted Skill membership, builds the minimal safe Git-tracked union of accepted Skill directory subtrees plus applicable plugin manifests, serializes that tree as a deterministic ZIP, computes its Package `h1:`, and atomically publishes ZIP, Package Info, Catalog identity, and Skill document content. R2 may store the ZIP through its S3-compatible API, but storage selection and public download routing are independent. Without an artifact origin, ZIP bytes flow from R2 through Hub to the CLI. With an artifact origin, only eligible ZIP requests are redirected; Package Info and other Hub reads remain on the Hub origin.
 
 The CLI resolves Package Info, downloads the complete ZIP, validates byte length and Package `h1:`, materializes an authoritative Scope Package Store, and creates projections only for the selected member paths. Workspace Lock persists the immutable Package Version and Package `h1:`. The Package Store, not a downloaded archive or an Agent projection, remains the local authority after installation.
 
@@ -21,10 +23,10 @@ The CLI resolves Package Info, downloads the complete ZIP, validates byte length
 Any replacement must preserve these invariants:
 
 - one Source Repository maps to one Package in the current source model;
-- one Package Version publishes one complete accepted membership and one complete safe Package Artifact;
+- one Package Version publishes one complete accepted membership and one safe Package Artifact containing the minimal union of those member directory subtrees plus applicable plugin manifests;
 - exact semantic and pseudo-versions remain immutable and independently addressable;
 - Backfill may publish historical Versions in any order without rewriting already published identities;
-- Package-relative shared resources and safe relative symlinks survive installation;
+- every Skill's self-contained resources and safe relative symlinks survive installation;
 - escaping, absolute, broken, cyclic, or otherwise invalid symlinks never enter the installable Artifact;
 - Package Info remains the authoritative immutable membership document;
 - Workspace Lock authenticates Package Path, Version, and content independently of the transport encoding;
@@ -123,7 +125,7 @@ objects/pack/pack-*.idx
 
 `info/refs` and `objects/info/packs` provide the auxiliary discovery state normally produced by `git update-server-info`. Pack and index names are content-derived, immutable, and cacheable for one year. Ref and discovery files are small mutable publication pointers and use revalidation rather than immutable caching.
 
-Smart HTTP is not required for the first release. R2 cannot execute `git-upload-pack`, and placing that operation on Railway would return Artifact payload and compute work to the application origin. Dumb HTTP permits Cloudflare and R2 to serve repository files without a Git-aware process in the request path.
+Smart HTTP is not required for the first release. R2 cannot execute `git-upload-pack`, and placing that operation on application compute would return Artifact payload and dynamic work to the application origin. Dumb HTTP permits Cloudflare and R2 to serve repository files without a Git-aware process in the request path.
 
 CLI uses a pinned go-git v6 version with dumb HTTP explicitly enabled. No user-installed Git executable and no libgit2 or CGO dependency is introduced. If go-git v6 cannot satisfy the validation gates, the fallback under consideration is a narrow read-only dumb HTTP adapter over go-git v5 Pack and object APIs, not a new SkillsGo Pack format.
 
@@ -200,7 +202,7 @@ Before changing a protocol, record the current ZIP baseline over the agreed repr
 - duplicate rate across Packages and forks;
 - median and percentile files, bytes, versions, and binary share per Package;
 - cold install and one-Version update download bytes;
-- Hub CPU, memory, R2 operations, Railway egress, and installation latency.
+- Hub CPU, memory, R2 operations, application-origin egress, and installation latency.
 
 Cross-Package duplication is recorded separately because one bare repository per Package does not deduplicate objects across Packages.
 
@@ -234,9 +236,9 @@ Publish POC repositories under a nonproduction R2 prefix and Cloudflare hostname
 - cold and warm regional latency;
 - large-Pack timeout and retry behavior;
 - whether go-git downloads unrelated Packs under dumb HTTP;
-- origin shielding and whether any Artifact payload reaches Railway.
+- origin shielding and whether any Artifact payload reaches application compute.
 
-The ADR cannot advance to accepted if cold or update download amplification materially erases the storage and Railway savings.
+The ADR cannot advance to accepted if cold or update download amplification materially erases the storage and application-compute savings.
 
 ### Direct replacement implementation
 
@@ -269,7 +271,7 @@ The ADR may move from proposed to accepted only when all of these conditions are
 - semantic and pseudo-version tags remain immutable under concurrent publication and Backfill;
 - Git restoration reproduces the Package `h1:` and accepted file set authored from the source tree;
 - go-git v6 dumb HTTP is stable under supported operating systems and architectures, or a bounded fallback adapter is approved;
-- Cloudflare/R2 static serving never requires Railway for Artifact payload;
+- Cloudflare/R2 static serving never requires application compute for Artifact payload;
 - cold-install and cached-update amplification are within an explicitly accepted budget;
 - Pack count and background repack can be bounded without breaking stale clients;
 - crash recovery cannot expose a tag whose objects are unavailable;
@@ -280,7 +282,7 @@ The ADR may move from proposed to accepted only when all of these conditions are
 
 ### Retain immutable ZIPs and rely only on R2 plus CDN
 
-This removes Railway payload egress when redirects are complete and preserves the simplest client, but it retains one full compressed archive per Version and cannot reuse unchanged or similar files across Versions.
+This removes application-origin payload egress when redirects are complete and preserves the simplest client, but it retains one full compressed archive per Version and cannot reuse unchanged or similar files across Versions.
 
 ### Store Git Packs but define a custom SkillsGo manifest and object protocol
 
@@ -294,9 +296,9 @@ Mirroring upstream repositories retains commits unrelated to published Package V
 
 A parent chain makes Backfill order affect descendant commit identity and introduces ancestor reachability that Package Version installation does not need. It provides negligible compression benefit because object reuse and Pack delta selection do not require commit ancestry.
 
-### Use Smart HTTP from Railway
+### Use Smart HTTP from the Application Origin
 
-Smart negotiation can minimize transferred objects but requires a Git-aware request-time service and returns Artifact payload or dynamic Pack compute to Railway. It conflicts with the objective of making Cloudflare and R2 the normal Artifact data path.
+Smart negotiation can minimize transferred objects but requires a Git-aware request-time service and returns Artifact payload or dynamic Pack compute to the application origin. It conflicts with the objective of making Cloudflare and R2 the normal Artifact data path.
 
 ### Use system Git or git2go
 
@@ -308,7 +310,7 @@ A global pool could deduplicate copied content across Packages, but it couples P
 
 ## Consequences
 
-The primary benefit is that unchanged Blobs and Trees are stored once per Package, similar changed files can use Git Pack deltas, cached clients can reuse existing repository data, and normal Artifact payload moves from Railway to Cloudflare-backed R2. ZIP generation, storage, redirect, reconstruction, and extraction-specific transport code can eventually be removed.
+The primary benefit is that unchanged Blobs and Trees are stored once per Package, similar changed files can use Git Pack deltas, cached clients can reuse existing repository data, and normal Artifact payload moves from application compute to Cloudflare-backed R2. ZIP generation, storage, redirect, reconstruction, and extraction-specific transport code can eventually be removed.
 
 The design deliberately does not deduplicate equal content across different Packages or forks. Dumb HTTP may download more data than Smart HTTP, particularly before repack or for cold clients. Small mutable ref and Pack-list files require careful cache control and publication ordering. Background repack and generation cleanup become production responsibilities. go-git v6 maturity is a dependency risk and must be validated rather than assumed.
 

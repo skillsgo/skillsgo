@@ -91,7 +91,7 @@ func TestJ28SkillsGoOwnedRepositoryCoversGoVersionQueries(t *testing.T) {
 		want  string
 	}{
 		{"v1.0.0", "v1.0.0"},
-		{"latest", "v1.3.0"},
+		{"latest", "v1.0.0"},
 		{"v1", "v1.3.0"},
 		{"v1.2", "v1.2.0"},
 		{"<v1.2.0", "v1.1.0"},
@@ -111,6 +111,14 @@ func TestJ28SkillsGoOwnedRepositoryCoversGoVersionQueries(t *testing.T) {
 			require.Equal(t, test.want, resolved.Version)
 		})
 	}
+
+	current := execCLI(t, ctx, container, "show", source+"@latest", "--output", "json")
+	require.Equal(t, 0, current.exitCode, current.output)
+	var currentIdentity struct {
+		Version string `json:"version"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(current.output), &currentIdentity), current.output)
+	require.Equal(t, "v1.3.0", currentIdentity.Version, "publishing higher and then lower exact versions must advance current without downgrading it")
 
 	for _, query := range []string{"main", "5b3da47b37e487519afb84809bbfc3c174cee3f1"} {
 		t.Run(query, func(t *testing.T) {
