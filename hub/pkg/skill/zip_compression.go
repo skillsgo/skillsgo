@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Git revisions, canonical Package coordinates, the shared Package Artifact tree contract, and Go tar primitives.
- * [OUTPUT]: Adapts a complete Git-tracked tree into canonical safe Artifact entries and a coordinate-bound Sum without exposing tar/PAX transport metadata or constructing a ZIP.
+ * [OUTPUT]: Adapts a complete Git-tracked tree into canonical safe Artifact entries, precise source failure codes, and a coordinate-bound Sum without exposing tar/PAX transport metadata or constructing a ZIP.
  * [POS]: Serves as the safe tree boundary between Git source resolution and immutable Package publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,10 +31,13 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 	command.Stdout = raw
 	command.Stderr = stderr
 	if err := command.Run(); err != nil {
-		if raw.exceeded {
-			return nil, "", fmt.Errorf("Git Repository tree stream exceeds %d bytes", raw.limit)
+		if ctx.Err() != nil {
+			return nil, "", withSourceFailure(SourceFailureArchiveCommand, fmt.Errorf("create Git Repository tree stream: %w", ctx.Err()))
 		}
-		return nil, "", fmt.Errorf("create Git Repository tree stream: %w: %s", err, strings.TrimSpace(stderr.String()))
+		if raw.exceeded {
+			return nil, "", withSourceFailure(SourceFailureArchiveTooLarge, fmt.Errorf("Git Repository tree stream exceeds %d bytes", raw.limit))
+		}
+		return nil, "", withSourceFailure(SourceFailureArchiveCommand, fmt.Errorf("create Git Repository tree stream: %w: %s", err, strings.TrimSpace(stderr.String())))
 	}
 	source := tar.NewReader(bytes.NewReader(raw.Bytes()))
 	files := make([]protocolartifact.Entry, 0)
@@ -45,14 +48,14 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 			break
 		}
 		if err != nil {
-			return nil, "", fmt.Errorf("read Git Repository tree stream: %w", err)
+			return nil, "", withSourceFailure(SourceFailureArchiveRead, fmt.Errorf("read Git Repository tree stream: %w", err))
 		}
 		switch file.Typeflag {
 		case tar.TypeDir, tar.TypeXHeader, tar.TypeXGlobalHeader:
 			continue
 		case tar.TypeReg, tar.TypeRegA, tar.TypeSymlink:
 		default:
-			return nil, "", fmt.Errorf("Git Repository contains unsupported tar entry %q with type %d", file.Name, file.Typeflag)
+			return nil, "", withSourceFailure(SourceFailureUnsupportedEntry, fmt.Errorf("Git Repository contains unsupported tar entry %q with type %d", file.Name, file.Typeflag))
 		}
 		artifactPath := strings.TrimSuffix(file.Name, "/")
 		if isExcludedArtifactPath(artifactPath) {
@@ -64,11 +67,14 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 			contents = []byte(file.Linkname)
 		} else {
 			if file.Size < 0 || file.Size > remainingBytes {
-				return nil, "", fmt.Errorf("Git Repository files exceed %d uncompressed bytes", protocolartifact.MaxUncompressedBytes)
+				return nil, "", withSourceFailure(SourceFailureArtifactTooLarge, fmt.Errorf("Git Repository files exceed %d uncompressed bytes", protocolartifact.MaxUncompressedBytes))
 			}
 			contents, err = io.ReadAll(io.LimitReader(source, remainingBytes+1))
-			if err != nil || int64(len(contents)) > remainingBytes {
-				return nil, "", fmt.Errorf("read Git Repository file %q: %w", file.Name, err)
+			if err != nil {
+				return nil, "", withSourceFailure(SourceFailureArchiveRead, fmt.Errorf("read Git Repository file %q: %w", file.Name, err))
+			}
+			if int64(len(contents)) > remainingBytes {
+				return nil, "", withSourceFailure(SourceFailureArtifactTooLarge, fmt.Errorf("Git Repository files exceed %d uncompressed bytes", protocolartifact.MaxUncompressedBytes))
 			}
 		}
 		remainingBytes -= int64(len(contents))
@@ -99,13 +105,36 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 	}
 	validated, err := protocolartifact.ValidateEntries(files)
 	if err != nil {
-		return nil, "", fmt.Errorf("build Repository Artifact tree: %w", err)
+		return nil, "", withSourceFailure(sourceArtifactValidationCode(err), fmt.Errorf("build Repository Artifact tree: %w", err))
 	}
 	sum, err := protocolartifact.PackageEntriesSum(validated, packagePath, version)
 	if err != nil {
-		return nil, "", fmt.Errorf("verify Repository Artifact tree: %w", err)
+		return nil, "", withSourceFailure(SourceFailureArtifactSum, fmt.Errorf("verify Repository Artifact tree: %w", err))
 	}
 	return validated, sum, nil
+}
+
+func sourceArtifactValidationCode(err error) SourceFailureCode {
+	code, ok := protocolartifact.ValidationFailure(err)
+	if !ok {
+		return SourceFailureArtifactBuild
+	}
+	switch code {
+	case protocolartifact.ValidationFileCount:
+		return SourceFailureArtifactFileCount
+	case protocolartifact.ValidationInvalidPath:
+		return SourceFailureArtifactPath
+	case protocolartifact.ValidationPathCollision:
+		return SourceFailureArtifactCollision
+	case protocolartifact.ValidationInvalidMode:
+		return SourceFailureArtifactMode
+	case protocolartifact.ValidationTooLarge:
+		return SourceFailureArtifactTooLarge
+	case protocolartifact.ValidationMissingSkill:
+		return SourceFailureNoSkills
+	default:
+		return SourceFailureArtifactBuild
+	}
 }
 
 func isExcludedArtifactPath(path string) bool {

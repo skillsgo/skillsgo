@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart asynchronous primitives.
- * [OUTPUT]: Provides shared status enums, update availability and its persisted App cache, App preferences, local diagnostic-log metadata and live entries, CLI process contracts, command results, and typed Skills failures.
+ * [OUTPUT]: Provides shared status enums, update availability and its persisted App cache, App preferences, local diagnostic-log metadata and live entries, typed CLI process/transport contracts, command results, and typed Skills failures.
  * [POS]: Serves as the cross-journey system vocabulary used by focused App domain modules and infrastructure adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -101,17 +101,6 @@ enum HubIssue {
   invalidJson,
   connectionFailure,
   timeout,
-}
-
-enum HubMode { selfhost, cloud }
-
-class HubRuntime {
-  const HubRuntime({required this.mode, this.cloudOrigin});
-
-  final HubMode mode;
-  final Uri? cloudOrigin;
-
-  bool get hasCloud => mode == HubMode.cloud && cloudOrigin != null;
 }
 
 class HubStatus {
@@ -229,20 +218,38 @@ class ProcessOutput {
     required this.exitCode,
     required this.stdout,
     required this.stderr,
+    this.transportFailure = false,
   });
 
   final int exitCode;
   final String stdout;
   final String stderr;
+  final bool transportFailure;
 }
 
-abstract interface class ProcessRunner {
+abstract interface class ProcessRunner implements CliServerRunner {
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {
     String? stdin,
     void Function(String line)? onStdoutLine,
   });
+}
+
+abstract interface class CliServerSession {
+  bool get isClosed;
+
+  Future<ProcessOutput> run(
+    List<String> arguments, {
+    String? stdin,
+    void Function(String line)? onStdoutLine,
+  });
+
+  Future<void> close();
+}
+
+abstract interface class CliServerRunner {
+  Future<CliServerSession> startCliServer(String executable);
 }
 
 enum AppThemeMode { system, light, dark }

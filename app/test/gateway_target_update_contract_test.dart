@@ -375,6 +375,23 @@ void main() {
     );
 
     runner.result = const ProcessOutput(
+      exitCode: 1,
+      stdout:
+          '{"schemaVersion":1,"phase":"package-update","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","packageDir":"/tmp/packages","status":"failed","error":"projection replacement failed"}\n',
+      stderr: 'projection replacement failed',
+    );
+    await expectLater(
+      gateway.updatePackage(installed, toVersion: 'v2'),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.message,
+          'message',
+          'projection replacement failed',
+        ),
+      ),
+    );
+
+    runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: '正在更新目标……',
       stderr: '',

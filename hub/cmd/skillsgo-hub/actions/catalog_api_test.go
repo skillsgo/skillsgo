@@ -64,11 +64,6 @@ func testCatalogAPI(t *testing.T) (*fiber.App, *catalog.Catalog) {
 	return r, c
 }
 
-type staticRepositoryMetadataReader struct {
-	stars int64
-	err   error
-}
-
 func TestInternalAPIErrorKeepsPublicResponseSafeAndLogsRedactedCause(t *testing.T) {
 	var logs bytes.Buffer
 	logger := log.NewWithOutput(&logs, "", slog.LevelDebug, "json")
@@ -98,14 +93,6 @@ func TestInternalAPIErrorKeepsPublicResponseSafeAndLogsRedactedCause(t *testing.
 	require.Contains(t, logs.String(), `"request_id":`)
 	require.Contains(t, logs.String(), "[REDACTED]")
 	require.NotContains(t, logs.String(), "private-value")
-}
-
-func (r staticRepositoryMetadataReader) Read(
-	context.Context,
-	string,
-	string,
-) (repositoryMetadata, error) {
-	return repositoryMetadata{Stars: r.stars}, r.err
 }
 
 type catalogArtifactStub struct {

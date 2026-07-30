@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on go-git v6, a static HTTP(S) or local-file Git repository URL, one immutable tag, and canonical Protocol Artifact entries.
- * [OUTPUT]: Synchronizes advertised dumb-HTTP Pack/index files and immutable refs into the disposable ~/.skillsgo/cache/packages repository cache, repairs corrupt repositories once, then restores the requested parentless tree as validated Package entries.
+ * [OUTPUT]: Synchronizes advertised dumb-HTTP Pack/index files and immutable refs into the disposable Package-Path-keyed ~/.skillsgo/cache/packages repository cache, repairs corrupt repositories once, then restores the requested parentless tree as validated Package entries.
  * [POS]: Serves as the CLI transport adapter from CDN-hosted Git objects to the Package Provider's transport-neutral immutable entry model.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,6 @@ package hub
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,13 +27,14 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/gofrs/flock"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	modmodule "golang.org/x/mod/module"
 )
 
 const maxArtifactObjectFileBytes = 200 << 20
 
 var artifactPackLine = regexp.MustCompile(`^P (pack-[0-9a-f]{40,64}\.pack)$`)
 
-func fetchArtifactEntries(ctx context.Context, httpClient *http.Client, repositoryURL, version string, progress func(int64, int64)) ([]protocolartifact.Entry, error) {
+func fetchArtifactEntries(ctx context.Context, httpClient *http.Client, packagePath, repositoryURL, version string, progress func(int64, int64)) ([]protocolartifact.Entry, error) {
 	parsedRepository, err := url.Parse(repositoryURL)
 	if err != nil {
 		return nil, err
@@ -57,8 +57,10 @@ func fetchArtifactEntries(ctx context.Context, httpClient *http.Client, reposito
 	if err != nil {
 		return nil, fmt.Errorf("resolve SkillsGo cache home: %w", err)
 	}
-	digest := sha256.Sum256([]byte(repositoryURL))
-	repositoryPath := filepath.Join(home, ".skillsgo", "cache", "packages", fmt.Sprintf("%x", digest[:16]))
+	repositoryPath, err := artifactCachePath(home, packagePath)
+	if err != nil {
+		return nil, err
+	}
 	if err := os.MkdirAll(filepath.Dir(repositoryPath), 0o755); err != nil {
 		return nil, err
 	}
@@ -88,6 +90,14 @@ func fetchArtifactEntries(ctx context.Context, httpClient *http.Client, reposito
 		progress(counter.bytes, counter.bytes)
 	}
 	return entries, err
+}
+
+func artifactCachePath(home, packagePath string) (string, error) {
+	escaped, err := modmodule.EscapePath(packagePath)
+	if err != nil {
+		return "", fmt.Errorf("derive Git Artifact cache path for %q: %w", packagePath, err)
+	}
+	return filepath.Join(home, ".skillsgo", "cache", "packages", filepath.FromSlash(escaped)), nil
 }
 
 func restoreCachedArtifact(ctx context.Context, client *http.Client, repositoryURL, repositoryPath, version string) ([]protocolartifact.Entry, error) {

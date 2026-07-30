@@ -30,7 +30,7 @@ class _WelcomeStep extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: Image.asset(
-                'assets/branding/skillsgo-logo.png',
+                'assets/branding/skillsgo-logo.webp',
                 key: const Key('onboarding-skillsgo-logo'),
                 width: 72,
                 height: 72,

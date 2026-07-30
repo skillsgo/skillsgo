@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Catalog SQL/pgx persistence, UUID run identities, and caller-supplied transactional River enqueueing.
- * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, state transitions, diagnostics, status reads, and exact Package Publication checks.
+ * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, explicit aggregate states, per-Version outcomes, retry progress, status reads, and exact Package Publication checks.
  * [POS]: Serves as the Catalog business-state boundary for Package History Backfill independently of River transport tables.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,37 +8,63 @@ package catalog
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/catalogsqlc"
 )
 
 type BackfillStatus string
 
 const (
-	BackfillQueued             BackfillStatus = "queued"
-	BackfillRunning            BackfillStatus = "running"
-	BackfillComplete           BackfillStatus = "complete"
-	BackfillCompleteWithErrors BackfillStatus = "complete_with_errors"
+	BackfillQueued                 BackfillStatus = "queued"
+	BackfillRunning                BackfillStatus = "running"
+	BackfillComplete               BackfillStatus = "complete"
+	BackfillCompleteWithRejections BackfillStatus = "complete_with_rejections"
+	BackfillFailed                 BackfillStatus = "failed"
 )
 
-// BackfillRun is durable administrator-facing business state. Diagnostics are
-// intentionally bounded and sanitized by the worker before persistence.
+type BackfillVersionOutcomeKind string
+
+const (
+	BackfillOutcomePublished        BackfillVersionOutcomeKind = "published"
+	BackfillOutcomeAlreadyPublished BackfillVersionOutcomeKind = "already_published"
+	BackfillOutcomeSkipped          BackfillVersionOutcomeKind = "skipped"
+	BackfillOutcomeRejected         BackfillVersionOutcomeKind = "rejected"
+	BackfillOutcomeRetryableFailure BackfillVersionOutcomeKind = "retryable_failure"
+)
+
+type BackfillVersionOutcome struct {
+	RunID        string                     `json:"runId"`
+	Version      string                     `json:"version"`
+	CommitSHA    string                     `json:"commitSha"`
+	Outcome      BackfillVersionOutcomeKind `json:"outcome"`
+	ReasonCode   string                     `json:"reasonCode,omitempty"`
+	AttemptCount int                        `json:"attemptCount"`
+	CreatedAt    time.Time                  `json:"createdAt"`
+	UpdatedAt    time.Time                  `json:"updatedAt"`
+}
+
+// BackfillRun is durable administrator-facing business state aggregated from
+// explicit per-Version outcomes. FailureCode is reserved for Run-wide terminal state.
 type BackfillRun struct {
-	ID          string         `json:"runId"`
-	PackagePath string         `json:"moduleId"`
-	Status      BackfillStatus `json:"status"`
-	StartedAt   *time.Time     `json:"startedAt,omitempty"`
-	CompletedAt *time.Time     `json:"completedAt,omitempty"`
-	ErrorCount  int            `json:"errorCount"`
-	Diagnostics []string       `json:"diagnostics"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
+	ID             string                   `json:"runId"`
+	PackagePath    string                   `json:"moduleId"`
+	Status         BackfillStatus           `json:"status"`
+	StartedAt      *time.Time               `json:"startedAt,omitempty"`
+	CompletedAt    *time.Time               `json:"completedAt,omitempty"`
+	PublishedCount int                      `json:"publishedCount"`
+	SkippedCount   int                      `json:"skippedCount"`
+	RejectedCount  int                      `json:"rejectedCount"`
+	FailedCount    int                      `json:"failedCount"`
+	FailureCode    string                   `json:"failureCode,omitempty"`
+	Outcomes       []BackfillVersionOutcome `json:"outcomes,omitempty"`
+	CreatedAt      time.Time                `json:"createdAt"`
+	UpdatedAt      time.Time                `json:"updatedAt"`
 }
 
 // SubmitBackfillRun atomically creates a queued run and invokes enqueue with
@@ -64,11 +90,7 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, packagePath string, enq
 			return err
 		}
 		result = newBackfillRun(packagePath)
-		encoded, err := json.Marshal(result.Diagnostics)
-		if err != nil {
-			return err
-		}
-		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, PackagePath: result.PackagePath, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
+		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, PackagePath: result.PackagePath, Status: string(result.Status), CreatedAt: result.CreatedAt}); err != nil {
 			return err
 		}
 		if err := enqueue(ctx, tx, result); err != nil {
@@ -85,7 +107,12 @@ func (c *Catalog) LatestBackfillRun(ctx context.Context, packagePath string) (Ba
 	if err != nil {
 		return BackfillRun{}, err
 	}
-	return decodeBackfillRun(row)
+	run, err := decodeBackfillRun(row)
+	if err != nil {
+		return BackfillRun{}, err
+	}
+	run.Outcomes, err = c.BackfillVersionOutcomes(ctx, run.ID)
+	return run, err
 }
 
 func (c *Catalog) StartBackfillRun(ctx context.Context, runID string) (BackfillRun, bool, error) {
@@ -98,17 +125,76 @@ func (c *Catalog) StartBackfillRun(ctx context.Context, runID string) (BackfillR
 	return run, changed > 0 || run.Status == BackfillRunning, err
 }
 
-func (c *Catalog) CompleteBackfillRun(ctx context.Context, runID string, errorCount int, diagnostics []string) error {
-	status := BackfillComplete
-	if errorCount > 0 {
-		status = BackfillCompleteWithErrors
-	}
-	encoded, err := json.Marshal(diagnostics)
+func (c *Catalog) CompleteBackfillRun(ctx context.Context, runID string) error {
+	now := time.Now().UTC()
+	changed, err := c.queries.CompleteBackfillRun(ctx, catalogsqlc.CompleteBackfillRunParams{ID: runID, CompletedAt: &now})
 	if err != nil {
 		return err
 	}
+	if changed == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+func (c *Catalog) RecordBackfillVersionOutcome(ctx context.Context, outcome BackfillVersionOutcome) error {
 	now := time.Now().UTC()
-	changed, err := c.queries.CompleteBackfillRun(ctx, catalogsqlc.CompleteBackfillRunParams{ID: runID, Status: string(status), CompletedAt: &now, ErrorCount: int32(errorCount), Diagnostics: encoded})
+	return c.WithPostgresTx(ctx, func(tx pgx.Tx) error {
+		q := c.queries.WithTx(tx)
+		if _, err := q.LockRunningBackfillRun(ctx, outcome.RunID); err != nil {
+			return err
+		}
+		if err := q.UpsertBackfillVersionOutcome(ctx, catalogsqlc.UpsertBackfillVersionOutcomeParams{
+			RunID: outcome.RunID, Version: outcome.Version, CommitSha: outcome.CommitSHA, Outcome: string(outcome.Outcome),
+			ReasonCode: nullableText(outcome.ReasonCode), CreatedAt: now,
+		}); err != nil {
+			return err
+		}
+		changed, err := q.RefreshBackfillRunCounts(ctx, catalogsqlc.RefreshBackfillRunCountsParams{RunID: outcome.RunID, UpdatedAt: now})
+		if err != nil {
+			return err
+		}
+		if changed == 0 {
+			return pgx.ErrNoRows
+		}
+		return nil
+	})
+}
+
+func (c *Catalog) BackfillVersionOutcomes(ctx context.Context, runID string) ([]BackfillVersionOutcome, error) {
+	rows, err := c.queries.BackfillVersionOutcomes(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]BackfillVersionOutcome, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, BackfillVersionOutcome{RunID: row.RunID, Version: row.Version, CommitSHA: row.CommitSha,
+			Outcome: BackfillVersionOutcomeKind(row.Outcome), ReasonCode: textValue(row.ReasonCode), AttemptCount: int(row.AttemptCount),
+			CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()})
+	}
+	return result, nil
+}
+
+func (c *Catalog) FailBackfillRun(ctx context.Context, runID, failureCode string) error {
+	return c.finishBackfillRun(ctx, runID, failureCode, false)
+}
+
+func (c *Catalog) RejectBackfillRun(ctx context.Context, runID, failureCode string) error {
+	return c.finishBackfillRun(ctx, runID, failureCode, true)
+}
+
+func (c *Catalog) finishBackfillRun(ctx context.Context, runID, failureCode string, rejected bool) error {
+	if failureCode == "" {
+		return errors.New("Backfill terminal failure code is required")
+	}
+	now := time.Now().UTC()
+	var changed int64
+	var err error
+	if rejected {
+		changed, err = c.queries.RejectBackfillRun(ctx, catalogsqlc.RejectBackfillRunParams{ID: runID, CompletedAt: &now, FailureCode: nullableText(failureCode)})
+	} else {
+		changed, err = c.queries.FailBackfillRun(ctx, catalogsqlc.FailBackfillRunParams{ID: runID, CompletedAt: &now, FailureCode: nullableText(failureCode)})
+	}
 	if err != nil {
 		return err
 	}
@@ -133,12 +219,8 @@ func (c *Catalog) TouchBackfillRun(ctx context.Context, runID string) error {
 // not persist its terminal failure. Active workers heartbeat updated_at before
 // each bounded version operation, so only abandoned Runs cross the cutoff.
 func (c *Catalog) ExpireStaleBackfillRuns(ctx context.Context, before time.Time) (int64, error) {
-	diagnostics, err := json.Marshal([]string{"module: execution_expired"})
-	if err != nil {
-		return 0, err
-	}
 	now := time.Now().UTC()
-	return c.queries.ExpireStaleBackfillRuns(ctx, catalogsqlc.ExpireStaleBackfillRunsParams{UpdatedAt: before.UTC(), CompletedAt: &now, Diagnostics: diagnostics})
+	return c.queries.ExpireStaleBackfillRuns(ctx, catalogsqlc.ExpireStaleBackfillRunsParams{UpdatedAt: before.UTC(), CompletedAt: &now})
 }
 
 func (c *Catalog) StaleQueuedBackfillRuns(ctx context.Context, before time.Time, limit int) ([]BackfillRun, error) {
@@ -161,12 +243,8 @@ func (c *Catalog) StaleQueuedBackfillRuns(ctx context.Context, before time.Time,
 }
 
 func (c *Catalog) ExpireQueuedBackfillRun(ctx context.Context, runID string) error {
-	diagnostics, err := json.Marshal([]string{"module: execution_expired"})
-	if err != nil {
-		return err
-	}
 	now := time.Now().UTC()
-	changed, err := c.queries.ExpireQueuedBackfillRun(ctx, catalogsqlc.ExpireQueuedBackfillRunParams{ID: runID, CompletedAt: &now, Diagnostics: diagnostics})
+	changed, err := c.queries.ExpireQueuedBackfillRun(ctx, catalogsqlc.ExpireQueuedBackfillRunParams{ID: runID, CompletedAt: &now})
 	if err != nil {
 		return err
 	}
@@ -197,19 +275,22 @@ func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRu
 }
 
 func decodeBackfillRun(row catalogsqlc.PackageBackfillRun) (BackfillRun, error) {
-	diagnostics := make([]string, 0)
-	if len(row.Diagnostics) > 0 {
-		if err := json.Unmarshal(row.Diagnostics, &diagnostics); err != nil {
-			return BackfillRun{}, fmt.Errorf("decode Backfill diagnostics: %w", err)
-		}
-	}
 	return BackfillRun{ID: row.ID, PackagePath: row.PackagePath, Status: BackfillStatus(row.Status),
-		StartedAt: utcTimePointer(row.StartedAt), CompletedAt: utcTimePointer(row.CompletedAt), ErrorCount: int(row.ErrorCount),
-		Diagnostics: diagnostics, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}, nil
+		StartedAt: utcTimePointer(row.StartedAt), CompletedAt: utcTimePointer(row.CompletedAt),
+		PublishedCount: int(row.PublishedCount), SkippedCount: int(row.SkippedCount), RejectedCount: int(row.RejectedCount), FailedCount: int(row.FailedCount),
+		FailureCode: textValue(row.FailureCode), Outcomes: []BackfillVersionOutcome{}, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}, nil
 }
 
 func newBackfillRun(packagePath string) BackfillRun {
 	now := time.Now().UTC()
 	return BackfillRun{ID: uuid.NewString(), PackagePath: packagePath, Status: BackfillQueued,
-		Diagnostics: []string{}, CreatedAt: now, UpdatedAt: now}
+		Outcomes: []BackfillVersionOutcome{}, CreatedAt: now, UpdatedAt: now}
+}
+
+func nullableText(value string) pgtype.Text { return pgtype.Text{String: value, Valid: value != ""} }
+func textValue(value pgtype.Text) string {
+	if value.Valid {
+		return value.String
+	}
+	return ""
 }

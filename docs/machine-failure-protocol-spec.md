@@ -136,7 +136,7 @@ Define the first stable machine-failure contract for the bundled App, CI/CD, and
 
 9.1. The bundled App and CLI must continue to use the existing exact `appProtocolVersion` startup handshake.
 
-9.2. `appProtocolVersion` is `16`; version 16 replaces Skill-level update checks with mutation-free Scope-by-Package `update --dry-run` previews, adds CLI-owned Managed Scope registration, and preserves the exact-version confirmed Package update receipt.
+9.2. `appProtocolVersion` is `17`; version 17 requires the long-lived, sequential NDJSON CLI Server used by the App, while retaining version 16's Scope-by-Package update and Managed Scope contracts.
 
 9.3. Human terminal output is not a versioned parsing interface and may evolve independently.
 

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Settings route state, native SkillsGo components, HugeIcons, the pure-Dart Mermaid renderer, rootBundle, full_svg_flutter, webview_flutter, bundled Beautiful Mermaid SVG, and bundled Mermaid.js 11.16.0.
- * [OUTPUT]: Provides switchable 32-type native, Beautiful Mermaid/fallback, and shared-WebView official Mermaid.js galleries with live App theme mapping.
- * [POS]: Serves as the Advanced Settings child page for visually comparing pure Dart, generated SVG, and official browser-backed Mermaid rendering.
+ * [INPUT]: Depends on Settings route state, native SkillsGo components, HugeIcons, and the shared CDN-backed Mermaid WebView bridge.
+ * [OUTPUT]: Provides a 32-type official Mermaid.js gallery backed by the shared WebView-to-PNG renderer.
+ * [POS]: Serves as the Advanced Settings child page for visually auditing the production Mermaid rendering path.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../settings_screen.dart';
@@ -12,18 +12,10 @@ extension _MermaidGallery on _SettingsScreenState {
   );
 }
 
-class _MermaidGalleryView extends StatefulWidget {
+class _MermaidGalleryView extends StatelessWidget {
   const _MermaidGalleryView({required this.onBack});
 
   final VoidCallback onBack;
-
-  @override
-  State<_MermaidGalleryView> createState() => _MermaidGalleryViewState();
-}
-
-class _MermaidGalleryViewState extends State<_MermaidGalleryView> {
-  var _beautiful = false;
-  var _webView = false;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -33,7 +25,7 @@ class _MermaidGalleryViewState extends State<_MermaidGalleryView> {
         children: [
           SkillsButton.ghost(
             key: const Key('close-mermaid-gallery'),
-            onPressed: widget.onBack,
+            onPressed: onBack,
             leading: HugeIcon(
               icon: HugeIcons.strokeRoundedArrowLeft01,
               size: 16,
@@ -43,82 +35,21 @@ class _MermaidGalleryViewState extends State<_MermaidGalleryView> {
           ),
           const SizedBox(width: 12),
           Text(
-            _webView
-                ? 'Mermaid.js WebView · ${mermaidGallerySamples.length}'
-                : _beautiful
-                ? 'Mermaid 对照 · ${mermaidGallerySamples.length}'
-                : 'Mermaid · ${mermaidGallerySamples.length}',
+            'Mermaid.js WebView · ${mermaidGallerySamples.length}',
             key: const Key('mermaid-gallery-title'),
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ],
       ),
       const SizedBox(height: 14),
-      Row(
-        children: [
-          SkillsButton.outline(
-            key: const Key('show-native-mermaid-gallery'),
-            onPressed: _beautiful || _webView
-                ? () => setState(() {
-                    _beautiful = false;
-                    _webView = false;
-                  })
-                : null,
-            child: const Text('Dart 原生 · 32'),
-          ),
-          const SizedBox(width: 10),
-          SkillsButton.outline(
-            key: const Key('show-beautiful-mermaid-gallery'),
-            onPressed: _beautiful
-                ? null
-                : () => setState(() {
-                    _beautiful = true;
-                    _webView = false;
-                  }),
-            child: const Text('渲染对照 · 32'),
-          ),
-          const SizedBox(width: 10),
-          SkillsButton.outline(
-            key: const Key('show-mermaid-js-webview-gallery'),
-            onPressed: _webView
-                ? null
-                : () => setState(() {
-                    _beautiful = false;
-                    _webView = true;
-                  }),
-            child: const Text('Mermaid.js WebView · 32'),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _webView
-                  ? '本地 Mermaid.js 11.16.0 · 全局共享一个 WebView'
-                  : _beautiful
-                  ? 'beautiful-mermaid SVG · 跟随明暗模式与 App 主题色'
-                  : '纯 Dart 解析、布局与 Canvas 绘制',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
+      Text(
+        '本地 Mermaid.js 11.16.0 · 全局共享一个 WebView',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
       const SizedBox(height: 14),
-      Expanded(
-        child: _webView
-            ? const _MermaidJsWebViewGallery()
-            : _beautiful
-            ? const _BeautifulMermaidGalleryList()
-            : ListView.separated(
-                key: const Key('mermaid-gallery-list'),
-                itemCount: mermaidGallerySamples.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 16),
-                itemBuilder: (context, index) => _MermaidGalleryCard(
-                  sample: mermaidGallerySamples[index],
-                  index: index,
-                ),
-              ),
-      ),
+      Expanded(child: const _MermaidJsWebViewGallery()),
     ],
   );
 }
@@ -166,197 +97,6 @@ class _MermaidJsWebViewGallery extends StatelessWidget {
   );
 }
 
-class _BeautifulMermaidGalleryList extends StatelessWidget {
-  const _BeautifulMermaidGalleryList();
-
-  @override
-  Widget build(BuildContext context) => ListView.separated(
-    key: const Key('beautiful-mermaid-gallery-list'),
-    itemCount: mermaidGallerySamples.length,
-    separatorBuilder: (_, _) => const SizedBox(height: 16),
-    itemBuilder: (context, index) {
-      final nativeSample = mermaidGallerySamples[index];
-      final sample = beautifulMermaidGallerySamplesByTitle[nativeSample.title];
-      if (sample == null) {
-        return _MermaidGalleryCard(
-          sample: nativeSample,
-          index: index,
-          rendererLabel: 'Dart 原生回退',
-        );
-      }
-      final scheme = Theme.of(context).colorScheme;
-      return SkillsCard(
-        key: ValueKey('beautiful-mermaid-gallery-card-$index'),
-        title: Text('${index + 1}. ${sample.title} · beautiful-mermaid'),
-        child: Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(maxHeight: 520),
-          margin: const EdgeInsets.only(top: 14),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: FutureBuilder<String>(
-            future: rootBundle.loadString(sample.asset),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              return full_svg.FSvgPicture.string(
-                _themeBeautifulMermaidSvg(snapshot.data!, scheme),
-                key: ValueKey('beautiful-mermaid-diagram-$index'),
-                fit: BoxFit.contain,
-              );
-            },
-          ),
-        ),
-      );
-    },
-  );
-}
-
-String _themeBeautifulMermaidSvg(String source, ColorScheme scheme) {
-  String hex(Color color) =>
-      '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
-
-  final replacements = <String, Color>{
-    '#ffffff': scheme.surface,
-    '#27272a': scheme.onSurface,
-    '#52525b': scheme.onSurfaceVariant,
-    '#71717a': scheme.onSurfaceVariant,
-    '#a1a1aa': scheme.outline,
-    '#2563eb': scheme.primary,
-    '#0f51a3': scheme.secondary,
-    '#f4f4f5': scheme.surfaceContainerHighest,
-    '#d4d4d8': scheme.outlineVariant,
-    '#e4e4e7': scheme.outlineVariant,
-    '#dbeafe': scheme.primaryContainer,
-    '#e0e7ff': scheme.secondaryContainer,
-  };
-  var themed = source;
-  for (final entry in replacements.entries) {
-    themed = themed.replaceAll(entry.key, hex(entry.value));
-  }
-  return themed;
-}
-
-class BeautifulMermaidGallerySample {
-  const BeautifulMermaidGallerySample(this.title, this.asset);
-
-  final String title;
-  final String asset;
-}
-
-const beautifulMermaidGallerySamples = <BeautifulMermaidGallerySample>[
-  BeautifulMermaidGallerySample(
-    'Flowchart',
-    'assets/beautiful-mermaid/flowchart.svg',
-  ),
-  BeautifulMermaidGallerySample('State', 'assets/beautiful-mermaid/state.svg'),
-  BeautifulMermaidGallerySample(
-    'Sequence',
-    'assets/beautiful-mermaid/sequence.svg',
-  ),
-  BeautifulMermaidGallerySample('Class', 'assets/beautiful-mermaid/class.svg'),
-  BeautifulMermaidGallerySample('ER', 'assets/beautiful-mermaid/er.svg'),
-  BeautifulMermaidGallerySample(
-    'XY Chart',
-    'assets/beautiful-mermaid/xy_chart.svg',
-  ),
-];
-
-final beautifulMermaidGallerySamplesByTitle = {
-  for (final sample in beautifulMermaidGallerySamples) sample.title: sample,
-};
-
-class _MermaidGalleryCard extends StatelessWidget {
-  const _MermaidGalleryCard({
-    required this.sample,
-    required this.index,
-    this.rendererLabel,
-  });
-
-  final MermaidGallerySample sample;
-  final int index;
-  final String? rendererLabel;
-
-  double? get _previewHeight => switch (sample.title) {
-    'Gantt' || 'Pie' || 'Kanban' || 'Sankey' || 'Packet' => 320,
-    'Journey' ||
-    'Timeline' ||
-    'Mindmap' ||
-    'XY Chart' ||
-    'Treemap' ||
-    'Venn' ||
-    'Wardley' => 360,
-    'Radar' || 'Quadrant Chart' || 'Event Modeling' || 'Ishikawa' => 400,
-    'Cynefin' => 420,
-    _ => null,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final style = MermaidStyle(
-      backgroundColor: scheme.surfaceContainerLow.toARGB32(),
-      defaultNodeStyle: NodeStyle(
-        fillColor: scheme.surfaceContainerHighest.toARGB32(),
-        strokeColor: scheme.primary.toARGB32(),
-        textColor: scheme.onSurface.toARGB32(),
-        borderRadius: 6,
-      ),
-      defaultEdgeStyle: EdgeStyle(
-        strokeColor: scheme.onSurfaceVariant.toARGB32(),
-        labelColor: scheme.onSurface.toARGB32(),
-        labelBackgroundColor: scheme.surfaceContainerLow.toARGB32(),
-      ),
-      fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
-      themeMode: Theme.of(context).brightness == Brightness.dark
-          ? MermaidThemeMode.dark
-          : MermaidThemeMode.light,
-    );
-    return SkillsCard(
-      key: ValueKey('mermaid-gallery-card-$index'),
-      title: Text(
-        '${index + 1}. ${sample.title}'
-        '${rendererLabel == null ? '' : ' · $rendererLabel'}',
-      ),
-      child: Column(
-        children: [
-          for (
-            var sourceIndex = 0;
-            sourceIndex < sample.sources.length;
-            sourceIndex++
-          ) ...[
-            if (sourceIndex > 0) const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 14),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: MermaidDiagram(
-                key: ValueKey('mermaid-diagram-$index-$sourceIndex'),
-                code: sample.sources[sourceIndex],
-                height: _previewHeight,
-                style: style,
-                errorBuilder: (_, error) => Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SelectableText(error),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class MermaidGallerySample {
   MermaidGallerySample(this.title, String source) : sources = [source];
 
@@ -393,7 +133,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'Gantt',
-    'gantt\n  title Native Mermaid\n  dateFormat YYYY-MM-DD\n  section Engine\n    Parse syntax :done, parse, 2026-07-01, 3d\n    Compute layout :active, layout, after parse, 4d\n    Paint canvas :after layout, 3d',
+    'gantt\n  title Mermaid.js\n  dateFormat YYYY-MM-DD\n  section Engine\n    Parse syntax :done, parse, 2026-07-01, 3d\n    Compute layout :active, layout, after parse, 4d\n    Paint canvas :after layout, 3d',
   ),
   MermaidGallerySample(
     'Pie',
@@ -401,7 +141,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'Requirement',
-    'requirementDiagram\n  requirement native_renderer {\n    id: 1\n    text: Pure Dart rendering\n    risk: low\n    verifymethod: test\n  }',
+    'requirementDiagram\n  requirement webview_renderer {\n    id: 1\n    text: Mermaid.js rendering\n    risk: low\n    verifymethod: test\n  }',
   ),
   MermaidGallerySample(
     'Journey',
@@ -409,7 +149,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'Timeline',
-    'timeline\n  title Native Mermaid\n  2024 : Parser\n  2025 : Layout\n  2026 : All types',
+    'timeline\n  title Mermaid.js\n  2024 : Parser\n  2025 : Layout\n  2026 : All types',
   ),
   MermaidGallerySample(
     'Mindmap',
@@ -429,11 +169,11 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'Radar',
-    'radar-beta\n  title "Renderer coverage"\n  axis parser["Parser"], layout["Layout"], paint["Paint"], theme["Theme"]\n  curve native["Native"]{5, 4, 5, 4}\n  max 5',
+    'radar-beta\n  title "Renderer coverage"\n  axis parser["Parser"], layout["Layout"], paint["Paint"], theme["Theme"]\n  curve webview["WebView"]{5, 4, 5, 4}\n  max 5',
   ),
   MermaidGallerySample(
     'Git Graph',
-    'gitGraph\n  commit id: "parser"\n  branch native\n  checkout native\n  commit id: "canvas"\n  checkout main\n  merge native',
+    'gitGraph\n  commit id: "parser"\n  branch render\n  checkout render\n  commit id: "canvas"\n  checkout main\n  merge render',
   ),
   MermaidGallerySample(
     'Tree View',
@@ -441,7 +181,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'C4',
-    'C4Context\n  title SkillsGo Mermaid\n  Person(user, "User")\n  System(app, "Flutter App", "Native renderer")\n  Rel(user, app, "Views diagrams")',
+    'C4Context\n  title SkillsGo Mermaid\n  Person(user, "User")\n  System(app, "Flutter App", "Mermaid.js renderer")\n  Rel(user, app, "Views diagrams")',
   ),
   MermaidGallerySample(
     'Swimlanes',
@@ -450,7 +190,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   MermaidGallerySample('Info', 'info showInfo'),
   MermaidGallerySample(
     'Quadrant Chart',
-    'quadrantChart\n  title Native compatibility\n  x-axis Partial --> Complete\n  y-axis Experimental --> Stable\n  Native renderer: [0.92, 0.88]',
+    'quadrantChart\n  title WebView compatibility\n  x-axis Partial --> Complete\n  y-axis Experimental --> Stable\n  Mermaid.js renderer: [0.92, 0.88]',
   ),
   MermaidGallerySample(
     'Packet',
@@ -466,7 +206,7 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ),
   MermaidGallerySample(
     'Ishikawa',
-    'ishikawa-beta\n  Native Mermaid\n    Parser\n      Grammar\n      Frontmatter\n    Layout\n      Geometry\n    Painter\n      Canvas',
+    'ishikawa-beta\n  Mermaid.js\n    Parser\n      Grammar\n      Frontmatter\n    Layout\n      Geometry\n    Painter\n      Canvas',
   ),
   MermaidGallerySample(
     'Treemap',
@@ -480,11 +220,11 @@ final mermaidGallerySamples = <MermaidGallerySample>[
   ]),
   MermaidGallerySample(
     'Venn',
-    'venn-beta\n  set Dart["Dart"]\n  set Flutter["Flutter"]\n  union Dart,Flutter["Native Mermaid"]',
+    'venn-beta\n  set WebView["WebView"]\n  set Mermaid["Mermaid.js"]\n  union WebView,Mermaid["SkillsGo diagrams"]',
   ),
   MermaidGallerySample(
     'Wardley',
-    'wardley-beta\n  title Native Renderer\n  anchor User [0.95, 0.15]\n  component Gallery [0.75, 0.45]\n  component Canvas [0.45, 0.75]\n  User -> Gallery\n  Gallery -> Canvas',
+    'wardley-beta\n  title WebView Renderer\n  anchor User [0.95, 0.15]\n  component Gallery [0.75, 0.45]\n  component Canvas [0.45, 0.75]\n  User -> Gallery\n  Gallery -> Canvas',
   ),
   MermaidGallerySample(
     'Cynefin',

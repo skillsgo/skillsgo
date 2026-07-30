@@ -1,19 +1,18 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and native/Beautiful Mermaid gallery behavior.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, independent Hub/Cloud Origins, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:full_svg_flutter/full_svg_flutter.dart' as full_svg;
 import 'package:hugeicons/hugeicons.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/ui/agent_logo.dart';
 import 'package:skillsgo/ui/nested_navigation.dart';
-import 'package:skillsgo/ui/mermaid/flutter_mermaid.dart';
+import 'package:skillsgo/ui/mermaid_webview_diagram.dart';
 import 'package:skillsgo/ui/settings_screen.dart';
 
 import 'support/fake_skills_gateway.dart';
@@ -259,8 +258,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Advanced'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const Key('restart-onboarding')));
-      await tester.tap(find.byKey(const Key('restart-onboarding')));
+      final restartOnboarding = find.byKey(const Key('restart-onboarding'));
+      await tester.ensureVisible(restartOnboarding);
+      await tester.pumpAndSettle();
+      await tester.tap(restartOnboarding);
       await tester.pumpAndSettle();
 
       expect(gateway.onboardingResets, 1);
@@ -449,15 +450,30 @@ void main() {
       ),
       'https://self-hosted.example',
     );
-    await tester.tap(find.text('Test connection'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Test connection'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Connection ready'), findsOneWidget);
 
-    await tester.tap(find.text('Save Origin'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Save Origin'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(gateway.hubOrigin, 'https://self-hosted.example');
 
-    await tester.tap(find.text('Reset to default'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Reset to default'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
   });
@@ -481,7 +497,12 @@ void main() {
       ),
       'https://incompatible.example',
     );
-    await tester.tap(find.text('Save Origin'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Save Origin'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(
@@ -489,6 +510,54 @@ void main() {
       findsOneWidget,
     );
     expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
+  });
+
+  testWidgets('Cloud Origin can be tested, saved, and reset independently', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('cloud-origin')),
+        matching: find.byType(EditableText),
+      ),
+      'https://private-cloud.example',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('cloud-origin-settings')),
+        matching: find.text('Test connection'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Connection ready'), findsWidgets);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('cloud-origin-settings')),
+        matching: find.text('Save Origin'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(gateway.cloudOrigin, 'https://private-cloud.example');
+    expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('cloud-origin-settings')),
+        matching: find.text('Reset to default'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(gateway.cloudOrigin, 'https://cloud.skillsgo.ai');
   });
 
   testWidgets(
@@ -504,7 +573,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Require confirmation for High risk'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('critical-risk-override')));
+      final criticalOverride = find.byKey(const Key('critical-risk-override'));
+      await tester.ensureVisible(criticalOverride);
+      await tester.pumpAndSettle();
+      await tester.tap(criticalOverride);
       await tester.pumpAndSettle();
 
       expect(gateway.riskPolicy.confirmHighRisk, isTrue);
@@ -512,21 +584,20 @@ void main() {
     },
   );
 
-  test('Mermaid gallery samples cover and parse all type families', () {
+  test('Mermaid gallery samples cover all type families', () {
     expect(mermaidGallerySamples, hasLength(32));
-    final parser = const MermaidParser();
     for (final sample in mermaidGallerySamples) {
       for (final source in sample.sources) {
         expect(
-          parser.parse(source),
-          isNotNull,
-          reason: '${sample.title} should parse: $source',
+          source,
+          isNotEmpty,
+          reason: '${sample.title} should have source',
         );
       }
     }
   });
 
-  testWidgets('Advanced Settings opens the native Mermaid gallery', (
+  testWidgets('Advanced Settings opens the Mermaid.js WebView gallery', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -545,27 +616,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('mermaid-gallery-title')), findsOneWidget);
-    expect(find.text('Mermaid · 32'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('mermaid-gallery-card-0')),
-      findsOneWidget,
-    );
-    expect(find.byType(MermaidDiagram), findsWidgets);
-
-    await tester.tap(find.byKey(const Key('show-beautiful-mermaid-gallery')));
-    await tester.pumpAndSettle();
-    expect(find.text('Mermaid 对照 · 32'), findsOneWidget);
-    expect(find.text('渲染对照 · 32'), findsOneWidget);
-    expect(
-      find.byKey(const Key('beautiful-mermaid-gallery-list')),
-      findsOneWidget,
-    );
-    expect(find.byType(full_svg.FSvgPicture), findsWidgets);
-
-    expect(
-      find.byKey(const Key('show-mermaid-js-webview-gallery')),
-      findsOneWidget,
-    );
+    expect(find.text('Mermaid.js WebView · 32'), findsOneWidget);
+    expect(find.byKey(const Key('mermaid-js-webview-gallery')), findsOneWidget);
+    expect(find.byType(MermaidWebViewDiagram), findsWidgets);
 
     await tester.tap(find.byKey(const Key('close-mermaid-gallery')));
     await tester.pumpAndSettle();

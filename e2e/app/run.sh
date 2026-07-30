@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, native or Docker PostgreSQL, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one native Hub binary, and executes all selected App Journeys through one Flutter/Xcode test build with Journey-scoped runtime isolation.
+# [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation, a compact Windows sandbox root, and one Linux Flutter protocol retry in a fresh suite runtime.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -9,18 +9,38 @@ set -euo pipefail
 readonly workspace_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly repository_root="$(cd "${workspace_dir}/../.." && pwd)"
 
-if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "App E2E requires macOS Flutter desktop support; skipping on $(uname -s)."
-  exit 0
-fi
+case "$(uname -s)" in
+  Darwin)
+    readonly flutter_device="macos"
+    readonly hub_binary_name="skillsgo-hub"
+    ;;
+  Linux)
+    readonly flutter_device="linux"
+    readonly hub_binary_name="skillsgo-hub"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    readonly flutter_device="windows"
+    readonly hub_binary_name="skillsgo-hub.exe"
+    ;;
+  *)
+    echo "Unsupported App E2E host: $(uname -s)" >&2
+    exit 1
+    ;;
+esac
 
 journeys=("$@")
 if (( ${#journeys[@]} == 0 )); then
   journeys=("${repository_root}/app/integration_test/app_e2e_suite_test.dart")
 fi
 
-temp_root="${TMPDIR:-/tmp}"
-readonly run_dir="$(mktemp -d "${temp_root%/}/skillsgo-app-e2e.XXXXXX")"
+if [[ "${flutter_device}" == "windows" ]]; then
+  temp_template="/c/sg.XXXXXX"
+else
+  temp_root="${TMPDIR:-/tmp}"
+  temp_template="${temp_root%/}/skillsgo-app-e2e.XXXXXX"
+fi
+readonly run_dir="$(mktemp -d "${temp_template}")"
+mkdir -p "${run_dir}/app-home"
 readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
@@ -54,7 +74,15 @@ case "${postgres_runtime}" in
     readonly postgres_bin_dir
     readonly postgres_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
     "${postgres_bin_dir}/initdb" -D "${run_dir}/postgres" -U skillsgo --auth=trust >/dev/null
-    "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "-h 127.0.0.1 -p ${postgres_port}" start >/dev/null
+    postgres_options="-h 127.0.0.1 -p ${postgres_port}"
+    if [[ "${flutter_device}" == "linux" ]]; then
+      postgres_options+=" -k ${run_dir}"
+    fi
+    readonly postgres_options
+    if ! "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "${postgres_options}" start >/dev/null; then
+      cat "${run_dir}/postgres.log" >&2
+      exit 1
+    fi
     "${postgres_bin_dir}/createdb" -h 127.0.0.1 -p "${postgres_port}" -U skillsgo skillsgo
     readonly database_dsn="postgres://skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
     readonly psql_binary="${postgres_bin_dir}/psql"
@@ -80,14 +108,14 @@ case "${postgres_runtime}" in
     ;;
 esac
 
-readonly hub_binary="${run_dir}/skillsgo-hub"
+readonly hub_binary="${run_dir}/${hub_binary_name}"
 (
   cd "${repository_root}/hub"
   CGO_ENABLED=0 go build -trimpath -o "${hub_binary}" ./cmd/skillsgo-hub
 )
 
 cd "${repository_root}/app"
-env \
+test_environment=(env \
   HOME="${run_dir}/app-home" \
   CFFIXED_USER_HOME="${run_dir}/app-home" \
   XDG_CONFIG_HOME="${run_dir}/app-home/.config" \
@@ -99,7 +127,19 @@ env \
   SKILLSGO_E2E_ROOT="${run_dir}" \
   SKILLSGO_E2E_DATABASE_DSN="${database_dsn}" \
   SKILLSGO_E2E_PSQL="${psql_binary}" \
-  SKILLSGO_E2E_HUB_BINARY="${hub_binary}" \
-  flutter test \
-    -d macos \
-    "${journeys[@]}"
+  SKILLSGO_E2E_HUB_BINARY="${hub_binary}")
+test_command=(flutter test -d "${flutter_device}" "${journeys[@]}")
+test_status=0
+if [[ "${flutter_device}" == "linux" ]]; then
+  "${test_environment[@]}" xvfb-run -a "${test_command[@]}" || test_status=$?
+else
+  "${test_environment[@]}" "${test_command[@]}" || test_status=$?
+fi
+
+if [[ "${flutter_device}" == "linux" && "${test_status}" -eq 79 && "${SKILLSGO_E2E_LINUX_PROTOCOL_RETRY:-0}" != "1" ]]; then
+  echo "Flutter Linux test protocol exited 79; retrying once with a fresh suite runtime." >&2
+  cleanup
+  trap - EXIT INT TERM
+  SKILLSGO_E2E_LINUX_PROTOCOL_RETRY=1 exec "$0" "$@"
+fi
+exit "${test_status}"

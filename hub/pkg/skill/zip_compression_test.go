@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a temporary Git commit, the tar-based Repository Artifact projector, and the Protocol's legacy deterministic ZIP Sum contract.
- * [OUTPUT]: Specifies that tar/PAX transport metadata is absent from Package entries and that tar and legacy ZIP projections preserve one coordinate-bound Sum.
+ * [OUTPUT]: Specifies that tar/PAX transport metadata is absent from Package entries, tar and legacy ZIP projections preserve one coordinate-bound Sum, and command cancellation remains classifiable.
  * [POS]: Serves as the format-equivalence regression contract for Repository Artifact assembly.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -46,6 +46,18 @@ func TestRepositoryTarProjectionExcludesPAXMetadataAndPreservesLegacySum(t *test
 	legacySum, err := protocolartifact.PackageSum(legacyZIP, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, legacySum, tarSum)
+}
+
+func TestRepositoryArtifactPreservesCommandCancellation(t *testing.T) {
+	repository := t.TempDir()
+	runGit(t, repository, "init", "--initial-branch=main")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, _, err := createRepositoryArtifact(ctx, "github.com/acme/canceled", "v1.0.0", repository, "HEAD")
+	require.ErrorIs(t, err, context.Canceled)
+	code, ok := SourceFailure(err)
+	require.True(t, ok)
+	require.Equal(t, SourceFailureArchiveCommand, code)
 }
 
 func artifactEntryPaths(entries []protocolartifact.Entry) []string {

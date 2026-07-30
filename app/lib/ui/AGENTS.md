@@ -35,9 +35,8 @@
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
 - `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable exact-removal execution, progress, result, and error state through an auto-disposed Riverpod family.
-- `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, shared-WebView Mermaid-to-PNG composition without an active native fallback, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.
+- `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, shared-WebView Mermaid-to-PNG composition, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.
 - `mermaid_webview_diagram.dart`: owns the single App-scoped official Mermaid.js 11.16.0 WebView queue, themed skeletons, PNG cache, and self-sizing block presentation.
-- `mermaid/`: vendors and evolves the MIT-licensed `flutter_mermaid` 0.1.0 pure-Dart parser, layout, painter, and widget implementation against the pinned Mermaid 11.16.0 compatibility baseline.
 - `stacked_toast.dart`: vendors Portal Labs' stacked spring interaction and adapts it into compact, theme-aware transient operation feedback with desktop top-right and mobile top-center responsive placement.
 - `subscription_segmented_switch.dart`: vendors the Portal Labs Subscription Pricing Picker period toggle as a controlled, HugeIcons-based two-option Library filter with optional bounded breathing status badges.
 

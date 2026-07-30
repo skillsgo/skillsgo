@@ -3,8 +3,8 @@
 
 ## Members
 
-- `skills_gateway.dart`: defines the stable application-facing Gateway interface, including batch Package-scoped Find and atomic Package installation, and re-exports the complete domain vocabulary.
-- `system_models.dart`: owns cross-journey metric enums, exact update availability candidates and their persisted App cache, appearance settings, stdin-capable process contracts, command results, and typed failures.
+- `skills_gateway.dart`: defines the stable application-facing Gateway interface, including independent Hub/Cloud Origin settings, batch Package-scoped Find, and atomic Package installation, and re-exports the complete domain vocabulary.
+- `system_models.dart`: owns cross-journey metric enums, exact update availability candidates and their persisted App cache, appearance settings, one-shot and long-lived stdin-capable CLI process contracts with typed transport failures, command results, and typed failures.
 - `discovery_models.dart`: owns public Skill summaries, canonical page/per-page/has-more pagination, batch Package-scoped Find queries/results, logical coordinates and exact `Skill.path` installation selectors, Package metadata, discovery pages, and auditable files.
 - `installation_models.dart`: owns Installation Request target selection, execution results, failures, and stable target identity without duplicating CLI Package-version policy.
 - `target_management_models.dart`: owns reviewed managed Package-member and External Installation removal plans, execution results, and progress.

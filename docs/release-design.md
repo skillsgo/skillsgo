@@ -20,7 +20,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
-| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Signed and notarized macOS DMG plus checksums |
+| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Separate signed and notarized macOS arm64 and x86_64 DMGs plus checksums |
 | CLI | `cli/` | `cli/vX.Y.Z` | tag | Deferred standalone binary matrix |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
@@ -50,12 +50,13 @@ Every pull request and merge-queue candidate runs the complete maintained valida
 ```text
 Protocol  → gofmt + tests + statement-coverage contract
 App       → flutter analyze + flutter test
+App Desktop → native release build + bundled-CLI rendered smoke on macOS arm64, macOS x64, Windows x64, and Linux x64
 CLI       → gofmt + go vet + go test -race + CLI build
 Hub       → gofmt + go vet + go test -race + Hub build
 Web       → frozen install + typecheck + production build
 Dependencies → OSV scan of every supported lockfile, including Dart `pubspec.lock`
 CLI E2E   → isolated Linux container journeys across CLI and Hub
-App E2E   → rendered macOS journeys across App, bundled CLI, and native Hub
+App E2E   → rendered four-target startup smoke plus complete macOS, Windows, and Linux journeys across App, bundled CLI, and native Hub
 ```
 
 CI receives read-only repository permissions, cancels only superseded pull-request runs, and never cancels main or merge-queue validation. Third-party actions are pinned to full commit SHAs and updated through Dependabot.
@@ -98,14 +99,14 @@ Stable releases update full, minor, major, and `latest` container tags. Pre-rele
 
 Manual dispatch and App pull-request smoke tests may produce expiring, explicitly unsigned GitHub Actions artifacts. Candidate builds do not create GitHub Releases.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version, executable contract, and single-architecture Mach-O layout before packaging. Successful `main` CI runs retain separate `SkillsGo_macos_arm64.zip` and `SkillsGo_macos_x86_64.zip` candidates for seven days.
 
 ## App Production Release
 
 An `app/vX.Y.Z` release remains disabled until all of the following steps are available:
 
 1. Validate the tag against `pubspec.yaml`.
-2. Build a Universal App or explicit arm64 and x64 artifacts.
+2. Build separate arm64 and x86_64 Apps and matching DMGs; do not publish a Universal App.
 3. Build and embed the matching SkillsGo CLI.
 4. Sign with a Developer ID Application certificate.
 5. Submit to the Apple Notary Service.
@@ -180,8 +181,9 @@ The Hub uses a native GitHub Actions build matrix instead of GoReleaser because 
 ### Phase 2: App Candidates
 
 - Build the App and bundled CLI together.
-- Produce unsigned macOS candidate artifacts.
-- Confirm Universal Binary or dual-architecture delivery.
+- Keep native CI builds and bundled-CLI startup smoke green for macOS arm64, macOS x64, Windows x64, and Linux x64.
+- Produce unsigned platform candidate artifacts only after the build gates stabilize.
+- Use dual-architecture macOS delivery unless a later packaging decision explicitly selects a Universal Binary.
 - Finalize the product name and bundle identifier.
 
 ### Phase 3: App Production

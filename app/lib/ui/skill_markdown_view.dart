@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on flutter_markdown_plus, the shared official Mermaid.js WebView-to-PNG bridge, the retained native Mermaid renderer, Dart Markdown syntax hooks, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
+ * [INPUT]: Depends on flutter_markdown_plus, the shared official Mermaid.js WebView-to-PNG bridge, Dart Markdown syntax hooks, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
  * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader whose Mermaid blocks exclusively request PNGs from the shared WebView renderer.
  * [POS]: Serves as the App UI boundary around third-party Markdown parsing and rendering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,7 +11,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'brand.dart';
 import 'bidirectional_content.dart';
-import 'mermaid/flutter_mermaid.dart';
 import 'mermaid_webview_diagram.dart';
 
 class SkillMarkdownView extends StatelessWidget {
@@ -134,84 +133,6 @@ class _MermaidElementBuilder extends MarkdownElementBuilder {
   ) {
     final source = element.textContent.trim();
     return MermaidWebViewDiagram(source: source);
-  }
-}
-
-class NativeMermaidBlock extends StatelessWidget {
-  const NativeMermaidBlock({super.key, required this.source});
-
-  final String source;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Semantics(
-      container: true,
-      label: 'Mermaid',
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          border: Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: MermaidDiagram(
-          code: source,
-          style: MermaidStyle(
-            backgroundColor: scheme.surfaceContainerLow.toARGB32(),
-            defaultNodeStyle: NodeStyle(
-              fillColor: scheme.surfaceContainerHighest.toARGB32(),
-              strokeColor: scheme.primary.toARGB32(),
-              textColor: scheme.onSurface.toARGB32(),
-              borderRadius: 6,
-            ),
-            defaultEdgeStyle: EdgeStyle(
-              strokeColor: scheme.onSurfaceVariant.toARGB32(),
-              labelColor: scheme.onSurface.toARGB32(),
-              labelBackgroundColor: scheme.surfaceContainerLow.toARGB32(),
-            ),
-            fontFamily: theme.textTheme.bodyMedium?.fontFamily,
-            themeMode: theme.brightness == Brightness.dark
-                ? MermaidThemeMode.dark
-                : MermaidThemeMode.light,
-          ),
-          errorBuilder: (_, _) => _MermaidSourceFallback(source: source),
-        ),
-      ),
-    );
-  }
-}
-
-class _MermaidSourceFallback extends StatelessWidget {
-  const _MermaidSourceFallback({required this.source});
-
-  final String source;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final typography = theme.extension<SkillsTypography>()!;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: SelectableText(
-        source,
-        key: const Key('mermaid-source-fallback'),
-        style: typography.code.copyWith(
-          color: scheme.onSurface,
-          fontSize: 13,
-          height: 1.45,
-        ),
-      ),
-    );
   }
 }
 
