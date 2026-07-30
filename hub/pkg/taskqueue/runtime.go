@@ -185,7 +185,11 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	if pool == nil {
 		return fmt.Errorf("PostgreSQL pool is required")
 	}
-	migrator, err := rivermigrate.New(riverpgxv5.New(pool), nil)
+	var schema string
+	if err := pool.QueryRow(ctx, `SELECT current_schema()`).Scan(&schema); err != nil {
+		return fmt.Errorf("resolve River migration schema: %w", err)
+	}
+	migrator, err := rivermigrate.New(riverpgxv5.New(pool), &rivermigrate.Config{Schema: schema})
 	if err != nil {
 		return fmt.Errorf("create River migrator: %w", err)
 	}
