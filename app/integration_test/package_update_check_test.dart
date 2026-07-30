@@ -140,7 +140,12 @@ void registerPackageUpdatePreviewJourney() {
         tester,
         alpha,
         'Version 1.3.0 fixture content.',
+        diagnostics: () => runtime.gateway
+            .recentDiagnosticLogs()
+            .map((entry) => entry.formatted)
+            .join(' | '),
       );
+      await _pumpUntilFileContains(tester, manifest, 'v1.3.0');
       expect(
         alpha.readAsStringSync(),
         contains('Version 1.3.0 fixture content.'),
@@ -189,16 +194,30 @@ Future<void> _pumpUntilFile(WidgetTester tester, File file) async {
 Future<void> _pumpUntilFileContains(
   WidgetTester tester,
   File file,
-  String expected,
-) async {
+  String expected, {
+  String Function()? diagnostics,
+}) async {
   final deadline = DateTime.now().add(const Duration(minutes: 2));
   while (DateTime.now().isBefore(deadline)) {
     if (file.existsSync() && file.readAsStringSync().contains(expected)) return;
+    final commandFailure = find.text('Command failed');
+    if (commandFailure.evaluate().isNotEmpty) {
+      await tester.tap(commandFailure.first);
+      await tester.pumpAndSettle();
+      final details = tester
+          .widgetList<SelectableText>(find.byType(SelectableText))
+          .map((widget) => widget.data)
+          .whereType<String>()
+          .join(' | ');
+      fail('Update command failed: $details');
+    }
     await tester.pump(const Duration(milliseconds: 250));
   }
   expect(
     file.existsSync() ? file.readAsStringSync() : null,
     contains(expected),
+    reason:
+        'Visible UI: ${tester.widgetList<Text>(find.byType(Text)).map((widget) => widget.data).whereType<String>().join(' | ')}. Diagnostics: ${diagnostics?.call() ?? ''}',
   );
 }
 

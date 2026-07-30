@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Dart process, stream, UTF-8, timeout, working-directory, and child-environment primitives plus the App process contract and App-wide structured logger.
- * [OUTPUT]: Provides one-shot startup probes plus a correlated long-lived CLI Server session with stdin, streamed stdout, bounded execution, synchronous dead-session marking, crash fan-out, and sanitized telemetry.
+ * [OUTPUT]: Provides one-shot startup probes plus a correlated long-lived CLI Server session with serialized stdin writes, concurrent responses, streamed stdout, bounded execution, synchronous dead-session marking, crash fan-out, and sanitized telemetry.
  * [POS]: Serves as the operating-system process and NDJSON session adapter beneath the App's CLI lifecycle capability.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -204,6 +204,7 @@ final class _IoCliServerSession implements CliServerSession {
   final String _executable;
   final _pending = <String, _PendingCliServerRequest>{};
   final _serverStderr = StringBuffer();
+  Future<void> _writeTail = Future<void>.value();
   var _nextID = 0;
   var _isClosed = false;
 
@@ -232,16 +233,21 @@ final class _IoCliServerSession implements CliServerSession {
     final request = _PendingCliServerRequest(onStdoutLine);
     _pending[id] = request;
     try {
-      _process.stdin.writeln(
-        jsonEncode({
-          'schemaVersion': 1,
-          'id': id,
-          'arguments': arguments,
-          'stdin': ?stdin,
-          if (onStdoutLine != null) 'streamStdout': true,
-        }),
-      );
-      await _process.stdin.flush();
+      final write = _writeTail.then((_) async {
+        if (_isClosed) throw StateError('CLI Server is closed.');
+        _process.stdin.writeln(
+          jsonEncode({
+            'schemaVersion': 1,
+            'id': id,
+            'arguments': arguments,
+            'stdin': ?stdin,
+            if (onStdoutLine != null) 'streamStdout': true,
+          }),
+        );
+        await _process.stdin.flush();
+      });
+      _writeTail = write.then<void>((_) {}, onError: (_) {});
+      await write;
     } on Object catch (error) {
       _pending.remove(id);
       final output = _transportFailure('Cannot write to CLI Server: $error');

@@ -43,7 +43,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/packageprovider/` | Unified read-through acquisition of exact locked Package metadata and Git content, including automatic cache reconstruction and lock-integrity checks. |
 | `internal/hub/` | Client for add-time Package Version Queries followed by exact Package Version metadata and dumb-HTTP Git Artifact repositories, typed membership, local Pack caching, and Package h1 verification. |
 | `internal/source/` | Package ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
-| `internal/packagestore/` | Complete Scope Package Tree extraction and deterministic member-symlink Projection transactions with Local Modification protection. |
+| `internal/packagestore/` | Complete Scope Package Tree extraction and deterministic platform-native member-link Projection transactions with Local Modification protection. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |

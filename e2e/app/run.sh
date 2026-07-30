@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation and a compact Windows sandbox root, and retries one Linux Flutter protocol exit 79 in a fresh suite runtime.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -33,8 +33,13 @@ if (( ${#journeys[@]} == 0 )); then
   journeys=("${repository_root}/app/integration_test/app_e2e_suite_test.dart")
 fi
 
-temp_root="${TMPDIR:-/tmp}"
-readonly run_dir="$(mktemp -d "${temp_root%/}/skillsgo-app-e2e.XXXXXX")"
+if [[ "${flutter_device}" == "windows" ]]; then
+  temp_template="/c/sg.XXXXXX"
+else
+  temp_root="${TMPDIR:-/tmp}"
+  temp_template="${temp_root%/}/skillsgo-app-e2e.XXXXXX"
+fi
+readonly run_dir="$(mktemp -d "${temp_template}")"
 readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
@@ -123,8 +128,17 @@ test_environment=(env \
   SKILLSGO_E2E_PSQL="${psql_binary}" \
   SKILLSGO_E2E_HUB_BINARY="${hub_binary}")
 test_command=(flutter test -d "${flutter_device}" "${journeys[@]}")
+test_status=0
 if [[ "${flutter_device}" == "linux" ]]; then
-  "${test_environment[@]}" xvfb-run -a "${test_command[@]}"
+  "${test_environment[@]}" xvfb-run -a "${test_command[@]}" || test_status=$?
 else
-  "${test_environment[@]}" "${test_command[@]}"
+  "${test_environment[@]}" "${test_command[@]}" || test_status=$?
 fi
+
+if [[ "${flutter_device}" == "linux" && "${test_status}" -eq 79 && "${SKILLSGO_E2E_LINUX_PROTOCOL_RETRY:-0}" != "1" ]]; then
+  echo "Flutter Linux test protocol exited 79; retrying once with a fresh suite runtime." >&2
+  cleanup
+  trap - EXIT INT TERM
+  SKILLSGO_E2E_LINUX_PROTOCOL_RETRY=1 exec "$0" "$@"
+fi
+exit "${test_status}"
