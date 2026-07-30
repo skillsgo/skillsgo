@@ -93,7 +93,7 @@ void main() {
     expect(find.text('example/skills'), findsOneWidget);
   });
 
-  testWidgets('a Git link keeps current Skill cards inside source context', (
+  testWidgets('Git URLs and shorthand keep Skill cards inside source context', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -150,6 +150,17 @@ void main() {
     expect(installAll.labelStyle?.fontSize, 15);
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.byType(SkillCard), findsWidgets);
+
+    await tester.enterText(searchInput(), 'example/skills');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('discover-source-context')), findsOneWidget);
+    expect(find.text('example / skills'), findsOneWidget);
+    expect(
+      find.text('A focused collection of Flutter engineering skills.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a Git Repository cold load uses themed Portal Loading Shapes', (
