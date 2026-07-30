@@ -2,7 +2,7 @@
 
 /*
  * [INPUT]: Depends on Windows cmd.exe's directory-junction primitive and absolute local filesystem paths.
- * [OUTPUT]: Provides unprivileged directory junctions and resolved file-identity matching for Agent Skill Projections on Windows.
+ * [OUTPUT]: Provides unprivileged directory junctions, junction-candidate recognition, and resolved file-identity matching for Agent Skill Projections on Windows.
  * [POS]: Serves as the Windows Projection-link implementation beneath Package Store transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,6 +26,12 @@ func createProjectionLink(target, link string) error {
 		return fmt.Errorf("create Agent Skill projection junction: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
+}
+
+func isProjectionLinkCandidate(info os.FileInfo) bool {
+	// Windows directory junctions are reparse points but os.Lstat reports them
+	// as directories rather than ModeSymlink on supported runners.
+	return info.IsDir() || info.Mode()&os.ModeSymlink != 0
 }
 
 func projectionLinkMatches(link, target string) (bool, error) {

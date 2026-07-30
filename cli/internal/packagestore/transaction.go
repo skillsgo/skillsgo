@@ -608,7 +608,7 @@ func existingProjectionLinkMatches(target, storeTarget string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if info.Mode()&os.ModeSymlink == 0 {
+	if !isProjectionLinkCandidate(info) {
 		return false, nil
 	}
 	return projectionLinkMatches(target, storeTarget)
