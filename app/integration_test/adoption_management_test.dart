@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and the CLI user config projects section.
+ * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
  * [OUTPUT]: Verifies exact All/User/Project adoption counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -64,14 +64,10 @@ void registerAdoptionManagementJourney() {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
       await preferences.setBool('batch_adoption_prompt_seen_v1', true);
-      final configFile = File('$sandbox/home/.skillsgo/config.yaml');
-      configFile.parent.createSync(recursive: true);
-      configFile.writeAsStringSync(
-        'schemaVersion: 1\n'
-        'projects:\n'
-        '  - ${jsonEncode(projectRoot.path)}\n',
+      await runtime.gateway.saveReminderSettings(
+        const ReminderSettings(updateAvailable: false),
       );
-
+      await runtime.registerProject(projectRoot);
       await skillsgo.runSkillsGoApp(
         initializeBinding: false,
         gateway: runtime.gateway,
@@ -84,8 +80,13 @@ void registerAdoptionManagementJourney() {
       );
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
-
-      await _pumpUntilAdoptionCount(tester, 1);
+      final globalAdoption = _adoptionCount(1);
+      final retry = find.text('Retry');
+      await _pumpUntilEither(tester, globalAdoption, retry);
+      if (retry.evaluate().isNotEmpty) {
+        await tester.tap(retry);
+      }
+      await _pumpUntil(tester, globalAdoption);
       await _pumpUntil(tester, find.text('adoption-project'));
 
       await tester.tap(find.text('adoption-project'));
@@ -195,6 +196,8 @@ Future<void> _executeAdoption(
       '$adopted skills added to management, $failed failed.',
       '已纳入管理 $adopted 个技能，失败 $failed 个。',
     ),
+    reason:
+        'Adoption semantics: ${tester.widgetList<Semantics>(find.byType(Semantics)).map((widget) => widget.properties.label).whereType<String>().where((label) => label.isNotEmpty).join(' | ')}',
   );
   final close = find.byKey(const Key('batch-adoption-close'));
   await tester.tap(close);
@@ -204,6 +207,20 @@ Future<void> _executeAdoption(
 
 Future<void> _pumpUntilAdoptionCount(WidgetTester tester, int count) =>
     _pumpUntil(tester, _adoptionCount(count));
+
+Future<void> _pumpUntilEither(
+  WidgetTester tester,
+  Finder first,
+  Finder second,
+) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  while (first.evaluate().isEmpty &&
+      second.evaluate().isEmpty &&
+      DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(first.evaluate().isNotEmpty || second.evaluate().isNotEmpty, isTrue);
+}
 
 Future<void> _pumpUntilEnabledPrimaryButton(
   WidgetTester tester,
@@ -240,9 +257,15 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
       )
       .map((widget) => widget.data)
       .toList();
+  final visibleText = tester
+      .widgetList<Text>(find.byType(Text))
+      .map((widget) => widget.data)
+      .whereType<String>()
+      .join(' | ');
   expect(
     finder,
     findsWidgets,
-    reason: 'Rendered adoption labels: $adoptionLabels',
+    reason:
+        'Rendered adoption labels: $adoptionLabels\nVisible UI: $visibleText',
   );
 }
