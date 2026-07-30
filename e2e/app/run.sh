@@ -40,6 +40,7 @@ else
   temp_template="${temp_root%/}/skillsgo-app-e2e.XXXXXX"
 fi
 readonly run_dir="$(mktemp -d "${temp_template}")"
+mkdir -p "${run_dir}/app-home"
 readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
@@ -140,6 +141,8 @@ fi
 
 if [[ "${flutter_device}" == "macos" && "${test_status}" -ne 0 ]] && grep -Fq "Failed to foreground app; open returned" "${flutter_test_log}"; then
   echo "Flutter macOS failed to foreground the test App; retrying once." >&2
+  "${psql_binary}" "${database_dsn}" --set ON_ERROR_STOP=1 --command \
+    'DO $reset$ DECLARE item record; BEGIN FOR item IN SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '\''app_e2e_%'\'' LOOP EXECUTE format('\''DROP SCHEMA %I CASCADE'\'', item.schema_name); END LOOP; END $reset$;' >/dev/null
   test_status=0
   "${test_environment[@]}" "${test_command[@]}" || test_status=$?
 fi
