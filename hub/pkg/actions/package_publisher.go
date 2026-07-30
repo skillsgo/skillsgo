@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
- * [OUTPUT]: Materializes single or chunked historical Package publications with precise stage failures, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
+ * [OUTPUT]: Materializes single or chunked historical Package content transitions with precise stage failures, computes version-independent Package content sums plus source digests and languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
  * [POS]: Serves as the observable cold-publication and bounded Backfill-session coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,6 +24,8 @@ import (
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"golang.org/x/sync/singleflight"
 )
+
+var errEquivalentPackageContent = fmt.Errorf("Package Version has equivalent published content")
 
 type repositoryMaterializer interface {
 	Materialize(ctx context.Context, packagePath, query string) (string, error)
@@ -105,7 +107,11 @@ func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source
 		staged := 0
 		flush := func() {
 			for _, outcome := range session.Flush() {
-				results[outcome.key] = outcome.err
+				if outcome.err == nil && outcome.equivalent {
+					results[outcome.key] = errEquivalentPackageContent
+				} else {
+					results[outcome.key] = outcome.err
+				}
 			}
 			staged = 0
 		}
@@ -265,7 +271,7 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 	if err != nil {
 		return "", err
 	}
-	created, err := p.publication.Publish(ctx, packagePath, input.version, input.entries, input.members, input.skillContents, visibility)
+	created, resolvedVersion, err := p.publication.Publish(ctx, packagePath, input.version, input.entries, input.members, input.skillContents, visibility)
 	if err != nil {
 		return "", err
 	}
@@ -278,7 +284,7 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 	if visibility == catalog.CurrentPublication && p.afterCurrentPublication != nil {
 		p.afterCurrentPublication(ctx, packagePath)
 	}
-	return snapshot.Version, nil
+	return resolvedVersion, nil
 }
 
 func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (modulePublicationInput, error) {
@@ -314,8 +320,13 @@ func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *s
 	}
 	version := catalog.PackageVersion{
 		Version: snapshot.Version, Ref: snapshot.Ref, CommitSHA: snapshot.CommitSHA, TreeSHA: snapshot.TreeSHA,
-		Sum: snapshot.Sum, CommitTime: snapshot.CommitTime,
+		ContentSum: "", Sum: snapshot.Sum, CommitTime: snapshot.CommitTime,
 	}
+	contentSum, contentSumErr := protocolartifact.PackageContentSum(snapshot.Entries)
+	if contentSumErr != nil {
+		return modulePublicationInput{}, withPublicationFailure(artifactValidationPublicationCode(contentSumErr), contentSumErr)
+	}
+	version.ContentSum = contentSum
 	return modulePublicationInput{version: version, entries: snapshot.Entries, members: published, skillContents: skillContents, visibility: visibility}, nil
 }
 

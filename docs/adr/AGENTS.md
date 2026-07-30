@@ -21,6 +21,7 @@
 - `0017-rebuild-disposable-package-caches-and-materialize-scope-trees.md`: makes exact metadata/Git state disposable read-through cache, separates Global declarations under `~/.agents` from the Global Package Tree under the SkillsGo State Root, and preserves complete Scope Trees plus protected platform-native member links.
 - `0018-use-a-long-lived-cli-server-for-the-app.md`: keeps one sequential NDJSON CLI process behind the App so Go HTTP connections survive across operations, with explicit crash recovery and non-replay semantics.
 - `0019-publish-conventional-skill-directory-subtrees.md`: adopts skills.sh-compatible convention-first discovery and limits each filtered Package Artifact to accepted self-contained Skill directory subtrees plus applicable plugin manifests.
+- `0020-publish-only-package-content-transitions.md`: publishes only filtered Package content transitions while retaining duplicate upstream revisions as exact, artifact-free equivalent Versions.
 
 ## Architectural Boundary
 

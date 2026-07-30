@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, immutable Package Version listing, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, effective/equivalent Package Version publication and resolution, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -50,14 +50,20 @@ LEFT JOIN versions mv ON mv.id=m.current_version_id
 WHERE m.id=sqlc.arg(package_id)
 FOR UPDATE OF m;
 
+-- name: CurrentEffectiveVersion :one
+SELECT mv.version, mv.content_sum
+FROM packages m
+JOIN versions mv ON mv.id=m.current_version_id
+WHERE m.path=sqlc.arg(package_path) AND mv.equivalent_version IS NULL;
+
 -- name: UpdatePackageSourceMetadata :execrows
 UPDATE packages SET description = sqlc.arg(description), description_digest = sqlc.arg(description_digest), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
 source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), source_retry_at = sqlc.narg(source_retry_at),
 updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(package_path);
 
 -- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id;
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id;
 
 -- name: InsertSkill :exec
 INSERT INTO skills (
@@ -82,9 +88,16 @@ JOIN packages m ON m.id=mv.package_id
 WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: PackageVersion :one
-SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
-       mv.sum, mv.commit_time, mv.created_at
-FROM versions mv
+SELECT effective.id, effective.package_id, effective.version, effective.ref, effective.commit_sha, effective.tree_sha,
+       effective.content_sum, effective.equivalent_version, effective.sum, effective.commit_time, effective.created_at
+FROM versions requested
+JOIN packages m ON m.id=requested.package_id
+JOIN versions effective ON effective.package_id=requested.package_id
+ AND effective.version=COALESCE(requested.equivalent_version, requested.version)
+WHERE m.path=sqlc.arg(package_path) AND requested.version=sqlc.arg(version);
+
+-- name: ObservedPackageVersion :one
+SELECT mv.* FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
@@ -92,9 +105,10 @@ WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
        mvs.path, mv.commit_time, mvs.description, mvs.description_digest, mvs.document_digest, mvs.source_language
 FROM packages m
-JOIN versions mv ON mv.package_id=m.id
+JOIN versions requested ON requested.package_id=m.id
+JOIN versions mv ON mv.package_id=m.id AND mv.version=COALESCE(requested.equivalent_version, requested.version)
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version)
+WHERE m.path=sqlc.arg(package_path) AND requested.version=sqlc.arg(version)
 ORDER BY mvs.path;
 
 -- name: LocalizedVersionSkillCards :many
@@ -125,14 +139,14 @@ SELECT DISTINCT mv.version
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(package_path) AND mvs.path=sqlc.arg(path)
+WHERE m.path=sqlc.arg(package_path) AND mv.equivalent_version IS NULL AND mvs.path=sqlc.arg(path)
 ORDER BY mv.version;
 
 -- name: PackagePublishedVersions :many
 SELECT mv.version
 FROM packages m
 JOIN versions mv ON mv.package_id=m.id
-WHERE m.path=sqlc.arg(package_path)
+WHERE m.path=sqlc.arg(package_path) AND mv.equivalent_version IS NULL
 ORDER BY mv.version;
 
 -- name: PackagePublicationCommit :one

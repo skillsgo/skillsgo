@@ -161,7 +161,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	skill := &catalog.Skill{PackagePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", SourceRepository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: "v0.0.0-test", Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
+		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{*skill}, catalog.CurrentPublication))
 	const packageDescription = "Skills for Real Engineers."
 	require.NoError(t, c.UpdatePackageSourceMetadata(
@@ -219,7 +219,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	historicalVersion := "v1.0.0"
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: historicalVersion, Ref: "refs/tags/v1.0.0", CommitSHA: "commit-historical", TreeSHA: "historical-tree",
-		Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+		ContentSum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{{PackagePath: "github.com/mattpocock/skills", Path: "skills/retired", Name: "retired", Description: "Historical member"}}, catalog.HistoricalPublication))
 	versionedFind := httptest.NewRecorder()
 	serveFiber(t, r, versionedFind, httptest.NewRequest(http.MethodGet,
@@ -293,7 +293,7 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	}}
 	identity := catalog.PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree",
-		Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		ContentSum: digest, Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 	require.NoError(t, metadata.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, catalog.HistoricalPublication))
 
@@ -311,7 +311,7 @@ func TestCurrentPackagesReadsPublishedCatalogAndPreservesRequestOrder(t *testing
 	packagePath := "github.com/example/skills"
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, catalog.PackageVersion{
 		Version: "v1.3.0", Ref: "refs/tags/v1.3.0", CommitSHA: "commit-v1.3.0", TreeSHA: "tree-v1.3.0",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
+		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{
 		{PackagePath: packagePath, Path: "skills/review", Name: "review", Description: "Review changes"},
 		{PackagePath: packagePath, Path: "skills/test", Name: "test", Description: "Test changes"},

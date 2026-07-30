@@ -58,13 +58,16 @@ func TestPackagePublicationCommitsThroughItsAdvisoryLockConnection(t *testing.T)
 	entries := []protocolartifact.Entry{{Path: "SKILL.md", Contents: content, Mode: 0o644}}
 	sum, err := protocolartifact.PackageEntriesSum(entries, packagePath, version)
 	require.NoError(t, err)
+	contentSum, err := protocolartifact.PackageContentSum(entries)
+	require.NoError(t, err)
 	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
-	identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "source-commit", TreeSHA: "source-tree", Sum: sum, CommitTime: time.Unix(1, 0).UTC()}
+	identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "source-commit", TreeSHA: "source-tree", ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(1, 0).UTC()}
 	members := []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: "Demo.", DocumentDigest: digest, SourceLanguage: "en"}}
 	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
-	created, err := commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+	created, resolvedVersion, err := commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
 	require.NoError(t, err)
 	require.True(t, created)
+	require.Equal(t, version, resolvedVersion)
 	stored, err := backend.SkillContent(t.Context(), digest)
 	require.NoError(t, err)
 	require.Equal(t, content, stored)
@@ -72,6 +75,120 @@ func TestPackagePublicationCommitsThroughItsAdvisoryLockConnection(t *testing.T)
 	found, err := backend.HydrateGitRepository(t.Context(), packagePath, destination)
 	require.NoError(t, err)
 	require.True(t, found)
+}
+
+func TestCurrentPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T) {
+	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+	memory, err := mem.NewStorage()
+	require.NoError(t, err)
+	backend := &observedPublicationBackend{Backend: memory}
+	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
+	packagePath := "github.com/acme/equivalent"
+	content := []byte("---\nname: demo\ndescription: Demo.\n---\n# Demo\n")
+	entries := []protocolartifact.Entry{{Path: "SKILL.md", Contents: content, Mode: 0o644}}
+	contentSum, err := protocolartifact.PackageContentSum(entries)
+	require.NoError(t, err)
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
+	members := []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: "Demo.", DocumentDigest: digest}}
+	publish := func(version string) (bool, string, error) {
+		sum, sumErr := protocolartifact.PackageEntriesSum(entries, packagePath, version)
+		require.NoError(t, sumErr)
+		identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()}
+		return commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+	}
+	created, resolved, err := publish("v1.0.0")
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Equal(t, "v1.0.0", resolved)
+	created, resolved, err = publish("v1.0.1")
+	require.NoError(t, err)
+	require.False(t, created)
+	require.Equal(t, "v1.0.0", resolved)
+	require.Equal(t, 1, backend.publishes)
+	versions, err := metadata.PackagePublishedVersions(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0"}, versions)
+	resolvedIdentity, found, err := metadata.PackageVersionByCoordinate(t.Context(), packagePath, "v1.0.1")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.0.0", resolvedIdentity.Version)
+	commitSHA, err := metadata.PackagePublicationCommit(t.Context(), packagePath, "v1.0.1")
+	require.NoError(t, err)
+	require.Equal(t, "commit-v1.0.1", commitSHA)
+}
+
+func TestCurrentPublicationPublishesContentThatReturnsAfterAnInterveningChange(t *testing.T) {
+	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+	memory, err := mem.NewStorage()
+	require.NoError(t, err)
+	backend := &observedPublicationBackend{Backend: memory}
+	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
+	packagePath := "github.com/acme/returning-content"
+
+	publish := func(version, description string) {
+		content := repositoryTestManifest(t, "", "", "demo", description, "")
+		entries := []protocolartifact.Entry{{Path: "SKILL.md", Contents: content, Mode: 0o644, Size: int64(len(content))}}
+		sum, sumErr := protocolartifact.PackageEntriesSum(entries, packagePath, version)
+		require.NoError(t, sumErr)
+		contentSum, contentErr := protocolartifact.PackageContentSum(entries)
+		require.NoError(t, contentErr)
+		digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
+		identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()}
+		created, resolved, publishErr := commit.Publish(t.Context(), packagePath, identity, entries, []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: description, DocumentDigest: digest}}, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+		require.NoError(t, publishErr)
+		require.True(t, created)
+		require.Equal(t, version, resolved)
+	}
+	publish("v1.0.0", "A")
+	publish("v1.1.0", "B")
+	publish("v1.2.0", "A")
+	require.Equal(t, 3, backend.publishes)
+	versions, err := metadata.PackagePublishedVersions(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.2.0", "v1.1.0", "v1.0.0"}, versions)
+}
+
+func TestHistoricalPublicationCollapsesAdjacentEquivalentContent(t *testing.T) {
+	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+	memory, err := mem.NewStorage()
+	require.NoError(t, err)
+	backend := &observedPublicationBackend{Backend: memory}
+	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
+	packagePath := "github.com/acme/historical-equivalence"
+	first := testModulePublicationInput(t, packagePath, "v1.0.0")
+	second := first
+	second.key = "v1.0.1"
+	second.version.Version = second.key
+	second.version.Ref = "refs/tags/" + second.key
+	second.version.CommitSHA = "source-" + second.key
+	second.version.TreeSHA = "tree-" + second.key
+	second.version.Sum, err = protocolartifact.PackageEntriesSum(second.entries, packagePath, second.key)
+	require.NoError(t, err)
+
+	err = commit.WithSession(t.Context(), packagePath, func(session *modulePublicationSession) error {
+		require.NoError(t, session.Stage(first))
+		require.NoError(t, session.Stage(second))
+		outcomes := session.Flush()
+		require.NoError(t, outcomes[0].err)
+		require.NoError(t, outcomes[1].err)
+		require.True(t, outcomes[1].equivalent)
+		require.Equal(t, "v1.0.0", outcomes[1].resolvedVersion)
+		return nil
+	})
+	require.NoError(t, err)
+	versions, err := metadata.PackagePublishedVersions(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0"}, versions)
+	resolved, found, err := metadata.PackageVersionByCoordinate(t.Context(), packagePath, "v1.0.1")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.0.0", resolved.Version)
 }
 
 func TestPackagePublicationSessionHydratesOnceAndFlushesBoundedGenerations(t *testing.T) {
@@ -158,11 +275,13 @@ func testModulePublicationInput(t *testing.T, packagePath, version string) modul
 	entries := []protocolartifact.Entry{{Path: "SKILL.md", Contents: content, Mode: 0o644, Size: int64(len(content))}}
 	sum, err := protocolartifact.PackageEntriesSum(entries, packagePath, version)
 	require.NoError(t, err)
+	contentSum, err := protocolartifact.PackageContentSum(entries)
+	require.NoError(t, err)
 	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
 	return modulePublicationInput{
 		key: version,
 		version: catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "source-" + version,
-			TreeSHA: "tree-" + version, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()},
+			TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()},
 		entries: entries, members: []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: description, DocumentDigest: digest, SourceLanguage: "en"}},
 		skillContents: []moduleSkillContent{{digest: digest, content: content}}, visibility: catalog.HistoricalPublication,
 	}

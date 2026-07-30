@@ -112,7 +112,7 @@ func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSH
 	t.Helper()
 	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "module-tree",
-		Sum: sum, CommitTime: time.Now().UTC(),
+		ContentSum: sum, Sum: sum, CommitTime: time.Now().UTC(),
 	}
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, visibility))
 }
@@ -151,7 +151,7 @@ func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version,
 		CommitSHA: "commit-" + fmt.Sprint(now.UnixNano()), TreeSHA: "module-tree-" + fmt.Sprint(now.UnixNano()),
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: now,
+		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: now,
 	}
 	return c.PublishPackageVersionWithVisibility(t.Context(), skill.PackagePath, identity, candidates, CurrentPublication)
 }
@@ -164,7 +164,7 @@ func TestValidatePackageVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T)
 	}
 	identity := PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "module-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Now().UTC(),
+		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Now().UTC(),
 	}
 	require.NoError(t, ValidatePackageVersion(packagePath, identity, candidates, CurrentPublication))
 }
@@ -394,8 +394,9 @@ SELECT 'gitlab.com','acme/bulk-' || value,'gitlab.com/acme/bulk-' || value,$1,$1
 FROM generate_series(1,501) AS value`, now)
 	require.NoError(t, err)
 	_, err = c.pool.Exec(ctx, `
-INSERT INTO versions(package_id,version,ref,commit_sha,tree_sha,sum,commit_time,created_at)
+INSERT INTO versions(package_id,version,ref,commit_sha,tree_sha,content_sum,sum,commit_time,created_at)
 SELECT id,'v1.0.0','refs/tags/v1.0.0','bulk-commit-' || id,'bulk-tree-' || id,
+       'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
        'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',$1,$1
 FROM packages WHERE source_host='gitlab.com'`, now)
 	require.NoError(t, err)
@@ -424,7 +425,7 @@ func TestPostgresCatalogSearchSkillCardsUsesOneQueryForEveryCardinalityLocaleAnd
 	}
 	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/acme/many-skills", PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "many-skills", TreeSHA: "many-skills-tree",
-		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
+		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
 	}, onePackage, CurrentPublication))
 	for index := range 20 {
 		require.NoError(t, upsertTestSkill(t, c, &Skill{

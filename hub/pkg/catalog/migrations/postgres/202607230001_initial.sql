@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on PostgreSQL with pg_trgm and the pre-launch Package distribution model.
--- [OUTPUT]: Provides the Hub Catalog baseline with Packages, immutable Versions, version-owned Skills, localization, and Package Backfill Runs.
+-- [OUTPUT]: Provides the Hub Catalog baseline with Packages, content-addressed effective and equivalent observed Versions, effective-version-owned Skills, localization, and Package Backfill Runs.
 -- [POS]: Serves as the single clean pre-launch PostgreSQL schema; Source Repository metadata belongs to Packages and no compatibility tables exist.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
@@ -28,11 +28,19 @@ CREATE TABLE versions (
   ref TEXT NOT NULL,
   commit_sha TEXT NOT NULL,
   tree_sha TEXT NOT NULL,
-  sum TEXT NOT NULL,
+  content_sum TEXT NOT NULL,
+  equivalent_version TEXT,
+  sum TEXT,
   commit_time TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(package_id, version),
-  UNIQUE(package_id, id)
+  UNIQUE(package_id, id),
+  FOREIGN KEY (package_id, equivalent_version) REFERENCES versions(package_id, version),
+  CONSTRAINT versions_artifact_ownership CHECK (
+    (equivalent_version IS NULL AND sum IS NOT NULL)
+    OR (equivalent_version IS NOT NULL AND sum IS NULL)
+  ),
+  CONSTRAINT versions_not_self_equivalent CHECK (equivalent_version IS NULL OR equivalent_version <> version)
 );
 
 ALTER TABLE packages ADD CONSTRAINT packages_current_version
@@ -66,6 +74,8 @@ COMMENT ON COLUMN versions.version IS 'Canonical immutable Package Version.';
 COMMENT ON COLUMN versions.ref IS 'Source ref resolved when the Version was published.';
 COMMENT ON COLUMN versions.commit_sha IS 'Source commit captured by this Version.';
 COMMENT ON COLUMN versions.tree_sha IS 'Package root tree captured by this Version.';
+COMMENT ON COLUMN versions.content_sum IS 'Version-independent h1 checksum of the normalized Package Artifact tree.';
+COMMENT ON COLUMN versions.equivalent_version IS 'Direct effective Version whose Package content is identical; NULL when this Version owns an Artifact.';
 COMMENT ON COLUMN versions.sum IS 'Canonical coordinate-bound h1 checksum of the normalized Package Artifact tree.';
 COMMENT ON COLUMN versions.commit_time IS 'Source commit time exposed as Package Info time.';
 
@@ -76,6 +86,7 @@ COMMENT ON COLUMN skills.description IS 'Searchable Skill description read from 
 COMMENT ON COLUMN skills.source_language IS 'Detected BCP 47 source language for the immutable SKILL.md document; empty when undetermined or mixed.';
 
 CREATE INDEX skills_version_id ON skills(version_id);
+CREATE INDEX versions_package_content_sum ON versions(package_id, content_sum);
 CREATE INDEX skills_name_lower ON skills(lower(name));
 CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description) gin_trgm_ops);
 

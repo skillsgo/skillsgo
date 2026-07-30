@@ -138,6 +138,36 @@ func TestPackageEntriesSumMatchesLegacyZIPAndCanonicalizesEntries(t *testing.T) 
 	}
 }
 
+func TestPackageContentSumIgnoresCoordinateButDetectsContentChanges(t *testing.T) {
+	entries := []Entry{{Path: "skills/demo/SKILL.md", Contents: []byte("demo"), Mode: 0o644}}
+	contentSum, err := PackageContentSum(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := PackageEntriesSum(entries, "github.com/acme/skills", "v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := PackageEntriesSum(entries, "github.com/acme/skills", "v1.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatal("coordinate-bound Sums unexpectedly match across versions")
+	}
+	reordered, err := PackageContentSum([]Entry{{Path: "skills/demo/SKILL.md", Contents: []byte("demo"), Mode: 0o644}})
+	if err != nil || reordered != contentSum {
+		t.Fatalf("PackageContentSum() = %q, %v; want %q", reordered, err, contentSum)
+	}
+	changed, err := PackageContentSum([]Entry{{Path: "skills/demo/SKILL.md", Contents: []byte("changed"), Mode: 0o644}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed == contentSum {
+		t.Fatal("PackageContentSum ignored a content change")
+	}
+}
+
 func TestRepositoryArtifactDirectoryParityAndDeterministicEnvelope(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "skills", "review"), 0o700); err != nil {

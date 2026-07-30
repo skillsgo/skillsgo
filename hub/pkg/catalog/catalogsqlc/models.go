@@ -102,8 +102,12 @@ type Version struct {
 	CommitSha string `json:"commit_sha"`
 	// Package root tree captured by this Version.
 	TreeSha string `json:"tree_sha"`
+	// Version-independent h1 checksum of the normalized Package Artifact tree.
+	ContentSum string `json:"content_sum"`
+	// Direct effective Version whose Package content is identical; NULL when this Version owns an Artifact.
+	EquivalentVersion pgtype.Text `json:"equivalent_version"`
 	// Canonical coordinate-bound h1 checksum of the normalized Package Artifact tree.
-	Sum string `json:"sum"`
+	Sum pgtype.Text `json:"sum"`
 	// Source commit time exposed as Package Info time.
 	CommitTime time.Time `json:"commit_time"`
 	CreatedAt  time.Time `json:"created_at"`
