@@ -102,6 +102,8 @@ func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 			base = envHome("HERMES_HOME", filepath.Join(paths.Home, ".hermes"))
 		case "autohand":
 			base = envHome("AUTOHAND_HOME", filepath.Join(paths.Home, ".autohand"))
+		case "grok":
+			base = envHome("GROK_HOME", filepath.Join(paths.Home, ".grok"))
 		case "workbuddy":
 			base = workBuddyHome(paths.Home)
 		case "none":
@@ -279,11 +281,14 @@ var rawCatalog = []rawDefinition{
 	{"gemini-cli", "Gemini CLI", ".agents/skills", "home", ".gemini/skills"},
 	{"github-copilot", "GitHub Copilot", ".agents/skills", "home", ".copilot/skills"},
 	{"goose", "Goose", ".goose/skills", "config", "goose/skills"},
+	{"grok", "Grok Build", ".grok/skills", "grok", "skills"},
 	{"hermes-agent", "Hermes Agent", ".hermes/skills", "hermes", "skills"},
 	{"inference-sh", "inference.sh", ".inferencesh/skills", "home", ".inferencesh/skills"},
 	{"jazz", "Jazz", ".jazz/skills", "home", ".jazz/skills"},
 	{"junie", "Junie", ".junie/skills", "home", ".junie/skills"},
+	{"iflow-cli", "iFlow CLI", ".iflow/skills", "home", ".iflow/skills"},
 	{"kilo", "Kilo Code", ".kilocode/skills", "home", ".kilocode/skills"},
+	{"kimchi", "Kimchi", ".kimchi/skills", "home", ".config/kimchi/harness/skills"},
 	{"kimi-code-cli", "Kimi Code CLI", ".agents/skills", "home", ".agents/skills"},
 	{"kiro-cli", "Kiro CLI", ".kiro/skills", "home", ".kiro/skills"},
 	{"kode", "Kode", ".kode/skills", "home", ".kode/skills"},
