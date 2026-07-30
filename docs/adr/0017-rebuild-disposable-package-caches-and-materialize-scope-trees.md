@@ -1,5 +1,7 @@
 # ADR-0017: Rebuild Disposable Package Caches and Materialize Scope Trees
 
+ADR-0019 supersedes this decision's cross-member repository-relative resource assumption. Scope Package Trees remain complete copies of the immutable Package Artifact, but that Artifact now contains only the minimal union of accepted self-contained Skill directory subtrees.
+
 ## Status
 
 Accepted
@@ -25,14 +27,7 @@ This decision supersedes the authority, Global Store location, command-specific 
 
 The CLI previously read `~/.skillsgo/cache/info` and Scope Package Stores directly. A missing Info entry caused commands such as `list` to fail even when Manifest, Lock, Package Tree, Projection, and immutable Hub resources remained valid. Global materialization also lived under `~/.skillsgo/packages`, mixing Scope state with user-level cache and configuration.
 
-Removing complete Package Trees is not correct. A nested Skill may reference Package-relative resources above its own directory:
-
-```text
-shared/scripts/validate.sh
-skills/review/SKILL.md  -> ../../shared/scripts/validate.sh
-```
-
-The complete Package Tree plus a symlink to `skills/review` preserves that relationship. Copying only the member subtree would break it, while copying a complete Package for every selected Skill or Agent would multiply disk use.
+Removing complete Package Trees is not correct because Package identity, `h1:` verification, atomic repair, and multiple selected members share one immutable materialization boundary. ADR-0019 narrows the Artifact itself to accepted self-contained Skill directory subtrees, so a Scope Package Tree no longer preserves or exposes unrelated Source Repository files.
 
 ## State model
 
@@ -70,7 +65,7 @@ Metadata-only operations such as `list` and `why` request only Metadata. Explici
 
 ## Scope Package Tree and Projection semantics
 
-The CLI always stages and validates the complete exact Package Tree before publishing it under the Scope declaration root. Package-relative files and safe internal symlinks therefore retain their repository relationships.
+The CLI always stages and validates the complete exact Package Artifact Tree before publishing it under the Scope declaration root. Each accepted Skill's complete self-contained files and safe internal symlinks therefore retain their Artifact relationships.
 
 Each selected Skill is exposed through a stable platform-native directory link from its Agent Managed Skill Root into that Tree. macOS and Linux use a relative symlink, preserving Project Scope topology when the complete Workspace moves. Windows uses an unprivileged absolute directory junction because ordinary desktop users cannot reliably create symbolic links. Several Agents and selected members in the same Scope share the same complete Package Tree. Different Scopes retain independent trees so each Scope transaction, declaration, lock, and Projection topology remains self-contained.
 
@@ -89,7 +84,7 @@ Benefits:
 - clearing `~/.skillsgo` no longer invalidates installed inventory;
 - all commands receive consistent metadata/content acquisition through one boundary;
 - Global Scope data is colocated under its declaration root instead of mixed into user cache state;
-- complete Package-relative resource behavior remains intact;
+- complete self-contained Skill resource behavior remains intact;
 - one expanded Package Tree is shared by all selected members and Agents within a Scope;
 - corrupt shared cache entries are repaired from exact immutable resources;
 - Local Modifications remain protected by deterministic baselines.

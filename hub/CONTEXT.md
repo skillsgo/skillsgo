@@ -45,7 +45,7 @@ The metadata surface rooted at `/api/v1/{packagePath}`. It exposes `/api/v1/{pac
 _Avoid_: Go Proxy, `/mod`, `@v`, product API, Skill ZIP endpoint
 
 **Package Publication**:
-The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one tagged Git Artifact tree, and one Package Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.
+The atomic visibility change that publishes one immutable Package Version, its complete accepted Skill membership, one tagged Git Artifact tree, and one Package Sum for a resolved source commit. Membership uses skills.sh-compatible convention-first discovery with bounded recursive fallback, and no partial accepted membership becomes visible.
 _Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source validation
 
 **Package History Backfill**:
@@ -77,7 +77,7 @@ The standalone deterministic metadata resource for one Package Version. It conta
 _Avoid_: database record dump, Skill Info document, editorial member list, per-Skill artifact manifest
 
 **Package Artifact**:
-The complete safe Git-tracked tree for one immutable Package Version, stored under a parentless synthetic commit and immutable tag in the Package's standard bare Git Artifact Repository and authenticated by one Package Sum. Relative symlinks whose fully resolved targets remain inside the same Package are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
+The minimal safe Git-tracked union of every accepted member's complete Skill directory subtree for one immutable Package Version, stored under a parentless synthetic commit and immutable tag in the Package's standard bare Git Artifact Repository and authenticated by one Package Sum. Repository-relative paths remain stable. Relative symlinks whose fully resolved targets remain inside the same Package Artifact are preserved; escaping, absolute, broken, cyclic, and otherwise invalid symlinks are omitted. Skills are selectable members of this artifact rather than independently archived artifacts.
 _Avoid_: Skill artifact, live repository directory, mutable cache entry
 
 **Source Presentation**:
