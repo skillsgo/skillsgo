@@ -196,6 +196,8 @@ Future<void> _executeAdoption(
       '$adopted skills added to management, $failed failed.',
       '已纳入管理 $adopted 个技能，失败 $failed 个。',
     ),
+    reason:
+        'Adoption semantics: ${tester.widgetList<Semantics>(find.byType(Semantics)).map((widget) => widget.properties.label).whereType<String>().where((label) => label.isNotEmpty).join(' | ')}',
   );
   final close = find.byKey(const Key('batch-adoption-close'));
   await tester.tap(close);

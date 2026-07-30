@@ -611,21 +611,7 @@ func existingProjectionLinkMatches(target, storeTarget string) (bool, error) {
 	if info.Mode()&os.ModeSymlink == 0 {
 		return false, nil
 	}
-	link, err := os.Readlink(target)
-	if err != nil {
-		return false, err
-	}
-	actual := link
-	if !filepath.IsAbs(actual) {
-		actual = filepath.Join(filepath.Dir(target), actual)
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(target); resolveErr == nil {
-		actual = resolved
-	}
-	if resolved, resolveErr := filepath.EvalSymlinks(storeTarget); resolveErr == nil {
-		storeTarget = resolved
-	}
-	return filepath.Clean(actual) == filepath.Clean(storeTarget), nil
+	return projectionLinkMatches(target, storeTarget)
 }
 
 func temporaryProjectionLink(target, storeTarget string) (string, error) {

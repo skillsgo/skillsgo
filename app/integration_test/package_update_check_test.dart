@@ -200,6 +200,8 @@ Future<void> _pumpUntilFileContains(
   expect(
     file.existsSync() ? file.readAsStringSync() : null,
     contains(expected),
+    reason:
+        'Visible UI: ${tester.widgetList<Text>(find.byType(Text)).map((widget) => widget.data).whereType<String>().join(' | ')}',
   );
 }
 
