@@ -14,6 +14,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode/utf16"
+
+	"golang.org/x/sys/windows"
 )
 
 func createProjectionLink(target, link string) error {
@@ -35,9 +38,9 @@ func isProjectionLinkCandidate(info os.FileInfo) bool {
 }
 
 func projectionLinkMatches(link, target string) (bool, error) {
-	resolvedLink, linkErr := filepath.EvalSymlinks(link)
-	resolvedTarget, targetErr := filepath.EvalSymlinks(target)
-	if linkErr == nil && targetErr == nil && strings.EqualFold(filepath.Clean(resolvedLink), filepath.Clean(resolvedTarget)) {
+	resolvedLink, linkErr := windowsFinalPath(link)
+	resolvedTarget, targetErr := windowsFinalPath(target)
+	if linkErr == nil && targetErr == nil && strings.EqualFold(resolvedLink, resolvedTarget) {
 		return true, nil
 	}
 	linkInfo, err := os.Stat(link)
@@ -49,4 +52,38 @@ func projectionLinkMatches(link, target string) (bool, error) {
 		return false, err
 	}
 	return os.SameFile(linkInfo, targetInfo), nil
+}
+
+func windowsFinalPath(path string) (string, error) {
+	pointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return "", err
+	}
+	handle, err := windows.CreateFile(
+		pointer,
+		0,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil,
+		windows.OPEN_EXISTING,
+		windows.FILE_FLAG_BACKUP_SEMANTICS,
+		0,
+	)
+	if err != nil {
+		return "", err
+	}
+	defer windows.CloseHandle(handle)
+
+	buffer := make([]uint16, 512)
+	for {
+		length, pathErr := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 0)
+		if pathErr != nil {
+			return "", pathErr
+		}
+		if int(length) < len(buffer) {
+			resolved := string(utf16.Decode(buffer[:length]))
+			resolved = strings.TrimPrefix(resolved, `\\?\`)
+			return filepath.Clean(resolved), nil
+		}
+		buffer = make([]uint16, int(length)+1)
+	}
 }
