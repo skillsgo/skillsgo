@@ -14,7 +14,7 @@ import (
 )
 
 const activeBackfillRun = `-- name: ActiveBackfillRun :one
-SELECT id, package_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM package_backfill_runs
+SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs
 WHERE package_path=$1 AND status IN ('queued','running')
 ORDER BY created_at DESC LIMIT 1
 `
@@ -28,16 +28,19 @@ func (q *Queries) ActiveBackfillRun(ctx context.Context, packagePath string) (Pa
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.ErrorCount,
-		&i.Diagnostics,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedCount,
+		&i.SkippedCount,
+		&i.RejectedCount,
+		&i.FailedCount,
+		&i.FailureCode,
 	)
 	return i, err
 }
 
 const backfillRunByID = `-- name: BackfillRunByID :one
-SELECT id, package_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM package_backfill_runs WHERE id=$1
+SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE id=$1
 `
 
 func (q *Queries) BackfillRunByID(ctx context.Context, id string) (PackageBackfillRun, error) {
@@ -49,35 +52,66 @@ func (q *Queries) BackfillRunByID(ctx context.Context, id string) (PackageBackfi
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.ErrorCount,
-		&i.Diagnostics,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedCount,
+		&i.SkippedCount,
+		&i.RejectedCount,
+		&i.FailedCount,
+		&i.FailureCode,
 	)
 	return i, err
 }
 
+const backfillVersionOutcomes = `-- name: BackfillVersionOutcomes :many
+SELECT run_id, version, commit_sha, outcome, reason_code, attempt_count, created_at, updated_at FROM package_backfill_version_outcomes WHERE run_id=$1 ORDER BY version
+`
+
+func (q *Queries) BackfillVersionOutcomes(ctx context.Context, runID string) ([]PackageBackfillVersionOutcome, error) {
+	rows, err := q.db.Query(ctx, backfillVersionOutcomes, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PackageBackfillVersionOutcome{}
+	for rows.Next() {
+		var i PackageBackfillVersionOutcome
+		if err := rows.Scan(
+			&i.RunID,
+			&i.Version,
+			&i.CommitSha,
+			&i.Outcome,
+			&i.ReasonCode,
+			&i.AttemptCount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const completeBackfillRun = `-- name: CompleteBackfillRun :execrows
-UPDATE package_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
-WHERE id=$1 AND status IN ('queued','running')
+UPDATE package_backfill_runs SET
+  status=CASE WHEN rejected_count>0 THEN 'complete_with_rejections' ELSE 'complete' END,
+  completed_at=$2,
+  failure_code=NULL,
+  updated_at=$2
+WHERE id=$1 AND status='running' AND failed_count=0
 `
 
 type CompleteBackfillRunParams struct {
-	ID          string          `json:"id"`
-	Status      string          `json:"status"`
-	CompletedAt *time.Time      `json:"completed_at"`
-	ErrorCount  int32           `json:"error_count"`
-	Diagnostics json.RawMessage `json:"diagnostics"`
+	ID          string     `json:"id"`
+	CompletedAt *time.Time `json:"completed_at"`
 }
 
 func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error) {
-	result, err := q.db.Exec(ctx, completeBackfillRun,
-		arg.ID,
-		arg.Status,
-		arg.CompletedAt,
-		arg.ErrorCount,
-		arg.Diagnostics,
-	)
+	result, err := q.db.Exec(ctx, completeBackfillRun, arg.ID, arg.CompletedAt)
 	if err != nil {
 		return 0, err
 	}
@@ -252,18 +286,17 @@ func (q *Queries) DocumentTranslationCandidates(ctx context.Context, arg Documen
 }
 
 const expireQueuedBackfillRun = `-- name: ExpireQueuedBackfillRun :execrows
-UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failed_count=GREATEST(failed_count,1),failure_code='execution_expired',updated_at=$2
 WHERE id=$1 AND status='queued'
 `
 
 type ExpireQueuedBackfillRunParams struct {
-	ID          string          `json:"id"`
-	CompletedAt *time.Time      `json:"completed_at"`
-	Diagnostics json.RawMessage `json:"diagnostics"`
+	ID          string     `json:"id"`
+	CompletedAt *time.Time `json:"completed_at"`
 }
 
 func (q *Queries) ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error) {
-	result, err := q.db.Exec(ctx, expireQueuedBackfillRun, arg.ID, arg.CompletedAt, arg.Diagnostics)
+	result, err := q.db.Exec(ctx, expireQueuedBackfillRun, arg.ID, arg.CompletedAt)
 	if err != nil {
 		return 0, err
 	}
@@ -271,18 +304,36 @@ func (q *Queries) ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedB
 }
 
 const expireStaleBackfillRuns = `-- name: ExpireStaleBackfillRuns :execrows
-UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failed_count=GREATEST(failed_count,1),failure_code='execution_expired',updated_at=$2
 WHERE status='running' AND updated_at<$1
 `
 
 type ExpireStaleBackfillRunsParams struct {
-	UpdatedAt   time.Time       `json:"updated_at"`
-	CompletedAt *time.Time      `json:"completed_at"`
-	Diagnostics json.RawMessage `json:"diagnostics"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	CompletedAt *time.Time `json:"completed_at"`
 }
 
 func (q *Queries) ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, expireStaleBackfillRuns, arg.UpdatedAt, arg.CompletedAt, arg.Diagnostics)
+	result, err := q.db.Exec(ctx, expireStaleBackfillRuns, arg.UpdatedAt, arg.CompletedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const failBackfillRun = `-- name: FailBackfillRun :execrows
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failure_code=$3,updated_at=$2
+WHERE id=$1 AND status IN ('queued','running')
+`
+
+type FailBackfillRunParams struct {
+	ID          string      `json:"id"`
+	CompletedAt *time.Time  `json:"completed_at"`
+	FailureCode pgtype.Text `json:"failure_code"`
+}
+
+func (q *Queries) FailBackfillRun(ctx context.Context, arg FailBackfillRunParams) (int64, error) {
+	result, err := q.db.Exec(ctx, failBackfillRun, arg.ID, arg.CompletedAt, arg.FailureCode)
 	if err != nil {
 		return 0, err
 	}
@@ -517,16 +568,15 @@ func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalize
 }
 
 const insertBackfillRun = `-- name: InsertBackfillRun :exec
-INSERT INTO package_backfill_runs (id,package_path,status,error_count,diagnostics,created_at,updated_at)
-VALUES ($1,$2,$3,0,$4,$5,$5)
+INSERT INTO package_backfill_runs (id,package_path,status,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$4)
 `
 
 type InsertBackfillRunParams struct {
-	ID          string          `json:"id"`
-	PackagePath string          `json:"package_path"`
-	Status      string          `json:"status"`
-	Diagnostics json.RawMessage `json:"diagnostics"`
-	CreatedAt   time.Time       `json:"created_at"`
+	ID          string    `json:"id"`
+	PackagePath string    `json:"package_path"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunParams) error {
@@ -534,7 +584,6 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 		arg.ID,
 		arg.PackagePath,
 		arg.Status,
-		arg.Diagnostics,
 		arg.CreatedAt,
 	)
 	return err
@@ -602,7 +651,7 @@ func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error 
 }
 
 const latestBackfillRun = `-- name: LatestBackfillRun :one
-SELECT id, package_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1
+SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1
 `
 
 func (q *Queries) LatestBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error) {
@@ -614,10 +663,13 @@ func (q *Queries) LatestBackfillRun(ctx context.Context, packagePath string) (Pa
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
-		&i.ErrorCount,
-		&i.Diagnostics,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedCount,
+		&i.SkippedCount,
+		&i.RejectedCount,
+		&i.FailedCount,
+		&i.FailureCode,
 	)
 	return i, err
 }
@@ -750,6 +802,17 @@ func (q *Queries) LocalizedVersionSkillCards(ctx context.Context, arg LocalizedV
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockRunningBackfillRun = `-- name: LockRunningBackfillRun :one
+SELECT id FROM package_backfill_runs WHERE id=$1 AND status='running' FOR UPDATE
+`
+
+func (q *Queries) LockRunningBackfillRun(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockRunningBackfillRun, id)
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const packageByPath = `-- name: PackageByPath :one
@@ -941,6 +1004,48 @@ func (q *Queries) PackagesDueForSourceMetadataRefresh(ctx context.Context, arg P
 		return nil, err
 	}
 	return items, nil
+}
+
+const refreshBackfillRunCounts = `-- name: RefreshBackfillRunCounts :execrows
+UPDATE package_backfill_runs SET
+  published_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome IN ('published','already_published')),
+  skipped_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='skipped'),
+  rejected_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='rejected'),
+  failed_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='retryable_failure'),
+  updated_at=$2
+WHERE id=$1 AND status='running'
+`
+
+type RefreshBackfillRunCountsParams struct {
+	RunID     string    `json:"run_id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) RefreshBackfillRunCounts(ctx context.Context, arg RefreshBackfillRunCountsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, refreshBackfillRunCounts, arg.RunID, arg.UpdatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const rejectBackfillRun = `-- name: RejectBackfillRun :execrows
+UPDATE package_backfill_runs SET status='complete_with_rejections',completed_at=$2,failure_code=$3,updated_at=$2
+WHERE id=$1 AND status IN ('queued','running')
+`
+
+type RejectBackfillRunParams struct {
+	ID          string      `json:"id"`
+	CompletedAt *time.Time  `json:"completed_at"`
+	FailureCode pgtype.Text `json:"failure_code"`
+}
+
+func (q *Queries) RejectBackfillRun(ctx context.Context, arg RejectBackfillRunParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rejectBackfillRun, arg.ID, arg.CompletedAt, arg.FailureCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const searchLocalizedSkills = `-- name: SearchLocalizedSkills :many
@@ -1485,7 +1590,7 @@ func (q *Queries) SkillsByPathCoordinates(ctx context.Context, arg SkillsByPathC
 }
 
 const staleQueuedBackfillRuns = `-- name: StaleQueuedBackfillRuns :many
-SELECT id, package_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
+SELECT id, package_path, status, started_at, completed_at, created_at, updated_at, published_count, skipped_count, rejected_count, failed_count, failure_code FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
 `
 
 type StaleQueuedBackfillRunsParams struct {
@@ -1508,10 +1613,13 @@ func (q *Queries) StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBa
 			&i.Status,
 			&i.StartedAt,
 			&i.CompletedAt,
-			&i.ErrorCount,
-			&i.Diagnostics,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PublishedCount,
+			&i.SkippedCount,
+			&i.RejectedCount,
+			&i.FailedCount,
+			&i.FailureCode,
 		); err != nil {
 			return nil, err
 		}
@@ -1646,6 +1754,38 @@ func (q *Queries) UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePac
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertBackfillVersionOutcome = `-- name: UpsertBackfillVersionOutcome :exec
+INSERT INTO package_backfill_version_outcomes (run_id,version,commit_sha,outcome,reason_code,attempt_count,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,1,$6,$6)
+ON CONFLICT (run_id,version) DO UPDATE SET
+  commit_sha=EXCLUDED.commit_sha,
+  outcome=EXCLUDED.outcome,
+  reason_code=EXCLUDED.reason_code,
+  attempt_count=package_backfill_version_outcomes.attempt_count+1,
+  updated_at=EXCLUDED.updated_at
+`
+
+type UpsertBackfillVersionOutcomeParams struct {
+	RunID      string      `json:"run_id"`
+	Version    string      `json:"version"`
+	CommitSha  string      `json:"commit_sha"`
+	Outcome    string      `json:"outcome"`
+	ReasonCode pgtype.Text `json:"reason_code"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+func (q *Queries) UpsertBackfillVersionOutcome(ctx context.Context, arg UpsertBackfillVersionOutcomeParams) error {
+	_, err := q.db.Exec(ctx, upsertBackfillVersionOutcome,
+		arg.RunID,
+		arg.Version,
+		arg.CommitSha,
+		arg.Outcome,
+		arg.ReasonCode,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const upsertLocalization = `-- name: UpsertLocalization :exec

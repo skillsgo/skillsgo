@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, explicit Backfill Run/Version outcomes, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -601,20 +602,20 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	c := openTestCatalog(t)
 	old := time.Now().UTC().Add(-3 * time.Hour)
 	_, err := c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
-		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
-		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
+		(id, package_path, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
 	require.NoError(t, err)
 	_, err = c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
-		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
-		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
+		(id, package_path, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
 	require.NoError(t, err)
 	expired, err := c.ExpireStaleBackfillRuns(ctx, time.Now().UTC().Add(-2*time.Hour))
 	require.NoError(t, err)
 	require.Equal(t, int64(1), expired)
 	run, err := c.LatestBackfillRun(ctx, "github.com/acme/stale")
 	require.NoError(t, err)
-	require.Equal(t, BackfillCompleteWithErrors, run.Status)
-	require.Equal(t, []string{"module: execution_expired"}, run.Diagnostics)
+	require.Equal(t, BackfillFailed, run.Status)
+	require.Equal(t, "execution_expired", run.FailureCode)
 	queued, err := c.LatestBackfillRun(ctx, "github.com/acme/queued")
 	require.NoError(t, err)
 	require.Equal(t, BackfillQueued, queued.Status, "durably queued River work must not be expired before it is claimed")
@@ -625,7 +626,91 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	require.NoError(t, c.ExpireQueuedBackfillRun(ctx, queued.ID))
 	queued, err = c.LatestBackfillRun(ctx, "github.com/acme/queued")
 	require.NoError(t, err)
-	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
+	require.Equal(t, BackfillFailed, queued.Status)
+	require.Equal(t, "execution_expired", queued.FailureCode)
+}
+
+func TestBackfillVersionOutcomesDriveRunAggregatesAndRetryReplacement(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/outcomes", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	_, active, err := c.StartBackfillRun(ctx, run.ID)
+	require.NoError(t, err)
+	require.True(t, active)
+	for _, outcome := range []BackfillVersionOutcome{
+		{RunID: run.ID, Version: "v1.0.0", CommitSHA: "one", Outcome: BackfillOutcomeSkipped, ReasonCode: "source_no_installable_skills"},
+		{RunID: run.ID, Version: "v1.1.0", CommitSHA: "two", Outcome: BackfillOutcomeRejected, ReasonCode: "source_skill_manifest_invalid"},
+		{RunID: run.ID, Version: "v1.2.0", CommitSHA: "three", Outcome: BackfillOutcomeRetryableFailure, ReasonCode: "publication_timeout"},
+	} {
+		require.NoError(t, c.RecordBackfillVersionOutcome(ctx, outcome))
+	}
+	require.NoError(t, c.RecordBackfillVersionOutcome(ctx, BackfillVersionOutcome{RunID: run.ID, Version: "v1.2.0", CommitSHA: "three", Outcome: BackfillOutcomePublished}))
+	require.NoError(t, c.CompleteBackfillRun(ctx, run.ID))
+	completed, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithRejections, completed.Status)
+	require.Equal(t, 1, completed.PublishedCount)
+	require.Equal(t, 1, completed.SkippedCount)
+	require.Equal(t, 1, completed.RejectedCount)
+	require.Zero(t, completed.FailedCount)
+	require.Len(t, completed.Outcomes, 3)
+	require.Equal(t, 2, completed.Outcomes[2].AttemptCount)
+}
+
+func TestBackfillVersionOutcomeAggregatesRemainExactUnderConcurrentWrites(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/concurrent-outcomes", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	_, active, err := c.StartBackfillRun(ctx, run.ID)
+	require.NoError(t, err)
+	require.True(t, active)
+
+	const outcomeCount = 12
+	start := make(chan struct{})
+	errorsByOutcome := make(chan error, outcomeCount)
+	var workers sync.WaitGroup
+	for index := 0; index < outcomeCount; index++ {
+		workers.Add(1)
+		go func(index int) {
+			defer workers.Done()
+			<-start
+			errorsByOutcome <- c.RecordBackfillVersionOutcome(ctx, BackfillVersionOutcome{
+				RunID: run.ID, Version: fmt.Sprintf("v1.0.%d", index), CommitSHA: fmt.Sprintf("commit-%d", index), Outcome: BackfillOutcomePublished,
+			})
+		}(index)
+	}
+	close(start)
+	workers.Wait()
+	close(errorsByOutcome)
+	for outcomeErr := range errorsByOutcome {
+		require.NoError(t, outcomeErr)
+	}
+
+	inProgress, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, outcomeCount, inProgress.PublishedCount)
+	require.Len(t, inProgress.Outcomes, outcomeCount)
+}
+
+func TestBackfillRunWideRejectionDoesNotFabricateVersionOutcome(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/rejected", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Error(t, c.RejectBackfillRun(ctx, run.ID, ""))
+	require.NoError(t, c.RejectBackfillRun(ctx, run.ID, "source_repository_access_rejected"))
+
+	rejected, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithRejections, rejected.Status)
+	require.Equal(t, "source_repository_access_rejected", rejected.FailureCode)
+	require.Zero(t, rejected.RejectedCount)
+	require.Empty(t, rejected.Outcomes)
 }
 
 func mustPublishedVersions(t *testing.T, c *Catalog, packagePath, path string) []string {
@@ -639,8 +724,8 @@ func TestPostgresMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 	var version string
-	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version").Scan(&version))
-	require.Equal(t, "202607230001", version)
+	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
+	require.Equal(t, "202607300001", version)
 	require.NoError(t, c.Migrate(ctx))
-	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version").Scan(&version))
+	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
 }

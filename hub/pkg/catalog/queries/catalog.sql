@@ -439,8 +439,8 @@ WHERE package_path=$1 AND status IN ('queued','running')
 ORDER BY created_at DESC LIMIT 1;
 
 -- name: InsertBackfillRun :exec
-INSERT INTO package_backfill_runs (id,package_path,status,error_count,diagnostics,created_at,updated_at)
-VALUES ($1,$2,$3,0,$4,$5,$5);
+INSERT INTO package_backfill_runs (id,package_path,status,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$4);
 
 -- name: LatestBackfillRun :one
 SELECT * FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1;
@@ -452,20 +452,57 @@ SELECT * FROM package_backfill_runs WHERE id=$1;
 UPDATE package_backfill_runs SET status='running',started_at=COALESCE(started_at,sqlc.arg(now)),updated_at=sqlc.arg(now)
 WHERE id=sqlc.arg(id) AND status='queued';
 
+-- name: LockRunningBackfillRun :one
+SELECT id FROM package_backfill_runs WHERE id=$1 AND status='running' FOR UPDATE;
+
+-- name: UpsertBackfillVersionOutcome :exec
+INSERT INTO package_backfill_version_outcomes (run_id,version,commit_sha,outcome,reason_code,attempt_count,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,1,$6,$6)
+ON CONFLICT (run_id,version) DO UPDATE SET
+  commit_sha=EXCLUDED.commit_sha,
+  outcome=EXCLUDED.outcome,
+  reason_code=EXCLUDED.reason_code,
+  attempt_count=package_backfill_version_outcomes.attempt_count+1,
+  updated_at=EXCLUDED.updated_at;
+
+-- name: RefreshBackfillRunCounts :execrows
+UPDATE package_backfill_runs SET
+  published_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome IN ('published','already_published')),
+  skipped_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='skipped'),
+  rejected_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='rejected'),
+  failed_count=(SELECT count(*) FROM package_backfill_version_outcomes o WHERE o.run_id=$1 AND o.outcome='retryable_failure'),
+  updated_at=$2
+WHERE id=$1 AND status='running';
+
+-- name: BackfillVersionOutcomes :many
+SELECT * FROM package_backfill_version_outcomes WHERE run_id=$1 ORDER BY version;
+
 -- name: CompleteBackfillRun :execrows
-UPDATE package_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
+UPDATE package_backfill_runs SET
+  status=CASE WHEN rejected_count>0 THEN 'complete_with_rejections' ELSE 'complete' END,
+  completed_at=$2,
+  failure_code=NULL,
+  updated_at=$2
+WHERE id=$1 AND status='running' AND failed_count=0;
+
+-- name: FailBackfillRun :execrows
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failure_code=$3,updated_at=$2
+WHERE id=$1 AND status IN ('queued','running');
+
+-- name: RejectBackfillRun :execrows
+UPDATE package_backfill_runs SET status='complete_with_rejections',completed_at=$2,failure_code=$3,updated_at=$2
 WHERE id=$1 AND status IN ('queued','running');
 
 -- name: TouchBackfillRun :execrows
 UPDATE package_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running';
 
 -- name: ExpireStaleBackfillRuns :execrows
-UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failed_count=GREATEST(failed_count,1),failure_code='execution_expired',updated_at=$2
 WHERE status='running' AND updated_at<$1;
 
 -- name: StaleQueuedBackfillRuns :many
 SELECT * FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2;
 
 -- name: ExpireQueuedBackfillRun :execrows
-UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='failed',completed_at=$2,failed_count=GREATEST(failed_count,1),failure_code='execution_expired',updated_at=$2
 WHERE id=$1 AND status='queued';

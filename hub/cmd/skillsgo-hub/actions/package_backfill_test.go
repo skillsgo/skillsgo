@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Package Backfill validation, PostgreSQL Run state, batch Historical materialization, immutable-version filtering, and bounded diagnostics.
- * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, one batch materializer call with isolated Version failures, deterministic Tag and pseudo-version traversal, and precise safe diagnostic codes.
+ * [INPUT]: Depends on Package Backfill validation, PostgreSQL Run state, batch Historical materialization, immutable-version filtering, typed source failures, and retry-safe per-Version outcomes.
+ * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, unchanged revision selection, explicit published/skipped/rejected/retryable outcomes, retry replacement, and precise terminal failure codes.
  * [POS]: Serves as the fast behavior contract for Package History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,9 +49,10 @@ func (stub *repositoryBackfillSessionStub) VisitSnapshots(context.Context, []str
 }
 
 type historicalBatchMaterializerStub struct {
-	calls   int
-	queries []string
-	failed  string
+	calls    int
+	queries  []string
+	failures map[string]error
+	omit     map[string]bool
 }
 
 func (stub *historicalBatchMaterializerStub) MaterializeHistoricalBatch(_ context.Context, _ skill.RepositoryBackfillSession, queries []string) map[string]error {
@@ -59,11 +60,10 @@ func (stub *historicalBatchMaterializerStub) MaterializeHistoricalBatch(_ contex
 	stub.queries = append([]string(nil), queries...)
 	result := make(map[string]error, len(queries))
 	for _, query := range queries {
-		if query == stub.failed {
-			result[query] = fmt.Errorf("injected revision failure")
-		} else {
-			result[query] = nil
+		if stub.omit[query] {
+			continue
 		}
+		result[query] = stub.failures[query]
 	}
 	return result
 }
@@ -166,27 +166,91 @@ func TestCanonicalBackfillVersionsAreDeterministic(t *testing.T) {
 	}, actual)
 }
 
-func TestPackageBackfillUsesOneBatchAndKeepsVersionFailuresIndependent(t *testing.T) {
+func TestPackageBackfillPersistsPublishedSkippedAndRejectedOutcomes(t *testing.T) {
 	metadata := openActionTestCatalog(t)
 	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/batch", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
 	require.NoError(t, err)
 	require.True(t, created)
-	materializer := &historicalBatchMaterializerStub{failed: "v1.0.0"}
+	materializer := &historicalBatchMaterializerStub{failures: map[string]error{
+		"v1.0.0": skill.SourceFailureError{Code: skill.SourceFailureNoSkills, Err: fmt.Errorf("historical revision has no skills")},
+		"v1.1.0": skill.SourceFailureError{Code: skill.SourceFailureInvalidManifest, Err: fmt.Errorf("invalid historical manifest")},
+	}}
 	service := &packageBackfillService{
 		metadata: metadata,
 		lister: repositoryVersionListerStub{versions: []skill.RepositoryTag{
-			{Version: "v1.0.0", CommitSHA: "one"}, {Version: "v1.1.0", CommitSHA: "two"},
+			{Version: "v1.0.0", CommitSHA: "one"}, {Version: "v1.1.0", CommitSHA: "two"}, {Version: "v1.2.0", CommitSHA: "three"},
 		}},
 		materializer: materializer,
 		logger:       log.NoOpLogger(),
 	}
 	require.NoError(t, service.run(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}))
 	require.Equal(t, 1, materializer.calls)
-	require.Equal(t, []string{"v1.0.0", "v1.1.0"}, materializer.queries)
+	require.Equal(t, []string{"v1.0.0", "v1.1.0", "v1.2.0"}, materializer.queries)
 	completed, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
 	require.NoError(t, err)
-	require.Equal(t, catalog.BackfillCompleteWithErrors, completed.Status)
-	require.Equal(t, 1, completed.ErrorCount)
+	require.Equal(t, catalog.BackfillCompleteWithRejections, completed.Status)
+	require.Equal(t, 1, completed.PublishedCount)
+	require.Equal(t, 1, completed.SkippedCount)
+	require.Equal(t, 1, completed.RejectedCount)
+	require.Zero(t, completed.FailedCount)
+	require.Equal(t, []catalog.BackfillVersionOutcomeKind{
+		catalog.BackfillOutcomeSkipped, catalog.BackfillOutcomeRejected, catalog.BackfillOutcomePublished,
+	}, []catalog.BackfillVersionOutcomeKind{completed.Outcomes[0].Outcome, completed.Outcomes[1].Outcome, completed.Outcomes[2].Outcome})
+}
+
+func TestPackageBackfillRetriesTransientVersionFailureAndReplacesOutcome(t *testing.T) {
+	metadata := openActionTestCatalog(t)
+	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/retry", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	materializer := &historicalBatchMaterializerStub{failures: map[string]error{
+		"v1.0.0": withPublicationFailure(publicationFailureArtifactReplication, fmt.Errorf("temporary R2 failure")),
+	}}
+	service := &packageBackfillService{
+		metadata:     metadata,
+		lister:       repositoryVersionListerStub{versions: []skill.RepositoryTag{{Version: "v1.0.0", CommitSHA: "one"}}},
+		materializer: materializer,
+		logger:       log.NoOpLogger(),
+	}
+
+	err = service.run(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath})
+	require.Error(t, err)
+	inProgress, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, catalog.BackfillRunning, inProgress.Status)
+	require.Equal(t, 1, inProgress.FailedCount)
+	require.Equal(t, catalog.BackfillOutcomeRetryableFailure, inProgress.Outcomes[0].Outcome)
+	require.Equal(t, 1, inProgress.Outcomes[0].AttemptCount)
+
+	materializer.failures = nil
+	require.NoError(t, service.run(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}))
+	completed, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, catalog.BackfillComplete, completed.Status)
+	require.Equal(t, 1, completed.PublishedCount)
+	require.Zero(t, completed.FailedCount)
+	require.Equal(t, catalog.BackfillOutcomePublished, completed.Outcomes[0].Outcome)
+	require.Equal(t, 2, completed.Outcomes[0].AttemptCount)
+}
+
+func TestPackageBackfillRetriesWhenMaterializerOmitsVersionResult(t *testing.T) {
+	metadata := openActionTestCatalog(t)
+	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/missing-result", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	service := &packageBackfillService{
+		metadata:     metadata,
+		lister:       repositoryVersionListerStub{versions: []skill.RepositoryTag{{Version: "v1.0.0", CommitSHA: "one"}}},
+		materializer: &historicalBatchMaterializerStub{omit: map[string]bool{"v1.0.0": true}},
+		logger:       log.NoOpLogger(),
+	}
+
+	require.Error(t, service.run(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}))
+	inProgress, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, catalog.BackfillRunning, inProgress.Status)
+	require.Equal(t, catalog.BackfillOutcomeRetryableFailure, inProgress.Outcomes[0].Outcome)
+	require.Equal(t, string(publicationFailureUnexpected), inProgress.Outcomes[0].ReasonCode)
 }
 
 func TestBackfillDiagnosticExposesOnlyStableCode(t *testing.T) {
@@ -215,6 +279,25 @@ func TestBackfillDiagnosticPreservesPrecisePublicationStage(t *testing.T) {
 	}
 }
 
+func TestBackfillFailurePolicySeparatesSkipRejectAndRetry(t *testing.T) {
+	for name, test := range map[string]struct {
+		code string
+		want catalog.BackfillVersionOutcomeKind
+	}{
+		"no skills":           {code: string(skill.SourceFailureNoSkills), want: catalog.BackfillOutcomeSkipped},
+		"invalid manifest":    {code: string(skill.SourceFailureInvalidManifest), want: catalog.BackfillOutcomeRejected},
+		"missing revision":    {code: string(skill.SourceFailureRevisionNotFound), want: catalog.BackfillOutcomeRejected},
+		"invalid member":      {code: string(publicationFailureInvalidMember), want: catalog.BackfillOutcomeRejected},
+		"R2 publication":      {code: string(publicationFailureArtifactReplication), want: catalog.BackfillOutcomeRetryableFailure},
+		"catalog publication": {code: string(publicationFailureCatalogCommit), want: catalog.BackfillOutcomeRetryableFailure},
+		"rate limited":        {code: string(skill.SourceFailureRateLimited), want: catalog.BackfillOutcomeRetryableFailure},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, test.want, backfillOutcomeForFailure(test.code))
+		})
+	}
+}
+
 func TestPackageBackfillFinalFailurePersistsPreciseCause(t *testing.T) {
 	metadata := openActionTestCatalog(t)
 	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/final-failure", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
@@ -227,6 +310,6 @@ func TestPackageBackfillFinalFailurePersistsPreciseCause(t *testing.T) {
 	require.NoError(t, service.completeFailedRun(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}, fmt.Errorf("worker: %w", context.DeadlineExceeded)))
 	completed, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
 	require.NoError(t, err)
-	require.Equal(t, catalog.BackfillCompleteWithErrors, completed.Status)
-	require.Equal(t, []string{"repository: publication_timeout"}, completed.Diagnostics)
+	require.Equal(t, catalog.BackfillFailed, completed.Status)
+	require.Equal(t, "publication_timeout", completed.FailureCode)
 }
