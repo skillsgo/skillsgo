@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a single-connection PostgreSQL Catalog, observable memory Artifact Stores, and valid Package trees.
- * [OUTPUT]: Verifies Package publication uses the advisory-lock connection, batches Artifact replication after one hydration, and isolates per-Version persistence failures.
+ * [OUTPUT]: Verifies Package publication uses the advisory-lock connection, batches Artifact replication after one hydration, isolates per-Version persistence failures, and keeps higher content-equivalent observed Versions from advancing the effective current pointer.
  * [POS]: Serves as regression coverage for the cross-instance publication commit boundary and bounded Backfill sessions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -106,6 +106,10 @@ func TestCurrentPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T)
 	require.NoError(t, err)
 	require.False(t, created)
 	require.Equal(t, "v1.0.0", resolved)
+	current, found, err := metadata.CurrentPackageVersion(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.0.0", current)
 	require.Equal(t, 1, backend.publishes)
 	versions, err := metadata.PackagePublishedVersions(t.Context(), packagePath)
 	require.NoError(t, err)

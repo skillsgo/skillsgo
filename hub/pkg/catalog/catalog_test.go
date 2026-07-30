@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, explicit Backfill Run/Version outcomes, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, monotonic and concurrency-safe current-Version selection, explicit Backfill Run/Version outcomes, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -600,11 +600,50 @@ func TestCurrentPublicationPriorityMatrix(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			publishTestPackage(t, c, module, test.candidate, "commit-"+test.candidate, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, member)
+			currentVersion, found, err := c.CurrentPackageVersion(t.Context(), module)
+			require.NoError(t, err)
+			require.True(t, found)
+			require.Equal(t, test.want, currentVersion)
 			current, err := c.CurrentSkill(t.Context(), module, "demo")
 			require.NoError(t, err)
 			require.Equal(t, test.want, current.Version)
 		})
 	}
+}
+
+func TestConcurrentCurrentPublicationsConvergeOnHighestPriorityVersion(t *testing.T) {
+	c := openTestCatalog(t)
+	packagePath := "github.com/acme/concurrent-current"
+	versions := []string{"v1.4.0", "v0.9.0", "v2.0.0-rc.1", "v1.1.0", "v0.0.0-20260730000000-abcdef123456"}
+	start := make(chan struct{})
+	errs := make(chan error, len(versions))
+	var group sync.WaitGroup
+	for index, version := range versions {
+		group.Add(1)
+		go func(index int, version string) {
+			defer group.Done()
+			<-start
+			err := c.WithPackagePublicationLock(t.Context(), packagePath, func(writer PackagePublicationWriter) error {
+				identity := PackageVersion{
+					Version: version, Ref: "refs/tags/" + version, CommitSHA: fmt.Sprintf("commit-%d", index), TreeSHA: fmt.Sprintf("tree-%d", index),
+					ContentSum: fmt.Sprintf("h1:%043d=", index), Sum: fmt.Sprintf("h1:%043d=", index), CommitTime: time.Unix(int64(index+1), 0).UTC(),
+				}
+				members := []Skill{{PackagePath: packagePath, Path: "skills/demo", Name: "demo", Description: version}}
+				return writer.Publish(identity, members, CurrentPublication)
+			})
+			errs <- err
+		}(index, version)
+	}
+	close(start)
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	current, found, err := c.CurrentPackageVersion(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.4.0", current, "stable Versions outrank prerelease and pseudo Versions, regardless of completion order")
 }
 
 func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
