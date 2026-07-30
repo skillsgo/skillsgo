@@ -91,6 +91,7 @@ func TestPackageArtifactPathsPreserveApplicablePluginManifests(t *testing.T) {
 		".claude-plugin/plugin.json",
 		".codex-plugin/plugin.json",
 		".cursor-plugin/plugin.json",
+		"README.md",
 		"plugins/review/.claude-plugin/plugin.json",
 		"plugins/review/skills/check",
 	}, skillDirectories: []string{"plugins/review/skills/check"}}, selectPackageArtifact([]string{

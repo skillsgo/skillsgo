@@ -1,6 +1,6 @@
 #!/bin/sh
 # [INPUT]: Depends on git plus a writable disposable /e2e directory.
-# [OUTPUT]: Creates deterministic local Git remotes for Repository discovery, version, ancestor-based pseudo-version, movable-branch refresh, history, selector, and invalid-candidate journeys.
+# [OUTPUT]: Creates deterministic local Git remotes with authored Package README coverage for Repository discovery, version, ancestor-based pseudo-version, movable-branch refresh, history, selector, and invalid-candidate journeys.
 # [POS]: Serves as the source-host fixture boundary for cross-product Repository E2E tests.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 set -eu
@@ -43,6 +43,7 @@ commit_push() {
 
 new_repo collection
 collection="$work_root/collection"
+printf '%s\n' '# Collection Skills' >"$collection/README.md"
 skill "$collection/skills/alpha" alpha "Alpha at v1."
 skill "$collection/skills/beta" beta "Beta exists only at v1."
 skill "$collection/skills/CamelCase" camel-case "Case-preserving nested path."

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J12 conventionally discovered multi-Skill Repository installation, one filtered authoritative Package Store with completed cross-Agent plugin manifests, unrelated-file exclusion, invalid-member filtering, and Cartesian multi-Agent projections.
+ * [OUTPUT]: Provides black-box coverage for J12 conventionally discovered multi-Skill Repository installation, one filtered authoritative Package Store with the byte-identical authored root README and completed cross-Agent plugin manifests, unrelated-file exclusion, invalid-member filtering, and Cartesian multi-Agent projections.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,6 +34,9 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	for _, relativeSkillPath := range []string{"skills/alpha", "skills/beta", "skills/CamelCase", "skills/general/naming"} {
 		require.FileExists(t, filepath.Join(packageDir, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
 	}
+	readme, err := os.ReadFile(filepath.Join(packageDir, "README.md"))
+	require.NoError(t, err)
+	require.Equal(t, "# Collection Skills\n", string(readme))
 	for _, manifestPath := range []string{".claude-plugin/plugin.json", ".codex-plugin/plugin.json", ".cursor-plugin/plugin.json"} {
 		manifestBytes, err := os.ReadFile(filepath.Join(packageDir, filepath.FromSlash(manifestPath)))
 		require.NoError(t, err)

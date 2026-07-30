@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on normalized Git tree paths and the directory conventions implemented by the skills.sh CLI.
- * [OUTPUT]: Selects ordered SKILL.md publication candidates using root precedence, conventional containers, bounded catalog depth, recursive fallback, and the minimal Package path set that preserves applicable plugin manifests.
+ * [OUTPUT]: Selects ordered SKILL.md publication candidates using root precedence, conventional containers, bounded catalog depth, recursive fallback, and the minimal Package path set that preserves the authored root README plus applicable plugin manifests.
  * [POS]: Serves as the pure source-tree discovery policy shared by Git-backed Repository publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -328,6 +328,9 @@ func selectPackageArtifact(files, skillDirectories []string) packageArtifactSele
 	selected := make(map[string]struct{}, len(directories)+3)
 	for _, directory := range directories {
 		selected[directory] = struct{}{}
+	}
+	if stringSliceContains(files, "README.md") {
+		selected["README.md"] = struct{}{}
 	}
 	for _, file := range files {
 		if path.Base(file) != "plugin.json" {

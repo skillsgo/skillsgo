@@ -27,6 +27,7 @@ func TestRepositoryTarProjectionExcludesPAXMetadataAndPreservesLegacySum(t *test
 	skill := []byte("---\nname: alpha\ndescription: Alpha.\n---\n# Alpha\n")
 	guide := []byte("shared guide\n")
 	require.NoError(t, os.WriteFile(filepath.Join(repository, "skills", "alpha", "SKILL.md"), skill, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, "README.md"), []byte("# Example Skills\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(repository, "GUIDE.md"), guide, 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(repository, ".agents", "excluded.md"), []byte("excluded"), 0o644))
 	runGit(t, repository, "add", ".")
@@ -34,12 +35,13 @@ func TestRepositoryTarProjectionExcludesPAXMetadataAndPreservesLegacySum(t *test
 	revision := strings.TrimSpace(runGit(t, repository, "rev-parse", "HEAD"))
 
 	const packagePath, version = "github.com/example/skills", "v1.2.3"
-	entries, tarSum, err := createRepositoryArtifact(context.Background(), packagePath, version, repository, revision, packageArtifactSelection{paths: []string{"skills/alpha"}, skillDirectories: []string{"skills/alpha"}})
+	entries, tarSum, err := createRepositoryArtifact(context.Background(), packagePath, version, repository, revision, packageArtifactSelection{paths: []string{"README.md", "skills/alpha"}, skillDirectories: []string{"skills/alpha"}})
 	require.NoError(t, err)
 	require.Equal(t, []string{
 		".claude-plugin/plugin.json",
 		".codex-plugin/plugin.json",
 		".cursor-plugin/plugin.json",
+		"README.md",
 		"skills/alpha/SKILL.md",
 	}, artifactEntryPaths(entries))
 
