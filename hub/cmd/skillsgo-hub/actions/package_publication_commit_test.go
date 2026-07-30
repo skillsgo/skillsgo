@@ -9,6 +9,7 @@ package actions
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -122,6 +123,9 @@ func TestPackagePublicationSessionKeepsSiblingVersionsIndependent(t *testing.T) 
 		require.NoError(t, session.Stage(succeeded))
 		outcomes := session.Flush()
 		require.Error(t, outcomes[0].err)
+		code, classified := publicationCode(outcomes[0].err)
+		require.True(t, classified)
+		require.Equal(t, publicationFailureSkillContentPersistence, code)
 		require.NoError(t, outcomes[1].err)
 		return nil
 	})
@@ -129,6 +133,20 @@ func TestPackagePublicationSessionKeepsSiblingVersionsIndependent(t *testing.T) 
 	versions, err := metadata.PackagePublishedVersions(t.Context(), "github.com/acme/isolated")
 	require.NoError(t, err)
 	require.Equal(t, []string{"v1.0.1"}, versions)
+}
+
+func TestPackagePublicationSessionDoesNotMisclassifyCallbackFailureAsTransactionFailure(t *testing.T) {
+	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
+	cause := errors.New("callback failed")
+	err = commit.WithSession(t.Context(), "github.com/acme/callback", func(*modulePublicationSession) error { return cause })
+	require.ErrorIs(t, err, cause)
+	_, classified := publicationCode(err)
+	require.False(t, classified)
 }
 
 func testModulePublicationInput(t *testing.T, packagePath, version string) modulePublicationInput {

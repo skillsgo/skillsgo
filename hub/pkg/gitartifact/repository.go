@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Depends on validated Package Artifact entries, canonical immutable versions, deterministic commit time, and incremental Pack lifecycle primitives.
- * [OUTPUT]: Authors parentless Artifact commits, immutable lightweight Version tags, a standard movable main/HEAD discovery ref, append-only incremental Packs, and dumb-HTTP indexes.
+ * [OUTPUT]: Authors parentless Artifact commits, immutable lightweight Version tags with a typed conflict sentinel, a standard movable main/HEAD discovery ref, append-only incremental Packs, and dumb-HTTP indexes.
  * [POS]: Serves as the standard Git encoding boundary between Hub Package publication and repository-file storage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package gitartifact
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +27,8 @@ import (
 
 const artifactIdentity = "SkillsGo Hub"
 const artifactEmail = "hub@skillsgo.dev"
+
+var ErrImmutableTagConflict = errors.New("immutable Artifact tag conflict")
 
 type treeNode struct {
 	files    map[string]protocolartifact.Entry
@@ -66,7 +69,7 @@ func Publish(repositoryPath, packagePath, version string, commitTime time.Time, 
 	tagName := plumbing.NewTagReferenceName(version)
 	if existing, referenceErr := repository.Reference(tagName, true); referenceErr == nil {
 		if existing.Hash() != commitHash {
-			return plumbing.ZeroHash, false, fmt.Errorf("immutable Artifact tag conflict for %s@%s", packagePath, version)
+			return plumbing.ZeroHash, false, fmt.Errorf("%w for %s@%s", ErrImmutableTagConflict, packagePath, version)
 		}
 		return commitHash, false, nil
 	} else if referenceErr != plumbing.ErrReferenceNotFound {

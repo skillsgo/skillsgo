@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, precise Source Failure Codes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -102,11 +102,11 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 	const op errors.Op = "gitFetcher.DiscoverRepository"
 	resolution, err := resolveGitRevision(ctx, repoDir, repository, revision)
 	if err != nil {
-		return nil, err
+		return nil, withSourceFailure(SourceFailureRevisionResolution, err)
 	}
 	listing, err := gitOutput(ctx, repoDir, "ls-tree", "-r", "--name-only", resolution.CommitSHA)
 	if err != nil {
-		return nil, errors.E(op, err)
+		return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err))
 	}
 	candidates := make([]string, 0)
 	for _, file := range strings.Split(listing, "\n") {
@@ -116,6 +116,9 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 		}
 	}
 	sort.Strings(candidates)
+	if len(candidates) == 0 {
+		return nil, withSourceFailure(SourceFailureNoSkills, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound))
+	}
 	snapshot := &RepositorySnapshot{
 		PackagePath: packagePath, Version: resolution.Version,
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
@@ -123,7 +126,7 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 	}
 	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA)
 	if err != nil {
-		return nil, errors.E(op, err)
+		return nil, withSourceFailure(SourceFailureArtifactBuild, errors.E(op, err))
 	}
 	snapshot.Entries = entries
 	snapshot.Sum = sum
@@ -136,11 +139,11 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 			err = nil
 		}
 		if err != nil {
-			return nil, errors.E(op, err)
+			return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err))
 		}
 		manifestSource, fetchErr := gitFileContent(ctx, repoDir, resolution.CommitSHA, candidate)
 		if fetchErr != nil {
-			return nil, errors.E(op, fetchErr)
+			return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, fetchErr))
 		}
 		manifestBytes, body, manifestErr := extractManifest(manifestSource)
 		if manifestErr == nil {
@@ -159,7 +162,7 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Content: append([]byte(nil), manifestSource...), Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {
-		return nil, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
+		return nil, withSourceFailure(SourceFailureInvalidManifest, errors.E(op, errors.S(packagePath), errors.V(revision), "Repository contains Skill candidates but none has a valid manifest", errors.KindBadRequest))
 	}
 	return snapshot, nil
 }
@@ -227,7 +230,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID PackagePath) er
 					"result":      "success",
 				}).Debugf("repository git transport completed")
 				if err := enforceRepositoryDiskLimit(repoDir); err != nil {
-					return nil, errors.E(op, err, errors.KindBadRequest)
+					return nil, withSourceFailure(SourceFailureRepositoryTooLarge, errors.E(op, err, errors.KindBadRequest))
 				}
 				return nil, g.writeRepositoryMetadata(repoDir, skillID)
 			} else if ctx.Err() != nil {
@@ -280,6 +283,9 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID PackagePath) er
 		cloneDir := filepath.Join(tmpDir, "repository")
 		cloneStarted := time.Now()
 		if output, err := g.runGitTransport(ctx, "", "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", "--no-tags", cloneURL, cloneDir); err != nil {
+			if ctx.Err() != nil {
+				return nil, errors.E(op, ctx.Err())
+			}
 			diagnostic := gitTransportDiagnostic(output)
 			entry.WithFields(map[string]any{
 				"duration_ms": time.Since(cloneStarted).Milliseconds(),
@@ -297,10 +303,13 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID PackagePath) er
 			"result":      "success",
 		}).Debugf("repository git transport completed")
 		if output, err := g.runGitTransport(ctx, cloneDir, "-c", "http.followRedirects=false", "fetch", "--prune", "origin", "+refs/tags/*:refs/skillsgo/upstream-tags/*"); err != nil {
+			if ctx.Err() != nil {
+				return nil, errors.E(op, ctx.Err())
+			}
 			return nil, errors.E(op, fmt.Errorf("fetch Repository Tag catalog: %s", gitTransportDiagnostic(output)))
 		}
 		if err := enforceRepositoryDiskLimit(cloneDir); err != nil {
-			return nil, errors.E(op, err, errors.KindBadRequest)
+			return nil, withSourceFailure(SourceFailureRepositoryTooLarge, errors.E(op, err, errors.KindBadRequest))
 		}
 		if err := os.Rename(cloneDir, repoDir); err != nil {
 			return nil, errors.E(op, err)
@@ -488,9 +497,9 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath
 	}
 	commitSHA, err := gitOutput(ctx, repoDir, "rev-parse", resolvedRevision+"^{commit}")
 	if err != nil {
-		return nil, errors.E(op,
+		return nil, withSourceFailure(SourceFailureRevisionNotFound, errors.E(op,
 			fmt.Sprintf("revision %q not found for Skill %q", revision, skillID.String()),
-			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
+			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound))
 	}
 	commitTime, err := gitCommitTime(ctx, repoDir, commitSHA)
 	if err != nil {
@@ -532,7 +541,7 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath
 	}
 	treeSHA, err := gitOutput(ctx, repoDir, "rev-parse", commitSHA+"^{tree}")
 	if err != nil {
-		return nil, errors.E(op, err, errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
+		return nil, withSourceFailure(SourceFailureTreeReadFailed, errors.E(op, err, errors.S(skillID.String()), errors.V(revision), errors.KindNotFound))
 	}
 	return &Resolution{
 		Requested:  requestedRevision,

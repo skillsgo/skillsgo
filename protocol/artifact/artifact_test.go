@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Package tree/legacy ZIP/directory fixtures plus the upstream Go dirhash implementation.
- * [OUTPUT]: Specifies Package tree validation, build/verification, Go Hash1 parity, representation parity, safe paths, bounded resource use, Skill membership, and framing failures.
+ * [OUTPUT]: Specifies Package tree validation with stable failure codes, build/verification, Go Hash1 parity, representation parity, safe paths, bounded resource use, Skill membership, and framing failures.
  * [POS]: Serves as exhaustive compatibility and hostile-input coverage shared transitively by Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -204,6 +204,11 @@ func TestBuildPackageRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
 		t.Fatalf("file-count error: %v", err)
 	}
 	tooLarge := make([]byte, MaxUncompressedBytes+1)
+	if _, err := ValidateEntries([]Entry{{Path: "SKILL.md", Contents: tooLarge}}); err == nil {
+		t.Fatal("ValidateEntries accepted oversized Artifact")
+	} else if code, ok := ValidationFailure(err); !ok || code != ValidationTooLarge {
+		t.Fatalf("ValidationFailure() = %q, %v; want %q, true", code, ok, ValidationTooLarge)
+	}
 	if _, err := BuildPackage("example.com/repo", "v1", []Entry{{Path: "SKILL.md", Contents: tooLarge}}); err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("size error: %v", err)
 	}
@@ -698,6 +703,36 @@ func TestValidateEntriesRejectsInvalidTrees(t *testing.T) {
 	validated, err := ValidateEntries(directories)
 	if err != nil || len(validated) != 1 {
 		t.Fatalf("directory filtering = %#v, %v", validated, err)
+	}
+}
+
+func TestValidateEntriesReturnsStableFailureCodes(t *testing.T) {
+	for name, test := range map[string]struct {
+		entries []Entry
+		code    ValidationCode
+	}{
+		"empty":          {entries: nil, code: ValidationFileCount},
+		"invalid path":   {entries: []Entry{{Path: "../SKILL.md", Contents: []byte("x")}}, code: ValidationInvalidPath},
+		"collision":      {entries: []Entry{{Path: "SKILL.md", Contents: []byte("x")}, {Path: "skill.md", Contents: []byte("x")}}, code: ValidationPathCollision},
+		"invalid mode":   {entries: []Entry{{Path: "SKILL.md", Contents: []byte("x"), Mode: os.ModeNamedPipe}}, code: ValidationInvalidMode},
+		"missing Skill":  {entries: []Entry{{Path: "README.md", Contents: []byte("x")}}, code: ValidationMissingSkill},
+		"unsafe symlink": {entries: []Entry{{Path: "SKILL.md", Contents: []byte("x")}, {Path: "escape", Contents: []byte("../outside"), Mode: os.ModeSymlink}}, code: ValidationUnsafeSymlink},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := ValidateEntries(test.entries)
+			code, ok := ValidationFailure(err)
+			if !ok || code != test.code {
+				t.Fatalf("ValidationFailure() = %q, %v; want %q, true", code, ok, test.code)
+			}
+		})
+	}
+	if code, ok := ValidationFailure(errors.New("ordinary error")); ok || code != "" {
+		t.Fatalf("ordinary ValidationFailure() = %q, %v; want empty, false", code, ok)
+	}
+	cause := errors.New("typed cause")
+	typed := validationError(ValidationInvalidPath, cause)
+	if !errors.Is(typed, cause) || typed.Error() != cause.Error() {
+		t.Fatalf("ValidationError does not preserve cause: %v", typed)
 	}
 }
 

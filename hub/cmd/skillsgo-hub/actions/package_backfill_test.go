@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Package Backfill validation, PostgreSQL Run state, batch Historical materialization, immutable-version filtering, and bounded diagnostics.
- * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, one batch materializer call with isolated Version failures, deterministic Tag and pseudo-version traversal, and safe diagnostic bounds.
+ * [OUTPUT]: Verifies canonical batch input, bounded long-running execution, one batch materializer call with isolated Version failures, deterministic Tag and pseudo-version traversal, and precise safe diagnostic codes.
  * [POS]: Serves as the fast behavior contract for Package History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -191,6 +191,42 @@ func TestPackageBackfillUsesOneBatchAndKeepsVersionFailuresIndependent(t *testin
 
 func TestBackfillDiagnosticExposesOnlyStableCode(t *testing.T) {
 	actual := backfillDiagnostic("v1.0.0", classifyBackfillFailure(fmt.Errorf("Authorization: Bearer secret artifact bytes")))
-	require.Equal(t, "v1.0.0: publication_failed", actual)
+	require.Equal(t, "v1.0.0: unexpected_publication_failure", actual)
 	require.NotContains(t, actual, "secret")
+}
+
+func TestBackfillDiagnosticPreservesPrecisePublicationStage(t *testing.T) {
+	for name, test := range map[string]struct {
+		err  error
+		code string
+	}{
+		"snapshot":             {err: withPublicationFailure(publicationFailureSnapshotIncomplete, fmt.Errorf("secret snapshot detail")), code: "source_snapshot_incomplete"},
+		"artifact replication": {err: withPublicationFailure(publicationFailureArtifactReplication, fmt.Errorf("secret R2 response")), code: "artifact_repository_publication_failed"},
+		"skill content":        {err: withPublicationFailure(publicationFailureSkillContentPersistence, fmt.Errorf("secret object key")), code: "skill_content_publication_failed"},
+		"catalog":              {err: withPublicationFailure(publicationFailureCatalogCommit, fmt.Errorf("secret SQL")), code: "catalog_publication_failed"},
+		"timeout":              {err: context.DeadlineExceeded, code: "publication_timeout"},
+		"wrapped timeout":      {err: withPublicationFailure(publicationFailureArtifactReplication, fmt.Errorf("R2: %w", context.DeadlineExceeded)), code: "publication_timeout"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			diagnostic := backfillDiagnostic("v1.0.0", classifyBackfillFailure(test.err))
+			require.Equal(t, "v1.0.0: "+test.code, diagnostic)
+			require.NotContains(t, diagnostic, "secret")
+		})
+	}
+}
+
+func TestPackageBackfillFinalFailurePersistsPreciseCause(t *testing.T) {
+	metadata := openActionTestCatalog(t)
+	run, created, err := metadata.SubmitBackfillRun(t.Context(), "github.com/acme/final-failure", func(context.Context, pgx.Tx, catalog.BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	_, active, err := metadata.StartBackfillRun(t.Context(), run.ID)
+	require.NoError(t, err)
+	require.True(t, active)
+	service := &packageBackfillService{metadata: metadata}
+	require.NoError(t, service.completeFailedRun(t.Context(), packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath}, fmt.Errorf("worker: %w", context.DeadlineExceeded)))
+	completed, err := metadata.LatestBackfillRun(t.Context(), run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, catalog.BackfillCompleteWithErrors, completed.Status)
+	require.Equal(t, []string{"repository: publication_timeout"}, completed.Diagnostics)
 }

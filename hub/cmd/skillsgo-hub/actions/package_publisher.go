@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
- * [OUTPUT]: Materializes single or chunked historical Package publications, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
+ * [OUTPUT]: Materializes single or chunked historical Package publications with precise stage failures, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
  * [POS]: Serves as the observable cold-publication and bounded Backfill-session coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -95,7 +95,7 @@ func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source
 	case p.upstream <- struct{}{}:
 		defer func() { <-p.upstream }()
 	default:
-		err := huberrors.E("modulePublisher.MaterializeHistoricalBatch", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
+		err := withPublicationFailure(publicationFailureCapacity, huberrors.E("modulePublisher.MaterializeHistoricalBatch", "upstream Repository resolution is at capacity", huberrors.KindRateLimit))
 		for _, query := range queries {
 			results[query] = err
 		}
@@ -283,22 +283,26 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 
 func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (modulePublicationInput, error) {
 	if len(snapshot.Entries) == 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
-		return modulePublicationInput{}, fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query)
+		return modulePublicationInput{}, withPublicationFailure(publicationFailureSnapshotIncomplete, fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query))
 	}
-	if sum, sumErr := protocolartifact.PackageEntriesSum(snapshot.Entries, packagePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
-		return modulePublicationInput{}, fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version)
+	sum, sumErr := protocolartifact.PackageEntriesSum(snapshot.Entries, packagePath, snapshot.Version)
+	if sumErr != nil {
+		return modulePublicationInput{}, withPublicationFailure(artifactValidationPublicationCode(sumErr), sumErr)
+	}
+	if sum != snapshot.Sum {
+		return modulePublicationInput{}, withPublicationFailure(publicationFailureArtifactSumMismatch, fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version))
 	}
 
 	published := make([]catalog.Skill, 0, len(snapshot.Members))
 	skillContents := make([]moduleSkillContent, 0, len(snapshot.Members))
 	for _, member := range snapshot.Members {
 		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" || len(member.Content) == 0 {
-			return modulePublicationInput{}, fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query)
+			return modulePublicationInput{}, withPublicationFailure(publicationFailureInvalidMember, fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query))
 		}
 		sourceLanguage := ""
 		_, body, splitErr := protocolmanifest.Split(member.Content)
 		if splitErr != nil {
-			return modulePublicationInput{}, fmt.Errorf("split validated Skill document for %s@%s: %w", packagePath, query, splitErr)
+			return modulePublicationInput{}, withPublicationFailure(publicationFailureInvalidSkillDocument, fmt.Errorf("split validated Skill document for %s@%s: %w", packagePath, query, splitErr))
 		}
 		analysis := p.languageAnalyzer.AnalyzeMarkdown(body)
 		sourceLanguage = analysis.PrimaryLanguage
