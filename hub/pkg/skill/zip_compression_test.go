@@ -36,11 +36,14 @@ func TestRepositoryTarProjectionExcludesPAXMetadataAndPreservesLegacySum(t *test
 	const packagePath, version = "github.com/example/skills", "v1.2.3"
 	entries, tarSum, err := createRepositoryArtifact(context.Background(), packagePath, version, repository, revision, packageArtifactSelection{paths: []string{"skills/alpha"}, skillDirectories: []string{"skills/alpha"}})
 	require.NoError(t, err)
-	require.Equal(t, []string{"skills/alpha/SKILL.md"}, artifactEntryPaths(entries))
+	require.Equal(t, []string{
+		".claude-plugin/plugin.json",
+		".codex-plugin/plugin.json",
+		".cursor-plugin/plugin.json",
+		"skills/alpha/SKILL.md",
+	}, artifactEntryPaths(entries))
 
-	legacyZIP, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
-		{Path: "skills/alpha/SKILL.md", Contents: skill, Mode: 0o644},
-	})
+	legacyZIP, err := protocolartifact.BuildPackage(packagePath, version, entries)
 	require.NoError(t, err)
 	legacySum, err := protocolartifact.PackageSum(legacyZIP, packagePath, version)
 	require.NoError(t, err)
@@ -58,9 +61,9 @@ func TestRepositoryArtifactPreservesPluginNamespaceWithoutShippingRepositoryRema
 	require.NoError(t, os.MkdirAll(filepath.Join(repository, ".cursor-plugin"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(repository, "website"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(repository, "skills", "engineering", "code-review", "SKILL.md"), []byte("---\nname: code-review\ndescription: Review code.\n---\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(repository, ".codex-plugin", "plugin.json"), []byte(`{"name":"codex-name"}`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(repository, ".claude-plugin", "plugin.json"), []byte(`{"name":"claude-name"}`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(repository, ".cursor-plugin", "plugin.json"), []byte(`{"name":"cursor-name"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, ".codex-plugin", "plugin.json"), []byte(`{"name":"mattpocock-skills"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, ".claude-plugin", "plugin.json"), []byte(`{"name":"mattpocock-skills"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(repository, ".cursor-plugin", "plugin.json"), []byte(`{"name":"mattpocock-skills"}`), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(repository, "website", "large.js"), []byte("unrelated"), 0o644))
 	runGit(t, repository, "add", ".")
 	runGit(t, repository, "commit", "-m", "fixture")

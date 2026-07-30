@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J12 conventionally discovered multi-Skill Repository installation, one filtered authoritative Package Store, unrelated-file exclusion, invalid-member filtering, and Cartesian multi-Agent projections.
+ * [OUTPUT]: Provides black-box coverage for J12 conventionally discovered multi-Skill Repository installation, one filtered authoritative Package Store with completed cross-Agent plugin manifests, unrelated-file exclusion, invalid-member filtering, and Cartesian multi-Agent projections.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -33,6 +33,13 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
 	for _, relativeSkillPath := range []string{"skills/alpha", "skills/beta", "skills/CamelCase", "skills/general/naming"} {
 		require.FileExists(t, filepath.Join(packageDir, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
+	}
+	for _, manifestPath := range []string{".claude-plugin/plugin.json", ".codex-plugin/plugin.json", ".cursor-plugin/plugin.json"} {
+		manifestBytes, err := os.ReadFile(filepath.Join(packageDir, filepath.FromSlash(manifestPath)))
+		require.NoError(t, err)
+		require.Contains(t, string(manifestBytes), `"name": "group-subgroup-collection"`)
+		require.Contains(t, string(manifestBytes), `"./skills/alpha"`)
+		require.Contains(t, string(manifestBytes), `"./skills/general/naming"`)
 	}
 	for _, projectionRoot := range []string{filepath.Join(sandboxRoot, "project", ".agents", "skills"), filepath.Join(sandboxRoot, "project", ".goose", "skills")} {
 		for _, name := range []string{"alpha", "beta", "camel-case", "naming"} {
