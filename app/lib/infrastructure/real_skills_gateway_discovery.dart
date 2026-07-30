@@ -77,7 +77,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           '$perPage',
           '--output',
           'json',
-        ]);
+        ], retryOnTransportFailure: true);
         if (!result.succeeded) throw _commandFailure(result);
         decoded = jsonDecode(result.output.stdout);
       } else {
@@ -294,16 +294,20 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       ],
       'limit': limit,
     });
-    final result = await _runCli([
-      'hub',
-      'find-candidates',
-      '--input',
-      '-',
-      '--hub',
-      _hubOrigin,
-      '--output',
-      'json',
-    ], stdin: request);
+    final result = await _runCli(
+      [
+        'hub',
+        'find-candidates',
+        '--input',
+        '-',
+        '--hub',
+        _hubOrigin,
+        '--output',
+        'json',
+      ],
+      stdin: request,
+      retryOnTransportFailure: true,
+    );
     if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
@@ -468,7 +472,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         'json',
       ];
       if (!source) args.addAll(['--lang', await _contentLang()]);
-      final result = await _runCli(args);
+      final result = await _runCli(args, retryOnTransportFailure: true);
       if (!result.succeeded) throw _commandFailure(result);
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic>) {

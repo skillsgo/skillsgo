@@ -10,14 +10,23 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
   @override
   Future<AgentCatalog> inspectOnboardingAgents() async {
     return _parseAgentCatalog(
-      await _runCli(const ['agents', '--output', 'json']),
+      await _runCli(const [
+        'agents',
+        '--output',
+        'json',
+      ], retryOnTransportFailure: true),
       requireHandshake: true,
     );
   }
 
   @override
-  Future<AgentCatalog> inspectAgents() async =>
-      _parseAgentCatalog(await _runCli(const ['agents', '--output', 'json']));
+  Future<AgentCatalog> inspectAgents() async => _parseAgentCatalog(
+    await _runCli(const [
+      'agents',
+      '--output',
+      'json',
+    ], retryOnTransportFailure: true),
+  );
 
   AgentCatalog _parseAgentCatalog(
     CommandResult result, {
@@ -119,7 +128,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       arguments.addAll(['--project', project.path]);
     }
     arguments.addAll(['--output', 'json']);
-    final result = await _runCli(arguments);
+    final result = await _runCli(arguments, retryOnTransportFailure: true);
     if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = _decodeVersionedDocument(

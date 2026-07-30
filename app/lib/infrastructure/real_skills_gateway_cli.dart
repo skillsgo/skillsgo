@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, ProcessRunner, startup handshake schema, and typed CLI failures.
- * [OUTPUT]: Provides one-shot CLI compatibility detection, developer override persistence, required-path resolution, coalesced CLI Server startup, structured command execution, and dead-session replacement.
+ * [OUTPUT]: Provides coalesced non-destructive CLI compatibility detection, developer override persistence, required-path resolution, coalesced CLI Server startup, structured command execution, safe-read transport recovery, and dead-session replacement.
  * [POS]: Serves as the CLI lifecycle capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,10 +8,21 @@ part of 'real_skills_gateway.dart';
 
 mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
   @override
-  Future<CliStatus> detectCli({String? customPath}) async {
-    await _closeCliServer();
+  Future<CliStatus> detectCli({String? customPath}) {
+    final current = _cliDetection;
+    if (customPath != null && current != null) {
+      return current.then((_) => _detectCli(customPath: customPath));
+    }
+    if (current != null) return current;
+    final detection = _detectCli(customPath: customPath);
+    _cliDetection = detection;
+    return detection.whenComplete(() {
+      if (identical(_cliDetection, detection)) _cliDetection = null;
+    });
+  }
+
+  Future<CliStatus> _detectCli({String? customPath}) async {
     final previouslyResolvedPath = _cliPath;
-    _cliPath = null;
     final saved = allowDeveloperCliOverride
         ? customPath ?? await loadCustomCliPath()
         : null;
@@ -65,7 +76,7 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
             issue: CliIssue.incompatible,
           );
         }
-        _cliPath = candidate;
+        await _activateCliPath(candidate);
         return CliStatus(
           availability: CliAvailability.ready,
           path: candidate,
@@ -80,7 +91,6 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
         );
       }
     }
-    _cliPath = null;
     return const CliStatus(
       availability: CliAvailability.missing,
       message: 'The bundled SkillsGo CLI is missing or cannot run.',
@@ -117,6 +127,7 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
     List<String> arguments, {
     String? stdin,
     void Function(String line)? onStdoutLine,
+    bool retryOnTransportFailure = false,
   }) async {
     if (_cliPath == null) {
       final status = await _detectCliOnce();
@@ -130,27 +141,43 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
       }
     }
     final executable = _requiredCli;
-    final output = await (await _requireCliServer(
-      executable,
-    )).run(arguments, stdin: stdin, onStdoutLine: onStdoutLine);
-    if (_cliServerSession?.isClosed ?? false) {
-      _cliServerSession = null;
-      _cliServerStart = null;
+    for (var attempt = 0; ; attempt++) {
+      final session = await _requireCliServer(executable);
+      _activeCliRequests++;
+      late final ProcessOutput output;
+      try {
+        output = await session.run(
+          arguments,
+          stdin: stdin,
+          onStdoutLine: onStdoutLine,
+        );
+      } finally {
+        _activeCliRequests--;
+        if (_activeCliRequests == 0) {
+          _cliRequestsDrained?.complete();
+          _cliRequestsDrained = null;
+        }
+      }
+      final transportFailure = _isCliTransportFailure(output);
+      if (session.isClosed || transportFailure) {
+        if (identical(_cliServerSession, session)) {
+          _cliServerSession = null;
+          _cliServerStart = null;
+        }
+        if (transportFailure && !session.isClosed) await session.close();
+      }
+      if (!retryOnTransportFailure || !transportFailure || attempt > 0) {
+        return CommandResult(
+          command: [executable, ...arguments],
+          output: output,
+        );
+      }
     }
-    return CommandResult(command: [executable, ...arguments], output: output);
   }
 
-  Future<CliStatus> _detectCliOnce() async {
-    final current = _cliDetection;
-    if (current != null) return current;
-    final detection = detectCli();
-    _cliDetection = detection;
-    try {
-      return await detection;
-    } finally {
-      _cliDetection = null;
-    }
-  }
+  Future<CliStatus> _detectCliOnce() => detectCli();
+
+  bool _isCliTransportFailure(ProcessOutput output) => output.transportFailure;
 
   Future<CliServerSession> _requireCliServer(String executable) async {
     final current = _cliServerSession;
@@ -169,9 +196,17 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
   }
 
   Future<void> _closeCliServer() async {
+    if (_activeCliRequests > 0) {
+      await (_cliRequestsDrained ??= Completer<void>()).future;
+    }
     final current = _cliServerSession;
     _cliServerSession = null;
     _cliServerStart = null;
     await current?.close();
+  }
+
+  Future<void> _activateCliPath(String path) async {
+    if (_cliPath != null && _cliPath != path) await _closeCliServer();
+    _cliPath = path;
   }
 }

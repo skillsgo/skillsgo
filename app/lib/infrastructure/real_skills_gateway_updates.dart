@@ -115,7 +115,7 @@ mixin _RealSkillsGatewayUpdates
         'json',
         '--hub',
         _hubOrigin,
-      ]);
+      ], retryOnTransportFailure: true);
       if (!command.succeeded && command.output.stdout.trim().isEmpty) {
         throw _commandFailure(command);
       }

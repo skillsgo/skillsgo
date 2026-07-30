@@ -347,6 +347,7 @@ final class _IoCliServerSession implements CliServerSession {
     exitCode: 127,
     stdout: '',
     stderr: '$_executable: $message',
+    transportFailure: true,
   );
 
   @override

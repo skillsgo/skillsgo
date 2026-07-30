@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for Hub and local business access, platform-native macOS HTTP plus portable IO HTTP for independently configured Cloud ranking reads, the local filesystem, secure randomness, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed long-lived CLI-backed Mandatory Onboarding, Hub Find/detail, system-proxy-aware Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed long-lived and recoverable CLI-backed Mandatory Onboarding, Hub Find/detail, system-proxy-aware Cloud ranking composition, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -110,6 +110,8 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   CliServerSession? _cliServerSession;
   Future<CliServerSession>? _cliServerStart;
   Future<CliStatus>? _cliDetection;
+  int _activeCliRequests = 0;
+  Completer<void>? _cliRequestsDrained;
   final Uri _defaultHubBase;
   Uri _hubBase;
   final Uri _defaultCloudBase;
@@ -240,6 +242,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     List<String> arguments, {
     String? stdin,
     void Function(String line)? onStdoutLine,
+    bool retryOnTransportFailure = false,
   });
 
   SkillsException _commandFailure(CommandResult result);
