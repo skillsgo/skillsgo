@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared gateway state, the single Hub Origin, content locale, CLI Skill/ranking reads and source-language candidate Find, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
+ * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Hub Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

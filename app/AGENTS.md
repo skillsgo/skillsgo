@@ -60,7 +60,7 @@ make build-app-macos
 
 - After a one-shot compatibility handshake, the App invokes every Hub and local business operation through one typed long-lived CLI Server adapter and must not call public Hub APIs directly. It stores one Hub Origin.
 - The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
-- The Hub owns the complete public v1 route surface. The official Cloud runtime adds persistent install events and rankings behind the same Hub Origin.
+- The Hub owns the complete public v1 route surface. Official and self-hosted Origins expose the same routes; community-data availability is expressed by valid responses rather than client-side deployment discovery.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
 - Do not construct shell command strings from user input; pass arguments as a structured list.

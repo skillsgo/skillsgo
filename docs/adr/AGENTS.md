@@ -14,14 +14,12 @@
 - `0009-freeze-hub-v1-distribution-contract.md`: records the superseded per-Skill artifact and installation-mode design that was replaced before public launch.
 - `0010-distribute-repository-versions-and-project-selected-skills.md`: makes Repository Version the artifact, Sum, download, lock, and Package Store unit while preserving Skill-level Agent visibility through deterministic Repository Projections.
 - `0011-identify-repository-members-by-skill-name.md`: identifies selectable members by Repository ID plus canonical Skill Name, keeps Skill Path internal to a Publication, and removes public Skill IDs and `/-/`.
-- `0012-compose-cloud-rankings-with-hub-cards.md`: records the superseded independent Cloud-to-Hub HTTP ranking composition replaced by ADR-0019; its Cloud-metric and Hub-card ownership distinction remains valid.
 - `0013-require-user-reviewed-external-skill-adoption.md`: makes External Skill adoption a user-reviewed Hub candidate and immutable-version selection, permits multiple versions of one Repository per scope, and requires 30-day per-Skill recovery.
 - `0014-localize-presentation-content-without-translating-artifacts.md`: localizes descriptions and display-only Skill documents across the Hub, Protocol, CLI, and App while keeping Package Artifacts and Agent execution source-only.
 - `0015-make-package-updates-scope-aware.md`: makes `Scope × Package Path` the update target, unifies preview and execution under `skillsgo update`, and replaces Skill-level availability checks with Package-level Hub reads.
 - `0016-distribute-package-artifacts-as-static-git-repositories.md`: proposes replacing immutable per-version ZIPs with Hub-authored bare Git Artifact Repositories distributed from Cloudflare-backed R2 over dumb HTTP.
 - `0017-rebuild-disposable-package-caches-and-materialize-scope-trees.md`: makes exact metadata/Git state disposable read-through cache, moves Global Package Trees under the Global declaration root, and preserves complete Scope Trees plus protected platform-native member links.
 - `0018-use-a-long-lived-cli-server-for-the-app.md`: keeps one sequential NDJSON CLI process behind the App so Go HTTP connections survive across operations, with explicit crash recovery and non-replay semantics.
-- `0019-compose-the-official-cloud-runtime-from-the-complete-hub.md`: makes Cloud the sole official composition root over the complete embeddable Hub Runtime, keeps `hub.skillsgo.ai` as the single Origin, unifies deployment and PostgreSQL infrastructure while preserving schema ownership, and replaces the independent services through a direct historical-data cutover.
 
 ## Architectural Boundary
 
