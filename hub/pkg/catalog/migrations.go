@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on embedded PostgreSQL Atlas SQL files, Atlas statement parsing, the Catalog pgx pool, and a public PostgreSQL extension namespace shared by isolated application schemas.
- * [OUTPUT]: Provides database prerequisite installation plus ordered, checksummed, transactional schema migration with per-schema revision history and PostgreSQL serialization.
+ * [INPUT]: Depends on embedded PostgreSQL Atlas SQL files, Atlas statement parsing, the Catalog pgx pool, and configured PostgreSQL business and extension schemas.
+ * [OUTPUT]: Provides schema and extension prerequisite validation plus ordered, checksummed, transactional migration with per-schema revision history and PostgreSQL serialization.
  * [POS]: Serves as the production schema-evolution boundary for the Hub Catalog module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -30,8 +30,19 @@ import (
 var migrationFiles embed.FS
 
 func (c *Catalog) Migrate(ctx context.Context) error {
-	if _, err := c.pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public`); err != nil {
+	extensionSchema := pgx.Identifier{c.extensionSchema()}.Sanitize()
+	if _, err := c.pool.Exec(ctx, `CREATE SCHEMA IF NOT EXISTS `+extensionSchema); err != nil {
+		return fmt.Errorf("initialize catalog PostgreSQL extension schema: %w", err)
+	}
+	if _, err := c.pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA `+extensionSchema); err != nil {
 		return fmt.Errorf("initialize catalog PostgreSQL extensions: %w", err)
+	}
+	var installedSchema string
+	if err := c.pool.QueryRow(ctx, `SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pg_trgm'`).Scan(&installedSchema); err != nil {
+		return fmt.Errorf("inspect catalog PostgreSQL extensions: %w", err)
+	}
+	if installedSchema != c.extensionSchema() {
+		return fmt.Errorf("pg_trgm must be installed in schema %q, found %q", c.extensionSchema(), installedSchema)
 	}
 	dir := "migrations/postgres"
 	sub, err := fs.Sub(migrationFiles, dir)
@@ -60,10 +71,7 @@ func (c *Catalog) Migrate(ctx context.Context) error {
 			return fmt.Errorf("resolve catalog migration schema: %w", err)
 		}
 	}
-	searchPath := schema
-	if schema != config.DefaultDatabaseSchema {
-		searchPath += "," + config.DefaultDatabaseSchema
-	}
+	searchPath := databaseSearchPath(schema, c.extensionSchema())
 	if _, err := conn.Exec(ctx, `SELECT set_config('search_path', $1, false)`, searchPath); err != nil {
 		return fmt.Errorf("bind catalog migration schema: %w", err)
 	}
@@ -82,6 +90,14 @@ version TEXT PRIMARY KEY, description TEXT NOT NULL, checksum TEXT NOT NULL, app
 		}
 	}
 	return nil
+}
+
+func (c *Catalog) extensionSchema() string {
+	// Catalogs constructed directly by package tests retain the self-host default.
+	if c.extensionSchemaName == "" {
+		return config.DefaultDatabaseSchema
+	}
+	return c.extensionSchemaName
 }
 
 type readOnlyMigrationDir struct{ fs.FS }

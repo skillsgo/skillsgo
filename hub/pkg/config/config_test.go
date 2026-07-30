@@ -79,13 +79,19 @@ func TestPortDefaultsCorrectly(t *testing.T) {
 func TestDatabaseSchemaDefaultsAndRejectsUnsafeIdentifiers(t *testing.T) {
 	setTestHome(t)
 	t.Setenv("SKILLSGO_HUB_DATABASE_SCHEMA", "")
+	t.Setenv("SKILLSGO_HUB_DATABASE_EXTENSION_SCHEMA", "")
 	conf := defaultConfig()
 	conf.Database.Schema = ""
+	conf.Database.ExtensionSchema = ""
 	require.NoError(t, envOverride(conf))
 	require.Equal(t, DefaultDatabaseSchema, conf.Database.Schema)
+	require.Equal(t, DefaultDatabaseSchema, conf.Database.ExtensionSchema)
 
 	conf.Database.Schema = `unsafe;drop schema public`
 	require.ErrorContains(t, validateConfig(*conf), "database schema must be a lower-case PostgreSQL identifier")
+	conf.Database.Schema = DefaultDatabaseSchema
+	conf.Database.ExtensionSchema = `unsafe;drop schema public`
+	require.ErrorContains(t, validateConfig(*conf), "database extension schema must be a lower-case PostgreSQL identifier")
 }
 
 func TestLLMEnvironmentOverrides(t *testing.T) {
