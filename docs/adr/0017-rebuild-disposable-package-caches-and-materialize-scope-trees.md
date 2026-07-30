@@ -12,14 +12,14 @@ SkillsGo separates portable authority, shared acquisition cache, and Scope-local
 skills.yaml + skills-lock.yaml
         -> ~/.skillsgo/cache/info and ~/.skillsgo/cache/packages
         -> <scope>/.skillsgo/packages/<package>@<version>
-        -> Agent Skill symlinks
+        -> platform-native Agent Skill links
 ```
 
 The authoritative local state is `skills.yaml` plus `skills-lock.yaml`. Exact Package Info, Git objects, and expanded Scope Package Trees are derived state that may be rebuilt from the Hub and its immutable Git Artifact Repository. Agent Projections remain protected generated state because users or external tools may modify their paths.
 
 Project Scope stores complete Package Trees under `<project>/.skillsgo/packages`. Global Scope uses the same layout under its declaration root: `~/.agents/.skillsgo/packages`. The former `~/.skillsgo/packages` location is removed. `~/.skillsgo` owns shared caches and user configuration, not a Global Scope Package Tree.
 
-This decision supersedes the authority, Global Store location, and command-specific cache-read portions of ADR-0010, ADR-0015, and ADR-0016. Their complete-Package materialization, member symlink, immutable identity, `h1:` integrity, static Git distribution, update scope, and atomic publication decisions remain accepted.
+This decision supersedes the authority, Global Store location, command-specific cache-read, and platform Projection portions of ADR-0010, ADR-0015, and ADR-0016. Their complete-Package materialization, immutable identity, `h1:` integrity, static Git distribution, update scope, and atomic publication decisions remain accepted.
 
 ## Context
 
@@ -53,7 +53,7 @@ Scope-local derived materialization:
 
 Agent-visible Projection:
 
-- `<managed-root>/<canonical-skill-name>`, a relative symlink to the selected member inside the Scope Package Tree.
+- `<managed-root>/<canonical-skill-name>`, a relative symlink on macOS and Linux or an absolute directory junction on Windows to the selected member inside the Scope Package Tree.
 
 Deleting `~/.skillsgo` removes shared acquisition caches but leaves Global declarations, Global Package Trees, Project Package Trees, and Agent Projections intact. Any command that needs missing shared cache data rebuilds it automatically. Deleting a Scope Package Tree is repaired by `install` from the exact Manifest and Lock without movable resolution.
 
@@ -72,7 +72,7 @@ Metadata-only operations such as `list` and `why` request only Metadata. Explici
 
 The CLI always stages and validates the complete exact Package Tree before publishing it under the Scope declaration root. Package-relative files and safe internal symlinks therefore retain their repository relationships.
 
-Each selected Skill is exposed through a stable relative symlink from its Agent Managed Skill Root into that Tree. Several Agents and selected members in the same Scope share the same complete Package Tree. Different Scopes retain independent trees so each Scope transaction, declaration, lock, and Projection topology remains self-contained.
+Each selected Skill is exposed through a stable platform-native directory link from its Agent Managed Skill Root into that Tree. macOS and Linux use a relative symlink, preserving Project Scope topology when the complete Workspace moves. Windows uses an unprivileged absolute directory junction because ordinary desktop users cannot reliably create symbolic links. Several Agents and selected members in the same Scope share the same complete Package Tree. Different Scopes retain independent trees so each Scope transaction, declaration, lock, and Projection topology remains self-contained.
 
 The Package Tree is derived but verified. A missing Tree may be recreated from locked Git content. A differing Tree or Projection is a Local Modification and is never silently overwritten. Every mutation derives the exact previous and desired baselines, rejects differences without authorization, stages sibling temporary paths, atomically renames targets, and retains reverse rollback.
 
@@ -100,6 +100,7 @@ Costs:
 - the same Package Version used in several Scopes has one expanded copy per Scope;
 - exact verification may perform network I/O after shared cache deletion;
 - clearing a Project's `.skillsgo/packages` requires `skillsgo install` for that Scope.
+- moving a Windows Project invalidates its absolute junctions and requires `skillsgo install` in the moved Workspace to rebuild Projections.
 
 These costs are accepted. File-level cross-Scope materialization deduplication, copy-on-write clones, or a virtual filesystem require measured evidence and separate decisions. None may make shared cache state authoritative.
 
