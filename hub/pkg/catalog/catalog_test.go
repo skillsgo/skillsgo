@@ -80,6 +80,15 @@ func TestPoolConfigOverridesDSNWithZeroIdlePolicy(t *testing.T) {
 	require.Equal(t, int32(4), poolConfig.MaxConns)
 	require.Equal(t, 2*time.Minute, poolConfig.MaxConnIdleTime)
 	require.Equal(t, 30*time.Second, poolConfig.HealthCheckPeriod)
+	require.Equal(t, "public,pg_catalog", poolConfig.ConnConfig.RuntimeParams["search_path"])
+}
+
+func TestPoolConfigUsesConfiguredBusinessAndExtensionSchemas(t *testing.T) {
+	poolConfig, err := newPoolConfig(config.DatabaseConfig{
+		DSN: "postgres://example/database", Schema: "hub", ExtensionSchema: "extensions", MaxOpenConns: 4,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "hub,extensions,pg_catalog", poolConfig.ConnConfig.RuntimeParams["search_path"])
 }
 
 func TestForegroundAndBackgroundPoolConfigsRetainIndependentZeroMinimums(t *testing.T) {

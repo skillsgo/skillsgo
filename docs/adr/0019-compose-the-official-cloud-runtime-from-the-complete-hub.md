@@ -78,19 +78,22 @@ Deployment capability discovery is deleted. `/api/v1/capabilities`, `/api/v1/inf
 
 ### One PostgreSQL database with two owned schemas
 
-The official deployment uses one PostgreSQL database with three schemas:
+The official deployment uses one PostgreSQL database with four schemas:
 
 ```text
-public  shared PostgreSQL extensions only
 hub     Hub Catalog, River, and Hub migration history
 cloud   install facts, aggregate statistics, external observations, and Cloud migration history
+extensions  Hub-owned PostgreSQL extensions such as pg_trgm
+public  empty and absent from official runtime search paths
 ```
 
 Hub and Cloud retain separate schema ownership, Atlas migration histories, advisory migration locks, sqlc query sets, and fixed connection pools. The process uses:
 
-- a Hub foreground pool with `search_path=hub,public`;
-- a Hub background pool with `search_path=hub,public`;
-- a Cloud pool with `search_path=cloud,public`.
+- a Hub foreground pool with `search_path=hub,extensions,pg_catalog`;
+- a Hub background pool with `search_path=hub,extensions,pg_catalog`;
+- a Cloud pool with `search_path=cloud,pg_catalog`.
+
+Hub keeps both its business schema and extension schema configurable. Standalone self-hosting defaults both to `public`; an operator may select dedicated schemas. The official Cloud composition selects `hub` and `extensions`. Pool construction, migrations, River, background work, and readiness all use and verify the configured values; no application schema name is hard-coded in reusable Hub code.
 
 Pools are not shared and request code never changes `search_path` dynamically. Cloud does not join or reference Hub tables from Cloud SQL. The in-process Hub Catalog interface, not a cross-schema query, is the seam between the domains.
 

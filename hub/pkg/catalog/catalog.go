@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
  * [OUTPUT]: Provides Package/Version/Skill persistence, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -32,9 +32,10 @@ import (
 func skillResourceID(packagePath, name string) string { return packagePath + ":" + name }
 
 type Catalog struct {
-	pool    *pgxpool.Pool
-	queries *catalogsqlc.Queries
-	schema  string
+	pool                *pgxpool.Pool
+	queries             *catalogsqlc.Queries
+	schema              string
+	extensionSchemaName string
 }
 
 type CurrentPackage struct {
@@ -71,6 +72,12 @@ func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if !config.ValidDatabaseSchema(cfg.Schema) {
 		return nil, fmt.Errorf("invalid metadata database schema %q", cfg.Schema)
 	}
+	if cfg.ExtensionSchema == "" {
+		cfg.ExtensionSchema = config.DefaultDatabaseSchema
+	}
+	if !config.ValidDatabaseSchema(cfg.ExtensionSchema) {
+		return nil, fmt.Errorf("invalid metadata database extension schema %q", cfg.ExtensionSchema)
+	}
 	poolConfig, err := newPoolConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -83,7 +90,16 @@ func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		pool.Close()
 		return nil, fmt.Errorf("connect metadata database pool: %w", err)
 	}
-	return &Catalog{pool: pool, queries: catalogsqlc.New(pool), schema: cfg.Schema}, nil
+	var currentSchema string
+	if err := pool.QueryRow(ctx, `SELECT current_schema()`).Scan(&currentSchema); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("inspect metadata database search path: %w", err)
+	}
+	if currentSchema != cfg.Schema {
+		pool.Close()
+		return nil, fmt.Errorf("metadata database search path resolved schema %q, expected %q", currentSchema, cfg.Schema)
+	}
+	return &Catalog{pool: pool, queries: catalogsqlc.New(pool), schema: cfg.Schema, extensionSchemaName: cfg.ExtensionSchema}, nil
 }
 
 func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
@@ -91,10 +107,7 @@ func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
 	}
-	searchPath := cfg.Schema
-	if cfg.Schema != config.DefaultDatabaseSchema {
-		searchPath += "," + config.DefaultDatabaseSchema
-	}
+	searchPath := databaseSearchPath(cfg.Schema, cfg.ExtensionSchema)
 	poolConfig.ConnConfig.RuntimeParams["search_path"] = searchPath
 	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
 	poolConfig.MinConns = 0
@@ -104,6 +117,13 @@ func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
 	}
 	return poolConfig, nil
+}
+
+func databaseSearchPath(schema, extensionSchema string) string {
+	if extensionSchema == "" || extensionSchema == schema {
+		return schema + ",pg_catalog"
+	}
+	return schema + "," + extensionSchema + ",pg_catalog"
 }
 
 func (c *Catalog) Close() error {
