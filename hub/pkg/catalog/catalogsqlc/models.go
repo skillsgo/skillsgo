@@ -5,7 +5,6 @@
 package catalogsqlc
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,15 +49,29 @@ type Package struct {
 }
 
 type PackageBackfillRun struct {
-	ID          string          `json:"id"`
-	PackagePath string          `json:"package_path"`
-	Status      string          `json:"status"`
-	StartedAt   *time.Time      `json:"started_at"`
-	CompletedAt *time.Time      `json:"completed_at"`
-	ErrorCount  int32           `json:"error_count"`
-	Diagnostics json.RawMessage `json:"diagnostics"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
+	ID             string      `json:"id"`
+	PackagePath    string      `json:"package_path"`
+	Status         string      `json:"status"`
+	StartedAt      *time.Time  `json:"started_at"`
+	CompletedAt    *time.Time  `json:"completed_at"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	PublishedCount int32       `json:"published_count"`
+	SkippedCount   int32       `json:"skipped_count"`
+	RejectedCount  int32       `json:"rejected_count"`
+	FailedCount    int32       `json:"failed_count"`
+	FailureCode    pgtype.Text `json:"failure_code"`
+}
+
+type PackageBackfillVersionOutcome struct {
+	RunID        string      `json:"run_id"`
+	Version      string      `json:"version"`
+	CommitSha    string      `json:"commit_sha"`
+	Outcome      string      `json:"outcome"`
+	ReasonCode   pgtype.Text `json:"reason_code"`
+	AttemptCount int32       `json:"attempt_count"`
+	CreatedAt    time.Time   `json:"created_at"`
+	UpdatedAt    time.Time   `json:"updated_at"`
 }
 
 // Skill members contained by one immutable Package Version.

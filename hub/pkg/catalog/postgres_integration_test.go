@@ -75,7 +75,7 @@ func TestPostgresCatalog(t *testing.T) {
 	defaultSkill, err := c.SkillByCoordinate(ctx, duplicatePackage, "shared")
 	require.NoError(t, err)
 	require.Equal(t, "one", defaultSkill.Path)
-	coordinates, err := c.SkillsByCoordinates(ctx, []protocolapi.SkillCoordinate{{PackagePath: duplicatePackage, Name: "shared"}})
+	coordinates, err := c.SkillCardsByCoordinates(ctx, []protocolapi.SkillCoordinate{{PackagePath: duplicatePackage, Name: "shared"}}, "")
 	require.NoError(t, err)
 	require.Len(t, coordinates, 1)
 	require.Equal(t, "one", coordinates[0].Path)

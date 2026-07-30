@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the leased shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
- * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, bounded top-twenty Tag or no-Tag default-branch backfill revisions with commit identities, and stable-first latest immutable revisions.
+ * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, explicit leased one-sync Backfill sessions with bounded top-twenty Tag or no-Tag default-branch revisions, precise preparation failures, and stable-first latest immutable revisions.
  * [POS]: Serves as the upstream version-listing adapter between Git source resolution and the Hub download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,6 +37,34 @@ type tagCatalog struct {
 	rev      storage.RevInfo
 	versions []string
 	err      error
+}
+
+type repositoryBackfillSession struct {
+	packagePath string
+	versions    []RepositoryTag
+	fetcher     *gitFetcher
+	repository  PackagePath
+	repoDir     string
+	release     func()
+	closeOnce   sync.Once
+}
+
+func (session *repositoryBackfillSession) PackagePath() string { return session.packagePath }
+func (session *repositoryBackfillSession) Versions() []RepositoryTag {
+	return append([]RepositoryTag(nil), session.versions...)
+}
+func (session *repositoryBackfillSession) Close() { session.closeOnce.Do(session.release) }
+func (session *repositoryBackfillSession) VisitSnapshots(ctx context.Context, revisions []string, visit func(string, *RepositorySnapshot, error) error) error {
+	if visit == nil {
+		return fmt.Errorf("Repository snapshot visitor is required")
+	}
+	for _, revision := range revisions {
+		snapshot, err := session.fetcher.discoverRepositorySnapshot(ctx, session.packagePath, revision, session.repository, session.repoDir)
+		if visitErr := visit(revision, snapshot, err); visitErr != nil {
+			return visitErr
+		}
+	}
+	return nil
 }
 
 // NewVCSLister creates an UpstreamLister that shares the Fetcher's persistent
@@ -78,19 +106,69 @@ func (l *vcsLister) ListRepositoryTags(ctx context.Context, packagePath string) 
 }
 
 func (l *vcsLister) ListRepositoryBackfillVersions(ctx context.Context, packagePath string) ([]RepositoryTag, error) {
-	tags, err := l.ListRepositoryTags(ctx, packagePath)
+	session, err := l.PrepareRepositoryBackfill(ctx, packagePath)
 	if err != nil {
-		return tags, err
+		return nil, err
+	}
+	defer session.Close()
+	return session.Versions(), nil
+}
+
+func (l *vcsLister) PrepareRepositoryBackfill(ctx context.Context, packagePath string) (RepositoryBackfillSession, error) {
+	parsed, err := ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, withSourceFailure(SourceFailureInvalidPackagePath, fmt.Errorf("invalid canonical Repository ID %q", packagePath))
+	}
+	release, err := l.repositories.acquireRepository(packagePath)
+	if err != nil {
+		return nil, withSourceFailure(SourceFailureCacheUnavailable, err)
+	}
+	failed := true
+	defer func() {
+		if failed {
+			release()
+		}
+	}()
+	timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
+	defer cancel()
+	if err := l.repositories.syncRepository(timeoutCtx, parsed); err != nil {
+		return nil, withSourceFailure(sourceSyncFailureCode(err), err)
+	}
+	repoDir, err := l.repositories.repositoryDir(packagePath)
+	if err != nil {
+		return nil, withSourceFailure(SourceFailureCacheUnavailable, err)
+	}
+	versions, err := repositoryBackfillVersions(timeoutCtx, repoDir)
+	if err != nil {
+		return nil, withSourceFailure(SourceFailureVersionListFailed, err)
+	}
+	failed = false
+	return &repositoryBackfillSession{packagePath: packagePath, versions: versions, fetcher: l.repositories, repository: parsed, repoDir: repoDir, release: release}, nil
+}
+
+func sourceSyncFailureCode(err error) SourceFailureCode {
+	switch errors.Kind(err) {
+	case errors.KindNotFound, errors.KindGatewayTimeout:
+		return SourceFailureUnavailable
+	case errors.KindRateLimit:
+		return SourceFailureRateLimited
+	case errors.KindBadRequest:
+		return SourceFailureAccessRejected
+	default:
+		return SourceFailureSyncFailed
+	}
+}
+
+func repositoryBackfillVersions(ctx context.Context, repoDir string) ([]RepositoryTag, error) {
+	tags, err := canonicalRepositoryTags(ctx, repoDir)
+	if err != nil {
+		return nil, err
 	}
 	if len(tags) > 0 {
 		if len(tags) > maxRepositoryBackfillVersions {
 			tags = tags[len(tags)-maxRepositoryBackfillVersions:]
 		}
 		return tags, nil
-	}
-	repoDir, err := l.repositories.repositoryDir(packagePath)
-	if err != nil {
-		return nil, err
 	}
 	defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
 	if err != nil {

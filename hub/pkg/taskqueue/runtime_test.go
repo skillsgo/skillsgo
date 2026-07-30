@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed synchronous jobs, workload queue options, sleep-first periodic scheduling, River job-state rows, and deterministic handlers.
- * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, dispatch, periodic execution, cancellation, validation, and due-versus-future work decisions.
+ * [INPUT]: Depends on typed synchronous jobs, workload queue options, sleep-first periodic scheduling, lifecycle-owned asynchronous dispatch, River job-state rows, and deterministic handlers.
+ * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, synchronous and non-blocking dispatch, periodic execution, cancellation, validation, and due-versus-future work decisions.
  * [POS]: Serves as unit coverage for the Hub task queue infrastructure boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package taskqueue
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -61,6 +62,52 @@ func TestUniqueInsertOptionsDeduplicateOnlyActiveJobs(t *testing.T) {
 		rivertype.JobStateScheduled,
 	}, opts.UniqueOpts.ByState)
 	require.NotContains(t, opts.UniqueOpts.ByState, rivertype.JobStateCompleted)
+}
+
+func TestSynchronousRuntimeEnqueueAsyncReturnsBeforeHandlerAndStopWaits(t *testing.T) {
+	runtime := NewSynchronous()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	require.NoError(t, Register(runtime, func(context.Context, refreshArgs) error {
+		close(started)
+		<-release
+		return nil
+	}))
+	require.NoError(t, runtime.Start(t.Context()))
+	require.NoError(t, runtime.EnqueueAsync(t.Context(), refreshArgs{}, InsertOptions{}))
+	<-started
+
+	stopped := make(chan error, 1)
+	go func() { stopped <- runtime.Stop(context.Background()) }()
+	select {
+	case <-stopped:
+		t.Fatal("Stop returned before the asynchronous handler completed")
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(release)
+	require.NoError(t, <-stopped)
+}
+
+func TestSynchronousRuntimeEnqueueAsyncDeduplicatesActiveUniqueJobs(t *testing.T) {
+	runtime := NewSynchronous()
+	release := make(chan struct{})
+	started := make(chan struct{})
+	var calls atomic.Int64
+	require.NoError(t, Register(runtime, func(context.Context, reindexArgs) error {
+		calls.Add(1)
+		close(started)
+		<-release
+		return nil
+	}))
+	require.NoError(t, runtime.Start(t.Context()))
+	args := reindexArgs{ID: "same-package"}
+	opts := InsertOptions{Unique: true}
+	require.NoError(t, runtime.EnqueueAsync(t.Context(), args, opts))
+	<-started
+	require.NoError(t, runtime.EnqueueAsync(t.Context(), args, opts))
+	require.Equal(t, int64(1), calls.Load())
+	close(release)
+	require.NoError(t, runtime.Stop(t.Context()))
 }
 
 func TestTypedWorkerUsesJobSpecificTimeout(t *testing.T) {

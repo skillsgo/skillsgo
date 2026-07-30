@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, explicit Backfill Run/Version outcomes, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,15 +10,50 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/catalogsqlc"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+type catalogQueryCounter struct{ count atomic.Int64 }
+
+func (c *catalogQueryCounter) TraceQueryStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceQueryStartData) context.Context {
+	c.count.Add(1)
+	return ctx
+}
+
+func (*catalogQueryCounter) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+func openCountingTestCatalog(t *testing.T) (*Catalog, *catalogQueryCounter) {
+	t.Helper()
+	ctx := t.Context()
+	container, err := postgres.Run(ctx, "postgres:18-alpine", postgres.WithDatabase("skillsgo"), postgres.WithUsername("skillsgo"), postgres.WithPassword("skillsgo"), postgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+	cfg := config.DatabaseConfig{DSN: dsn, Schema: config.DefaultDatabaseSchema, MaxOpenConns: 5}
+	poolConfig, err := newPoolConfig(cfg)
+	require.NoError(t, err)
+	counter := &catalogQueryCounter{}
+	poolConfig.ConnConfig.Tracer = counter
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	require.NoError(t, err)
+	c := &Catalog{pool: pool, queries: catalogsqlc.New(pool)}
+	require.NoError(t, c.Migrate(ctx))
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	counter.count.Store(0)
+	return c, counter
+}
 
 func openTestCatalog(t *testing.T) *Catalog {
 	t.Helper()
@@ -151,7 +186,7 @@ func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, exact, 1)
 	require.Equal(t, "ask-matt", exact[0].Name)
-	localized, err := c.FindLocalized(ctx, "ask-matt", "zh-CN", false, 10, 0)
+	localized, err := c.SearchSkillCards(ctx, "ask-matt", "zh-CN", false, 10, 0)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(localized), 2)
 	require.Equal(t, "ask-matt", localized[0].Name)
@@ -190,7 +225,7 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 		if locale == "" {
 			results, err = c.Find(ctx, query, exactName, 20, 0)
 		} else {
-			results, err = c.FindLocalized(ctx, query, locale, exactName, 20, 0)
+			results, err = c.SearchSkillCards(ctx, query, locale, exactName, 20, 0)
 		}
 		require.NoError(t, err)
 		coordinates := make([]string, 0, len(results))
@@ -314,6 +349,95 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	require.Equal(t, "github.com/acme/two", results[1].Skills[0].PackagePath)
 	require.Equal(t, "missing", results[2].ID)
 	require.Empty(t, results[2].Skills)
+}
+
+func TestPostgresCatalogPackagesDueForSourceMetadataRefreshUsesStableIDCursorAndRetryWindows(t *testing.T) {
+	c := openTestCatalog(t)
+	ctx := t.Context()
+	now := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
+	paths := []string{
+		"github.com/acme/due-a",
+		"github.com/acme/fresh",
+		"github.com/acme/retry-blocked",
+		"github.com/acme/due-b",
+	}
+	for index, path := range paths {
+		require.NoError(t, upsertTestSkill(t, c, &Skill{
+			PackagePath: path, Path: "demo", Name: fmt.Sprintf("demo-%d", index), LatestVersion: "v1.0.0",
+		}))
+	}
+	freshCheckedAt := now.Add(-time.Hour)
+	require.NoError(t, c.UpdatePackageSourceMetadata(ctx, paths[1], "", 0, "", &freshCheckedAt, nil))
+	blockedUntil := now.Add(time.Hour)
+	require.NoError(t, c.UpdatePackageSourceMetadata(ctx, paths[2], "", 0, "", nil, &blockedUntil))
+
+	first, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"github.com"}, now.Add(-18*time.Hour), now, 0, 1)
+	require.NoError(t, err)
+	require.Len(t, first, 1)
+	require.Equal(t, paths[0], first[0].Path)
+	second, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"github.com"}, now.Add(-18*time.Hour), now, first[0].ID, 10)
+	require.NoError(t, err)
+	require.Equal(t, []DuePackage{{ID: second[0].ID, Path: paths[3]}}, second)
+
+	_, err = c.pool.Exec(ctx, `
+INSERT INTO packages(source_host,source_path,path,created_at,updated_at)
+SELECT 'gitlab.com','acme/bulk-' || value,'gitlab.com/acme/bulk-' || value,$1,$1
+FROM generate_series(1,501) AS value`, now)
+	require.NoError(t, err)
+	_, err = c.pool.Exec(ctx, `
+INSERT INTO versions(package_id,version,ref,commit_sha,tree_sha,sum,commit_time,created_at)
+SELECT id,'v1.0.0','refs/tags/v1.0.0','bulk-commit-' || id,'bulk-tree-' || id,
+       'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',$1,$1
+FROM packages WHERE source_host='gitlab.com'`, now)
+	require.NoError(t, err)
+	_, err = c.pool.Exec(ctx, `
+UPDATE packages AS package SET current_version_id=version.id
+FROM versions AS version
+WHERE version.package_id=package.id AND package.source_host='gitlab.com'`)
+	require.NoError(t, err)
+	bulkFirst, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"gitlab.com"}, now.Add(-18*time.Hour), now, 0, 500)
+	require.NoError(t, err)
+	require.Len(t, bulkFirst, 500)
+	bulkSecond, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"gitlab.com"}, now.Add(-18*time.Hour), now, bulkFirst[len(bulkFirst)-1].ID, 500)
+	require.NoError(t, err)
+	require.Len(t, bulkSecond, 1)
+	require.Greater(t, bulkSecond[0].ID, bulkFirst[len(bulkFirst)-1].ID)
+}
+
+func TestPostgresCatalogSearchSkillCardsUsesOneQueryForEveryCardinalityLocaleAndPackageCount(t *testing.T) {
+	c, counter := openCountingTestCatalog(t)
+	onePackage := make([]Skill, 0, 100)
+	for index := range 100 {
+		onePackage = append(onePackage, Skill{
+			PackagePath: "github.com/acme/many-skills", Name: fmt.Sprintf("skill-%03d", index),
+			Path: fmt.Sprintf("skills/skill-%03d", index), Description: "source description",
+		})
+	}
+	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/acme/many-skills", PackageVersion{
+		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "many-skills", TreeSHA: "many-skills-tree",
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
+	}, onePackage, CurrentPublication))
+	for index := range 20 {
+		require.NoError(t, upsertTestSkill(t, c, &Skill{
+			PackagePath: fmt.Sprintf("github.com/acme/package-%02d", index), Name: fmt.Sprintf("common-package-skill-%02d", index),
+			Path: "skills/common", Description: "source description", LatestVersion: "v1.0.0",
+		}))
+	}
+
+	assertOneQuery := func(query, locale string, limit, expected int) {
+		t.Helper()
+		counter.count.Store(0)
+		rows, err := c.SearchSkillCards(t.Context(), query, locale, false, limit, 0)
+		require.NoError(t, err)
+		require.Len(t, rows, expected)
+		require.Equal(t, int64(1), counter.count.Load())
+	}
+	assertOneQuery("not-present", "", 100, 0)
+	assertOneQuery("skill-", "", 1, 1)
+	assertOneQuery("skill-", "", 20, 20)
+	assertOneQuery("skill-", "", 100, 100)
+	assertOneQuery("skill-", "zh-CN", 100, 100)
+	assertOneQuery("common-package-skill", "zh-CN", 20, 20)
 }
 
 func TestPostgresCatalogRejectsNilTransactionCallback(t *testing.T) {
@@ -478,20 +602,20 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	c := openTestCatalog(t)
 	old := time.Now().UTC().Add(-3 * time.Hour)
 	_, err := c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
-		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
-		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
+		(id, package_path, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
 	require.NoError(t, err)
 	_, err = c.pool.Exec(ctx, `INSERT INTO package_backfill_runs
-		(id, package_path, status, error_count, diagnostics, created_at, updated_at)
-		VALUES ($1, $2, $3, 0, '[]', $4, $5)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
+		(id, package_path, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
 	require.NoError(t, err)
 	expired, err := c.ExpireStaleBackfillRuns(ctx, time.Now().UTC().Add(-2*time.Hour))
 	require.NoError(t, err)
 	require.Equal(t, int64(1), expired)
 	run, err := c.LatestBackfillRun(ctx, "github.com/acme/stale")
 	require.NoError(t, err)
-	require.Equal(t, BackfillCompleteWithErrors, run.Status)
-	require.Equal(t, []string{"module: execution_expired"}, run.Diagnostics)
+	require.Equal(t, BackfillFailed, run.Status)
+	require.Equal(t, "execution_expired", run.FailureCode)
 	queued, err := c.LatestBackfillRun(ctx, "github.com/acme/queued")
 	require.NoError(t, err)
 	require.Equal(t, BackfillQueued, queued.Status, "durably queued River work must not be expired before it is claimed")
@@ -502,7 +626,91 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	require.NoError(t, c.ExpireQueuedBackfillRun(ctx, queued.ID))
 	queued, err = c.LatestBackfillRun(ctx, "github.com/acme/queued")
 	require.NoError(t, err)
-	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
+	require.Equal(t, BackfillFailed, queued.Status)
+	require.Equal(t, "execution_expired", queued.FailureCode)
+}
+
+func TestBackfillVersionOutcomesDriveRunAggregatesAndRetryReplacement(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/outcomes", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	_, active, err := c.StartBackfillRun(ctx, run.ID)
+	require.NoError(t, err)
+	require.True(t, active)
+	for _, outcome := range []BackfillVersionOutcome{
+		{RunID: run.ID, Version: "v1.0.0", CommitSHA: "one", Outcome: BackfillOutcomeSkipped, ReasonCode: "source_no_installable_skills"},
+		{RunID: run.ID, Version: "v1.1.0", CommitSHA: "two", Outcome: BackfillOutcomeRejected, ReasonCode: "source_skill_manifest_invalid"},
+		{RunID: run.ID, Version: "v1.2.0", CommitSHA: "three", Outcome: BackfillOutcomeRetryableFailure, ReasonCode: "publication_timeout"},
+	} {
+		require.NoError(t, c.RecordBackfillVersionOutcome(ctx, outcome))
+	}
+	require.NoError(t, c.RecordBackfillVersionOutcome(ctx, BackfillVersionOutcome{RunID: run.ID, Version: "v1.2.0", CommitSHA: "three", Outcome: BackfillOutcomePublished}))
+	require.NoError(t, c.CompleteBackfillRun(ctx, run.ID))
+	completed, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithRejections, completed.Status)
+	require.Equal(t, 1, completed.PublishedCount)
+	require.Equal(t, 1, completed.SkippedCount)
+	require.Equal(t, 1, completed.RejectedCount)
+	require.Zero(t, completed.FailedCount)
+	require.Len(t, completed.Outcomes, 3)
+	require.Equal(t, 2, completed.Outcomes[2].AttemptCount)
+}
+
+func TestBackfillVersionOutcomeAggregatesRemainExactUnderConcurrentWrites(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/concurrent-outcomes", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	_, active, err := c.StartBackfillRun(ctx, run.ID)
+	require.NoError(t, err)
+	require.True(t, active)
+
+	const outcomeCount = 12
+	start := make(chan struct{})
+	errorsByOutcome := make(chan error, outcomeCount)
+	var workers sync.WaitGroup
+	for index := 0; index < outcomeCount; index++ {
+		workers.Add(1)
+		go func(index int) {
+			defer workers.Done()
+			<-start
+			errorsByOutcome <- c.RecordBackfillVersionOutcome(ctx, BackfillVersionOutcome{
+				RunID: run.ID, Version: fmt.Sprintf("v1.0.%d", index), CommitSHA: fmt.Sprintf("commit-%d", index), Outcome: BackfillOutcomePublished,
+			})
+		}(index)
+	}
+	close(start)
+	workers.Wait()
+	close(errorsByOutcome)
+	for outcomeErr := range errorsByOutcome {
+		require.NoError(t, outcomeErr)
+	}
+
+	inProgress, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, outcomeCount, inProgress.PublishedCount)
+	require.Len(t, inProgress.Outcomes, outcomeCount)
+}
+
+func TestBackfillRunWideRejectionDoesNotFabricateVersionOutcome(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	run, created, err := c.SubmitBackfillRun(ctx, "github.com/acme/rejected", func(context.Context, pgx.Tx, BackfillRun) error { return nil })
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Error(t, c.RejectBackfillRun(ctx, run.ID, ""))
+	require.NoError(t, c.RejectBackfillRun(ctx, run.ID, "source_repository_access_rejected"))
+
+	rejected, err := c.LatestBackfillRun(ctx, run.PackagePath)
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithRejections, rejected.Status)
+	require.Equal(t, "source_repository_access_rejected", rejected.FailureCode)
+	require.Zero(t, rejected.RejectedCount)
+	require.Empty(t, rejected.Outcomes)
 }
 
 func mustPublishedVersions(t *testing.T, c *Catalog, packagePath, path string) []string {
@@ -516,8 +724,8 @@ func TestPostgresMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)
 	var version string
-	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version").Scan(&version))
-	require.Equal(t, "202607230001", version)
+	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
+	require.Equal(t, "202607300001", version)
 	require.NoError(t, c.Migrate(ctx))
-	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version").Scan(&version))
+	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
 }

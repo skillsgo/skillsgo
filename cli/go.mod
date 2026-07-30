@@ -1,4 +1,4 @@
-// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, and test libraries.
+// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, the community Windows junction primitive, and test libraries.
 // [OUTPUT]: Defines the reproducible SkillsGo CLI module dependency graph.
 // [POS]: Serves as the F2 build manifest for the CLI workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -14,6 +14,7 @@ require (
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/gofrs/flock v0.13.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
+	github.com/nyaosorg/go-windows-junction v0.2.0
 	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1

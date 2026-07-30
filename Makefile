@@ -1,9 +1,9 @@
 # [INPUT]: Depends on scripts/dev.sh plus the Protocol, App, CLI, Hub, and Web workspace build and validation entry points.
-# [OUTPUT]: Provides unified or Hub-only macOS development sessions plus repository-level local builds, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
+# [OUTPUT]: Provides unified or Hub-only macOS development sessions plus repository-level local builds including separate macOS App architectures, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
 # [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
-.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs test test-protocol test-app test-cli test-hub test-web test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-protocol format-cli format-hub
+.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs build-app-macos build-app-macos-arm64 build-app-macos-x86_64 test test-protocol test-app test-cli test-hub test-web test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-protocol format-cli format-hub
 
 dev:
 	./scripts/dev.sh
@@ -28,6 +28,14 @@ build-web:
 	cd web && pnpm build
 
 build-docs: build-web
+
+build-app-macos: build-app-macos-arm64 build-app-macos-x86_64
+
+build-app-macos-arm64:
+	./app/macos/scripts/build_arch.sh arm64
+
+build-app-macos-x86_64:
+	./app/macos/scripts/build_arch.sh x86_64
 
 test: test-protocol test-hub test-cli test-app test-web
 

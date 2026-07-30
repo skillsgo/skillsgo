@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an opt-in local five-repository benchmark corpus, real Git commits, and the production Artifact projection path.
- * [OUTPUT]: Provides allocation and wall-time benchmarks for projecting large real Source Repository trees into validated Package Artifacts.
+ * [OUTPUT]: Provides allocation and wall-time benchmarks for projecting large real Source Repository trees and comparing repeated versus one-sync Backfill source synchronization.
  * [POS]: Serves as non-CI performance evidence for the source-to-Artifact hot path in the Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
 )
 
 type realBenchmarkRepository struct {
@@ -51,6 +53,51 @@ func BenchmarkRealRepositoryArtifactProjection(benchmark *testing.B) {
 			}
 		})
 	}
+}
+
+func BenchmarkRealRepositoryBackfillSynchronization(benchmark *testing.B) {
+	repositories, _ := loadRealRepositoryBenchmarkCorpus(benchmark)
+	for _, repository := range repositories {
+		packagePath, err := ParsePackagePath(repository.ID)
+		if err != nil {
+			benchmark.Fatal(err)
+		}
+		benchmark.Run(filepath.Base(repository.Path), func(benchmark *testing.B) {
+			benchmark.Run("repeated-sync", func(benchmark *testing.B) {
+				benchmark.ReportAllocs()
+				for range benchmark.N {
+					fetcher := realBenchmarkFetcher(benchmark, repository)
+					for range historicalDiscoveryBenchmarkVersions {
+						if err := fetcher.syncRepository(context.Background(), packagePath); err != nil {
+							benchmark.Fatal(err)
+						}
+					}
+				}
+			})
+			benchmark.Run("one-sync", func(benchmark *testing.B) {
+				benchmark.ReportAllocs()
+				for range benchmark.N {
+					fetcher := realBenchmarkFetcher(benchmark, repository)
+					if err := fetcher.syncRepository(context.Background(), packagePath); err != nil {
+						benchmark.Fatal(err)
+					}
+				}
+			})
+		})
+	}
+}
+
+const historicalDiscoveryBenchmarkVersions = 5
+
+func realBenchmarkFetcher(testingTB testing.TB, repository realBenchmarkRepository) *gitFetcher {
+	testingTB.Helper()
+	fetcher, err := NewRepositoryFetcher(testingTB.TempDir(), afero.NewOsFs())
+	if err != nil {
+		testingTB.Fatal(err)
+	}
+	concrete := fetcher.(*gitFetcher)
+	concrete.cloneURL = func(PackagePath) string { return repository.Path }
+	return concrete
 }
 
 func loadRealRepositoryBenchmarkCorpus(testingTB testing.TB) ([]realBenchmarkRepository, map[string][]realBenchmarkSnapshot) {

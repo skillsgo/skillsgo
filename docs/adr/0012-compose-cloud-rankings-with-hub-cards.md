@@ -10,11 +10,11 @@ SkillsGo Cloud composes each public ranking response from Cloud-owned ordered me
 
 Concurrent Cloud requests for the same ordered coordinate batch share one in-flight Hub request through singleflight. Completion, success, and failure are not cached; a later request always reads Hub again. The Hub batch endpoint resolves all requested coordinates through one ordered SQL query rather than per-coordinate queries.
 
-The App continues to discover the Cloud origin through CLI-mediated `hub info`, then reads the composed ranking response directly from Cloud. It does not call Hub HTTP directly and no longer starts a CLI detail process for ranking-card hydration.
+The App persists Hub and Cloud origins as independent settings. It reads composed ranking responses directly from the configured Cloud origin, does not call Hub HTTP directly, and no longer starts a CLI detail process for ranking-card hydration. Changing either origin does not implicitly rewrite or rediscover the other.
 
 ## Consequences
 
-- Ranking page loads use one App-to-Cloud request after deployment discovery.
+- Ranking page loads use one App-to-Cloud request through the independently configured Cloud origin.
 - Hub remains authoritative for Skill metadata, while Cloud remains authoritative for ranking metrics and ordering.
 - Cloud availability depends on the public Hub batch endpoint for non-empty ranking responses, but the Hub never depends on Cloud.
 - Singleflight reduces duplicate concurrent Hub traffic without introducing stale completed-result caching.

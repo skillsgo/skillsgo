@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, ordered current-Package update projections, Package Info, shared pgx transactions, discovery projections, and source cache state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -630,6 +630,31 @@ func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, er
 	return moduleFromSQLC(stored), nil
 }
 
+// PackagesDueForSourceMetadataRefresh returns one stable keyset page of
+// discovery-visible Packages whose provider metadata is missing or stale and
+// whose retry window no longer blocks work.
+type DuePackage struct {
+	ID   int64
+	Path string
+}
+
+func (c *Catalog) PackagesDueForSourceMetadataRefresh(ctx context.Context, sourceHosts []string, staleBefore, now time.Time, afterID int64, limit int) ([]DuePackage, error) {
+	if len(sourceHosts) == 0 || limit < 1 {
+		return nil, nil
+	}
+	rows, err := c.queries.PackagesDueForSourceMetadataRefresh(ctx, catalogsqlc.PackagesDueForSourceMetadataRefreshParams{
+		SourceHosts: sourceHosts, StaleBefore: &staleBefore, Now: &now, AfterID: afterID, PageLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]DuePackage, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, DuePackage{ID: row.ID, Path: row.Path})
+	}
+	return result, nil
+}
+
 func (c *Catalog) CurrentPackages(ctx context.Context, packagePaths []string) ([]CurrentPackage, error) {
 	rows, err := c.queries.CurrentPackagesByPaths(ctx, packagePaths)
 	if err != nil {
@@ -660,6 +685,28 @@ func (c *Catalog) VersionSkills(ctx context.Context, packagePath, version string
 	return mapVersionSkills(rows), nil
 }
 
+func (c *Catalog) VersionSkillCards(ctx context.Context, packagePath, version, locale string) ([]VersionSkill, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, fmt.Errorf("invalid canonical Package Path %q", packagePath)
+	}
+	rows, err := c.queries.LocalizedVersionSkillCards(ctx, catalogsqlc.LocalizedVersionSkillCardsParams{
+		PackagePath: packagePath, Version: version, Lang: locale,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]VersionSkill, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, VersionSkill{
+			VersionRowID: row.VersionID, Name: row.Name, Version: row.Version, CommitSHA: row.CommitSha,
+			Path: row.Path, CommitTime: row.CommitTime, Description: row.Description,
+			DescriptionDigest: row.DescriptionDigest, DocumentDigest: row.DocumentDigest, SourceLanguage: row.SourceLanguage,
+		})
+	}
+	return result, nil
+}
+
 func (c *Catalog) UpdatePackageSourceMetadata(ctx context.Context, packagePath, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
 		return fmt.Errorf("module stars cannot be negative")
@@ -683,14 +730,14 @@ func (c *Catalog) SkillByCoordinate(ctx context.Context, packagePath, name strin
 	return skillFromSQLC(stored.ID, stored.PackageID, stored.PackagePath, stored.Name, stored.Description, stored.SourceHost, stored.SourceRepository, stored.Path, stored.LatestVersion, stored.Stars, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
-func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]Skill, error) {
+func (c *Catalog) SkillCardsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate, locale string) ([]Skill, error) {
 	packagePaths := make([]string, 0, len(coordinates))
 	names := make([]string, 0, len(coordinates))
 	for _, coordinate := range coordinates {
 		packagePaths = append(packagePaths, coordinate.PackagePath)
 		names = append(names, coordinate.Name)
 	}
-	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{PackagePaths: packagePaths, Names: names})
+	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{PackagePaths: packagePaths, Names: names, Lang: locale})
 	if err != nil {
 		return nil, err
 	}
@@ -702,14 +749,14 @@ func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protoco
 	return items, nil
 }
 
-func (c *Catalog) SkillsByPathCoordinates(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]Skill, error) {
+func (c *Catalog) SkillCardsByPathCoordinates(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate, locale string) ([]Skill, error) {
 	packagePaths := make([]string, 0, len(coordinates))
 	paths := make([]string, 0, len(coordinates))
 	for _, coordinate := range coordinates {
 		packagePaths = append(packagePaths, coordinate.PackagePath)
 		paths = append(paths, coordinate.Path)
 	}
-	rows, err := c.queries.SkillsByPathCoordinates(ctx, catalogsqlc.SkillsByPathCoordinatesParams{PackagePaths: packagePaths, Paths: paths})
+	rows, err := c.queries.SkillsByPathCoordinates(ctx, catalogsqlc.SkillsByPathCoordinatesParams{PackagePaths: packagePaths, Paths: paths, Lang: locale})
 	if err != nil {
 		return nil, err
 	}
@@ -803,11 +850,12 @@ func (c *Catalog) Find(ctx context.Context, query string, exactName bool, limit,
 
 // SearchLocalized searches original and Hub-owned localized descriptions while preserving canonical identities.
 func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, limit, offset int) ([]SearchSkill, error) {
-	return c.FindLocalized(ctx, query, locale, false, limit, offset)
+	return c.SearchSkillCards(ctx, query, locale, false, limit, offset)
 }
 
-// FindLocalized applies the same name-first ordering while selecting localized presentation text.
-func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exactName bool, limit, offset int) ([]SearchSkill, error) {
+// SearchSkillCards applies name-first ordering and returns final localized
+// presentation rows in one set-based query.
+func (c *Catalog) SearchSkillCards(ctx context.Context, query, locale string, exactName bool, limit, offset int) ([]SearchSkill, error) {
 	locale = strings.TrimSpace(locale)
 	if locale == "" {
 		return c.Find(ctx, query, exactName, limit, offset)

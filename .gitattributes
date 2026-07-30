@@ -1,0 +1,6 @@
+# [INPUT]: Depends on Git checkout text normalization across macOS, Linux, and Windows runners.
+# [OUTPUT]: Preserves byte-stable Atlas migration inputs and checksums on every supported platform.
+# [POS]: Serves as the repository-wide checkout normalization policy for integrity-sensitive source artifacts.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+hub/pkg/catalog/migrations/postgres/** text eol=lf

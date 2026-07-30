@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned Artifact tree assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, one-sync multi-revision visitation with precise source failure codes, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, batch-version identity including v2+ tags without Go Package suffixes, complete Git-tracked Package Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -107,6 +107,101 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	require.NotEqual(t, first.TreeSHA, second.TreeSHA)
 	require.NotEqual(t, first.Version, second.Version)
 	require.True(t, module.IsPseudoVersion(second.Version), second.Version)
+}
+
+func TestRepositoryBackfillListingPreparesOneSyncForMultipleSnapshotVisits(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	original := f.fetcher.runGitCommand
+	clones, fetches := 0, 0
+	f.fetcher.runGitCommand = func(ctx context.Context, dir string, args []string, environment []string) ([]byte, error) {
+		for _, arg := range args {
+			switch arg {
+			case "clone":
+				clones++
+			case "fetch":
+				fetches++
+			}
+		}
+		return original(ctx, dir, args, environment)
+	}
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	session, err := lister.PrepareRepositoryBackfill(t.Context(), f.skillID)
+	require.NoError(t, err)
+	defer session.Close()
+	versions := session.Versions()
+	require.Len(t, versions, 1)
+	require.Equal(t, "v1.0.0", versions[0].Version)
+	visited := make([]string, 0, 2)
+	err = session.VisitSnapshots(t.Context(), []string{"v1.0.0", "v1.0.0"}, func(revision string, snapshot *RepositorySnapshot, err error) error {
+		require.NoError(t, err)
+		require.Equal(t, "v1.0.0", snapshot.Version)
+		visited = append(visited, revision)
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0", "v1.0.0"}, visited)
+	require.Equal(t, 1, clones)
+	require.Equal(t, 1, fetches)
+}
+
+func TestRepositoryBackfillDistinguishesMissingRevisionFromRevisionWithoutSkills(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.RemoveAll(filepath.Join(f.work, "SKILL.md")))
+	require.NoError(t, os.RemoveAll(filepath.Join(f.work, "skills")))
+	f.commit(t, "remove Skills")
+	runGit(t, f.work, "tag", "v2.0.0")
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "SKILL.md"), []byte("# Missing frontmatter\n"), 0o644))
+	f.commit(t, "add invalid Skill manifest")
+	runGit(t, f.work, "tag", "v3.0.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	session, err := lister.PrepareRepositoryBackfill(t.Context(), f.skillID)
+	require.NoError(t, err)
+	defer session.Close()
+
+	actual := map[string]SourceFailureCode{}
+	err = session.VisitSnapshots(t.Context(), []string{"v2.0.0", "v3.0.0", "v9.9.9"}, func(revision string, _ *RepositorySnapshot, visitErr error) error {
+		code, ok := SourceFailure(visitErr)
+		require.True(t, ok)
+		actual[revision] = code
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, SourceFailureNoSkills, actual["v2.0.0"])
+	require.Equal(t, SourceFailureInvalidManifest, actual["v3.0.0"])
+	require.Equal(t, SourceFailureRevisionNotFound, actual["v9.9.9"])
+}
+
+func TestRepositoryBackfillClassifiesFreshCloneAndCachedFetchSizeLimits(t *testing.T) {
+	for _, cached := range []bool{false, true} {
+		t.Run(map[bool]string{false: "fresh clone", true: "cached fetch"}[cached], func(t *testing.T) {
+			f := newLocalRepositoryFixture(t)
+			lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+			require.NoError(t, err)
+			if cached {
+				session, err := lister.PrepareRepositoryBackfill(t.Context(), f.skillID)
+				require.NoError(t, err)
+				session.Close()
+			}
+			t.Setenv("SKILLSGO_REPOSITORY_MAX_BYTES", "1")
+			_, err = lister.PrepareRepositoryBackfill(t.Context(), f.skillID)
+			code, ok := SourceFailure(err)
+			require.True(t, ok)
+			require.Equal(t, SourceFailureRepositoryTooLarge, code)
+		})
+	}
+}
+
+func TestRepositoryBackfillPreservesCloneCancellation(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err = lister.PrepareRepositoryBackfill(ctx, f.skillID)
+	require.ErrorIs(t, err, context.Canceled)
 }
 
 func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {

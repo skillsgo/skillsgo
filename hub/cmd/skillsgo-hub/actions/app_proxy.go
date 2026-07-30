@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers and metadata, native Fiber routing, static disk delivery, and Huma documentation projection.
- * [OUTPUT]: Assembles health, discovery reads, unified Package Version Queries, local static Git delivery, Repository metadata, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
+ * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers, asynchronous Repository metadata maintenance, native Fiber routing, static disk delivery, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, local static Git delivery, background Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -82,9 +82,8 @@ func addProxyRoutesWithCatalog(
 	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
 	if metadata != nil {
 		metadataSource := newGitHubRepositoryMetadataReader(c.GitHubTokens())
-		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, metadataSource)
-		backgroundMetadataCache := newQueuedRepositoryMetadataCache(backgroundMetadata, taskRuntime, metadataSource)
-		if err := backgroundMetadataCache.RegisterTask(); err != nil {
+		backgroundMetadataRefresher := newQueuedRepositoryMetadataRefresher(backgroundMetadata, taskRuntime, metadataSource)
+		if err := backgroundMetadataRefresher.RegisterTasks(); err != nil {
 			return fmt.Errorf("register repository metadata task: %w", err)
 		}
 		publisher := newPackagePublisher(
@@ -92,7 +91,7 @@ func addProxyRoutesWithCatalog(
 			s,
 			metadata,
 			withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
-			withCurrentPublicationObserver(metadataCache.RefreshInitial),
+			withCurrentPublicationObserver(backgroundMetadataRefresher.RefreshInitial),
 		)
 		registerPackageSkillRoute(r, metadata, publisher, s)
 		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
@@ -112,12 +111,7 @@ func addProxyRoutesWithCatalog(
 			}
 			registerPackageBackfillRoutes(adminRouter, backfills)
 		}
-		registerCatalogAPIRoutes(
-			r,
-			metadata,
-			dp,
-			metadataCache,
-		)
+		registerCatalogAPIRoutes(r, metadata, dp)
 	}
 
 	handlerOpts := &download.HandlerOpts{Protocol: dp, Logger: l, ArtifactOrigin: c.ArtifactOrigin}
