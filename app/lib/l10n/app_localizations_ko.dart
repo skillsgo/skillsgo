@@ -887,13 +887,6 @@ class AppLocalizationsKo extends AppLocalizations {
       '동일한 SkillsGo 프로토콜을 구현하는 공식 허브 또는 HTTP(S) 자체 호스팅 원본을 사용하세요.';
 
   @override
-  String get cloudSettingsTitle => 'Cloud Origin';
-
-  @override
-  String get cloudSettingsDescription =>
-      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
-
-  @override
   String get testConnection => '테스트 연결';
 
   @override
@@ -995,9 +988,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub Origin이 저장되고 적용되었습니다.';
-
-  @override
-  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => '설치 정책이 저장되었습니다.';

@@ -14,12 +14,6 @@
 # Env override: SKILLSGO_HUB_ENVIRONMENT
 Environment: "development"
 
-# Mode declares whether this Hub is self-hosted or connected to SkillsGo Cloud.
-# CloudOrigin defaults to https://cloud.skillsgo.ai.
-# Env overrides: SKILLSGO_HUB_MODE and SKILLSGO_HUB_CLOUD_ORIGIN
-Mode: "selfhost"
-CloudOrigin: "https://cloud.skillsgo.ai"
-
 # SkillCacheDir stores persistent Git Repository mirrors and temporary publication snapshots.
 # If empty, Hub uses ~/.skillsgo/hub/cache.
 # Override priority:

@@ -138,7 +138,6 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	for _, args := range [][]string{
 		{"find", "responsive layout", "--page", "1", "--per-page", "4", "--output", "json"},
 		{"hub", "find-candidates", "--input", inputPath, "--output", "json"},
-		{"hub", "info", "--output", "json"},
 		{"hub", "check", "--output", "json"},
 	} {
 		var stdout bytes.Buffer
@@ -150,12 +149,32 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 			t.Fatalf("unexpected output %q", stdout.String())
 		}
 	}
-	if len(requests) != 4 ||
+	if len(requests) != 3 ||
 		requests[0] != "GET /api/v1/skills/find?page=1&perPage=4&q=responsive+layout" ||
 		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10}` ||
-		requests[2] != "GET /info" ||
-		!strings.HasPrefix(requests[3], "GET /api/v1/skills/find?") {
+		!strings.HasPrefix(requests[2], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)
+	}
+}
+
+func TestRankingsReadTheCurrentHubThroughTheMachineCommand(t *testing.T) {
+	var requestURI string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestURI = r.URL.RequestURI()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"skills":[],"pagination":{"page":2,"perPage":7,"hasMore":false}}`)
+	}))
+	defer server.Close()
+	var stdout bytes.Buffer
+	err := Execute([]string{"rankings", "trending", "--hub", server.URL, "--lang", "zh_hans_cn", "--page", "2", "--per-page", "7", "--output", "json"}, &stdout, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requestURI != "/api/v1/rankings/trending?lang=zh-Hans-CN&page=2&perPage=7" {
+		t.Fatalf("unexpected Rankings request %q", requestURI)
+	}
+	if strings.TrimSpace(stdout.String()) != `{"skills":[],"pagination":{"page":2,"perPage":7,"hasMore":false}}` {
+		t.Fatalf("unexpected output %q", stdout.String())
 	}
 }
 

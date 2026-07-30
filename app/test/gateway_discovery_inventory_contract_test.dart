@@ -8,7 +8,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -251,22 +250,18 @@ void main() {
     expect(results, hasLength(205));
   });
 
-  test('Cloud ranking returns authoritative composed Skill cards', () async {
-    final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    final requestedCloudUris = <Uri>[];
-    cloud.listen((request) async {
-      requestedCloudUris.add(request.uri);
-      request.response.headers.contentType = ContentType.json;
-      request.response.write(
-        '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
-      );
-      await request.response.close();
-    });
+  test('Hub ranking travels through the long-lived CLI Server', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll([
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":7,"entries":[]}',
+          stdout:
+              '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":1,"projects":[]}',
           stderr: '',
         ),
       ]);
@@ -274,8 +269,6 @@ void main() {
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
-      cloudBaseUrl: 'http://127.0.0.1:${cloud.port}',
-      cloudHttpClientFactory: http.Client.new,
     );
     await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
@@ -284,9 +277,21 @@ void main() {
     expect(page.skills.single.packagePath, 'github.com/acme/skills');
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
-    expect(requestedCloudUris.single.queryParameters['lang'], 'zh-Hans-CN');
-    expect(runner.calls, hasLength(1));
-    await cloud.close(force: true);
+    expect(runner.calls, hasLength(2));
+    expect(runner.calls.first.arguments, [
+      'rankings',
+      'hot',
+      '--hub',
+      'https://hub.example.test',
+      '--lang',
+      'zh-Hans-CN',
+      '--page',
+      '0',
+      '--per-page',
+      '20',
+      '--output',
+      'json',
+    ]);
   });
 
   test(
@@ -325,30 +330,27 @@ void main() {
       expect(tests, hasLength(4));
       for (final tc in tests) {
         final runner = FakeProcessRunner();
-        HttpServer? cloud;
-        final requestedCloudPaths = <String>[];
         if (tc.wireCollection != null) {
-          cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-          cloud.listen((request) async {
-            requestedCloudPaths.add(request.uri.toString());
-            request.response.headers.contentType = ContentType.json;
-            request.response.write(
-              jsonEncode({
-                'skills': <Object>[],
-                'pagination': {'page': 0, 'perPage': 20, 'hasMore': false},
-              }),
-            );
-            await request.response.close();
-          });
+          runner.responses.add(
+            const ProcessOutput(
+              exitCode: 0,
+              stdout:
+                  '{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+              stderr: '',
+            ),
+          );
+          runner.responses.add(
+            const ProcessOutput(
+              exitCode: 0,
+              stdout: '{"schemaVersion":1,"projects":[]}',
+              stderr: '',
+            ),
+          );
         }
         final gateway = DesktopSkillsGateway(
           processRunner: runner,
           initialCliPath: '/usr/local/bin/skillsgo',
           hubBaseUrl: 'https://hub.example.test',
-          cloudBaseUrl: cloud == null
-              ? 'https://cloud.skillsgo.ai'
-              : 'http://127.0.0.1:${cloud.port}',
-          cloudHttpClientFactory: http.Client.new,
         );
 
         if (tc.wireCollection == null) {
@@ -369,17 +371,21 @@ void main() {
 
         final page = await gateway.discover(tc.collection);
         expect(page.skills, isEmpty, reason: tc.name);
-        expect(runner.calls, hasLength(1));
-        expect(runner.calls.single.arguments, [
-          'project',
-          'list',
+        expect(runner.calls, hasLength(2));
+        expect(runner.calls.first.arguments, [
+          'rankings',
+          tc.wireCollection!,
+          '--hub',
+          'https://hub.example.test',
+          '--lang',
+          'en',
+          '--page',
+          '0',
+          '--per-page',
+          '20',
           '--output',
           'json',
         ]);
-        expect(requestedCloudPaths, [
-          '/api/v1/rankings/${tc.wireCollection}?page=0&perPage=20&lang=en',
-        ]);
-        await cloud?.close(force: true);
       }
     },
   );

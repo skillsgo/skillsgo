@@ -925,13 +925,6 @@ class AppLocalizationsMs extends AppLocalizations {
       'Gunakan Hab rasmi atau asal hos sendiri HTTP(S) yang melaksanakan protokol SkillsGo yang sama.';
 
   @override
-  String get cloudSettingsTitle => 'Cloud Origin';
-
-  @override
-  String get cloudSettingsDescription =>
-      'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.';
-
-  @override
   String get testConnection => 'Uji sambungan';
 
   @override
@@ -1039,9 +1032,6 @@ class AppLocalizationsMs extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub Origin disimpan dan digunakan.';
-
-  @override
-  String get cloudOriginSaved => 'Cloud Origin saved and applied.';
 
   @override
   String get policySaved => 'Dasar pemasangan disimpan.';

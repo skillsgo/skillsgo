@@ -154,13 +154,7 @@ GitHub-generated release notes are sufficient initially. A changeset or conventi
 
 ## Protocol Compatibility
 
-App, CLI, and Hub versions do not need to match. Compatibility is expressed through protocol and capability versions rather than inferred from product SemVer.
-
-```text
-GET /api/v1/capabilities
-```
-
-The response includes at least a protocol version, Hub version, and feature list. Clients enable behavior based on the declared protocol and capabilities.
+App, CLI, and Hub versions do not need to match. Compatibility is expressed by versioned public paths and stable machine-document schema versions rather than inferred from product SemVer. Every Hub implements the complete route surface for its advertised path version; clients do not negotiate deployment capabilities at runtime.
 
 ## Legacy Athens Release Configuration
 

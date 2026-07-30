@@ -13,19 +13,40 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/skillsgo/skillsgo/hub/pkg/build"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	"github.com/skillsgo/skillsgo/protocol/cloud"
 )
 
 func documentHubOperations(api huma.API, adminEnabled bool) {
 	api.OpenAPI().Tags = []*huma.Tag{
 		{Name: "skills", Description: "Find, hydrate, inspect, and check updates for Skills."},
 		{Name: "packages", Description: "Resolve Package revisions to metadata and read immutable Package Version resources."},
+		{Name: "community", Description: "Record installation facts and read community ranking projections."},
 		{Name: "service", Description: "Deployment discovery, liveness, readiness, and build identity."},
 	}
 	documentSkillOperations(api)
 	documentPackageOperations(api)
+	documentCommunityOperations(api)
 	documentServiceOperations(api)
 	if adminEnabled {
 		documentAdminOperations(api)
+	}
+}
+
+func documentCommunityOperations(api huma.API) {
+	install := addJSONOperation(api, http.MethodPost, cloud.InstallEventsPath, "recordInstallEvent", "Record an installation event", "community",
+		schemaFor[cloud.InstallEvent](api), nil, schemaFor[cloud.InstallEventResponse](api), map[string]any{"accepted": false})
+	install.Responses["202"] = install.Responses["200"]
+	delete(install.Responses, "200")
+
+	ranking := addJSONOperation(api, http.MethodGet, "/api/v1/rankings/{kind}", "getCommunityRanking", "Get a community ranking", "community",
+		nil, nil, schemaFor[cloud.RankingResponse](api), map[string]any{
+			"skills": []any{}, "pagination": map[string]any{"page": 0, "perPage": 20, "hasMore": false},
+		})
+	ranking.Parameters = []*huma.Param{
+		pathParameter("kind", "Ranking kind: all_time, trending, or hot.", string(cloud.RankingAllTime)),
+		queryParameter("page", "Zero-based result page.", false, 0, integerSchema(0, 0, 0)),
+		queryParameter("perPage", "Number of Skills per page.", false, 20, integerSchema(1, 100, 20)),
+		queryParameter("lang", "Optional canonical BCP 47 presentation language.", false, "en", stringSchema()),
 	}
 }
 
@@ -71,8 +92,6 @@ func documentPackageOperations(api huma.API) {
 }
 
 func documentServiceOperations(api huma.API) {
-	addJSONOperation(api, http.MethodGet, "/info", "getHubInfo", "Get Hub deployment information", "service", nil, nil,
-		schemaFor[hubInfoResponse](api), map[string]any{"mode": "selfhost"})
 	addJSONOperation(api, http.MethodGet, "/version", "getHubVersion", "Get Hub build version", "service", nil, nil,
 		schemaFor[build.Details](api), map[string]any{})
 	for _, operation := range []*huma.Operation{

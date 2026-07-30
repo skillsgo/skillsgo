@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the shared gateway state, independently configured Cloud runtime, platform-native macOS HTTP and portable IO HTTP for direct Cloud-composed ranking reads, content locale, CLI Skill reads and source-language candidate Find, strict machine codecs, and discovery domain models.
+ * [INPUT]: Depends on shared gateway state, the single Hub Origin, content locale, CLI Skill/ranking reads and source-language candidate Find, strict machine codecs, and discovery domain models.
  * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Cloud Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -81,7 +81,7 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
         if (!result.succeeded) throw _commandFailure(result);
         decoded = jsonDecode(result.output.stdout);
       } else {
-        decoded = await _loadCloudRanking(
+        decoded = await _loadHubRanking(
           expectedCollection,
           page: page,
           perPage: perPage,
@@ -363,41 +363,36 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
     );
   }
 
-  Future<Map<String, dynamic>> _loadCloudRanking(
+  Future<Map<String, dynamic>> _loadHubRanking(
     String collection, {
     required int page,
     required int perPage,
   }) async {
-    await _ensureCloudOrigin();
-    final cloud = _cloudBase;
     final lang = await _contentLang();
-    final uri = cloud
-        .resolve('api/v1/rankings/$collection')
-        .replace(
-          queryParameters: {
-            'page': '$page',
-            'perPage': '$perPage',
-            'lang': lang,
-          },
-        );
-    final client = _cloudHttpClientFactory();
     try {
-      final response = await client
-          .get(uri, headers: {HttpHeaders.acceptHeader: 'application/json'})
-          .timeout(const Duration(seconds: 15));
-      final body = utf8.decode(response.bodyBytes);
-      if (response.statusCode != HttpStatus.ok) {
-        throw SkillsException(
-          'Cloud ranking request failed with HTTP ${response.statusCode}.',
-          kind: SkillsFailureKind.server,
-        );
+      final result = await _runCli([
+        'rankings',
+        collection,
+        '--hub',
+        _hubOrigin,
+        '--lang',
+        lang,
+        '--page',
+        '$page',
+        '--per-page',
+        '$perPage',
+        '--output',
+        'json',
+      ], retryOnTransportFailure: true);
+      if (!result.succeeded) {
+        throw _commandFailure(result);
       }
-      final cloudDocument = jsonDecode(body);
-      if (!_isCloudRankingDocument(cloudDocument)) {
-        throw const FormatException('Invalid Cloud ranking response.');
+      final hubDocument = jsonDecode(result.output.stdout);
+      if (!_isCloudRankingDocument(hubDocument)) {
+        throw const FormatException('Invalid Hub ranking response.');
       }
-      cloudDocument as Map<String, dynamic>;
-      final items = cloudDocument['skills'] as List;
+      hubDocument as Map<String, dynamic>;
+      final items = hubDocument['skills'] as List;
       final skills = <Map<String, dynamic>>[];
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
@@ -432,25 +427,13 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
       return {
         'collection': collection,
         'skills': skills,
-        'pagination': cloudDocument['pagination'],
+        'pagination': hubDocument['pagination'],
       };
-    } on TimeoutException {
+    } on FormatException {
       throw const SkillsException(
-        'Cloud ranking request timed out.',
-        kind: SkillsFailureKind.timeout,
+        'Invalid Hub ranking response.',
+        kind: SkillsFailureKind.invalidResponse,
       );
-    } on SocketException {
-      throw const SkillsException(
-        'Cloud ranking service is unavailable.',
-        kind: SkillsFailureKind.offline,
-      );
-    } on http.ClientException {
-      throw const SkillsException(
-        'Cloud ranking service is unavailable.',
-        kind: SkillsFailureKind.offline,
-      );
-    } finally {
-      client.close();
     }
   }
 

@@ -50,7 +50,6 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(cloudOriginProvider);
     final language = ref.watch(appearanceProvider).value?.language;
     final localeParts = language?.explicitUiLocale;
     final locale = localeParts == null

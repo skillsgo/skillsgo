@@ -178,5 +178,6 @@ func validateDocumentedProductRoutes(app *fiber.App, api huma.API, pathPrefix st
 func fiberPathToOpenAPI(routePath string) string {
 	routePath = strings.ReplaceAll(routePath, "/+/", "/{packagePath}/")
 	routePath = strings.ReplaceAll(routePath, ":version", "{version}")
+	routePath = strings.ReplaceAll(routePath, ":kind", "{kind}")
 	return routePath
 }

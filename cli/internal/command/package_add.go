@@ -166,7 +166,7 @@ func preparePackageAdd(cmd *cobra.Command, catalog *agent.Catalog, reference sou
 			member, ok := hub.SelectVersionSkill(selector, resource.Members)
 			if ok && !reportedPaths[member.Info.Path] {
 				reportedPaths[member.Info.Path] = true
-				reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{PackagePath: reference.PackagePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+				reportHubInstall(cmd.Context(), options.hubURL, hubInstallFact{PackagePath: reference.PackagePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 			}
 		}
 		type projectionResult struct {
