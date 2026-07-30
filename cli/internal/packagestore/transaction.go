@@ -667,7 +667,12 @@ func reconcileProjectionLink(target, desiredStore, baselineStore string, replace
 		}
 	}
 	if !baselineMatches && !replaceConflict {
-		return preparedPath{}, fmt.Errorf("existing path %s differs from prior declared content", target)
+		return preparedPath{}, fmt.Errorf(
+			"existing path %s differs from prior declared content at %s (%s)",
+			target,
+			baselineStore,
+			projectionLinkDiagnostic(target),
+		)
 	}
 	temporary, err := temporaryProjectionLink(target, desiredStore)
 	if err != nil {

@@ -2,13 +2,14 @@
 
 /*
  * [INPUT]: Depends on the operating system's relative symbolic-link primitive.
- * [OUTPUT]: Provides native relative directory links, link-candidate recognition, deterministic target matching, and a no-op content-baseline fallback for Agent Skill Projections on macOS and Linux.
+ * [OUTPUT]: Provides native relative directory links, link-candidate recognition, deterministic target matching, a no-op content-baseline fallback, and link-target diagnostics for Agent Skill Projections on macOS and Linux.
  * [POS]: Serves as the Unix Projection-link implementation beneath Package Store transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package packagestore
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -40,4 +41,12 @@ func projectionLinkMatches(link, target string) (bool, error) {
 
 func projectionContentMatchesBaseline(_, _ string) (bool, error) {
 	return false, nil
+}
+
+func projectionLinkDiagnostic(link string) string {
+	target, err := os.Readlink(link)
+	if err != nil {
+		return "read symlink target: " + err.Error()
+	}
+	return fmt.Sprintf("symlink target %q", target)
 }

@@ -2,7 +2,7 @@
 
 /*
  * [INPUT]: Depends on Windows cmd.exe's directory-junction primitive and absolute local filesystem paths.
- * [OUTPUT]: Provides unprivileged directory junctions, junction-candidate recognition, resolved file-identity matching, and declared-content baseline matching for Agent Skill Projections on Windows.
+ * [OUTPUT]: Provides unprivileged directory junctions, junction-candidate recognition, resolved file-identity matching, declared-content baseline matching, and reparse-target diagnostics for Agent Skill Projections on Windows.
  * [POS]: Serves as the Windows Projection-link implementation beneath Package Store transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -74,6 +74,15 @@ func projectionContentMatchesBaseline(link, baseline string) (bool, error) {
 		return false, err
 	}
 	return actual == expected, nil
+}
+
+func projectionLinkDiagnostic(link string) string {
+	buffer := make([]byte, windows.MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
+	length, err := windows.Readlink(link, buffer)
+	if err != nil {
+		return fmt.Sprintf("read junction target: %v", err)
+	}
+	return fmt.Sprintf("junction target %q", normalizeWindowsPath(string(buffer[:length])))
 }
 
 func windowsFinalPath(path string) (string, error) {
