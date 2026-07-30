@@ -38,6 +38,16 @@ func isProjectionLinkCandidate(info os.FileInfo) bool {
 }
 
 func projectionLinkMatches(link, target string) (bool, error) {
+	buffer := make([]byte, windows.MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
+	if length, readErr := windows.Readlink(link, buffer); readErr == nil {
+		actual := string(buffer[:length])
+		if !filepath.IsAbs(actual) {
+			actual = filepath.Join(filepath.Dir(link), actual)
+		}
+		if strings.EqualFold(filepath.Clean(actual), filepath.Clean(target)) {
+			return true, nil
+		}
+	}
 	resolvedLink, linkErr := windowsFinalPath(link)
 	resolvedTarget, targetErr := windowsFinalPath(target)
 	if linkErr == nil && targetErr == nil && strings.EqualFold(resolvedLink, resolvedTarget) {
