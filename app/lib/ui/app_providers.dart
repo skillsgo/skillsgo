@@ -11,7 +11,3 @@ import '../domain/skills_gateway.dart';
 final skillsGatewayProvider = Provider<SkillsGateway>((ref) {
   throw StateError('skillsGatewayProvider must be overridden at the App root.');
 });
-
-final cloudOriginProvider = FutureProvider<String>(
-  (ref) => ref.watch(skillsGatewayProvider).loadCloudOrigin(),
-);

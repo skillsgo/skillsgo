@@ -63,7 +63,7 @@ CI receives read-only repository permissions, cancels only superseded pull-reque
 
 ## Hub Snapshots
 
-A successful complete CI run on `main`, or an explicit manual dispatch, publishes a temporary `linux/amd64` image from the exact validated commit. The snapshot architecture matches the Railway production runtime; release tags retain the complete architecture matrix:
+A successful complete CI run on `main`, or an explicit manual dispatch, publishes a temporary `linux/amd64` image from the exact validated commit. The snapshot is a portable public artifact rather than a description of any private deployment; release tags retain the complete architecture matrix:
 
 ```text
 ghcr.io/skillsgo/hub:main
@@ -154,13 +154,7 @@ GitHub-generated release notes are sufficient initially. A changeset or conventi
 
 ## Protocol Compatibility
 
-App, CLI, and Hub versions do not need to match. Compatibility is expressed through protocol and capability versions rather than inferred from product SemVer.
-
-```text
-GET /api/v1/capabilities
-```
-
-The response includes at least a protocol version, Hub version, and feature list. Clients enable behavior based on the declared protocol and capabilities.
+App, CLI, and Hub versions do not need to match. Compatibility is expressed by versioned public paths and stable machine-document schema versions rather than inferred from product SemVer. Every Hub implements the complete route surface for its advertised path version; clients do not negotiate deployment capabilities at runtime.
 
 ## Legacy Athens Release Configuration
 

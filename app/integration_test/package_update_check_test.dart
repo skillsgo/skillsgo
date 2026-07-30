@@ -157,7 +157,7 @@ void registerPackageUpdatePreviewJourney() {
       );
       expect(
         File(
-          '$sandbox/home/.agents/.skillsgo/packages/$newCoordinate/skills/alpha/SKILL.md',
+          '$sandbox/home/.skillsgo/packages/$newCoordinate/skills/alpha/SKILL.md',
         ).existsSync(),
         isTrue,
       );

@@ -8,9 +8,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -47,7 +46,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -119,7 +118,7 @@ void main() {
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -185,7 +184,7 @@ void main() {
               '{"candidates":[[{"packagePath":"github.com/example/skills","versions":["v1.2.3","v1.1.0"],"path":"skills/ask-matt","name":"ask-matt","description":"Route requests.","imageUrl":"https://github.com/example.png?size=256"}]]}',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
       );
@@ -231,7 +230,7 @@ void main() {
         ),
       );
     }
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -251,31 +250,25 @@ void main() {
     expect(results, hasLength(205));
   });
 
-  test('Cloud ranking returns authoritative composed Skill cards', () async {
-    final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    final requestedCloudUris = <Uri>[];
-    cloud.listen((request) async {
-      requestedCloudUris.add(request.uri);
-      request.response.headers.contentType = ContentType.json;
-      request.response.write(
-        '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
-      );
-      await request.response.close();
-    });
+  test('Hub ranking travels through the long-lived CLI Server', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll([
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":7,"entries":[]}',
+          stdout:
+              '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":1,"projects":[]}',
           stderr: '',
         ),
       ]);
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
       hubBaseUrl: 'https://hub.example.test',
-      cloudBaseUrl: 'http://127.0.0.1:${cloud.port}',
-      cloudHttpClientFactory: http.Client.new,
     );
     await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
@@ -284,9 +277,21 @@ void main() {
     expect(page.skills.single.packagePath, 'github.com/acme/skills');
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
-    expect(requestedCloudUris.single.queryParameters['lang'], 'zh-Hans-CN');
-    expect(runner.calls, hasLength(1));
-    await cloud.close(force: true);
+    expect(runner.calls, hasLength(2));
+    expect(runner.calls.first.arguments, [
+      'rankings',
+      'hot',
+      '--hub',
+      'https://hub.example.test',
+      '--lang',
+      'zh-Hans-CN',
+      '--page',
+      '0',
+      '--per-page',
+      '20',
+      '--output',
+      'json',
+    ]);
   });
 
   test(
@@ -325,30 +330,27 @@ void main() {
       expect(tests, hasLength(4));
       for (final tc in tests) {
         final runner = FakeProcessRunner();
-        HttpServer? cloud;
-        final requestedCloudPaths = <String>[];
         if (tc.wireCollection != null) {
-          cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-          cloud.listen((request) async {
-            requestedCloudPaths.add(request.uri.toString());
-            request.response.headers.contentType = ContentType.json;
-            request.response.write(
-              jsonEncode({
-                'skills': <Object>[],
-                'pagination': {'page': 0, 'perPage': 20, 'hasMore': false},
-              }),
-            );
-            await request.response.close();
-          });
+          runner.responses.add(
+            const ProcessOutput(
+              exitCode: 0,
+              stdout:
+                  '{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+              stderr: '',
+            ),
+          );
+          runner.responses.add(
+            const ProcessOutput(
+              exitCode: 0,
+              stdout: '{"schemaVersion":1,"projects":[]}',
+              stderr: '',
+            ),
+          );
         }
-        final gateway = RealSkillsGateway(
+        final gateway = DesktopSkillsGateway(
           processRunner: runner,
           initialCliPath: '/usr/local/bin/skillsgo',
           hubBaseUrl: 'https://hub.example.test',
-          cloudBaseUrl: cloud == null
-              ? 'https://cloud.skillsgo.ai'
-              : 'http://127.0.0.1:${cloud.port}',
-          cloudHttpClientFactory: http.Client.new,
         );
 
         if (tc.wireCollection == null) {
@@ -369,17 +371,21 @@ void main() {
 
         final page = await gateway.discover(tc.collection);
         expect(page.skills, isEmpty, reason: tc.name);
-        expect(runner.calls, hasLength(1));
-        expect(runner.calls.single.arguments, [
-          'project',
-          'list',
+        expect(runner.calls, hasLength(2));
+        expect(runner.calls.first.arguments, [
+          'rankings',
+          tc.wireCollection!,
+          '--hub',
+          'https://hub.example.test',
+          '--lang',
+          'en',
+          '--page',
+          '0',
+          '--per-page',
+          '20',
           '--output',
           'json',
         ]);
-        expect(requestedCloudPaths, [
-          '/api/v1/rankings/${tc.wireCollection}?page=0&perPage=20&lang=en',
-        ]);
-        await cloud?.close(force: true);
       }
     },
   );
@@ -401,7 +407,7 @@ void main() {
             stderr: '',
           ),
         ]);
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
         hubBaseUrl: 'https://hub.example.test',
@@ -459,7 +465,7 @@ void main() {
             stderr: '',
           ),
         ]);
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
         hubBaseUrl: 'https://hub.example.test',
@@ -502,7 +508,7 @@ void main() {
             r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -571,7 +577,7 @@ void main() {
             '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -589,7 +595,7 @@ void main() {
   });
 
   test('listInstalled rejects the obsolete inventory schema', () async {
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
@@ -610,7 +616,7 @@ void main() {
             '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/usr/local/bin/skillsgo',
     );
@@ -639,7 +645,7 @@ void main() {
           stderr: '',
         );
       const executable = r'/tmp/skillsgo bin;$(touch should-not-run)';
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: executable,
       );
@@ -671,7 +677,7 @@ void main() {
       '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":{"path":"/tmp","exists":true}}]}',
       '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":null},{"id":"codex","displayName":"Duplicate","installed":false,"supportedScopes":["project"],"globalTarget":null}]}',
     ]) {
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: FakeProcessRunner()
           ..result = ProcessOutput(exitCode: 0, stdout: body, stderr: ''),
         initialCliPath: '/usr/local/bin/skillsgo',

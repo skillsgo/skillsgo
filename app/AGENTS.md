@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; CI maintains macOS arm64, macOS x64, Windows x64, and Linux x64 build/startup coverage, while the complete product Journey suite remains macOS-only.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and consume Cloud-composed ranking cards.
+- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, and delegate every Hub and local operation to the bundled CLI.
 
 ## Commands
 
@@ -58,9 +58,9 @@ make build-app-macos
 
 ## Boundaries
 
-- After a one-shot compatibility handshake, the App invokes bundled SkillsGo CLI business operations through one typed long-lived CLI Server adapter and must not call public Hub APIs directly. It stores Hub and Cloud origins independently and may call only the configured Cloud origin directly for Cloud-composed ranking reads.
+- After a one-shot compatibility handshake, the App invokes every Hub and local business operation through one typed long-lived CLI Server adapter and must not call public Hub APIs directly. It stores one Hub Origin.
 - The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
-- The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
+- The Hub owns the complete public v1 route surface. Official and self-hosted Origins expose the same routes; community-data availability is expressed by valid responses rather than client-side deployment discovery.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
 - Do not construct shell command strings from user input; pass arguments as a structured list.

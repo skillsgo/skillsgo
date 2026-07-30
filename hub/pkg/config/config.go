@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on YAML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including deployment discovery, authentication, cache policy, first-class Cloudflare R2 storage, task execution, and optional translation.
+ * [OUTPUT]: Provides validated Hub configuration including authentication, cache policy, first-class Cloudflare R2 storage, task execution, and optional translation.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,18 +24,13 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-const (
-	defaultConfigFile  = "skillsgo-hub.yaml"
-	defaultCloudOrigin = "https://cloud.skillsgo.ai"
-)
+const defaultConfigFile = "skillsgo-hub.yaml"
 
 // Config provides configuration values for all components.
 type Config struct {
 	TimeoutConf
 
 	Environment             string    `envconfig:"SKILLSGO_HUB_ENVIRONMENT" validate:"required"`
-	Mode                    string    `envconfig:"SKILLSGO_HUB_MODE" validate:"oneof=selfhost cloud"`
-	CloudOrigin             string    `envconfig:"SKILLSGO_HUB_CLOUD_ORIGIN"`
 	SkillCacheDir           string    `ignored:"true"`
 	RepositoryCacheTTL      int       `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_TTL" validate:"min=0"`
 	RepositoryCacheMaxBytes int64     `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES" validate:"min=0"`
@@ -172,8 +167,6 @@ func Load(configFile string) (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		Environment:             "development",
-		Mode:                    "selfhost",
-		CloudOrigin:             defaultCloudOrigin,
 		GithubTokens:            TokenList{},
 		RepositoryCacheTTL:      604800,
 		RepositoryCacheMaxBytes: 10 << 30,
@@ -199,6 +192,7 @@ func defaultConfig() *Config {
 		Database: &DatabaseConfig{
 			DSN:                    "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
 			Schema:                 DefaultDatabaseSchema,
+			ExtensionSchema:        DefaultDatabaseSchema,
 			MaxOpenConns:           20,
 			BackgroundMaxOpenConns: 40,
 			ConnMaxLifetime:        1800,
@@ -307,12 +301,6 @@ func envOverride(config *Config) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(config.Mode) == "" {
-		config.Mode = "selfhost"
-	}
-	if strings.TrimSpace(config.CloudOrigin) == "" {
-		config.CloudOrigin = defaultCloudOrigin
-	}
 	if config.StorageType == "r2" {
 		if config.Storage == nil {
 			config.Storage = &Storage{}
@@ -336,6 +324,9 @@ func envOverride(config *Config) error {
 	}
 	if config.Database.Schema == "" {
 		config.Database.Schema = DefaultDatabaseSchema
+	}
+	if config.Database.ExtensionSchema == "" {
+		config.Database.ExtensionSchema = DefaultDatabaseSchema
 	}
 	if config.Database.MaxOpenConns == 0 {
 		config.Database.MaxOpenConns = 20
@@ -378,9 +369,6 @@ func envOverride(config *Config) error {
 		config.Port = defaultPort
 	}
 	config.Port = ensurePortFormat(config.Port)
-	if err := validateDeployment(config.Mode, config.CloudOrigin); err != nil {
-		return err
-	}
 	return validateArtifactOrigin(config.ArtifactOrigin)
 }
 
@@ -410,9 +398,6 @@ func validateConfig(config Config) error {
 	if err := validateCredentialPair("Admin Basic Auth", config.AdminAuthUser, config.AdminAuthPass); err != nil {
 		return err
 	}
-	if err := validateDeployment(config.Mode, config.CloudOrigin); err != nil {
-		return err
-	}
 	if err := validateArtifactOrigin(config.ArtifactOrigin); err != nil {
 		return err
 	}
@@ -437,26 +422,6 @@ func validateArtifactOrigin(origin string) error {
 	return nil
 }
 
-func validateDeployment(mode, cloudOrigin string) error {
-	if mode == "selfhost" {
-		return nil
-	}
-	if mode != "cloud" {
-		return fmt.Errorf("SKILLSGO_HUB_MODE must be selfhost or cloud")
-	}
-	if strings.TrimSpace(cloudOrigin) == "" {
-		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN is required in cloud mode")
-	}
-	parsed, err := url.Parse(cloudOrigin)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN must be an absolute HTTP(S) URL")
-	}
-	if parsed.Scheme != "https" && !(parsed.Scheme == "http" && (parsed.Hostname() == "localhost" || parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "::1")) {
-		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN must use HTTPS outside loopback development")
-	}
-	return nil
-}
-
 func validateCredentialPair(name, user, pass string) error {
 	if (user == "") != (pass == "") {
 		return fmt.Errorf("%s user and password must be configured together", name)
@@ -476,6 +441,9 @@ func validateDatabase(validate *validator.Validate, database *DatabaseConfig) er
 	}
 	if !ValidDatabaseSchema(database.Schema) {
 		return fmt.Errorf("database schema must be a lower-case PostgreSQL identifier")
+	}
+	if !ValidDatabaseSchema(database.ExtensionSchema) {
+		return fmt.Errorf("database extension schema must be a lower-case PostgreSQL identifier")
 	}
 	return nil
 }

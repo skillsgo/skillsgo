@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, process-local timers, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, deterministic synchronous execution, lifecycle-owned asynchronous dispatch, burst-mode durable PostgreSQL scheduling, and transactional enqueue.
+ * [OUTPUT]: Provides standalone River schema migration, type-safe registration, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, deterministic synchronous execution, lifecycle-owned asynchronous dispatch, burst-mode durable PostgreSQL scheduling, and transactional enqueue.
  * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs without resident idle polling.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -144,14 +144,10 @@ func NewRiver(ctx context.Context, pool *pgxpool.Pool, maxWorkers int, options .
 	if maxWorkers < 1 {
 		return nil, fmt.Errorf("max workers must be at least 1")
 	}
+	if err := Migrate(ctx, pool); err != nil {
+		return nil, err
+	}
 	driver := riverpgxv5.New(pool)
-	migrator, err := rivermigrate.New(driver, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create River migrator: %w", err)
-	}
-	if _, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil); err != nil {
-		return nil, fmt.Errorf("migrate River schema: %w", err)
-	}
 	workers := river.NewWorkers()
 	var runtimeOptions RiverOptions
 	if len(options) > 0 {
@@ -182,6 +178,25 @@ func NewRiver(ctx context.Context, pool *pgxpool.Pool, maxWorkers int, options .
 		idleTimeout = defaultIdleTimeout
 	}
 	return &Runtime{handlers: make(map[string]func(context.Context, river.JobArgs) error), failures: make(map[string]func(context.Context, river.JobArgs, error) error), workers: workers, river: client, wake: make(chan struct{}, 1), idleTimeout: idleTimeout, asyncActive: make(map[string]struct{})}, nil
+}
+
+// Migrate applies River's transport schema without constructing or starting workers.
+func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
+	if pool == nil {
+		return fmt.Errorf("PostgreSQL pool is required")
+	}
+	var schema string
+	if err := pool.QueryRow(ctx, `SELECT current_schema()`).Scan(&schema); err != nil {
+		return fmt.Errorf("resolve River migration schema: %w", err)
+	}
+	migrator, err := rivermigrate.New(riverpgxv5.New(pool), &rivermigrate.Config{Schema: schema})
+	if err != nil {
+		return fmt.Errorf("create River migrator: %w", err)
+	}
+	if _, err := migrator.Migrate(ctx, rivermigrate.DirectionUp, nil); err != nil {
+		return fmt.Errorf("migrate River schema: %w", err)
+	}
+	return nil
 }
 
 // Register installs one typed worker during service assembly.

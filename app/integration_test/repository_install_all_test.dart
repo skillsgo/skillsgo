@@ -105,7 +105,7 @@ void registerRepositoryInstallAllJourney() {
       );
       expect(
         File(
-          '${home.path}/.agents/.skillsgo/packages/$coordinate/skills/resourceful/references/guide.md',
+          '${home.path}/.skillsgo/packages/$coordinate/skills/resourceful/references/guide.md',
         ).existsSync(),
         isTrue,
       );

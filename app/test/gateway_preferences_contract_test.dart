@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SharedPreferences, temporary filesystem boundaries, controlled CLI output, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies appearance including persistent first-run wallpaper selection, language, reminder, one-time adoption-introduction, independent Hub/Cloud Origins, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
+ * [OUTPUT]: Specifies appearance including persistent first-run wallpaper selection, language, reminder, one-time adoption-introduction, the single Hub Origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
  * [POS]: Serves as the preferences, onboarding, and project contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/infrastructure/desktop_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_process_runner.dart';
@@ -115,23 +115,23 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('language settings persist with System as the default', () async {
-    final gateway = RealSkillsGateway();
+    final gateway = DesktopSkillsGateway();
     expect(await gateway.loadLanguage(), AppLanguage.system);
     await gateway.saveLanguage(AppLanguage.simplifiedChinese);
     expect(await gateway.loadLanguage(), AppLanguage.simplifiedChinese);
 
-    final restored = RealSkillsGateway();
+    final restored = DesktopSkillsGateway();
     expect(await restored.loadLanguage(), AppLanguage.simplifiedChinese);
   });
 
   test('unset theme color defaults to white', () async {
-    final gateway = RealSkillsGateway();
+    final gateway = DesktopSkillsGateway();
 
     expect(await gateway.loadFolderTheme(), '#FFFFFF');
   });
 
   test('first launch selects and persists one wallpaper', () async {
-    final gateway = RealSkillsGateway();
+    final gateway = DesktopSkillsGateway();
 
     final selected = await gateway.loadWallpaper();
 
@@ -140,11 +140,11 @@ void main() {
       (await SharedPreferences.getInstance()).getString('wallpaper'),
       selected.name,
     );
-    expect(await RealSkillsGateway().loadWallpaper(), selected);
+    expect(await DesktopSkillsGateway().loadWallpaper(), selected);
   });
 
   test('reminder settings persist with user-safe defaults', () async {
-    final gateway = RealSkillsGateway();
+    final gateway = DesktopSkillsGateway();
     final defaults = await gateway.loadReminderSettings();
     expect(defaults.updateAvailable, isTrue);
     expect(defaults.securityAdvisory, isTrue);
@@ -152,13 +152,13 @@ void main() {
     await gateway.saveReminderSettings(
       const ReminderSettings(updateAvailable: false, securityAdvisory: false),
     );
-    final restored = await RealSkillsGateway().loadReminderSettings();
+    final restored = await DesktopSkillsGateway().loadReminderSettings();
     expect(restored.updateAvailable, isFalse);
     expect(restored.securityAdvisory, isFalse);
   });
 
   test('update check cache persists exact scope results', () async {
-    final gateway = RealSkillsGateway();
+    final gateway = DesktopSkillsGateway();
     expect(await gateway.loadUpdateCheckCache(), isNull);
     final checkedAt = DateTime.utc(2026, 7, 29, 12, 30);
     await gateway.saveUpdateCheckCache(
@@ -177,7 +177,7 @@ void main() {
       ),
     );
 
-    final restored = await RealSkillsGateway().loadUpdateCheckCache();
+    final restored = await DesktopSkillsGateway().loadUpdateCheckCache();
     expect(restored?.checkedAt, checkedAt);
     final result = restored?.results.values.single;
     expect(result?.state, UpdateState.available);
@@ -196,7 +196,7 @@ void main() {
               '{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
           stderr: '',
         );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/usr/local/bin/skillsgo',
         hubBaseUrl: 'https://hub.example.test',
@@ -224,7 +224,7 @@ void main() {
 
   test('hub settings reject unsafe or malformed origins', () async {
     SharedPreferences.setMockInitialValues({});
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       hubBaseUrl: 'https://official.example',
       appVersion: '1.2.3',
     );
@@ -269,7 +269,7 @@ void main() {
       }
 
       final runner = _ManagedProjectsRunner();
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
         directoryPathsPicker: ({initialDirectory}) async => [
@@ -287,7 +287,7 @@ void main() {
       expect(inspected, added.map((project) => project.path));
       expect(inspected, isNot(contains(unselected.path)));
 
-      final restarted = RealSkillsGateway(
+      final restarted = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
         projectPathInspector: inspect,
@@ -327,7 +327,7 @@ void main() {
       addTearDown(() => root.delete(recursive: true));
       final file = File('${root.path}/not-a-project.txt');
       await file.writeAsString('not a directory');
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: _ManagedProjectsRunner(),
         initialCliPath: '/bin/skillsgo',
         directoryPathsPicker: ({initialDirectory}) async => [file.path],
@@ -365,7 +365,7 @@ void main() {
           stderr: '',
         ),
       );
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       bundledCliPath: '/Applications/SkillsGo.app/Contents/Resources/skillsgo',
       expectedCliOS: 'darwin',
@@ -405,7 +405,7 @@ void main() {
     });
     final runner = _ManagedProjectsRunner();
     runner.projects['/one'] = (name: 'One', root: '/one');
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
@@ -441,7 +441,7 @@ void main() {
         diagnostic: 'device unavailable',
       ),
     };
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: _ManagedProjectsRunner(),
       initialCliPath: '/bin/skillsgo',
       directoryPathsPicker: ({initialDirectory}) async => selections,
@@ -524,7 +524,7 @@ void main() {
         name: 'Offline Project',
         root: canonicalProjectPath,
       );
-      final gateway = RealSkillsGateway(
+      final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
       );
@@ -545,7 +545,7 @@ void main() {
 
   test('hub settings turn transport failures into structured health', () async {
     SharedPreferences.setMockInitialValues({});
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 69,
@@ -563,81 +563,10 @@ void main() {
     expect(status.issue, HubIssue.connectionFailure);
   });
 
-  test('Cloud Origin persists independently from Hub discovery', () async {
-    SharedPreferences.setMockInitialValues({});
-    final runner = FakeProcessRunner();
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/bin/skillsgo',
-      hubBaseUrl: 'https://official-hub.example',
-    );
-
-    expect(await gateway.loadCloudOrigin(), 'https://cloud.skillsgo.ai');
-    await gateway.saveCloudOrigin('https://private-cloud.example/path/');
-    expect(
-      await gateway.loadCloudOrigin(),
-      'https://private-cloud.example/path',
-    );
-    expect(await gateway.loadHubOrigin(), 'https://official-hub.example');
-
-    expect(runner.calls, isEmpty);
-
-    await gateway.resetCloudOrigin();
-    expect(await gateway.loadCloudOrigin(), 'https://cloud.skillsgo.ai');
-  });
-
-  test('Cloud Origin health validates the ranking protocol', () async {
-    SharedPreferences.setMockInitialValues({});
-    final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => cloud.close(force: true));
-    Uri? requested;
-    cloud.listen((request) async {
-      requested = request.uri;
-      request.response.headers.contentType = ContentType.json;
-      request.response.write(
-        '{"skills":[],"pagination":{"page":0,"perPage":1,"hasMore":false}}',
-      );
-      await request.response.close();
-    });
-    final gateway = RealSkillsGateway(
-      initialCliPath: '/bin/skillsgo',
-      cloudBaseUrl: 'http://127.0.0.1:${cloud.port}',
-    );
-
-    final status = await gateway.testCloudOrigin(
-      'http://127.0.0.1:${cloud.port}',
-    );
-
-    expect(status.isReady, isTrue);
-    expect(
-      requested.toString(),
-      '/api/v1/rankings/all_time?page=0&perPage=1&lang=en',
-    );
-  });
-
-  test('Cloud Origin health rejects an incomplete ranking protocol', () async {
-    SharedPreferences.setMockInitialValues({});
-    final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    addTearDown(() => cloud.close(force: true));
-    cloud.listen((request) async {
-      request.response.headers.contentType = ContentType.json;
-      request.response.write('{"skills":[],"pagination":{}}');
-      await request.response.close();
-    });
-    final gateway = RealSkillsGateway(initialCliPath: '/bin/skillsgo');
-
-    final status = await gateway.testCloudOrigin(
-      'http://127.0.0.1:${cloud.port}',
-    );
-
-    expect(status.state, HealthState.invalid);
-    expect(status.issue, HubIssue.invalidProtocol);
-  });
-
   test('Personal risk policy and product version are stable', () async {
     SharedPreferences.setMockInitialValues({});
     final runner = FakeProcessRunner();
-    final gateway = RealSkillsGateway(
+    final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       hubBaseUrl: 'https://official.example',

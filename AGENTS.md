@@ -35,9 +35,9 @@ skillsgo/
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- After a one-shot bundled-CLI compatibility handshake, the App routes every Hub and local business operation through one long-lived CLI Server session. It persists Hub and independently deployed SkillsGo Cloud origins separately and may call the configured Cloud origin for Cloud-owned ranking reads; it never calls Hub HTTP directly.
+- After a one-shot bundled-CLI compatibility handshake, the App routes every Hub and local business operation through one long-lived CLI Server session. It persists one Hub Origin and never calls Hub HTTP directly.
 - The CLI owns local filesystem mutations, Agent Adapters, derived Scope Package Trees, Package Projections, Installation Targets, Workspace Manifests, Workspace Locks, and disposable read-through Package caches.
-- The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database and composes ranking responses through uncached Hub batch reads.
+- The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and the complete v1 route surface. Its standalone App injects empty community data, while an embedding application may inject another implementation through the exported public seam. The public repository does not document private consumers or production topology.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
 

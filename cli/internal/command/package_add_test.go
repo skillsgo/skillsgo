@@ -88,8 +88,7 @@ func TestAddYesReplacesConflictingDirectProjection(t *testing.T) {
 		require.NoFileExists(t, filepath.Join(target, "local-only.txt"))
 	}
 	require.FileExists(t, filepath.Join(projection, "SKILL.md"))
-	require.NoDirExists(t, filepath.Join(home, ".skillsgo", "packages"))
-	require.DirExists(t, filepath.Join(home, ".agents", ".skillsgo", "packages"))
+	require.DirExists(t, filepath.Join(home, ".skillsgo", "packages"))
 
 	// Explicit replacement remains retry-safe after the desired Package state
 	// has already been committed.

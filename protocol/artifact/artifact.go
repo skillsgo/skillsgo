@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Package file inventories, legacy ZIP bytes, extracted Package directories, and canonical Package Path identity.
- * [OUTPUT]: Provides validated Package trees with typed validation reasons, deterministic legacy ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
+ * [OUTPUT]: Provides validated Package trees with typed validation reasons, deterministic legacy ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, version-independent content Sums, and coordinate-bound Sum calculation.
  * [POS]: Serves as the executable Package Artifact format contract shared by Hub producers and clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -129,6 +129,23 @@ func PackageEntriesSum(entries []Entry, packagePath, version string) (string, er
 	prefix := packagePath + "@" + version + "/"
 	for _, entry := range validated {
 		if err := writeHash1Content(hash, prefix+entry.Path, entry.Contents); err != nil {
+			return "", err
+		}
+	}
+	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
+}
+
+// PackageContentSum returns the version-independent h1 identity of one
+// canonical Package tree. It deliberately hashes relative entry paths so
+// Source revisions with identical published Package contents compare equal.
+func PackageContentSum(entries []Entry) (string, error) {
+	validated, err := ValidateEntries(entries)
+	if err != nil {
+		return "", err
+	}
+	hash := sha256.New()
+	for _, entry := range validated {
+		if err := writeHash1Content(hash, entry.Path, entry.Contents); err != nil {
 			return "", err
 		}
 	}

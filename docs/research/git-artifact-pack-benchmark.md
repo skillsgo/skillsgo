@@ -50,4 +50,4 @@ The measured warm behavior test confirms that a go-git v6 dumb-HTTP client that 
 - Incremental Packs use offset deltas selected only from their own object set and are independently readable; thin Packs are not stored.
 - R2 checks immutable repository keys and skips uploads whose content-derived object already exists with the expected size. Mutable refs and `objects/info/packs` are written after immutable files.
 - Compaction needs an R2 generation switch and stale-CDN grace period before deleting superseded Packs.
-- Hydrating the complete repository into an ephemeral Railway worker remains a separate read-amplification concern. A persistent local publication cache or an R2-aware selective hydrator should be measured before production rollout.
+- Hydrating the complete repository into an ephemeral application worker remains a separate read-amplification concern. A persistent local publication cache or an R2-aware selective hydrator should be measured before production rollout.

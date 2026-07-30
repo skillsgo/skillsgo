@@ -34,7 +34,7 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 
 	resetLocalInstallation(t, ctx, container)
 	rootOnly := execCLI(t, ctx, container,
-		"add", "https://"+collection+"@v1.0.0", "--skill", "root-suite",
+		"add", "https://fixtures.test/group/subgroup/root-only@v1.0.0", "--skill", "root-suite",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, rootOnly.exitCode, rootOnly.output)

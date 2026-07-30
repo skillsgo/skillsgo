@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SettingsScreen gateway state, CLI/Agent catalogs, independent Hub/Cloud health, risk policy, localized status copy, and diagnostics.
- * [OUTPUT]: Provides Agent detection/recovery, Hub and Cloud origins, connection states, and Personal risk-policy settings.
+ * [INPUT]: Depends on SettingsScreen gateway state, CLI/Agent catalogs, Hub health, risk policy, localized status copy, and diagnostics.
+ * [OUTPUT]: Provides Agent detection/recovery, the single Hub Origin, connection state, and Personal risk-policy settings.
  * [POS]: Serves as the CLI, Agent, service-origin, and policy segment of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -212,58 +212,6 @@ extension _IntegrationSettings on _SettingsScreenState {
               : '${context.l10n.connectionFailed}: ${hubStatusMessage(context, hubStatus!)}',
           style: TextStyle(
             color: hubStatus!.isReady
-                ? context.skillsComponents.statusSuccess
-                : context.skillsComponents.statusAttention,
-          ),
-        ),
-      ],
-    ],
-  );
-
-  Widget _cloudSettings() => Column(
-    key: const Key('cloud-origin-settings'),
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _settingsHeading(
-        context.l10n.cloudSettingsTitle,
-        context.l10n.cloudSettingsDescription,
-      ),
-      const SizedBox(height: 18),
-      SkillsInput(
-        key: const Key('cloud-origin'),
-        controller: cloudController,
-        placeholder: const Text('https://cloud.example.com'),
-      ),
-      const SizedBox(height: 12),
-      Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          SkillsButton(
-            enabled: !testingCloud,
-            onPressed: saveCloud,
-            child: Text(context.l10n.saveOrigin),
-          ),
-          SkillsButton.outline(
-            enabled: !testingCloud,
-            onPressed: testCloud,
-            child: Text(context.l10n.testConnection),
-          ),
-          SkillsButton.outline(
-            enabled: !testingCloud,
-            onPressed: resetCloud,
-            child: Text(context.l10n.resetDefault),
-          ),
-        ],
-      ),
-      if (cloudStatus != null) ...[
-        const SizedBox(height: 14),
-        Text(
-          cloudStatus!.isReady
-              ? context.l10n.connectionReady
-              : '${context.l10n.connectionFailed}: ${cloudStatusMessage(context, cloudStatus!)}',
-          style: TextStyle(
-            color: cloudStatus!.isReady
                 ? context.skillsComponents.statusSuccess
                 : context.skillsComponents.statusAttention,
           ),

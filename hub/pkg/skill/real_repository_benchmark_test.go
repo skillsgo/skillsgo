@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on an opt-in local five-repository benchmark corpus, real Git commits, and the production Artifact projection path.
- * [OUTPUT]: Provides allocation and wall-time benchmarks for projecting large real Source Repository trees and comparing repeated versus one-sync Backfill source synchronization.
+ * [OUTPUT]: Provides allocation and wall-time benchmarks for projecting conventionally discovered real Skill subtrees and comparing repeated versus one-sync Backfill source synchronization.
  * [POS]: Serves as non-CI performance evidence for the source-to-Artifact hot path in the Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -40,10 +41,21 @@ func BenchmarkRealRepositoryArtifactProjection(benchmark *testing.B) {
 	for _, repository := range repositories {
 		snapshot := largestRealBenchmarkSnapshot(snapshots[repository.ID])
 		benchmark.Run(filepath.Base(repository.Path), func(benchmark *testing.B) {
+			listing, err := gitOutput(context.Background(), repository.Path, "ls-tree", "-r", "--name-only", snapshot.Commit)
+			if err != nil {
+				benchmark.Fatal(err)
+			}
+			candidates := discoverSkillCandidates(strings.Split(listing, "\n"))
+			directories := make([]string, len(candidates))
+			for index, candidate := range candidates {
+				directories[index] = filepath.ToSlash(filepath.Dir(candidate))
+			}
+			if len(directories) == 0 {
+				benchmark.Fatal("Repository contains no discoverable Skill directories")
+			}
 			benchmark.ReportAllocs()
-			benchmark.ReportMetric(float64(snapshot.ExpandedBytes), "expanded-B/op")
 			for range benchmark.N {
-				entries, sum, err := createRepositoryArtifact(context.Background(), repository.ID, "v0.0.0-benchmark", repository.Path, snapshot.Commit)
+				entries, sum, err := createRepositoryArtifact(context.Background(), repository.ID, "v0.0.0-benchmark", repository.Path, snapshot.Commit, packageArtifactSelection{paths: directories, skillDirectories: directories})
 				if err != nil {
 					benchmark.Fatal(err)
 				}

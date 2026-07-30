@@ -71,6 +71,19 @@ https://github.com/lobehub/lobe-icons
 Atlassian Design:
 https://atlassian.design/foundations/logos
 
+## iFlow CLI and Kimchi
+
+`assets/agent-logos/iflow-cli.svg` adapts the pixel mark shown in the official
+iFlow CLI repository's `assets/iflow-cli.jpg`:
+https://github.com/iflow-ai/iflow-cli
+
+`assets/agent-logos/kimchi.svg` adapts the pepper mark shown in the official
+Kimchi repository's `kimchi.png` and terminal welcome screen:
+https://github.com/getkimchi/kimchi
+
+The iFlow and Kimchi names and marks remain the property of their respective
+owners.
+
 ## Circle Flags
 
 The language identity assets in `assets/language-flags/` are sourced from

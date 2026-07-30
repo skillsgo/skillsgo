@@ -60,7 +60,7 @@ The baseline does not justify a broad hot-path rewrite. It does provide the cont
 
 - Initial publication and Backfill are Pack-bound. Optimizing repeated entry validation first would not address the dominant measured CPU stage for those operations.
 - Normal adjacent updates are no longer Pack-bound. Incremental Pack publication measured 15–148 milliseconds, so speculative Pack tuning is not justified.
-- Artifact projection measured 22–644 milliseconds and is comparable to or larger than incremental Pack publication in three of five repositories. Its allocation amplification is measurable, especially for the 177 MiB gstack tree, but the CPU saving available on Railway is not yet known.
+- Artifact projection measured 22–644 milliseconds and is comparable to or larger than incremental Pack publication in three of five repositories. Its allocation amplification is measurable, especially for the 177 MiB gstack tree, but the CPU saving available on production application compute is not yet known.
 - The benchmark intentionally excludes Git network synchronization, R2 hydration, R2 publication, and PostgreSQL. Decisions in this report apply to the measured Go projection and Pack paths only.
 
 Further optimization should continue through controlled local variants against the same corpus. Concurrency, validation ownership, and data-representation changes require their own before-and-after benchmark rather than being inferred from allocation counts alone.

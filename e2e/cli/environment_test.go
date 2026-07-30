@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Testcontainers, PostgreSQL, the host runner identity, one disposable suite bind mount, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
- * [OUTPUT]: Provides one exec-probed shared Cloud-mode CLI/PostgreSQL suite, serial per-Journey Hub/schema/filesystem/Git isolation, whole-suite cleanup, and black-box command/assertion helpers.
+ * [OUTPUT]: Provides one exec-probed shared CLI/PostgreSQL suite, serial per-Journey Hub/schema/filesystem/Git isolation, whole-suite cleanup, and black-box command/assertion helpers.
  * [POS]: Serves as the suite-scoped Linux/macOS container lifecycle and scenario-isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -85,10 +85,6 @@ func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Contain
 	return startScenario(t, ctx)
 }
 
-func startCloudEnvironment(t *testing.T, ctx context.Context) (testcontainers.Container, string) {
-	return startScenario(t, ctx)
-}
-
 func startScenario(t *testing.T, ctx context.Context) (testcontainers.Container, string) {
 	t.Helper()
 	suiteOnce.Do(func() { suite = startSuite(t, ctx) })
@@ -115,7 +111,6 @@ rm -rf /e2e/git /e2e/git-work /e2e/hub/cache
 cp -a /e2e/git-baseline /e2e/git
 cp -a /e2e/git-work-baseline /e2e/git-work
 mkdir -p /e2e/hub/cache
-wget -q -O /dev/null --post-data='' http://127.0.0.1:3100/__e2e/reset
 `)
 	require.Equal(t, 0, reset.exitCode, reset.output)
 	digest := sha256.Sum256([]byte(t.Name()))
@@ -183,8 +178,6 @@ func startSuite(t *testing.T, ctx context.Context) *e2eSuite {
 		"SKILLSGO_HUB_DISK_STORAGE_ROOT":   "/e2e/hub/storage",
 		"SKILLSGO_HUB_DATABASE_TYPE":       "postgres",
 		"SKILLSGO_HUB_DATABASE_DSN":        "postgres://skillsgo:skillsgo@postgres:5432/skillsgo?sslmode=disable",
-		"SKILLSGO_HUB_MODE":                "cloud",
-		"SKILLSGO_HUB_CLOUD_ORIGIN":        "http://127.0.0.1:3100",
 		"SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS": "true",
 		"SKILLSGO_LANG":                    "en",
 		"NO_COLOR":                         "1",
@@ -209,10 +202,7 @@ func startSuite(t *testing.T, ctx context.Context) *e2eSuite {
 		}),
 		testcontainers.WithEnv(environment),
 		network.WithNetwork([]string{"hub"}, nw),
-		testcontainers.WithWaitStrategy(
-			wait.ForExec([]string{"wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3100/__e2e/events"}).
-				WithStartupTimeout(45 * time.Second),
-		),
+		testcontainers.WithWaitStrategy(wait.ForLog("SkillsGo E2E suite runtime ready").WithStartupTimeout(45 * time.Second)),
 	}
 	if image == "" {
 		options = append(options, testcontainers.WithDockerfile(testcontainers.FromDockerfile{

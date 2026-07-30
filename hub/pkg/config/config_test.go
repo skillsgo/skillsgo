@@ -79,13 +79,19 @@ func TestPortDefaultsCorrectly(t *testing.T) {
 func TestDatabaseSchemaDefaultsAndRejectsUnsafeIdentifiers(t *testing.T) {
 	setTestHome(t)
 	t.Setenv("SKILLSGO_HUB_DATABASE_SCHEMA", "")
+	t.Setenv("SKILLSGO_HUB_DATABASE_EXTENSION_SCHEMA", "")
 	conf := defaultConfig()
 	conf.Database.Schema = ""
+	conf.Database.ExtensionSchema = ""
 	require.NoError(t, envOverride(conf))
 	require.Equal(t, DefaultDatabaseSchema, conf.Database.Schema)
+	require.Equal(t, DefaultDatabaseSchema, conf.Database.ExtensionSchema)
 
 	conf.Database.Schema = `unsafe;drop schema public`
 	require.ErrorContains(t, validateConfig(*conf), "database schema must be a lower-case PostgreSQL identifier")
+	conf.Database.Schema = DefaultDatabaseSchema
+	conf.Database.ExtensionSchema = `unsafe;drop schema public`
+	require.ErrorContains(t, validateConfig(*conf), "database extension schema must be a lower-case PostgreSQL identifier")
 }
 
 func TestLLMEnvironmentOverrides(t *testing.T) {
@@ -164,36 +170,6 @@ func TestValidateConfigRejectsPartialBasicAuthCredentials(t *testing.T) {
 	}
 }
 
-func TestDeploymentConfiguration(t *testing.T) {
-	require.NoError(t, validateDeployment("selfhost", ""))
-	require.NoError(t, validateDeployment("cloud", "https://cloud.skillsgo.ai/"))
-	require.NoError(t, validateDeployment("cloud", "http://127.0.0.1:3100"))
-	require.Error(t, validateDeployment("cloud", ""))
-	require.Error(t, validateDeployment("cloud", "http://cloud.example.com"))
-	require.Error(t, validateDeployment("invalid", "https://cloud.skillsgo.ai"))
-}
-
-func TestCloudOriginDefaultsAndEnvironmentOverride(t *testing.T) {
-	t.Run("default", func(t *testing.T) {
-		conf := defaultConfig()
-		require.Equal(t, "https://cloud.skillsgo.ai", conf.CloudOrigin)
-	})
-
-	t.Run("empty configuration value", func(t *testing.T) {
-		conf := defaultConfig()
-		conf.CloudOrigin = ""
-		require.NoError(t, envOverride(conf))
-		require.Equal(t, "https://cloud.skillsgo.ai", conf.CloudOrigin)
-	})
-
-	t.Run("environment override", func(t *testing.T) {
-		t.Setenv("SKILLSGO_HUB_CLOUD_ORIGIN", "https://cloud.example.com")
-		conf := defaultConfig()
-		require.NoError(t, envOverride(conf))
-		require.Equal(t, "https://cloud.example.com", conf.CloudOrigin)
-	})
-}
-
 func TestArtifactOriginConfiguration(t *testing.T) {
 	require.NoError(t, validateArtifactOrigin(""))
 	require.NoError(t, validateArtifactOrigin("https://artifacts.skillsgo.ai/repositories"))
@@ -209,8 +185,6 @@ func TestEnvOverrides(t *testing.T) {
 	home := setTestHome(t)
 	expConf := &Config{
 		Environment:  "production",
-		Mode:         "selfhost",
-		CloudOrigin:  "https://cloud.skillsgo.ai",
 		LogLevel:     "info",
 		CloudRuntime: "gcp",
 		TimeoutConf: TimeoutConf{
@@ -387,8 +361,6 @@ func TestParseExampleConfig(t *testing.T) {
 
 	expConf := &Config{
 		Environment:             "development",
-		Mode:                    "selfhost",
-		CloudOrigin:             "https://cloud.skillsgo.ai",
 		GithubTokens:            TokenList{},
 		LogLevel:                "debug",
 		LogFormat:               "plain",
@@ -432,7 +404,6 @@ func TestParseExampleConfig(t *testing.T) {
 func getEnvMap(config *Config) map[string]string {
 	envVars := map[string]string{
 		"SKILLSGO_HUB_ENVIRONMENT":                config.Environment,
-		"SKILLSGO_HUB_MODE":                       config.Mode,
 		"SKILLSGO_HUB_REPOSITORY_CACHE_TTL":       strconv.Itoa(config.RepositoryCacheTTL),
 		"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES": strconv.FormatInt(config.RepositoryCacheMaxBytes, 10),
 		"SKILLSGO_HUB_LOG_LEVEL":                  config.LogLevel,

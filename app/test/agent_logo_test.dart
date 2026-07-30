@@ -18,6 +18,15 @@ void main() {
     );
   });
 
+  test('newly supported Agents use their brand logo assets', () {
+    expect(AgentLogo.assetPathFor('grok'), 'assets/agent-logos/grok.svg');
+    expect(
+      AgentLogo.assetPathFor('iflow-cli'),
+      'assets/agent-logos/iflow-cli.svg',
+    );
+    expect(AgentLogo.assetPathFor('kimchi'), 'assets/agent-logos/kimchi.svg');
+  });
+
   test('Bob uses the safe text fallback when no valid SVG is supplied', () {
     expect(AgentLogo.assetPathFor('bob'), isNull);
   });

@@ -172,8 +172,8 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
 - Lower-level Agent Adapter, Repository artifact, Package Store, Projection, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
-- The Hub HTTP Router tests Search, detail, immutable metadata, pagination, empty arrays, and validation. The independent Cloud service tests Ranking, Trending, Hot, pagination, and idempotent install events through the shared public Protocol conformance suite.
-- Hub HTTP tests verify catalog behavior across SQLite and PostgreSQL. Private Cloud tests verify its independent SQLite statistics database and ranking projections.
+- The Hub HTTP Router tests Search, detail, immutable metadata, rankings, installation-event acceptance, pagination, empty arrays, and validation through the shared public Protocol conformance suite.
+- Hub tests verify public catalog and community-seam behavior without assuming any private persistence implementation.
 - Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
 - Test partial failure with at least one writable target and one failing target, then assert the writable target remains installed and the failed target alone can be retried.
 - Test that a same-name different-identity Skill is never merged or overwritten without explicit replacement.

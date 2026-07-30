@@ -77,7 +77,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
     final state = ref.watch(discoverProvider).routes[route]!;
     final uiState = routeUiStates[route]!;
     final source = route == DiscoverRoute.search
-        ? _gitSourceLabel(submittedQuery)
+        ? state.module?.id ?? _gitSourceLabel(submittedQuery)
         : null;
     if (state.loading && state.results == null) {
       return source == null
