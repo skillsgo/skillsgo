@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on normalized Git tree paths and the directory conventions implemented by the skills.sh CLI.
- * [OUTPUT]: Selects ordered SKILL.md publication candidates using root precedence, conventional containers, bounded catalog depth, and recursive fallback.
+ * [OUTPUT]: Selects ordered SKILL.md publication candidates using root precedence, conventional containers, bounded catalog depth, recursive fallback, and the minimal Package path set that preserves applicable plugin manifests.
  * [POS]: Serves as the pure source-tree discovery policy shared by Git-backed Repository publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,6 +50,12 @@ var recursiveDiscoverySkippedDirectories = map[string]struct{}{
 	"dist":         {},
 	"build":        {},
 	"__pycache__":  {},
+}
+
+var pluginManifestDirectories = map[string]struct{}{
+	".codex-plugin":  {},
+	".claude-plugin": {},
+	".cursor-plugin": {},
 }
 
 type pluginManifestDocuments struct {
@@ -302,4 +308,44 @@ func minimalSkillDirectories(directories []string) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+// packageArtifactPaths returns the minimal Git pathspec union for one
+// Package Version. Skill subtrees remain intact, while plugin manifests are
+// retained only when their owning directory is an ancestor of an accepted
+// Skill. Keeping the original relative topology lets each Agent apply its own
+// native manifest precedence after following a projection into the Package.
+type packageArtifactSelection struct {
+	paths            []string
+	skillDirectories []string
+}
+
+func selectPackageArtifact(files, skillDirectories []string) packageArtifactSelection {
+	directories := minimalSkillDirectories(skillDirectories)
+	if len(directories) == 1 && directories[0] == "." {
+		return packageArtifactSelection{paths: directories, skillDirectories: directories}
+	}
+	selected := make(map[string]struct{}, len(directories)+3)
+	for _, directory := range directories {
+		selected[directory] = struct{}{}
+	}
+	for _, file := range files {
+		if path.Base(file) != "plugin.json" {
+			continue
+		}
+		manifestDirectory := path.Dir(file)
+		if _, supported := pluginManifestDirectories[path.Base(manifestDirectory)]; !supported {
+			continue
+		}
+		owner := path.Dir(manifestDirectory)
+		for _, skillDirectory := range directories {
+			if owner == "." || skillDirectory == owner || strings.HasPrefix(skillDirectory, owner+"/") {
+				if skillDirectory != "." && file != skillDirectory && !strings.HasPrefix(file, skillDirectory+"/") {
+					selected[file] = struct{}{}
+				}
+				break
+			}
+		}
+	}
+	return packageArtifactSelection{paths: sortedCandidateSet(selected), skillDirectories: directories}
 }

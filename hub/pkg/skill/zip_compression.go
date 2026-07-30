@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on immutable Git revisions, accepted Skill directory roots, canonical Package coordinates, the shared Package Artifact tree contract, and Go tar primitives.
- * [OUTPUT]: Adapts the minimal union of selected Git-tracked Skill subtrees into canonical safe Artifact entries, precise source failure codes, and a coordinate-bound Sum without exposing tar/PAX transport metadata or constructing a ZIP.
+ * [INPUT]: Depends on immutable Git revisions, accepted Package pathspecs containing Skill subtrees and applicable plugin manifests, canonical Package coordinates, the shared Package Artifact tree contract, and Go tar primitives.
+ * [OUTPUT]: Adapts the minimal selected Git-tracked Package tree into canonical safe Artifact entries, precise source failure codes, and a coordinate-bound Sum without exposing tar/PAX transport metadata or constructing a ZIP.
  * [POS]: Serves as the safe tree boundary between Git source resolution and immutable Package publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,9 +22,9 @@ import (
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
-func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir, revision string, skillDirectories []string) ([]protocolartifact.Entry, string, error) {
+func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir, revision string, selection packageArtifactSelection) ([]protocolartifact.Entry, string, error) {
 	args := []string{"-c", "core.autocrlf=input", "-c", "core.eol=lf", "archive", "--format=tar", revision, "--"}
-	args = append(args, minimalSkillDirectories(skillDirectories)...)
+	args = append(args, selection.paths...)
 	raw := &boundedArchiveBuffer{limit: protocolartifact.MaxUncompressedBytes + protocolartifact.MaxFiles*1024}
 	stderr := &bytes.Buffer{}
 	command := exec.CommandContext(ctx, "git", args...)
@@ -79,7 +79,7 @@ func createRepositoryArtifact(ctx context.Context, packagePath, version, repoDir
 		remainingBytes -= int64(len(contents))
 		files = append(files, protocolartifact.Entry{Path: artifactPath, Contents: contents, Mode: mode, Size: int64(len(contents))})
 	}
-	files = omitCrossSkillSymlinks(ctx, packagePath, revision, files, skillDirectories)
+	files = omitCrossSkillSymlinks(ctx, packagePath, revision, files, selection.skillDirectories)
 	for {
 		err := protocolartifact.ValidateSymlinks(files)
 		if err == nil {

@@ -43,11 +43,10 @@ commit_push() {
 
 new_repo collection
 collection="$work_root/collection"
-skill "$collection" root-suite "Repository root fixture."
 skill "$collection/skills/alpha" alpha "Alpha at v1."
 skill "$collection/skills/beta" beta "Beta exists only at v1."
 skill "$collection/skills/CamelCase" camel-case "Case-preserving nested path."
-skill "$collection/skills/general/ideation/naming" naming "Deeply nested Skill."
+skill "$collection/skills/general/naming" naming "Categorized Skill."
 mkdir -p "$collection/runtime"
 printf '%s\n' '#!/bin/sh' 'echo shared-runtime' >"$collection/runtime/shared.sh"
 chmod 0755 "$collection/runtime/shared.sh"
@@ -65,6 +64,16 @@ skill "$collection/skills/alpha" alpha "Alpha stable."
 commit_push "$collection" "collection stable"
 git -C "$collection" tag v1.1.0
 git -C "$collection" push origin v1.1.0 >/dev/null
+
+new_repo root-only
+root_only="$work_root/root-only"
+skill "$root_only" root-suite "Repository root fixture."
+mkdir -p "$root_only/runtime"
+printf '%s\n' '#!/bin/sh' 'echo root-runtime' >"$root_only/runtime/shared.sh"
+chmod 0755 "$root_only/runtime/shared.sh"
+commit_push "$root_only" "root-only v1"
+git -C "$root_only" tag v1.0.0
+git -C "$root_only" push origin v1.0.0 >/dev/null
 
 new_repo mixed
 mixed="$work_root/mixed"

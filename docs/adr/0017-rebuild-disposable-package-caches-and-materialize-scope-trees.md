@@ -1,6 +1,6 @@
 # ADR-0017: Rebuild Disposable Package Caches and Materialize Scope Trees
 
-ADR-0019 supersedes this decision's cross-member repository-relative resource assumption. Scope Package Trees remain complete copies of the immutable Package Artifact, but that Artifact now contains only the minimal union of accepted self-contained Skill directory subtrees.
+ADR-0019 supersedes this decision's cross-member repository-relative resource assumption. Scope Package Trees remain complete copies of the immutable Package Artifact, but that Artifact now contains only the minimal union of accepted self-contained Skill directory subtrees plus applicable plugin manifests.
 
 ## Status
 
@@ -19,7 +19,7 @@ skills.yaml + skills-lock.yaml
 
 The authoritative local state is `skills.yaml` plus `skills-lock.yaml`. Exact Package Info, Git objects, and expanded Scope Package Trees are derived state that may be rebuilt from the Hub and its immutable Git Artifact Repository. Agent Projections remain protected generated state because users or external tools may modify their paths.
 
-Project Scope stores complete Package Trees under `<project>/.skillsgo/packages`. Global Scope uses the same layout under its declaration root: `~/.agents/.skillsgo/packages`. The former `~/.skillsgo/packages` location is removed. `~/.skillsgo` owns shared caches and user configuration, not a Global Scope Package Tree.
+Project Scope stores complete Package Trees under `<project>/.skillsgo/packages`. Global Scope stores complete Package Trees under `~/.skillsgo/packages`; `~/.agents` retains only the global dependency declaration and lock plus Agent-owned discovery roots. Shared caches remain under `~/.skillsgo/cache` and are separate from the protected Global Scope Package Tree.
 
 This decision supersedes the authority, Global Store location, command-specific cache-read, and platform Projection portions of ADR-0010, ADR-0015, and ADR-0016. Their complete-Package materialization, immutable identity, `h1:` integrity, static Git distribution, update scope, and atomic publication decisions remain accepted.
 
@@ -27,7 +27,7 @@ This decision supersedes the authority, Global Store location, command-specific 
 
 The CLI previously read `~/.skillsgo/cache/info` and Scope Package Stores directly. A missing Info entry caused commands such as `list` to fail even when Manifest, Lock, Package Tree, Projection, and immutable Hub resources remained valid. Global materialization also lived under `~/.skillsgo/packages`, mixing Scope state with user-level cache and configuration.
 
-Removing complete Package Trees is not correct because Package identity, `h1:` verification, atomic repair, and multiple selected members share one immutable materialization boundary. ADR-0019 narrows the Artifact itself to accepted self-contained Skill directory subtrees, so a Scope Package Tree no longer preserves or exposes unrelated Source Repository files.
+Removing complete Package Trees is not correct because Package identity, `h1:` verification, atomic repair, plugin-manifest ancestry, and multiple selected members share one immutable materialization boundary. ADR-0019 narrows the Artifact itself to accepted self-contained Skill directory subtrees plus applicable plugin manifests, so a Scope Package Tree no longer preserves or exposes unrelated Source Repository files.
 
 ## State model
 
@@ -44,13 +44,13 @@ Shared disposable acquisition cache:
 Scope-local derived materialization:
 
 - `<project>/.skillsgo/packages/<package>@<version>` for Project Scope;
-- `~/.agents/.skillsgo/packages/<package>@<version>` for Global Scope.
+- `~/.skillsgo/packages/<package>@<version>` for Global Scope.
 
 Agent-visible Projection:
 
 - `<managed-root>/<canonical-skill-name>`, a relative symlink on macOS and Linux or an absolute directory junction on Windows to the selected member inside the Scope Package Tree.
 
-Deleting `~/.skillsgo` removes shared acquisition caches but leaves Global declarations, Global Package Trees, Project Package Trees, and Agent Projections intact. Any command that needs missing shared cache data rebuilds it automatically. Deleting a Scope Package Tree is repaired by `install` from the exact Manifest and Lock without movable resolution.
+Deleting `~/.skillsgo/cache` removes shared acquisition caches but leaves Global declarations, Global Package Trees, Project Package Trees, and Agent Projections intact. Any command that needs missing shared cache data rebuilds it automatically. Deleting the broader `~/.skillsgo` state root also removes the derived Global Package Tree; `install --global` repairs it from the exact Manifest and Lock without movable resolution. Deleting a Project Scope Package Tree is repaired by `install` for that Scope.
 
 ## Capability-based Package Provider
 
@@ -81,10 +81,10 @@ Explicit `verify` additionally requests exact Git Content, ensuring acquisition 
 
 Benefits:
 
-- clearing `~/.skillsgo` no longer invalidates installed inventory;
+- clearing `~/.skillsgo/cache` no longer invalidates installed inventory;
 - all commands receive consistent metadata/content acquisition through one boundary;
-- Global Scope data is colocated under its declaration root instead of mixed into user cache state;
-- complete self-contained Skill resource behavior remains intact;
+- Global declarations remain under `~/.agents`, while the protected Global Package Tree and disposable caches occupy distinct children of `~/.skillsgo`;
+- complete self-contained Skill resources and applicable plugin-manifest ancestry remain intact;
 - one expanded Package Tree is shared by all selected members and Agents within a Scope;
 - corrupt shared cache entries are repaired from exact immutable resources;
 - Local Modifications remain protected by deterministic baselines.

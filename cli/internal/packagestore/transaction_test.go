@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses deterministic Package Artifact entries, explicit member selections, and temporary Package Store/Agent roots.
- * [OUTPUT]: Specifies complete Package Store retention, direct canonical-name Agent Skill links, confirmed full reinstall, safe internal symlinks, multi-Agent visibility, baseline-guarded replacement, ordinary Local Modification refusal, explicitly authorized conflict replacement, caller-selected replaced-path disposal, finalization, and rollback.
+ * [OUTPUT]: Specifies complete Package Store retention, direct canonical-name Agent Skill links that preserve plugin-manifest ancestry, confirmed full reinstall, safe internal symlinks, multi-Agent visibility, baseline-guarded replacement, ordinary Local Modification refusal, explicitly authorized conflict replacement, caller-selected replaced-path disposal, finalization, and rollback.
  * [POS]: Serves as the filesystem transaction contract for Scope Package Store and Package Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -98,6 +98,37 @@ func TestPackageTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *tes
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
 	require.ErrorContains(t, err, "Local Modification")
+}
+
+func TestPackageProjectionCanonicalTargetRetainsPluginManifestAncestor(t *testing.T) {
+	packagePath, version := "github.com/mattpocock/skills", "v1.1.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
+		{Path: ".codex-plugin/plugin.json", Contents: []byte(`{"name":"mattpocock-skills"}`), Mode: 0o644},
+		{Path: ".claude-plugin/plugin.json", Contents: []byte(`{"name":"mattpocock-skills"}`), Mode: 0o644},
+		{Path: "skills/engineering/code-review/SKILL.md", Contents: []byte("---\nname: code-review\ndescription: Review code.\n---\n"), Mode: 0o644},
+	})
+	require.NoError(t, err)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
+	require.NoError(t, err)
+	packagesRoot, codexRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "codex-skills")
+	transaction, err := Prepare(Options{
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version,
+		Entries: testArtifactEntries(t, archive, packagePath, version), Sum: sum,
+		Members:     []string{"skills/engineering/code-review"},
+		SkillNames:  map[string]string{"skills/engineering/code-review": "code-review"},
+		Projections: []Projection{{Agent: "codex", Root: codexRoot, Selected: []string{"skills/engineering/code-review"}}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, transaction.Commit())
+
+	canonicalSkill, err := filepath.EvalSymlinks(filepath.Join(codexRoot, "code-review"))
+	require.NoError(t, err)
+	packageStore := CoordinatePath(packagesRoot, packagePath, version)
+	canonicalPackageStore, err := filepath.EvalSymlinks(packageStore)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(canonicalPackageStore, "skills", "engineering", "code-review"), canonicalSkill)
+	require.FileExists(t, filepath.Join(packageStore, ".codex-plugin", "plugin.json"))
+	require.FileExists(t, filepath.Join(packageStore, ".claude-plugin", "plugin.json"))
 }
 
 func TestPackageTransactionRestoresAndVerifiesInternalSymlinks(t *testing.T) {

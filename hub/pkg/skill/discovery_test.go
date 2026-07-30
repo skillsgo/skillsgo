@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on synthetic Git tree path listings and the pure Skills discovery policy.
- * [OUTPUT]: Specifies skills.sh-compatible root precedence, conventional container depth, recursive fallback, and minimal directory unions.
+ * [OUTPUT]: Specifies skills.sh-compatible root precedence, conventional container depth, recursive fallback, minimal directory unions, and applicable plugin-manifest preservation.
  * [POS]: Serves as the focused behavioral contract for Repository Skill discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -84,6 +84,38 @@ func TestMinimalSkillDirectoriesRemovesDescendantsAndDuplicates(t *testing.T) {
 		"skills/bar",
 		"skills/bar",
 	}))
+}
+
+func TestPackageArtifactPathsPreserveApplicablePluginManifests(t *testing.T) {
+	require.Equal(t, packageArtifactSelection{paths: []string{
+		".claude-plugin/plugin.json",
+		".codex-plugin/plugin.json",
+		".cursor-plugin/plugin.json",
+		"plugins/review/.claude-plugin/plugin.json",
+		"plugins/review/skills/check",
+	}, skillDirectories: []string{"plugins/review/skills/check"}}, selectPackageArtifact([]string{
+		"README.md",
+		".claude-plugin/plugin.json",
+		".codex-plugin/plugin.json",
+		".cursor-plugin/plugin.json",
+		"plugins/review/.claude-plugin/plugin.json",
+		"plugins/other/.claude-plugin/plugin.json",
+		"plugins/review/skills/check/SKILL.md",
+	}, []string{"plugins/review/skills/check"}))
+}
+
+func TestPackageArtifactPathsRootSkillKeepsCompletePackageWithoutDuplicatePaths(t *testing.T) {
+	require.Equal(t, packageArtifactSelection{paths: []string{"."}, skillDirectories: []string{"."}}, selectPackageArtifact([]string{
+		"SKILL.md",
+		".claude-plugin/plugin.json",
+	}, []string{"."}))
+}
+
+func TestPackageArtifactPathsDoesNotRepeatManifestAlreadyInsideSkillSubtree(t *testing.T) {
+	require.Equal(t, packageArtifactSelection{paths: []string{"skills/review"}, skillDirectories: []string{"skills/review"}}, selectPackageArtifact([]string{
+		"skills/review/SKILL.md",
+		"skills/review/.codex-plugin/plugin.json",
+	}, []string{"skills/review"}))
 }
 
 func TestShadowNestedMembersUsesValidatedParentSkills(t *testing.T) {

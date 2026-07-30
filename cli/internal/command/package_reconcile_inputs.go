@@ -43,7 +43,7 @@ func resolvePackageScope(declarationRoot string, global bool) (packageScopeConte
 	}
 	if global {
 		context.declarationRoot = project.GlobalDeclarationRoot(home)
-		context.packagesRoot = filepath.Join(context.declarationRoot, ".skillsgo", "packages")
+		context.packagesRoot = filepath.Join(project.GlobalStateRoot(home), "packages")
 		context.agentScope = agent.ScopeGlobal
 		context.scopeName = "global"
 		context.projectRoot = ""

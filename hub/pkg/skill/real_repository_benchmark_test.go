@@ -55,7 +55,7 @@ func BenchmarkRealRepositoryArtifactProjection(benchmark *testing.B) {
 			}
 			benchmark.ReportAllocs()
 			for range benchmark.N {
-				entries, sum, err := createRepositoryArtifact(context.Background(), repository.ID, "v0.0.0-benchmark", repository.Path, snapshot.Commit, directories)
+				entries, sum, err := createRepositoryArtifact(context.Background(), repository.ID, "v0.0.0-benchmark", repository.Path, snapshot.Commit, packageArtifactSelection{paths: directories, skillDirectories: directories})
 				if err != nil {
 					benchmark.Fatal(err)
 				}

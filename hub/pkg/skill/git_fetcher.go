@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, skills.sh-compatible tiered Skill discovery with complete SKILL.md bytes, selected-subtree Artifact assembly, precise Source Failure Codes, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, skills.sh-compatible tiered Skill discovery with complete SKILL.md bytes, filtered Package Artifact assembly with applicable plugin manifests, precise Source Failure Codes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -174,7 +174,8 @@ func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath
 	for index, member := range snapshot.Members {
 		directories[index] = member.Path
 	}
-	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA, directories)
+	selection := selectPackageArtifact(files, directories)
+	entries, sum, err := createRepositoryArtifact(ctx, packagePath, resolution.Version, repoDir, resolution.CommitSHA, selection)
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureArtifactBuild, errors.E(op, err))
 	}

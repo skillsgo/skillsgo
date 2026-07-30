@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, read-through exact Git content, Agent Adapter roots, baseline-aware Scope Tree/member-link transactions, and the Package mutation coordinator.
+ * [INPUT]: Depends on strict YAML/Lock state, separate declaration and global state roots, read-through exact Git content, Agent Adapter roots, baseline-aware Scope Tree/member-link transactions, and the Package mutation coordinator.
  * [OUTPUT]: Removes selected Package members through one coordinated mutation, automatically rebuilding disposable dependency cache state without overwriting Local Modifications.
  * [POS]: Serves as the authoritative managed Package-member selector path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -73,6 +73,9 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	}
 	infoRoot := infocache.DefaultRoot(home)
 	packagesRoot := filepath.Join(declarationRoot, ".skillsgo", "packages")
+	if globalScope {
+		packagesRoot = filepath.Join(project.GlobalStateRoot(home), "packages")
+	}
 	client, err := hub.New(hubURL, nil)
 	if err != nil {
 		return true, err

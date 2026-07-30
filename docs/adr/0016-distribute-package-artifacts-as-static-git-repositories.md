@@ -4,7 +4,7 @@ status: accepted
 
 # Distribute Package Artifacts as static Git repositories
 
-ADR-0019 supersedes this decision's complete Source Repository snapshot boundary. Static Git distribution now stores the minimal union of accepted self-contained Skill directory subtrees; all Git object, Pack, tag, Sum, and dumb HTTP decisions remain unchanged.
+ADR-0019 supersedes this decision's complete Source Repository snapshot boundary. Static Git distribution now stores a filtered Package tree containing the minimal union of accepted self-contained Skill directory subtrees and applicable plugin manifests; all Git object, Pack, tag, Sum, and dumb HTTP decisions remain unchanged.
 
 SkillsGo currently publishes one complete deterministic ZIP for every immutable Package Version. This preserves the Package-level distribution model established by ADR-0010, but stores repeated files once per version even when adjacent versions differ only slightly. At community scale, historical publication and copied Skill collections can make immutable ZIP retention a larger cost than metadata or search. Serving those ZIPs through the Hub application also makes the application origin part of the artifact data path unless a separate artifact redirect is configured.
 
@@ -14,7 +14,7 @@ This proposal changes only the physical representation and transport of a Packag
 
 ### Current publication and installation
 
-The Hub resolves a Version Query to a canonical immutable semantic or pseudo-version, discovers the complete accepted Skill membership, builds the minimal safe Git-tracked union of accepted Skill directory subtrees, serializes that tree as a deterministic ZIP, computes its Package `h1:`, and atomically publishes ZIP, Package Info, Catalog identity, and Skill document content. R2 may store the ZIP through its S3-compatible API, but storage selection and public download routing are independent. Without an artifact origin, ZIP bytes flow from R2 through Hub to the CLI. With an artifact origin, only eligible ZIP requests are redirected; Package Info and other Hub reads remain on the Hub origin.
+The Hub resolves a Version Query to a canonical immutable semantic or pseudo-version, discovers the complete accepted Skill membership, builds the minimal safe Git-tracked union of accepted Skill directory subtrees plus applicable plugin manifests, serializes that tree as a deterministic ZIP, computes its Package `h1:`, and atomically publishes ZIP, Package Info, Catalog identity, and Skill document content. R2 may store the ZIP through its S3-compatible API, but storage selection and public download routing are independent. Without an artifact origin, ZIP bytes flow from R2 through Hub to the CLI. With an artifact origin, only eligible ZIP requests are redirected; Package Info and other Hub reads remain on the Hub origin.
 
 The CLI resolves Package Info, downloads the complete ZIP, validates byte length and Package `h1:`, materializes an authoritative Scope Package Store, and creates projections only for the selected member paths. Workspace Lock persists the immutable Package Version and Package `h1:`. The Package Store, not a downloaded archive or an Agent projection, remains the local authority after installation.
 
@@ -23,7 +23,7 @@ The CLI resolves Package Info, downloads the complete ZIP, validates byte length
 Any replacement must preserve these invariants:
 
 - one Source Repository maps to one Package in the current source model;
-- one Package Version publishes one complete accepted membership and one safe Package Artifact containing the minimal union of those member directory subtrees;
+- one Package Version publishes one complete accepted membership and one safe Package Artifact containing the minimal union of those member directory subtrees plus applicable plugin manifests;
 - exact semantic and pseudo-versions remain immutable and independently addressable;
 - Backfill may publish historical Versions in any order without rewriting already published identities;
 - every Skill's self-contained resources and safe relative symlinks survive installation;

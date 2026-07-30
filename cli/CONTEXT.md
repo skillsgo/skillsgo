@@ -49,11 +49,11 @@ The single capability boundary for exact locked Package dependencies. Metadata r
 _Avoid_: command-specific cache repair, Package Store authority, movable-version restore
 
 **Scope Package Tree**:
-The complete verified expansion of one locked Package Artifact inside its declaration Scope. Project Scope uses `<project>/.skillsgo/packages`; Global Scope uses `~/.agents/.skillsgo/packages`. It is derived from Manifest, Lock, and Git content, but a differing existing tree remains a protected Local Modification rather than disposable bytes.
-_Avoid_: `~/.skillsgo/packages`, shared cross-Scope Store, portable authority
+The complete verified expansion of one locked Package Artifact inside its installation Scope. Project Scope uses `<project>/.skillsgo/packages`; Global Scope uses `~/.skillsgo/packages`, separate from global declarations under `~/.agents`. It is derived from Manifest, Lock, and Git content, but a differing existing tree remains a protected Local Modification rather than disposable bytes.
+_Avoid_: `~/.agents/.skillsgo/packages`, shared cross-Scope Store, disposable cache
 
 **Package Projection**:
-The deterministic Agent-visible directory link generated at `<managed-root>/<canonical-skill-name>` to one selected member inside the same Scope's complete Package Tree. It is a relative symlink on macOS and Linux and an absolute directory junction on Windows. This preserves access to Package-relative shared resources without exposing Package coordinates as Agent Skill names.
+The deterministic Agent-visible directory link generated at `<managed-root>/<canonical-skill-name>` to one selected member inside the same Scope's complete filtered Package Tree. It is a relative symlink on macOS and Linux and an absolute directory junction on Windows. Canonical resolution stays inside the Package topology so applicable ancestor plugin manifests remain visible to Agents without exposing Package coordinates as Agent Skill names.
 _Avoid_: external link, independent member copy, editable fork
 
 **Global Scope**:
@@ -85,7 +85,7 @@ The `~/.agents` directory that owns Global Scope `skills.yaml` and `skills-lock.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
 **Global State Root**:
-The `~/.skillsgo` directory that owns user-level configuration, disposable read-through metadata/Git caches, ephemeral plans, and other SkillsGo-private state. Global declarations and Global Scope Package Trees live under `~/.agents`, so deleting this root leaves them and Agent Projections intact; required shared cache entries are rebuilt on demand.
+The `~/.skillsgo` directory that owns user-level configuration, the protected Global Scope Package Tree, disposable read-through metadata/Git caches, ephemeral plans, and other SkillsGo-private state. Only `~/.skillsgo/cache` is freely disposable; deleting the broader state root removes derived global installation content that must be restored from declarations and locks. Global declarations remain under `~/.agents`.
 _Avoid_: Global Declaration Root, Agent configuration root
 
 **SkillsGo User Configuration**:
