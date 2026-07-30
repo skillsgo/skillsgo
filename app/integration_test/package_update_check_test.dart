@@ -200,6 +200,17 @@ Future<void> _pumpUntilFileContains(
   final deadline = DateTime.now().add(const Duration(minutes: 2));
   while (DateTime.now().isBefore(deadline)) {
     if (file.existsSync() && file.readAsStringSync().contains(expected)) return;
+    final commandFailure = find.text('Command failed');
+    if (commandFailure.evaluate().isNotEmpty) {
+      await tester.tap(commandFailure.first);
+      await tester.pumpAndSettle();
+      final details = tester
+          .widgetList<SelectableText>(find.byType(SelectableText))
+          .map((widget) => widget.data)
+          .whereType<String>()
+          .join(' | ');
+      fail('Update command failed: $details');
+    }
     await tester.pump(const Duration(milliseconds: 250));
   }
   expect(
