@@ -122,27 +122,25 @@ Shutdown first withdraws readiness and stops accepting new requests, then drains
 
 The first production deployment is a planned hard cut. There is no dual-write, incremental replication, compatibility service, traffic split, or fallback to the two-service topology.
 
-Before the cut, the implementation must provide and test the combined Runtime, both schema migrations, and a versioned one-shot data importer or an equivalently reviewed table-explicit import script. The importer connects to the old Hub database, old Cloud database, and empty migrated target database. It refuses a non-empty target and copies only product facts.
+Before the cut, the implementation must provide and test the combined Runtime, both schema migrations, and a versioned one-shot full-schema importer. The importer connects to the old Hub database, old Cloud database, and target database. It replaces only the target `hub` and `cloud` schemas and leaves both source `public` schemas untouched.
 
 The migration proceeds as follows:
 
 1. Build and validate the final combined image in an isolated environment with the same one-database, two-schema topology.
-2. Create the new PostgreSQL database and required runtime or migration roles.
-3. Run the combined binary's migrations to create `hub`, `cloud`, their independent `atlas_schema_revisions` tables, Hub River tables, and shared extensions in `public`.
-4. Stop the old Cloud service so no additional installation events or provider observations can be written.
-5. Stop the old Hub service and all Hub background workers so Catalog, Backfill, translation, metadata, and publication state cannot advance.
-6. Take final backups of both source databases and record table counts and aggregate checksums used for verification.
-7. Copy Hub product data into `hub` in foreign-key order, including Packages, Versions, Skills, localization outcomes, Repository metadata, and durable Backfill business outcomes that remain semantically useful.
-8. Do not copy Hub or Cloud `atlas_schema_revisions`, River transport tables, leases, heartbeats, process caches, or queued/running operational work. The target owns fresh migration history and replans background work from durable product state.
-9. Copy Cloud product data into `cloud`, including immutable install events, aggregate Package-Skill statistics, completed provider crawls, their retained raw pages, and normalized observations. Do not copy provider synchronization leases or incomplete crawls.
-10. Reset every target identity sequence to at least the maximum imported key.
-11. Validate row counts, primary and foreign keys, current Package Version references, Skill membership, localization references, install-event uniqueness, aggregate install totals, completed provider observations, and representative all-time, trending, and hot rankings.
-12. Run deep combined-runtime diagnostics and smoke journeys covering search, Package Info, exact Artifact restoration, one idempotent installation event, every ranking kind, Hub-card hydration, Backfill submission, River execution, metadata refresh, and translation dispatch.
-13. Deploy one combined Railway replica, require `/readyz` success, and bind `hub.skillsgo.ai` to it.
-14. Update App and CLI defaults and settings to the single Hub Origin and remove Cloud Origin behavior.
-15. Keep final source backups for a short operational verification period, then delete the two old Railway application services, their databases, Cloud hostname, obsolete secrets, and obsolete monitoring.
+2. Use the existing Hub Neon database as the target PostgreSQL instance; retain `public` for shared extensions and create required runtime or migration roles.
+3. Stop the old Cloud service so no additional installation events or provider observations can be written.
+4. Stop the old Hub service and all Hub background workers so Catalog, Backfill, translation, metadata, and publication state cannot advance.
+5. Take final Neon snapshots of both source projects and record the complete table inventories plus exact per-table row counts used for verification.
+6. Create two disposable databases in the target Neon branch and drop only the final target `hub` and `cloud` schemas. Use Neon-recommended `pg_dump` and `psql` to restore each source `public` schema verbatim into its staging database, rename only the disposable staging schema, and dump that renamed schema into the final `hub` or `cloud` schema. This structure-aware mapping copies pre-data, all table data, and post-data without text-rewriting SQL or COPY payloads; it omits only source role ownership and ACLs. Never rename or mutate either source `public` schema.
+7. Preserve every source object and durable row, including migration histories, River transport tables, leases, heartbeats, caches, queued work, completed and incomplete provider crawls, sequences, functions, indexes, constraints, and triggers.
+8. Run the combined binary's migrations against the mirrored histories so it applies only genuinely newer revisions.
+9. Validate exact table inventories and row counts, sequence positions, primary and foreign keys, current Package Version references, Skill membership, localization references, install-event uniqueness, aggregate install totals, provider observations, and representative all-time, trending, and hot rankings.
+10. Run deep combined-runtime diagnostics and smoke journeys covering search, Package Info, exact Artifact restoration, one idempotent installation event, every ranking kind, Hub-card hydration, Backfill submission, River execution, metadata refresh, and translation dispatch.
+11. Deploy one combined Railway replica, require `/readyz` success, and bind `hub.skillsgo.ai` to it.
+12. Update App and CLI defaults and settings to the single Hub Origin and remove Cloud Origin behavior.
+13. Delete the two disposable staging databases. Keep final source snapshots for a short operational verification period, then delete the two old Railway application services, obsolete Cloud database, Cloud hostname, obsolete secrets, and obsolete monitoring.
 
-An import failure is repaired offline and rerun against a newly emptied target schema. Because there are no active production users, availability during this procedure is not a requirement. Rollback before DNS binding means discarding the target and restarting the stopped old services from their unchanged databases. After DNS binding and acceptance, rollback is only to a previous combined image compatible with the migrated schemas; the independent topology is not retained as a product fallback.
+An import failure is repaired offline by dropping the two target schemas and rerunning the full mirror. If any unintended target-database mutation occurs, restore the final Hub Neon snapshot before retrying. Because there are no active production users, availability during this procedure is not a requirement. Rollback before DNS binding means restarting the stopped old services from their unchanged source schemas. After DNS binding and acceptance, rollback is only to a previous combined image compatible with the migrated schemas; the independent topology is not retained as a product fallback.
 
 ## Consequences
 
@@ -154,7 +152,7 @@ An import failure is repaired offline and rerun against a newly emptied target s
 - Hub remains independently releasable. Cloud pins a released Hub module version and validates the complete combined Runtime before deployment.
 - One process has a larger failure domain. Pool budgets, worker concurrency, background degradation, readiness, and coordinated shutdown must prevent Hub background activity from exhausting interactive Hub and Cloud work.
 - One database instance has a larger infrastructure failure domain. Schema isolation prevents ownership drift but does not provide instance-level fault isolation.
-- The initial cut accepts downtime and operational simplicity because no active production users require continuous availability. Historical product data is retained without preserving obsolete runtime state.
+- The initial cut accepts downtime and operational simplicity because no active production users require continuous availability. The source databases are mirrored in full, including operational state, which reduces selective-import logic and makes verification mechanical.
 - ADR-0012 is superseded. Its Cloud-to-Hub HTTP composition, independent Origins, separate databases, and independent deployment conclusions no longer apply; its ownership principle remains: Cloud owns ranking metrics and Hub owns authoritative Skill cards.
 
 ## Rejected Alternatives
@@ -181,4 +179,4 @@ There are no active production users requiring a compatibility window. Retaining
 
 ### Perform a zero-downtime incremental migration
 
-Dual writes, change capture, catch-up verification, and traffic splitting add failure modes without serving a current availability requirement. A stopped, backed-up, table-explicit copy is easier to verify and discard on failure.
+Dual writes, change capture, catch-up verification, and traffic splitting add failure modes without serving a current availability requirement. A stopped, snapshotted, full-schema copy is easier to verify and discard on failure.
