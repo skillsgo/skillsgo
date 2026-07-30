@@ -34,6 +34,7 @@ func skillResourceID(packagePath, name string) string { return packagePath + ":"
 type Catalog struct {
 	pool    *pgxpool.Pool
 	queries *catalogsqlc.Queries
+	schema  string
 }
 
 type CurrentPackage struct {
@@ -82,7 +83,7 @@ func Connect(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		pool.Close()
 		return nil, fmt.Errorf("connect metadata database pool: %w", err)
 	}
-	return &Catalog{pool: pool, queries: catalogsqlc.New(pool)}, nil
+	return &Catalog{pool: pool, queries: catalogsqlc.New(pool), schema: cfg.Schema}, nil
 }
 
 func newPoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
