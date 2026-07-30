@@ -59,12 +59,12 @@ func TestTestAgentOptionIsEnvironmentGated(t *testing.T) {
 	production := agent.NewCatalog(agent.Paths{}, testAgentOption())
 	_, exists := production.Get("test-agent")
 	require.False(t, exists)
-	require.Len(t, production.All(), 75)
+	require.Len(t, production.All(), 74)
 
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", home)
 	testCatalog := agent.NewCatalog(agent.Paths{}, testAgentOption())
 	definition, exists := testCatalog.Get("test-agent")
 	require.True(t, exists)
 	require.Equal(t, filepath.Join(home, "skills"), definition.GlobalDir)
-	require.Len(t, testCatalog.All(), 76)
+	require.Len(t, testCatalog.All(), 75)
 }

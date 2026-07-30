@@ -699,7 +699,7 @@ class _AdoptionStickerControls extends StatelessWidget {
               child: Transform.rotate(
                 angle: -.09,
                 child: Image.asset(
-                  'assets/branding/sticker-image.png',
+                  'assets/branding/sticker-image.webp',
                   key: const Key('batch-adoption-sticker-image'),
                   width: 108,
                   height: 76,
@@ -735,7 +735,7 @@ class _AdoptionStickerControls extends StatelessWidget {
             child: Transform.rotate(
               angle: .045,
               child: Image.asset(
-                'assets/branding/sticker-text.png',
+                'assets/branding/sticker-text.webp',
                 key: const Key('batch-adoption-sticker-text'),
                 width: 146,
                 height: 76,
@@ -775,7 +775,7 @@ class _AdoptionHardwareBack extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: Image.asset(
-                    'assets/branding/skillsgo-logo.png',
+                    'assets/branding/skillsgo-logo.webp',
                     key: const Key('batch-adoption-console-back-logo'),
                     width: 108,
                     height: 108,

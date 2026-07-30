@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
- * [OUTPUT]: Materializes every accepted Package Skill, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, emits a bounded publication lifecycle, and notifies metadata enrichment after current visibility commits.
- * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
+ * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
+ * [OUTPUT]: Materializes single or chunked historical Package publications with precise stage failures, computes source digests and source languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
+ * [POS]: Serves as the observable cold-publication and bounded Backfill-session coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -30,7 +30,7 @@ type repositoryMaterializer interface {
 }
 
 type historicalRepositoryMaterializer interface {
-	MaterializeHistorical(ctx context.Context, packagePath, query string) (string, error)
+	MaterializeHistoricalBatch(ctx context.Context, source skill.RepositoryBackfillSession, queries []string) map[string]error
 }
 
 type modulePublisher struct {
@@ -79,8 +79,68 @@ func (p *modulePublisher) Materialize(ctx context.Context, packagePath, query st
 	return p.materializePublication(ctx, packagePath, query, catalog.CurrentPublication)
 }
 
-func (p *modulePublisher) MaterializeHistorical(ctx context.Context, packagePath, query string) (string, error) {
-	return p.materializePublication(ctx, packagePath, query, catalog.HistoricalPublication)
+const historicalPublicationChunkSize = 5
+
+// MaterializeHistoricalBatch owns one source lease and one Artifact hydration
+// while preserving a separate result and Catalog transaction for each query.
+func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source skill.RepositoryBackfillSession, queries []string) map[string]error {
+	results := make(map[string]error, len(queries))
+	if len(queries) == 0 {
+		return results
+	}
+	packagePath := source.PackagePath()
+	workCtx, cancel := context.WithTimeout(ctx, packageBackfillTimeout)
+	defer cancel()
+	select {
+	case p.upstream <- struct{}{}:
+		defer func() { <-p.upstream }()
+	default:
+		err := withPublicationFailure(publicationFailureCapacity, huberrors.E("modulePublisher.MaterializeHistoricalBatch", "upstream Repository resolution is at capacity", huberrors.KindRateLimit))
+		for _, query := range queries {
+			results[query] = err
+		}
+		return results
+	}
+	err := p.publication.WithSession(workCtx, packagePath, func(session *modulePublicationSession) error {
+		staged := 0
+		flush := func() {
+			for _, outcome := range session.Flush() {
+				results[outcome.key] = outcome.err
+			}
+			staged = 0
+		}
+		visitErr := source.VisitSnapshots(workCtx, queries, func(query string, snapshot *skill.RepositorySnapshot, discoveryErr error) error {
+			if discoveryErr != nil {
+				results[query] = discoveryErr
+				return nil
+			}
+			input, prepareErr := p.prepareSnapshot(packagePath, query, snapshot, catalog.HistoricalPublication)
+			if prepareErr != nil {
+				results[query] = prepareErr
+				return nil
+			}
+			input.key = query
+			if stageErr := session.Stage(input); stageErr != nil {
+				results[query] = stageErr
+				return nil
+			}
+			staged++
+			if staged == historicalPublicationChunkSize {
+				flush()
+			}
+			return nil
+		})
+		flush()
+		return visitErr
+	})
+	if err != nil {
+		for _, query := range queries {
+			if _, recorded := results[query]; !recorded {
+				results[query] = err
+			}
+		}
+	}
+	return results
 }
 
 func (p *modulePublisher) VerifyHistorical(ctx context.Context, packagePath, query, expectedCommitSHA string) error {
@@ -201,37 +261,11 @@ func (p *modulePublisher) materialize(ctx context.Context, packagePath, query st
 }
 
 func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
-	if len(snapshot.Entries) == 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
-		return "", fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query)
+	input, err := p.prepareSnapshot(packagePath, query, snapshot, visibility)
+	if err != nil {
+		return "", err
 	}
-	if sum, sumErr := protocolartifact.PackageEntriesSum(snapshot.Entries, packagePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
-		return "", fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version)
-	}
-
-	published := make([]catalog.Skill, 0, len(snapshot.Members))
-	skillContents := make([]moduleSkillContent, 0, len(snapshot.Members))
-	for _, member := range snapshot.Members {
-		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" || len(member.Content) == 0 {
-			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query)
-		}
-		sourceLanguage := ""
-		_, body, splitErr := protocolmanifest.Split(member.Content)
-		if splitErr != nil {
-			return "", fmt.Errorf("split validated Skill document for %s@%s: %w", packagePath, query, splitErr)
-		}
-		analysis := p.languageAnalyzer.AnalyzeMarkdown(body)
-		sourceLanguage = analysis.PrimaryLanguage
-		published = append(published, catalog.Skill{
-			PackagePath: packagePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
-			DescriptionDigest: catalog.DescriptionDigest(member.Manifest.Description), DocumentDigest: catalog.ContentDigest(member.Content), SourceLanguage: sourceLanguage,
-		})
-		skillContents = append(skillContents, moduleSkillContent{digest: catalog.ContentDigest(member.Content), content: member.Content})
-	}
-	version := catalog.PackageVersion{
-		Version: snapshot.Version, Ref: snapshot.Ref, CommitSHA: snapshot.CommitSHA, TreeSHA: snapshot.TreeSHA,
-		Sum: snapshot.Sum, CommitTime: snapshot.CommitTime,
-	}
-	created, err := p.publication.Publish(ctx, packagePath, version, snapshot.Entries, published, skillContents, visibility)
+	created, err := p.publication.Publish(ctx, packagePath, input.version, input.entries, input.members, input.skillContents, visibility)
 	if err != nil {
 		return "", err
 	}
@@ -245,6 +279,44 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 		p.afterCurrentPublication(ctx, packagePath)
 	}
 	return snapshot.Version, nil
+}
+
+func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (modulePublicationInput, error) {
+	if len(snapshot.Entries) == 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
+		return modulePublicationInput{}, withPublicationFailure(publicationFailureSnapshotIncomplete, fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query))
+	}
+	sum, sumErr := protocolartifact.PackageEntriesSum(snapshot.Entries, packagePath, snapshot.Version)
+	if sumErr != nil {
+		return modulePublicationInput{}, withPublicationFailure(artifactValidationPublicationCode(sumErr), sumErr)
+	}
+	if sum != snapshot.Sum {
+		return modulePublicationInput{}, withPublicationFailure(publicationFailureArtifactSumMismatch, fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version))
+	}
+
+	published := make([]catalog.Skill, 0, len(snapshot.Members))
+	skillContents := make([]moduleSkillContent, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" || len(member.Content) == 0 {
+			return modulePublicationInput{}, withPublicationFailure(publicationFailureInvalidMember, fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query))
+		}
+		sourceLanguage := ""
+		_, body, splitErr := protocolmanifest.Split(member.Content)
+		if splitErr != nil {
+			return modulePublicationInput{}, withPublicationFailure(publicationFailureInvalidSkillDocument, fmt.Errorf("split validated Skill document for %s@%s: %w", packagePath, query, splitErr))
+		}
+		analysis := p.languageAnalyzer.AnalyzeMarkdown(body)
+		sourceLanguage = analysis.PrimaryLanguage
+		published = append(published, catalog.Skill{
+			PackagePath: packagePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
+			DescriptionDigest: catalog.DescriptionDigest(member.Manifest.Description), DocumentDigest: catalog.ContentDigest(member.Content), SourceLanguage: sourceLanguage,
+		})
+		skillContents = append(skillContents, moduleSkillContent{digest: catalog.ContentDigest(member.Content), content: member.Content})
+	}
+	version := catalog.PackageVersion{
+		Version: snapshot.Version, Ref: snapshot.Ref, CommitSHA: snapshot.CommitSHA, TreeSHA: snapshot.TreeSHA,
+		Sum: snapshot.Sum, CommitTime: snapshot.CommitTime,
+	}
+	return modulePublicationInput{version: version, entries: snapshot.Entries, members: published, skillContents: skillContents, visibility: visibility}, nil
 }
 
 func closeRepositorySnapshot(snapshot *skill.RepositorySnapshot) {

@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, process-singleton macOS window integration, Marionette debug instrumentation, build mode, App logging, and the real SkillsGateway with an optional preconfigured process-isolated instance.
- * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, one-time desktop initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
- * [POS]: Serves as the Flutter workspace process entry point, global observability bootstrap, and platform initialization boundary.
+ * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, platform-aware native window integration, Marionette debug instrumentation, build mode, App logging, and the real SkillsGateway with an optional preconfigured process-isolated instance.
+ * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, content-ready first-frame presentation, one-time macOS/Windows/Linux window initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
+ * [POS]: Serves as the Flutter workspace process entry point, global observability bootstrap, and native-window presentation boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'infrastructure/logging/app_logger.dart';
 import 'infrastructure/real_skills_gateway.dart';
+import 'ui/brand.dart';
 
 const _debugHubBaseUrl = String.fromEnvironment(
   'SKILLSGO_HUB_URL',
@@ -23,13 +25,17 @@ const _debugHubBaseUrl = String.fromEnvironment(
 );
 
 Future<void>? _desktopInitialization;
+Future<void>? _firstFrameRasterized;
 _AppLifecycleLogger? _lifecycleLogger;
 
 Future<void> main() async {
   await appLogger.initialize();
   appLogger.info('app.lifecycle', 'launch_started');
   final launch = runZonedGuarded(
-    () => runSkillsGoApp(installGlobalErrorHandlers: true),
+    () => runSkillsGoApp(
+      installGlobalErrorHandlers: true,
+      manageInitialWindowVisibility: true,
+    ),
     (error, stackTrace) {
       appLogger.error('app.error', 'uncaught_zone_error', error, stackTrace);
     },
@@ -41,6 +47,7 @@ Future<void> runSkillsGoApp({
   bool initializeBinding = true,
   RealSkillsGateway? gateway,
   bool installGlobalErrorHandlers = false,
+  bool manageInitialWindowVisibility = false,
 }) async {
   if (initializeBinding && kDebugMode) {
     MarionetteBinding.ensureInitialized();
@@ -56,6 +63,10 @@ Future<void> runSkillsGoApp({
 
   if (installGlobalErrorHandlers) _installGlobalErrorHandlers();
 
+  if (manageInitialWindowVisibility) {
+    WidgetsBinding.instance.deferFirstFrame();
+  }
+
   await (_desktopInitialization ??= _initializeDesktopWindow());
 
   runApp(
@@ -67,9 +78,14 @@ Future<void> runSkillsGoApp({
                 ? _debugHubBaseUrl
                 : 'https://hub.skillsgo.ai',
           ),
+      onStartupPresentationReady: manageInitialWindowVisibility
+          ? _presentDesktopWindow
+          : null,
     ),
   );
-  appLogger.info('app.lifecycle', 'launch_ready');
+  if (!manageInitialWindowVisibility) {
+    appLogger.info('app.lifecycle', 'launch_ready');
+  }
 }
 
 void _installGlobalErrorHandlers() {
@@ -104,22 +120,41 @@ final class _AppLifecycleLogger with WidgetsBindingObserver {
 }
 
 Future<void> _initializeDesktopWindow() async {
-  await WindowManipulator.initialize(enableWindowDelegate: true);
-  await WindowManipulator.makeTitlebarTransparent();
-  await WindowManipulator.enableFullSizeContentView();
-  await WindowManipulator.hideTitle();
+  if (Platform.isMacOS) {
+    await WindowManipulator.initialize(enableWindowDelegate: true);
+    await WindowManipulator.makeTitlebarTransparent();
+    await WindowManipulator.enableFullSizeContentView();
+    await WindowManipulator.hideTitle();
+  }
   await windowManager.ensureInitialized();
-  const options = WindowOptions(
-    size: Size(1120, 760),
-    minimumSize: Size(940, 640),
+  final brightness = PlatformDispatcher.instance.platformBrightness;
+  final startupBackground = buildSkillsTheme(
+    const Color(0xFF514532),
+    brightness: brightness,
+  ).colorScheme.surface;
+  final options = WindowOptions(
+    size: const Size(1120, 760),
+    minimumSize: const Size(940, 640),
     center: true,
-    backgroundColor: Color(0x00000000),
-    titleBarStyle: TitleBarStyle.hidden,
+    backgroundColor: startupBackground,
+    titleBarStyle: Platform.isMacOS
+        ? TitleBarStyle.hidden
+        : TitleBarStyle.normal,
   );
-  await windowManager.waitUntilReadyToShow(options, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  await windowManager.waitUntilReadyToShow(options);
+}
+
+Future<void> _presentDesktopWindow() async {
+  await (_firstFrameRasterized ??= _releaseFirstFrame());
+  if (Platform.isMacOS) await windowManager.show();
+  await windowManager.focus();
+  appLogger.info('app.lifecycle', 'launch_ready');
+}
+
+Future<void> _releaseFirstFrame() async {
+  final binding = WidgetsBinding.instance;
+  binding.allowFirstFrame();
+  await binding.waitUntilFirstFrameRasterized;
 }
 
 List<Map<String, Object>> _measureNavigation() {

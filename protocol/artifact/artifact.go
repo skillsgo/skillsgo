@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Package file inventories, legacy ZIP bytes, extracted Package directories, and canonical Package Path identity.
- * [OUTPUT]: Provides validated Package trees, deterministic legacy ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
+ * [OUTPUT]: Provides validated Package trees with typed validation reasons, deterministic legacy ZIP construction, shared limits, portable collision-safe paths, Package-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
  * [POS]: Serves as the executable Package Artifact format contract shared by Hub producers and clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,6 +40,42 @@ type Entry struct {
 	Mode      os.FileMode
 	Size      int64
 	Directory bool
+}
+
+type ValidationCode string
+
+const (
+	ValidationFileCount     ValidationCode = "file_count_out_of_range"
+	ValidationInvalidPath   ValidationCode = "invalid_path"
+	ValidationPathCollision ValidationCode = "path_collision"
+	ValidationInvalidMode   ValidationCode = "invalid_file_mode"
+	ValidationTooLarge      ValidationCode = "artifact_too_large"
+	ValidationMissingSkill  ValidationCode = "missing_skill_manifest"
+	ValidationUnsafeSymlink ValidationCode = "unsafe_symlink"
+)
+
+type ValidationError struct {
+	Code ValidationCode
+	Err  error
+}
+
+func (err *ValidationError) Error() string { return err.Err.Error() }
+func (err *ValidationError) Unwrap() error { return err.Err }
+
+func validationError(code ValidationCode, err error) error {
+	return &ValidationError{Code: code, Err: err}
+}
+
+func ValidationFailure(err error) (ValidationCode, bool) {
+	var validation *ValidationError
+	if errors.As(err, &validation) {
+		return validation.Code, true
+	}
+	var symlink *UnsafeSymlinkError
+	if errors.As(err, &symlink) {
+		return ValidationUnsafeSymlink, true
+	}
+	return "", false
 }
 
 func (entry Entry) IsSymlink() bool {
@@ -104,7 +140,7 @@ func PackageEntriesSum(entries []Entry, packagePath, version string) (string, er
 // filesystems derive directories from file paths.
 func ValidateEntries(entries []Entry) ([]Entry, error) {
 	if len(entries) == 0 || len(entries) > MaxFiles {
-		return nil, fmt.Errorf("Package Artifact file count must be between 1 and %d", MaxFiles)
+		return nil, validationError(ValidationFileCount, fmt.Errorf("Package Artifact file count must be between 1 and %d", MaxFiles))
 	}
 	validated := make([]Entry, 0, len(entries))
 	seen := make(map[string]string, len(entries))
@@ -116,24 +152,24 @@ func ValidateEntries(entries []Entry) ([]Entry, error) {
 		}
 		collisionKey, err := PortablePathKey(entry.Path)
 		if err != nil {
-			return nil, err
+			return nil, validationError(ValidationInvalidPath, err)
 		}
 		if previous, exists := seen[collisionKey]; exists {
-			return nil, fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous, entry.Path)
+			return nil, validationError(ValidationPathCollision, fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous, entry.Path))
 		}
 		for parent := path.Dir(entry.Path); parent != "."; parent = path.Dir(parent) {
 			parentKey, _ := PortablePathKey(parent)
 			if previous, exists := seen[parentKey]; exists {
-				return nil, fmt.Errorf("artifact file %q conflicts with parent file %q", entry.Path, previous)
+				return nil, validationError(ValidationPathCollision, fmt.Errorf("artifact file %q conflicts with parent file %q", entry.Path, previous))
 			}
 		}
 		mode, err := canonicalMode(entry.Mode)
 		if err != nil {
-			return nil, fmt.Errorf("Package Artifact file %q: %w", entry.Path, err)
+			return nil, validationError(ValidationInvalidMode, fmt.Errorf("Package Artifact file %q: %w", entry.Path, err))
 		}
 		size := uint64(len(entry.Contents))
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
-			return nil, fmt.Errorf("Package Artifact exceeds %d bytes", MaxUncompressedBytes)
+			return nil, validationError(ValidationTooLarge, fmt.Errorf("Package Artifact exceeds %d bytes", MaxUncompressedBytes))
 		}
 		total += size
 		if path.Base(entry.Path) == "SKILL.md" && mode.IsRegular() {
@@ -143,7 +179,7 @@ func ValidateEntries(entries []Entry) ([]Entry, error) {
 		validated = append(validated, Entry{Path: entry.Path, Contents: append([]byte(nil), entry.Contents...), Mode: mode, Size: int64(size)})
 	}
 	if !hasSkill {
-		return nil, fmt.Errorf("Package Artifact does not contain a SKILL.md member")
+		return nil, validationError(ValidationMissingSkill, fmt.Errorf("Package Artifact does not contain a SKILL.md member"))
 	}
 	sort.Slice(validated, func(i, j int) bool { return validated[i].Path < validated[j].Path })
 	if err := ValidateSymlinks(validated); err != nil {

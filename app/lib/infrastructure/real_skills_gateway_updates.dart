@@ -55,7 +55,6 @@ mixin _RealSkillsGatewayUpdates
           '--hub',
           _hubOrigin,
         ]);
-        if (!command.succeeded) throw _commandFailure(command);
         final raw = _decodeMachineDocument(
           command.output.stdout,
           phase: 'package-update',
@@ -69,6 +68,13 @@ mixin _RealSkillsGatewayUpdates
             raw['scope'] != expectedScope ||
             (raw['projectRoot'] ?? '') != expectedProjectRoot) {
           throw const FormatException();
+        }
+        if (!command.succeeded) {
+          final reportError = raw['error'];
+          if (reportError is String && reportError.trim().isNotEmpty) {
+            throw SkillsException(reportError.trim());
+          }
+          throw _commandFailure(command);
         }
       }
     } on Object catch (error, stackTrace) {
@@ -115,7 +121,7 @@ mixin _RealSkillsGatewayUpdates
         'json',
         '--hub',
         _hubOrigin,
-      ]);
+      ], retryOnTransportFailure: true);
       if (!command.succeeded && command.output.stdout.trim().isEmpty) {
         throw _commandFailure(command);
       }

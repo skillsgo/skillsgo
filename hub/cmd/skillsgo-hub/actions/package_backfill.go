@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Package Publisher, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions, with heartbeat and stale-Run reconciliation.
- * [POS]: Serves as the administration workflow joining durable business state, River transport, and Historical Publication materialization.
+ * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, chunked Package Publisher sessions, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms the selected canonical revisions through one source and Artifact session, persists explicit per-Version outcomes, retries transient failures, and reconciles abandoned Runs.
+ * [POS]: Serves as the administration workflow joining durable business state, River transport, and batched Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -26,7 +26,6 @@ import (
 
 const (
 	maxBackfillRepositories = 20
-	maxBackfillDiagnostics  = 10
 	backfillReconcileEvery  = time.Hour
 	backfillStaleAfter      = 2 * time.Hour
 	packageBackfillTimeout  = 2 * time.Hour
@@ -48,16 +47,16 @@ func (packageBackfillReconcileArgs) Kind() string { return "module_history_backf
 type packageBackfillService struct {
 	metadata     *catalog.Catalog
 	tasks        *taskqueue.Runtime
-	lister       repositoryVersionLister
+	lister       repositoryBackfillPreparer
 	materializer historicalRepositoryMaterializer
 	logger       *log.Logger
 }
 
-type repositoryVersionLister interface {
-	ListRepositoryBackfillVersions(context.Context, string) ([]skill.RepositoryTag, error)
+type repositoryBackfillPreparer interface {
+	PrepareRepositoryBackfill(context.Context, string) (skill.RepositoryBackfillSession, error)
 }
 
-func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
+func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryBackfillPreparer, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
 	return &packageBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
 }
 
@@ -65,9 +64,8 @@ func (s *packageBackfillService) Register() error {
 	if err := taskqueue.Register(s.tasks, s.run); err != nil {
 		return err
 	}
-	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args packageBackfillArgs, _ error) error {
-		diagnostic := backfillDiagnostic("repository", "execution_failed")
-		return s.metadata.CompleteBackfillRun(ctx, args.RunID, 1, []string{diagnostic})
+	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args packageBackfillArgs, executionErr error) error {
+		return s.completeFailedRun(ctx, args, executionErr)
 	}); err != nil {
 		return err
 	}
@@ -98,6 +96,10 @@ func (s *packageBackfillService) Register() error {
 	return s.tasks.Every(packageBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
 }
 
+func (s *packageBackfillService) completeFailedRun(ctx context.Context, args packageBackfillArgs, executionErr error) error {
+	return s.metadata.FailBackfillRun(ctx, args.RunID, classifyBackfillFailure(executionErr))
+}
+
 func (s *packageBackfillService) Submit(ctx context.Context, packagePath string) (catalog.BackfillRun, bool, error) {
 	return s.metadata.SubmitBackfillRun(ctx, packagePath, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
 		return s.tasks.EnqueueTx(ctx, tx, packageBackfillArgs{RunID: run.ID, PackagePath: packagePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
@@ -112,63 +114,104 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 	if args.RunID == "" || args.PackagePath == "" {
 		return fmt.Errorf("Package Backfill job requires run_id and package_path")
 	}
-	run, active, err := s.metadata.StartBackfillRun(ctx, args.RunID)
+	_, active, err := s.metadata.StartBackfillRun(ctx, args.RunID)
 	if err != nil {
 		return err
 	}
-	if !active || run.Status == catalog.BackfillComplete || run.Status == catalog.BackfillCompleteWithErrors {
+	if !active {
 		return nil
 	}
-	versions, err := s.lister.ListRepositoryBackfillVersions(ctx, args.PackagePath)
-	diagnostics := make([]string, 0)
-	errorCount := 0
+	source, err := s.lister.PrepareRepositoryBackfill(ctx, args.PackagePath)
 	if err != nil {
-		errorCount++
-		diagnostic := backfillDiagnostic("repository", "version_listing_failed")
-		diagnostics = append(diagnostics, diagnostic)
-		s.logFailure(ctx, args, "", diagnostic)
-	} else {
-		versions = canonicalBackfillVersions(versions)
-		for _, candidate := range versions {
-			version := candidate.Version
-			if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
+		code := classifyBackfillFailure(err)
+		if repositoryBackfillRejection(code) {
+			s.logOutcome(args, "", string(catalog.BackfillOutcomeRejected), code)
+			return s.metadata.RejectBackfillRun(ctx, args.RunID, code)
+		}
+		return err
+	}
+	defer source.Close()
+	versions := canonicalBackfillVersions(source.Versions())
+	pending := make([]string, 0, len(versions))
+	commits := make(map[string]string, len(versions))
+	retryable := make([]error, 0)
+	for _, candidate := range versions {
+		version := candidate.Version
+		commits[version] = candidate.CommitSHA
+		if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
+			return err
+		}
+		commitSHA, publicationErr := s.metadata.PackagePublicationCommit(ctx, args.PackagePath, version)
+		if publicationErr != nil && !errors.Is(publicationErr, pgx.ErrNoRows) {
+			classified := withPublicationFailure(publicationFailureCatalogCheck, publicationErr)
+			if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomeRetryableFailure, classifyBackfillFailure(classified)); err != nil {
 				return err
 			}
-			commitSHA, publicationErr := s.metadata.PackagePublicationCommit(ctx, args.PackagePath, version)
-			if publicationErr != nil && !errors.Is(publicationErr, pgx.ErrNoRows) {
-				errorCount++
-				diagnostic := backfillDiagnostic(version, "publication_check_failed")
-				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
-				s.logFailure(ctx, args, version, diagnostic)
-				continue
-			}
-			if publicationErr == nil {
-				if candidate.CommitSHA != commitSHA {
-					errorCount++
-					diagnostic := backfillDiagnostic(version, "immutable_conflict")
-					diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
-					s.logFailure(ctx, args, version, diagnostic)
+			retryable = append(retryable, classified)
+			continue
+		}
+		if publicationErr == nil {
+			if candidate.CommitSHA != commitSHA {
+				if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomeRejected, "immutable_conflict"); err != nil {
+					return err
 				}
-				continue
+			} else if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomeAlreadyPublished, ""); err != nil {
+				return err
 			}
-			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.PackagePath, version); materializeErr != nil {
-				errorCount++
-				diagnostic := backfillDiagnostic(version, classifyBackfillFailure(materializeErr))
-				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
-				s.logFailure(ctx, args, version, diagnostic)
+			continue
+		}
+		pending = append(pending, version)
+	}
+	results := s.materializer.MaterializeHistoricalBatch(ctx, source, pending)
+	for _, version := range pending {
+		candidate := skill.RepositoryTag{Version: version, CommitSHA: commits[version]}
+		materializeErr, reported := results[version]
+		if !reported {
+			materializeErr = withPublicationFailure(publicationFailureUnexpected, fmt.Errorf("Historical materializer omitted result for %s", version))
+		}
+		if materializeErr == nil {
+			if err := s.recordVersionOutcome(ctx, args, candidate, catalog.BackfillOutcomePublished, ""); err != nil {
+				return err
 			}
+			continue
+		}
+		code := classifyBackfillFailure(materializeErr)
+		outcome := backfillOutcomeForFailure(code)
+		if err := s.recordVersionOutcome(ctx, args, candidate, outcome, code); err != nil {
+			return err
+		}
+		if outcome == catalog.BackfillOutcomeRetryableFailure {
+			retryable = append(retryable, materializeErr)
 		}
 	}
-	return s.metadata.CompleteBackfillRun(ctx, args.RunID, errorCount, diagnostics)
+	if len(retryable) > 0 {
+		return errors.Join(retryable...)
+	}
+	return s.metadata.CompleteBackfillRun(ctx, args.RunID)
 }
 
-func (s *packageBackfillService) logFailure(_ context.Context, args packageBackfillArgs, version, diagnostic string) {
-	s.logger.WithFields(map[string]any{
+func (s *packageBackfillService) recordVersionOutcome(ctx context.Context, args packageBackfillArgs, candidate skill.RepositoryTag, outcome catalog.BackfillVersionOutcomeKind, reasonCode string) error {
+	if err := s.metadata.RecordBackfillVersionOutcome(ctx, catalog.BackfillVersionOutcome{RunID: args.RunID, Version: candidate.Version, CommitSHA: candidate.CommitSHA, Outcome: outcome, ReasonCode: reasonCode}); err != nil {
+		return err
+	}
+	s.logOutcome(args, candidate.Version, string(outcome), reasonCode)
+	return nil
+}
+
+func (s *packageBackfillService) logOutcome(args packageBackfillArgs, version, outcome, reasonCode string) {
+	entry := s.logger.WithFields(map[string]any{
 		"component":    "repository_backfill",
 		"package_path": args.PackagePath,
 		"run_id":       args.RunID,
 		"version":      version,
-	}).Warnf("Package Backfill version failed: %s", diagnostic)
+		"outcome":      outcome,
+		"reason_code":  reasonCode,
+	})
+	if outcome == string(catalog.BackfillOutcomePublished) || outcome == string(catalog.BackfillOutcomeAlreadyPublished) {
+		entry.Infof("Package Backfill resolved a Version")
+		return
+	}
+	entry.Warnf("Package Backfill did not publish a Version")
 }
 
 func canonicalBackfillVersions(versions []skill.RepositoryTag) []skill.RepositoryTag {
@@ -187,25 +230,60 @@ func canonicalBackfillVersions(versions []skill.RepositoryTag) []skill.Repositor
 	return result
 }
 
-func appendBoundedBackfillDiagnostic(diagnostics []string, diagnostic string) []string {
-	if len(diagnostics) >= maxBackfillDiagnostics {
-		return diagnostics
-	}
-	return append(diagnostics, diagnostic)
-}
-
 func backfillDiagnostic(scope, code string) string {
 	return scope + ": " + code
 }
 
+func repositoryBackfillRejection(code string) bool {
+	switch code {
+	case string(skill.SourceFailureInvalidPackagePath), string(skill.SourceFailureAccessRejected), string(skill.SourceFailureRepositoryTooLarge):
+		return true
+	default:
+		return false
+	}
+}
+
+func backfillOutcomeForFailure(code string) catalog.BackfillVersionOutcomeKind {
+	if code == string(skill.SourceFailureNoSkills) {
+		return catalog.BackfillOutcomeSkipped
+	}
+	switch code {
+	case string(skill.SourceFailureRevisionNotFound), string(skill.SourceFailureInvalidManifest),
+		string(skill.SourceFailureArchiveTooLarge), string(skill.SourceFailureUnsupportedEntry),
+		string(skill.SourceFailureArtifactFileCount), string(skill.SourceFailureArtifactTooLarge),
+		string(skill.SourceFailureArtifactPath), string(skill.SourceFailureArtifactCollision), string(skill.SourceFailureArtifactMode),
+		string(publicationFailureSnapshotIncomplete), string(publicationFailureArtifactSumMismatch),
+		string(publicationFailureInvalidMember), string(publicationFailureInvalidSkillDocument),
+		string(publicationFailureVersionValidation), string(publicationFailureArtifactEntriesInvalid),
+		string(publicationFailureArtifactFileCount), string(publicationFailureArtifactPath), string(publicationFailureArtifactCollision),
+		string(publicationFailureArtifactMode), string(publicationFailureArtifactTooLarge), string(publicationFailureArtifactMissingSkill),
+		string(publicationFailureArtifactUnsafeSymlink), string(publicationFailureArtifactTagConflict):
+		return catalog.BackfillOutcomeRejected
+	default:
+		return catalog.BackfillOutcomeRetryableFailure
+	}
+}
+
 func classifyBackfillFailure(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return string(publicationFailureTimeout)
+	}
+	if errors.Is(err, context.Canceled) {
+		return string(publicationFailureCanceled)
+	}
+	if code, ok := skill.SourceFailure(err); ok {
+		return string(code)
+	}
+	if code, ok := publicationCode(err); ok {
+		return string(code)
+	}
 	if huberrors.IsNotFoundErr(err) {
-		return "tag_not_found"
+		return string(skill.SourceFailureRevisionNotFound)
 	}
-	if strings.Contains(strings.ToLower(err.Error()), "immutable") && strings.Contains(strings.ToLower(err.Error()), "conflict") {
-		return "immutable_conflict"
+	if huberrors.Is(err, huberrors.KindRateLimit) {
+		return string(publicationFailureCapacity)
 	}
-	return "publication_failed"
+	return string(publicationFailureUnexpected)
 }
 
 type backfillRequest struct {

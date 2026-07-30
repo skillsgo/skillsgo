@@ -862,6 +862,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '使用官方 Hub，或实现相同 SkillsGo 协议的 HTTP(S) 自托管地址。';
 
   @override
+  String get cloudSettingsTitle => 'Cloud 地址';
+
+  @override
+  String get cloudSettingsDescription =>
+      '使用官方 SkillsGo Cloud，或实现排行协议的 HTTP(S) 地址。';
+
+  @override
   String get testConnection => '测试连接';
 
   @override
@@ -895,6 +902,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hubConnectionTimeout => 'Hub 连接超时。请检查网络或重试。';
+
+  @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud 返回了 HTTP $status。请检查地址与服务端配置。';
+  }
+
+  @override
+  String get cloudInvalidProtocol => '服务端没有返回 SkillsGo Cloud 排行协议。';
+
+  @override
+  String get cloudInvalidJson => 'Cloud 返回了无效 JSON。';
+
+  @override
+  String get cloudConnectionFailure => '无法连接 Cloud。请检查地址、网络、代理和 TLS 配置。';
+
+  @override
+  String get cloudConnectionTimeout => 'Cloud 连接超时。请检查网络或重试。';
 
   @override
   String get riskPolicyTitle => '个人风险策略';
@@ -941,6 +965,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hubOriginSaved => 'Hub 地址已保存并立即应用。';
+
+  @override
+  String get cloudOriginSaved => 'Cloud 地址已保存并立即应用。';
 
   @override
   String get policySaved => '安装策略已保存。';

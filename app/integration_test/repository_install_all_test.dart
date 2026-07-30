@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, JourneyRuntime isolation, onboarding preferences, a disposable Hub/schema, the bundled CLI, and the SkillsGo-owned public versioned fixture Repository.
  * [OUTPUT]: Verifies Package search, the stable Package-wide installation action, bundled-CLI dry-run-to-apply execution, global YAML/Lock state, global Scope Package Store, and member-symlink Package Projections.
- * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
+ * [POS]: Serves as the first black-box cross-platform App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:io';
@@ -39,7 +39,7 @@ void registerRepositoryInstallAllJourney() {
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       final search = find.byKey(const Key('skill-search-input'));
-      expect(search, findsOneWidget);
+      await _pumpUntil(tester, search, timeout: const Duration(seconds: 30));
       await tester.enterText(
         search,
         'https://github.com/skillsgo/e2e-versioned-skills@v1.2.0',

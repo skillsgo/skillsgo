@@ -1,13 +1,14 @@
 /*
- * [INPUT]: Depends on one validated immutable Package release, a local Git Artifact repository root, repository-file storage, digest-addressed Skill content, and the Catalog transaction.
- * [OUTPUT]: Provides retry-safe Git Repository and Skill-content residency followed by atomic Catalog visibility without unsafe delete compensation.
- * [POS]: Serves as the Package Publication commit state machine used by demand materialization and Backfill.
+ * [INPUT]: Depends on validated immutable Package releases, a local Git Artifact repository root, repository-file storage, digest-addressed Skill content, and the Catalog publication lock.
+ * [OUTPUT]: Provides retry-safe single-Version publication plus one-hydration, chunk-flushed Backfill sessions, precise stage failure codes, and independently atomic Catalog visibility.
+ * [POS]: Serves as the Package Publication commit state machine used by demand materialization and batched Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -33,6 +34,31 @@ type moduleSkillContent struct {
 	content []byte
 }
 
+type modulePublicationInput struct {
+	key           string
+	version       catalog.PackageVersion
+	entries       []protocolartifact.Entry
+	members       []catalog.Skill
+	skillContents []moduleSkillContent
+	visibility    catalog.PublicationVisibility
+}
+
+type modulePublicationOutcome struct {
+	key     string
+	created bool
+	err     error
+}
+
+type modulePublicationSession struct {
+	ctx            context.Context
+	packagePath    string
+	repositoryPath string
+	commit         *modulePublicationCommit
+	publish        func(catalog.PackageVersion, []catalog.Skill, catalog.PublicationVisibility) error
+	pending        []modulePublicationOutcome
+	inputs         []modulePublicationInput
+}
+
 func (commit *modulePublicationCommit) Publish(
 	ctx context.Context,
 	packagePath string,
@@ -42,39 +68,103 @@ func (commit *modulePublicationCommit) Publish(
 	skillContents []moduleSkillContent,
 	visibility catalog.PublicationVisibility,
 ) (bool, error) {
-	if err := catalog.ValidatePackageVersion(packagePath, version, members, visibility); err != nil {
-		return false, err
+	var outcome modulePublicationOutcome
+	err := commit.WithSession(ctx, packagePath, func(session *modulePublicationSession) error {
+		if err := session.Stage(modulePublicationInput{key: version.Version, version: version, entries: entries, members: members, skillContents: skillContents, visibility: visibility}); err != nil {
+			return err
+		}
+		outcomes := session.Flush()
+		outcome = outcomes[0]
+		return outcome.err
+	})
+	return outcome.created, err
+}
+
+// WithSession serializes a Package across Hub instances and hydrates its local
+// Artifact repository once for a caller-controlled sequence of chunk flushes.
+func (commit *modulePublicationCommit) WithSession(ctx context.Context, packagePath string, fn func(*modulePublicationSession) error) error {
+	if fn == nil {
+		return os.ErrInvalid
 	}
-	var created bool
-	var err error
-	err = commit.catalog.WithPackagePublicationLock(ctx, packagePath, func(publish func(catalog.PackageVersion, []catalog.Skill, catalog.PublicationVisibility) error) error {
+	err := commit.catalog.WithPackagePublicationLock(ctx, packagePath, func(publish func(catalog.PackageVersion, []catalog.Skill, catalog.PublicationVisibility) error) error {
 		repositoryPath := filepath.Join(commit.root, filepath.FromSlash(packagePath)+".git")
-		hydrated, hydrateErr := commit.repositories.HydrateGitRepository(ctx, packagePath, repositoryPath)
-		if hydrateErr != nil {
-			return hydrateErr
+		hydrated, err := commit.repositories.HydrateGitRepository(ctx, packagePath, repositoryPath)
+		if err != nil {
+			return withPublicationFailure(publicationFailureArtifactHydration, err)
 		}
 		if !hydrated {
 			if err := os.RemoveAll(repositoryPath); err != nil {
-				return err
+				return withPublicationFailure(publicationFailureArtifactReset, err)
 			}
 		}
-		_, created, err = gitartifact.Publish(repositoryPath, packagePath, version.Version, version.CommitTime, entries)
-		if err != nil {
-			return err
-		}
-		if err := commit.repositories.PublishGitRepository(ctx, packagePath, repositoryPath); err != nil {
-			return err
-		}
-		for _, skillContent := range skillContents {
-			if _, err := commit.contents.PutSkillContentIfAbsent(ctx, skillContent.digest, skillContent.content); err != nil {
-				return err
-			}
-		}
-		if err := publish(version, members, visibility); err != nil {
-			// The immutable Git tag is deliberately retained; a retry commits the same facts.
-			return err
+		if callbackErr := fn(&modulePublicationSession{ctx: ctx, packagePath: packagePath, repositoryPath: repositoryPath, commit: commit, publish: publish}); callbackErr != nil {
+			return publicationCallbackFailure{err: callbackErr}
 		}
 		return nil
 	})
-	return created, err
+	if err == nil {
+		return nil
+	}
+	if _, classified := publicationCode(err); classified {
+		return err
+	}
+	var callback publicationCallbackFailure
+	if errors.As(err, &callback) {
+		return callback.err
+	}
+	return withPublicationFailure(publicationFailureTransaction, err)
+}
+
+func (session *modulePublicationSession) Stage(input modulePublicationInput) error {
+	if err := catalog.ValidatePackageVersion(session.packagePath, input.version, input.members, input.visibility); err != nil {
+		return withPublicationFailure(publicationFailureVersionValidation, err)
+	}
+	_, created, err := gitartifact.Publish(session.repositoryPath, session.packagePath, input.version.Version, input.version.CommitTime, input.entries)
+	if err != nil {
+		if _, classified := protocolartifact.ValidationFailure(err); classified {
+			return withPublicationFailure(artifactValidationPublicationCode(err), err)
+		}
+		if errors.Is(err, gitartifact.ErrImmutableTagConflict) {
+			return withPublicationFailure(publicationFailureArtifactTagConflict, err)
+		}
+		return withPublicationFailure(publicationFailureArtifactAuthoring, err)
+	}
+	input.entries = nil
+	session.inputs = append(session.inputs, input)
+	session.pending = append(session.pending, modulePublicationOutcome{key: input.key, created: created})
+	return nil
+}
+
+// Flush publishes one complete Artifact generation, then independently commits
+// every staged Version so one content or Catalog failure does not hide siblings.
+func (session *modulePublicationSession) Flush() []modulePublicationOutcome {
+	if len(session.inputs) == 0 {
+		return nil
+	}
+	outcomes := session.pending
+	inputs := session.inputs
+	session.pending = nil
+	session.inputs = nil
+	if err := session.commit.repositories.PublishGitRepository(session.ctx, session.packagePath, session.repositoryPath); err != nil {
+		for index := range outcomes {
+			outcomes[index].err = withPublicationFailure(publicationFailureArtifactReplication, err)
+		}
+		return outcomes
+	}
+	for index, input := range inputs {
+		for _, skillContent := range input.skillContents {
+			if _, err := session.commit.contents.PutSkillContentIfAbsent(session.ctx, skillContent.digest, skillContent.content); err != nil {
+				outcomes[index].err = withPublicationFailure(publicationFailureSkillContentPersistence, err)
+				break
+			}
+		}
+		if outcomes[index].err != nil {
+			continue
+		}
+		if err := session.publish(input.version, input.members, input.visibility); err != nil {
+			// The immutable Git tag is deliberately retained; a retry commits the same facts.
+			outcomes[index].err = withPublicationFailure(publicationFailureCatalogCommit, err)
+		}
+	}
+	return outcomes
 }

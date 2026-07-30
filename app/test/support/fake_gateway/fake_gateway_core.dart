@@ -64,6 +64,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.localDetailError,
     this.localDetail,
     this.hubOrigin = 'https://hub.skillsgo.ai',
+    this.cloudOrigin = 'https://cloud.skillsgo.ai',
     this.folderTheme = '#514532',
     this.themeMode = AppThemeMode.system,
     this.language = AppLanguage.english,
@@ -144,6 +145,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final List<AddedProject> projects;
   int projectLoads = 0;
   String hubOrigin;
+  String cloudOrigin;
   String folderTheme;
   AppThemeMode themeMode;
   AppLanguage language;

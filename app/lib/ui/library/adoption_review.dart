@@ -279,7 +279,7 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(13),
                   child: Image.asset(
-                    'assets/branding/skillsgo-logo.png',
+                    'assets/branding/skillsgo-logo.webp',
                     key: const Key('library-external-skills-logo'),
                     width: 42,
                     height: 42,

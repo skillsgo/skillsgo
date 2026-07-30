@@ -1683,6 +1683,18 @@ abstract class AppLocalizations {
   /// **'Use the official Hub or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.'**
   String get hubSettingsDescription;
 
+  /// No description provided for @cloudSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud Origin'**
+  String get cloudSettingsTitle;
+
+  /// No description provided for @cloudSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the official SkillsGo Cloud or an HTTP(S) origin that implements the ranking protocol.'**
+  String get cloudSettingsDescription;
+
   /// No description provided for @testConnection.
   ///
   /// In en, this message translates to:
@@ -1748,6 +1760,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The Hub connection timed out. Check the network or try again.'**
   String get hubConnectionTimeout;
+
+  /// No description provided for @cloudHttpFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud returned HTTP {status}. Check the Origin and service configuration.'**
+  String cloudHttpFailure(int status);
+
+  /// No description provided for @cloudInvalidProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not return the SkillsGo Cloud ranking protocol.'**
+  String get cloudInvalidProtocol;
+
+  /// No description provided for @cloudInvalidJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud returned invalid JSON.'**
+  String get cloudInvalidJson;
+
+  /// No description provided for @cloudConnectionFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.'**
+  String get cloudConnectionFailure;
+
+  /// No description provided for @cloudConnectionTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The Cloud connection timed out. Check the network or try again.'**
+  String get cloudConnectionTimeout;
 
   /// No description provided for @riskPolicyTitle.
   ///
@@ -1838,6 +1880,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hub Origin saved and applied.'**
   String get hubOriginSaved;
+
+  /// No description provided for @cloudOriginSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud Origin saved and applied.'**
+  String get cloudOriginSaved;
 
   /// No description provided for @policySaved.
   ///

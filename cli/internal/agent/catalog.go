@@ -283,7 +283,6 @@ var rawCatalog = []rawDefinition{
 	{"inference-sh", "inference.sh", ".inferencesh/skills", "home", ".inferencesh/skills"},
 	{"jazz", "Jazz", ".jazz/skills", "home", ".jazz/skills"},
 	{"junie", "Junie", ".junie/skills", "home", ".junie/skills"},
-	{"iflow-cli", "iFlow CLI", ".iflow/skills", "home", ".iflow/skills"},
 	{"kilo", "Kilo Code", ".kilocode/skills", "home", ".kilocode/skills"},
 	{"kimi-code-cli", "Kimi Code CLI", ".agents/skills", "home", ".agents/skills"},
 	{"kiro-cli", "Kiro CLI", ".kiro/skills", "home", ".kiro/skills"},

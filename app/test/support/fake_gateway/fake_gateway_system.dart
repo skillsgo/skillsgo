@@ -70,6 +70,19 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   }
 
   @override
+  Future<String> loadCloudOrigin() async => cloudOrigin;
+
+  @override
+  Future<void> saveCloudOrigin(String origin) async {
+    cloudOrigin = origin;
+  }
+
+  @override
+  Future<void> resetCloudOrigin() async {
+    cloudOrigin = 'https://cloud.skillsgo.ai';
+  }
+
+  @override
   Future<HubStatus> testHubOrigin(String origin) async => HubStatus(
     origin: origin,
     state: hubTestState,
@@ -77,8 +90,11 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   );
 
   @override
-  Future<HubRuntime> loadHubRuntime() async =>
-      const HubRuntime(mode: HubMode.selfhost);
+  Future<HubStatus> testCloudOrigin(String origin) async => HubStatus(
+    origin: origin,
+    state: hubTestState,
+    issue: hubTestState == HealthState.ready ? null : HubIssue.invalidProtocol,
+  );
 
   @override
   Future<PersonalRiskPolicy> loadRiskPolicy() async => riskPolicy;

@@ -1,3 +1,8 @@
+# [INPUT]: Depends on Flutter and native desktop toolchains for generated local artifacts.
+# [OUTPUT]: Keeps source-owned App platform scaffolds trackable while excluding caches and build output.
+# [POS]: Serves as the App workspace's version-control boundary for generated files.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
 # Miscellaneous
 *.class
 *.log
@@ -28,6 +33,7 @@ migrate_working_dir/
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
+**/flutter/ephemeral/
 .pub-cache/
 .pub/
 /build/

@@ -35,7 +35,7 @@ skillsgo/
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- The App invokes the bundled CLI for every Hub and local operation. In Cloud mode it may call the independently deployed SkillsGo Cloud origin declared by `skillsgo hub info` for Cloud-owned ranking reads; it never calls Hub HTTP directly.
+- After a one-shot bundled-CLI compatibility handshake, the App routes every Hub and local business operation through one long-lived CLI Server session. It persists Hub and independently deployed SkillsGo Cloud origins separately and may call the configured Cloud origin for Cloud-owned ranking reads; it never calls Hub HTTP directly.
 - The CLI owns local filesystem mutations, Agent Adapters, derived Scope Package Trees, Package Projections, Installation Targets, Workspace Manifests, Workspace Locks, and disposable read-through Package caches.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database and composes ranking responses through uncached Hub batch reads.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
@@ -50,7 +50,7 @@ skillsgo/
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
 - Protocol: Go; use `gofmt` and `go test ./...` from `protocol/`.
 - Web: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `web/`.
-- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for macOS desktop App+CLI+Hub journeys, or `make test-e2e` for both.
+- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for the host desktop App+CLI+Hub journeys on macOS, Windows, or Linux, or `make test-e2e` for both suites.
 - Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
 - Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
 
