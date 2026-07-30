@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation and a compact Windows sandbox root, retries one Linux Flutter protocol exit 79 in a fresh suite runtime, and retries one macOS foreground-launch failure.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation, a compact Windows sandbox root, a LaunchServices-compatible macOS host environment, and one Linux Flutter protocol retry in a fresh suite runtime.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -40,7 +40,6 @@ else
   temp_template="${temp_root%/}/skillsgo-app-e2e.XXXXXX"
 fi
 readonly run_dir="$(mktemp -d "${temp_template}")"
-mkdir -p "${run_dir}/app-home"
 readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
@@ -116,11 +115,6 @@ readonly hub_binary="${run_dir}/${hub_binary_name}"
 
 cd "${repository_root}/app"
 test_environment=(env \
-  HOME="${run_dir}/app-home" \
-  CFFIXED_USER_HOME="${run_dir}/app-home" \
-  XDG_CONFIG_HOME="${run_dir}/app-home/.config" \
-  XDG_CACHE_HOME="${run_dir}/app-home/.cache" \
-  XDG_DATA_HOME="${run_dir}/app-home/.local/share" \
   PUB_CACHE="${developer_pub_cache}" \
   GOPATH="${developer_go_path}" \
   GOMODCACHE="${developer_go_mod_cache}" \
@@ -128,22 +122,20 @@ test_environment=(env \
   SKILLSGO_E2E_DATABASE_DSN="${database_dsn}" \
   SKILLSGO_E2E_PSQL="${psql_binary}" \
   SKILLSGO_E2E_HUB_BINARY="${hub_binary}")
+if [[ "${flutter_device}" != "macos" ]]; then
+  mkdir -p "${run_dir}/app-home"
+  test_environment+=(
+    HOME="${run_dir}/app-home"
+    CFFIXED_USER_HOME="${run_dir}/app-home"
+    XDG_CONFIG_HOME="${run_dir}/app-home/.config"
+    XDG_CACHE_HOME="${run_dir}/app-home/.cache"
+    XDG_DATA_HOME="${run_dir}/app-home/.local/share")
+fi
 test_command=(flutter test -d "${flutter_device}" "${journeys[@]}")
 test_status=0
 if [[ "${flutter_device}" == "linux" ]]; then
   "${test_environment[@]}" xvfb-run -a "${test_command[@]}" || test_status=$?
-elif [[ "${flutter_device}" == "macos" ]]; then
-  readonly flutter_test_log="${run_dir}/flutter-test.log"
-  "${test_environment[@]}" "${test_command[@]}" 2>&1 | tee "${flutter_test_log}" || test_status=$?
 else
-  "${test_environment[@]}" "${test_command[@]}" || test_status=$?
-fi
-
-if [[ "${flutter_device}" == "macos" && "${test_status}" -ne 0 ]] && grep -Fq "Failed to foreground app; open returned" "${flutter_test_log}"; then
-  echo "Flutter macOS failed to foreground the test App; retrying once." >&2
-  "${psql_binary}" "${database_dsn}" --set ON_ERROR_STOP=1 --command \
-    'DO $reset$ DECLARE item record; BEGIN FOR item IN SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '\''app_e2e_%'\'' LOOP EXECUTE format('\''DROP SCHEMA %I CASCADE'\'', item.schema_name); END LOOP; END $reset$;' >/dev/null
-  test_status=0
   "${test_environment[@]}" "${test_command[@]}" || test_status=$?
 fi
 
