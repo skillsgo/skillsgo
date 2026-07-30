@@ -115,15 +115,42 @@ CREATE TABLE localizations (
 CREATE TABLE package_backfill_runs (
   id TEXT PRIMARY KEY,
   package_path TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'complete', 'complete_with_errors')),
+  status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'complete', 'complete_with_rejections', 'failed')),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
-  error_count INTEGER NOT NULL DEFAULT 0,
-  diagnostics JSONB NOT NULL DEFAULT '[]'::jsonb,
+  published_count INTEGER NOT NULL DEFAULT 0,
+  skipped_count INTEGER NOT NULL DEFAULT 0,
+  rejected_count INTEGER NOT NULL DEFAULT 0,
+  failed_count INTEGER NOT NULL DEFAULT 0,
+  failure_code TEXT,
   created_at TIMESTAMPTZ NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL
+  updated_at TIMESTAMPTZ NOT NULL,
+  CONSTRAINT package_backfill_runs_failure_code_check CHECK (
+    (status = 'failed' AND failure_code IS NOT NULL)
+    OR (status <> 'failed')
+  )
 );
 
 CREATE UNIQUE INDEX package_backfill_runs_one_active ON package_backfill_runs(package_path)
   WHERE status IN ('queued', 'running');
 CREATE INDEX package_backfill_runs_module_created ON package_backfill_runs(package_path, created_at DESC);
+
+CREATE TABLE package_backfill_version_outcomes (
+  run_id TEXT NOT NULL REFERENCES package_backfill_runs(id) ON DELETE CASCADE,
+  version TEXT NOT NULL,
+  commit_sha TEXT NOT NULL,
+  outcome TEXT NOT NULL CHECK (outcome IN ('published', 'already_published', 'skipped', 'rejected', 'retryable_failure')),
+  reason_code TEXT,
+  attempt_count INTEGER NOT NULL DEFAULT 1 CHECK (attempt_count > 0),
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (run_id, version),
+  CONSTRAINT package_backfill_version_outcomes_reason_check CHECK (
+    (outcome IN ('published', 'already_published') AND reason_code IS NULL)
+    OR
+    (outcome IN ('skipped', 'rejected', 'retryable_failure') AND reason_code IS NOT NULL)
+  )
+);
+
+CREATE INDEX package_backfill_version_outcomes_run_outcome
+  ON package_backfill_version_outcomes(run_id, outcome);
