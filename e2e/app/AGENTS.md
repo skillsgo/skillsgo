@@ -6,7 +6,7 @@ This workspace owns cross-platform desktop startup smoke coverage and complete m
 ## Runtime Contract
 
 - Build and smoke-test macOS arm64, macOS x64, Windows x64, and Linux x64 in GitHub-hosted runners; use Xvfb for Linux rendering.
-- Run the complete database-backed Journey suite independently on macOS, Windows, and Linux with Flutter desktop support; render Linux through Xvfb.
+- Run the complete database-backed Journey suite independently on macOS, Windows, and Linux with Flutter desktop support; render Linux through Xvfb and pin GUI-dependent macOS E2E to macOS 14 until Flutter issue #176850 is fixed upstream.
 - Build the host-native CLI once through the App's normal desktop bundling phase, build one host-native Hub binary, and launch one disposable native PostgreSQL instance by default; Docker PostgreSQL remains available for local database-boundary verification where supported.
 - Run the maintained aggregate entry in one Flutter/Xcode test executable. Give each Journey a temporary HOME, SkillsGo state root, project root, Agent root, PostgreSQL schema, artifact root, and Hub process while retaining schemas until suite teardown.
 - Drive visible App controls and assert both rendered outcomes and final filesystem/Hub contracts.
@@ -14,7 +14,7 @@ This workspace owns cross-platform desktop startup smoke coverage and complete m
 
 ## Entry Point
 
-`run.sh` is the stable workspace command used by `make test-e2e-app`. It detects the host desktop target, owns suite-scoped PostgreSQL and Hub-binary setup, preserves the real macOS user environment required by LaunchServices, then runs `app/integration_test/app_e2e_suite_test.dart` once so Flutter and the bundled CLI compile once per platform. Each registered Journey starts a schema-fixed Hub process and real CLI Gateway with independent directories, including its own App, CLI, Hub, and Agent homes. Explicit absolute Journey paths may be passed for focused verification. Linux retries the Flutter test process once in a fresh suite runtime only when Flutter exits with protocol status 79. Journey assertion failures are never retried. Set `SKILLSGO_E2E_POSTGRES_RUNTIME=docker` to use disposable Docker PostgreSQL locally where supported.
+`run.sh` is the stable workspace command used by `make test-e2e-app`. It detects the host desktop target, owns suite-scoped PostgreSQL and Hub-binary setup, creates the isolated App home before Flutter invokes macOS LaunchServices, then runs `app/integration_test/app_e2e_suite_test.dart` once so Flutter and the bundled CLI compile once per platform. Each registered Journey starts a schema-fixed Hub process and real CLI Gateway with independent directories. Explicit absolute Journey paths may be passed for focused verification. Linux retries the Flutter test process once in a fresh suite runtime only when Flutter exits with protocol status 79. macOS launch failures are not retried: the GitHub workflow avoids the confirmed Flutter/macOS 15 regression by running GUI E2E on macOS 14. Journey assertion failures are never retried. Set `SKILLSGO_E2E_POSTGRES_RUNTIME=docker` to use disposable Docker PostgreSQL locally where supported.
 
 `.github/workflows/ci.yml` directly builds each maintained desktop target and runs `app/integration_test/bundled_cli_smoke_test.dart` on its native runner, then runs the complete Journey suite as separate macOS, Windows, and Linux jobs.
 

@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, architecture-specific macOS candidate artifacts on main, and blocking known-vulnerability enforcement for every maintained product boundary.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, macOS 14 GUI E2E isolated from Flutter's macOS 15 launch regression, architecture-specific macOS candidate artifacts on main, and blocking known-vulnerability enforcement for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -327,7 +327,9 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-15
+            # Flutter #176850 hangs desktop tests on GitHub's macos-15 runner
+            # after LaunchServices fails to foreground the already-started App.
+            os: macos-14
             target: macos
           - name: Windows
             os: windows-2025
