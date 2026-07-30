@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation and a compact Windows sandbox root, and retries one Linux Flutter protocol exit 79 in a fresh suite runtime.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation and a compact Windows sandbox root, retries one Linux Flutter protocol exit 79 in a fresh suite runtime, and retries one macOS foreground-launch failure.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -131,7 +131,16 @@ test_command=(flutter test -d "${flutter_device}" "${journeys[@]}")
 test_status=0
 if [[ "${flutter_device}" == "linux" ]]; then
   "${test_environment[@]}" xvfb-run -a "${test_command[@]}" || test_status=$?
+elif [[ "${flutter_device}" == "macos" ]]; then
+  readonly flutter_test_log="${run_dir}/flutter-test.log"
+  "${test_environment[@]}" "${test_command[@]}" 2>&1 | tee "${flutter_test_log}" || test_status=$?
 else
+  "${test_environment[@]}" "${test_command[@]}" || test_status=$?
+fi
+
+if [[ "${flutter_device}" == "macos" && "${test_status}" -ne 0 ]] && grep -Fq "Failed to foreground app; open returned" "${flutter_test_log}"; then
+  echo "Flutter macOS failed to foreground the test App; retrying once." >&2
+  test_status=0
   "${test_environment[@]}" "${test_command[@]}" || test_status=$?
 fi
 

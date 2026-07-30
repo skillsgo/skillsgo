@@ -35,6 +35,11 @@ func isProjectionLinkCandidate(info os.FileInfo) bool {
 }
 
 func projectionLinkMatches(link, target string) (bool, error) {
+	resolvedLink, linkErr := filepath.EvalSymlinks(link)
+	resolvedTarget, targetErr := filepath.EvalSymlinks(target)
+	if linkErr == nil && targetErr == nil && strings.EqualFold(filepath.Clean(resolvedLink), filepath.Clean(resolvedTarget)) {
+		return true, nil
+	}
 	linkInfo, err := os.Stat(link)
 	if err != nil {
 		return false, err
