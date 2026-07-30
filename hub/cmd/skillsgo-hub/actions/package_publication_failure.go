@@ -35,6 +35,7 @@ const (
 	publicationFailureArtifactReplication     publicationFailureCode = "artifact_repository_publication_failed"
 	publicationFailureSkillContentPersistence publicationFailureCode = "skill_content_publication_failed"
 	publicationFailureCatalogCommit           publicationFailureCode = "catalog_publication_failed"
+	publicationFailureCatalogCheck            publicationFailureCode = "catalog_publication_check_failed"
 	publicationFailureTransaction             publicationFailureCode = "package_publication_transaction_failed"
 	publicationFailureTimeout                 publicationFailureCode = "publication_timeout"
 	publicationFailureCanceled                publicationFailureCode = "publication_canceled"

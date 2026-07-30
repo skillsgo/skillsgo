@@ -37,29 +37,29 @@ const (
 	SourceFailureInvalidManifest    SourceFailureCode = "source_skill_manifest_invalid"
 )
 
-type sourceFailure struct {
-	code SourceFailureCode
-	err  error
+type SourceFailureError struct {
+	Code SourceFailureCode
+	Err  error
 }
 
-func (failure sourceFailure) Error() string { return failure.err.Error() }
-func (failure sourceFailure) Unwrap() error { return failure.err }
+func (failure SourceFailureError) Error() string { return failure.Err.Error() }
+func (failure SourceFailureError) Unwrap() error { return failure.Err }
 
 func withSourceFailure(code SourceFailureCode, err error) error {
 	if err == nil {
 		return nil
 	}
-	var existing sourceFailure
+	var existing SourceFailureError
 	if errors.As(err, &existing) {
 		return err
 	}
-	return sourceFailure{code: code, err: err}
+	return SourceFailureError{Code: code, Err: err}
 }
 
 func SourceFailure(err error) (SourceFailureCode, bool) {
-	var failure sourceFailure
+	var failure SourceFailureError
 	if !errors.As(err, &failure) {
 		return "", false
 	}
-	return failure.code, true
+	return failure.Code, true
 }

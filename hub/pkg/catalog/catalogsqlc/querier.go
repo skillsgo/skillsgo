@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	ActiveBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error)
 	BackfillRunByID(ctx context.Context, id string) (PackageBackfillRun, error)
+	BackfillVersionOutcomes(ctx context.Context, runID string) ([]PackageBackfillVersionOutcome, error)
 	CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error)
 	CurrentPackageVersionForUpdate(ctx context.Context, packageID int64) (string, error)
 	CurrentPackagesByPaths(ctx context.Context, packagePaths []string) ([]CurrentPackagesByPathsRow, error)
@@ -20,6 +21,7 @@ type Querier interface {
 	DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error)
 	ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error)
 	ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error)
+	FailBackfillRun(ctx context.Context, arg FailBackfillRunParams) (int64, error)
 	FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error)
 	FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalizedSkillsBatchParams) ([]FindLocalizedSkillsBatchRow, error)
 	InsertBackfillRun(ctx context.Context, arg InsertBackfillRunParams) error
@@ -28,6 +30,7 @@ type Querier interface {
 	LatestBackfillRun(ctx context.Context, packagePath string) (PackageBackfillRun, error)
 	ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error)
 	LocalizedVersionSkillCards(ctx context.Context, arg LocalizedVersionSkillCardsParams) ([]LocalizedVersionSkillCardsRow, error)
+	LockRunningBackfillRun(ctx context.Context, id string) (string, error)
 	PackageByPath(ctx context.Context, packagePath string) (Package, error)
 	PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error)
 	PackagePublicationCommit(ctx context.Context, arg PackagePublicationCommitParams) (string, error)
@@ -35,6 +38,8 @@ type Querier interface {
 	PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error)
 	PackageVersionCount(ctx context.Context, arg PackageVersionCountParams) (int64, error)
 	PackagesDueForSourceMetadataRefresh(ctx context.Context, arg PackagesDueForSourceMetadataRefreshParams) ([]PackagesDueForSourceMetadataRefreshRow, error)
+	RefreshBackfillRunCounts(ctx context.Context, arg RefreshBackfillRunCountsParams) (int64, error)
+	RejectBackfillRun(ctx context.Context, arg RejectBackfillRunParams) (int64, error)
 	SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error)
 	SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error)
 	SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error
@@ -50,6 +55,7 @@ type Querier interface {
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
 	TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
+	UpsertBackfillVersionOutcome(ctx context.Context, arg UpsertBackfillVersionOutcomeParams) error
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
