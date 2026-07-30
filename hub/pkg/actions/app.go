@@ -23,6 +23,7 @@ import (
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -36,10 +37,17 @@ type CommunityFactory func(community.Catalog) (community.Store, error)
 
 type AppOption func(*appOptions)
 
+type Assembly struct {
+	Catalog           *catalog.Catalog
+	BackgroundCatalog *catalog.Catalog
+	Storage           storage.Backend
+	Community         community.Store
+}
+
 type appOptions struct {
 	communityFactory CommunityFactory
 	app              *fiber.App
-	assemblyObserver func(*catalog.Catalog, community.Store)
+	assemblyReceiver func(Assembly)
 }
 
 func WithCommunityFactory(factory CommunityFactory) AppOption {
@@ -50,8 +58,8 @@ func WithFiberApp(app *fiber.App) AppOption {
 	return func(options *appOptions) { options.app = app }
 }
 
-func WithAssemblyObserver(observer func(*catalog.Catalog, community.Store)) AppOption {
-	return func(options *appOptions) { options.assemblyObserver = observer }
+func WithAssemblyReceiver(receiver func(Assembly)) AppOption {
+	return func(options *appOptions) { options.assemblyReceiver = receiver }
 }
 
 func newFiberApp() *fiber.App {
@@ -209,8 +217,8 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("creating community data: %w", err)
 		}
 	}
-	if options.assemblyObserver != nil {
-		options.assemblyObserver(metadata, communityStore)
+	if options.assemblyReceiver != nil {
+		options.assemblyReceiver(Assembly{Catalog: metadata, BackgroundCatalog: backgroundMetadata, Storage: store, Community: communityStore})
 	}
 	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, communityStore, adminRouter, adminEnabled); err != nil {
 		cancelWorkers()

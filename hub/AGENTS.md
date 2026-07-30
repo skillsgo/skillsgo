@@ -39,6 +39,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
 | `pkg/community/` | Hub-owned optional community-data seam with a protocol-complete empty self-host implementation. |
 | `pkg/runtime/` | Complete exported Hub modules mounted symmetrically into caller-owned standalone Hub and official Cloud Fiber Apps. |
+| `pkg/skillcard/` | Reusable authoritative Catalog-to-protocol Skill card projection shared by Hub search and Cloud ranking hydration. |
 | `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
 | `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh, and Package History Backfill, isolated from online traffic by a background Catalog pool while preserving caller-owned enqueue transactions. |
 | `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
