@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated immutable Package releases, a local Git Artifact repository root, repository-file storage, digest-addressed Skill content, and the Catalog publication lock.
- * [OUTPUT]: Provides retry-safe single-Version publication plus one-hydration, chunk-flushed Backfill sessions followed by independently atomic Catalog visibility.
+ * [OUTPUT]: Provides retry-safe single-Version publication plus one-hydration, chunk-flushed Backfill sessions, precise stage failure codes, and independently atomic Catalog visibility.
  * [POS]: Serves as the Package Publication commit state machine used by demand materialization and batched Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -85,28 +86,48 @@ func (commit *modulePublicationCommit) WithSession(ctx context.Context, packageP
 	if fn == nil {
 		return os.ErrInvalid
 	}
-	return commit.catalog.WithPackagePublicationLock(ctx, packagePath, func(publish func(catalog.PackageVersion, []catalog.Skill, catalog.PublicationVisibility) error) error {
+	err := commit.catalog.WithPackagePublicationLock(ctx, packagePath, func(publish func(catalog.PackageVersion, []catalog.Skill, catalog.PublicationVisibility) error) error {
 		repositoryPath := filepath.Join(commit.root, filepath.FromSlash(packagePath)+".git")
 		hydrated, err := commit.repositories.HydrateGitRepository(ctx, packagePath, repositoryPath)
 		if err != nil {
-			return err
+			return withPublicationFailure(publicationFailureArtifactHydration, err)
 		}
 		if !hydrated {
 			if err := os.RemoveAll(repositoryPath); err != nil {
-				return err
+				return withPublicationFailure(publicationFailureArtifactReset, err)
 			}
 		}
-		return fn(&modulePublicationSession{ctx: ctx, packagePath: packagePath, repositoryPath: repositoryPath, commit: commit, publish: publish})
+		if callbackErr := fn(&modulePublicationSession{ctx: ctx, packagePath: packagePath, repositoryPath: repositoryPath, commit: commit, publish: publish}); callbackErr != nil {
+			return publicationCallbackFailure{err: callbackErr}
+		}
+		return nil
 	})
+	if err == nil {
+		return nil
+	}
+	if _, classified := publicationCode(err); classified {
+		return err
+	}
+	var callback publicationCallbackFailure
+	if errors.As(err, &callback) {
+		return callback.err
+	}
+	return withPublicationFailure(publicationFailureTransaction, err)
 }
 
 func (session *modulePublicationSession) Stage(input modulePublicationInput) error {
 	if err := catalog.ValidatePackageVersion(session.packagePath, input.version, input.members, input.visibility); err != nil {
-		return err
+		return withPublicationFailure(publicationFailureVersionValidation, err)
 	}
 	_, created, err := gitartifact.Publish(session.repositoryPath, session.packagePath, input.version.Version, input.version.CommitTime, input.entries)
 	if err != nil {
-		return err
+		if _, classified := protocolartifact.ValidationFailure(err); classified {
+			return withPublicationFailure(artifactValidationPublicationCode(err), err)
+		}
+		if errors.Is(err, gitartifact.ErrImmutableTagConflict) {
+			return withPublicationFailure(publicationFailureArtifactTagConflict, err)
+		}
+		return withPublicationFailure(publicationFailureArtifactAuthoring, err)
 	}
 	input.entries = nil
 	session.inputs = append(session.inputs, input)
@@ -126,14 +147,14 @@ func (session *modulePublicationSession) Flush() []modulePublicationOutcome {
 	session.inputs = nil
 	if err := session.commit.repositories.PublishGitRepository(session.ctx, session.packagePath, session.repositoryPath); err != nil {
 		for index := range outcomes {
-			outcomes[index].err = err
+			outcomes[index].err = withPublicationFailure(publicationFailureArtifactReplication, err)
 		}
 		return outcomes
 	}
 	for index, input := range inputs {
 		for _, skillContent := range input.skillContents {
 			if _, err := session.commit.contents.PutSkillContentIfAbsent(session.ctx, skillContent.digest, skillContent.content); err != nil {
-				outcomes[index].err = err
+				outcomes[index].err = withPublicationFailure(publicationFailureSkillContentPersistence, err)
 				break
 			}
 		}
@@ -142,7 +163,7 @@ func (session *modulePublicationSession) Flush() []modulePublicationOutcome {
 		}
 		if err := session.publish(input.version, input.members, input.visibility); err != nil {
 			// The immutable Git tag is deliberately retained; a retry commits the same facts.
-			outcomes[index].err = err
+			outcomes[index].err = withPublicationFailure(publicationFailureCatalogCommit, err)
 		}
 	}
 	return outcomes

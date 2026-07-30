@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, chunked Package Publisher sessions, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions through one source and Artifact session, with heartbeat and stale-Run reconciliation.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms up to twenty canonical Tags or no-Tag default-branch pseudo-versions through one source and Artifact session, with precise non-sensitive diagnostics, heartbeat, and stale-Run reconciliation.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and batched Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -65,9 +65,8 @@ func (s *packageBackfillService) Register() error {
 	if err := taskqueue.Register(s.tasks, s.run); err != nil {
 		return err
 	}
-	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args packageBackfillArgs, _ error) error {
-		diagnostic := backfillDiagnostic("repository", "execution_failed")
-		return s.metadata.CompleteBackfillRun(ctx, args.RunID, 1, []string{diagnostic})
+	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args packageBackfillArgs, executionErr error) error {
+		return s.completeFailedRun(ctx, args, executionErr)
 	}); err != nil {
 		return err
 	}
@@ -98,6 +97,11 @@ func (s *packageBackfillService) Register() error {
 	return s.tasks.Every(packageBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
 }
 
+func (s *packageBackfillService) completeFailedRun(ctx context.Context, args packageBackfillArgs, executionErr error) error {
+	diagnostic := backfillDiagnostic("repository", classifyBackfillFailure(executionErr))
+	return s.metadata.CompleteBackfillRun(ctx, args.RunID, 1, []string{diagnostic})
+}
+
 func (s *packageBackfillService) Submit(ctx context.Context, packagePath string) (catalog.BackfillRun, bool, error) {
 	return s.metadata.SubmitBackfillRun(ctx, packagePath, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
 		return s.tasks.EnqueueTx(ctx, tx, packageBackfillArgs{RunID: run.ID, PackagePath: packagePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
@@ -124,7 +128,7 @@ func (s *packageBackfillService) run(ctx context.Context, args packageBackfillAr
 	errorCount := 0
 	if err != nil {
 		errorCount++
-		diagnostic := backfillDiagnostic("repository", "version_listing_failed")
+		diagnostic := backfillDiagnostic("repository", classifyBackfillFailure(err))
 		diagnostics = append(diagnostics, diagnostic)
 		s.logFailure(ctx, args, "", diagnostic)
 	} else {
@@ -206,13 +210,25 @@ func backfillDiagnostic(scope, code string) string {
 }
 
 func classifyBackfillFailure(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return string(publicationFailureTimeout)
+	}
+	if errors.Is(err, context.Canceled) {
+		return string(publicationFailureCanceled)
+	}
+	if code, ok := skill.SourceFailure(err); ok {
+		return string(code)
+	}
+	if code, ok := publicationCode(err); ok {
+		return string(code)
+	}
 	if huberrors.IsNotFoundErr(err) {
-		return "tag_not_found"
+		return string(skill.SourceFailureRevisionNotFound)
 	}
-	if strings.Contains(strings.ToLower(err.Error()), "immutable") && strings.Contains(strings.ToLower(err.Error()), "conflict") {
-		return "immutable_conflict"
+	if huberrors.Is(err, huberrors.KindRateLimit) {
+		return string(publicationFailureCapacity)
 	}
-	return "publication_failed"
+	return string(publicationFailureUnexpected)
 }
 
 type backfillRequest struct {
