@@ -31,10 +31,13 @@ func createProjectionLink(target, link string) error {
 	return nil
 }
 
-func isProjectionLinkCandidate(info os.FileInfo) bool {
-	// Windows directory junctions are reparse points but os.Lstat reports them
-	// as directories rather than ModeSymlink on supported runners.
-	return info.IsDir() || info.Mode()&os.ModeSymlink != 0
+func isProjectionLinkCandidate(path string, _ os.FileInfo) bool {
+	pointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return false
+	}
+	attributes, err := windows.GetFileAttributes(pointer)
+	return err == nil && attributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 
 func projectionLinkMatches(link, target string) (bool, error) {

@@ -18,7 +18,7 @@ func createProjectionLink(target, link string) error {
 	return os.Symlink(target, link)
 }
 
-func isProjectionLinkCandidate(info os.FileInfo) bool {
+func isProjectionLinkCandidate(_ string, info os.FileInfo) bool {
 	return info.Mode()&os.ModeSymlink != 0
 }
 
