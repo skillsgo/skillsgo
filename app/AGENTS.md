@@ -12,6 +12,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Integration seam: `SkillsGateway`
 - Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, and delegate every Hub and local operation to the bundled CLI.
 - Version boundary: the bundled CLI reports the App product version (for example `0.0.1`); Flutter's `+build` suffix remains platform packaging metadata and must not enter the CLI version contract.
+- Installer lifecycle: `lib/main.dart` must handle Velopack's four official fast-exit arguments before logging, Flutter binding, or UI initialization; normal first-run/restart environment launches continue through the standard App path.
 
 ## Commands
 

@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack 0.x candidate packaging and post-package startup gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement for every maintained product boundary.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack candidate packaging with lifecycle/install/startup gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -272,8 +272,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $candidateDir = Join-Path $env:GITHUB_WORKSPACE 'app/build/velopack/win-x64'
           $setup = Get-Item (Join-Path $candidateDir 'SkillsGo-win-x64-Setup.exe')
-          & $setup.FullName --silent
-          if ($LASTEXITCODE -ne 0) { throw "Velopack Setup exited with $LASTEXITCODE" }
+          $installation = Start-Process -FilePath $setup.FullName -ArgumentList '--silent' -Wait -PassThru
+          if ($installation.ExitCode -ne 0) { throw "Velopack Setup exited with $($installation.ExitCode)" }
 
           $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
           $app = Join-Path $current 'skillsgo.exe'
