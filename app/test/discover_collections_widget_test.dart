@@ -445,16 +445,16 @@ void main() {
     await tester.pumpAndSettle();
 
     final discoverSearch = find.byKey(const Key('skill-search-input'));
-    final discoverOrigin = tester.getTopLeft(discoverSearch);
+    final discoverCenter = tester.getCenter(discoverSearch);
     expect(find.text('It’s nice to know a little more.'), findsNothing);
 
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
     final librarySearch = find.byKey(const Key('library-search'));
-    final libraryOrigin = tester.getTopLeft(librarySearch);
+    final libraryCenter = tester.getCenter(librarySearch);
     expect(find.text('What you know is all here.'), findsNothing);
-    expect(libraryOrigin.dy, discoverOrigin.dy);
+    expect(libraryCenter.dy, discoverCenter.dy);
   });
 
   testWidgets('Discover pagination appends the next stable page', (
