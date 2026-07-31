@@ -104,6 +104,14 @@ _Avoid_: archive hash, Git tree SHA
 The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify sums.
 _Avoid_: Hub account, mirror name
 
+**Package Install Event**:
+One best-effort observation that a CLI transaction made one immutable Package Version available to a non-empty set of Agents in one Scope. It carries the complete selected `{name, path}` member set, one Event ID, the CLI version, and an optional calling App version; it is not one event per Skill.
+_Avoid_: Skill install event, Package Publication, installation receipt
+
+**Installed Skill Fact**:
+One Skill member embedded in a Package Install Event. It is identified by exact Skill Path and retains its canonical Skill Name so ranking projections can count members without multiplying the Package-level transaction.
+_Avoid_: independent install event, Skill ID, Package selection
+
 **Repository Popularity**:
 The source repository's current public star count, recorded as contextual discovery metadata. Every Skill in the same repository shares this repository-level signal; it is not a Skill rating.
 _Avoid_: Skill stars, quality score, recommendation score

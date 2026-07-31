@@ -44,20 +44,35 @@ func (kind RankingKind) Valid() bool {
 func (kind RankingKind) Path() string { return RankingsPath + string(kind) }
 
 type InstallEvent struct {
-	EventID     string    `json:"eventId"`
-	PackagePath string    `json:"packagePath"`
-	SkillName   string    `json:"skillName"`
-	SkillPath   string    `json:"skillPath"`
-	Version     string    `json:"version"`
-	Agents      []string  `json:"agents"`
-	Scope       Scope     `json:"scope"`
-	CLIVersion  string    `json:"cliVersion"`
-	OccurredAt  time.Time `json:"occurredAt"`
+	EventID     string              `json:"eventId"`
+	PackagePath string              `json:"packagePath"`
+	Version     string              `json:"version"`
+	Skills      []InstallEventSkill `json:"skills"`
+	Agents      []string            `json:"agents"`
+	Scope       Scope               `json:"scope"`
+	CLIVersion  string              `json:"cliVersion"`
+	AppVersion  string              `json:"appVersion,omitempty"`
+	OccurredAt  time.Time           `json:"occurredAt"`
+}
+
+type InstallEventSkill struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 func (event InstallEvent) Validate(now time.Time) string {
-	if len(event.EventID) < 16 || len(event.EventID) > 128 || !skillname.Valid(event.SkillName) || !(api.SkillPathCoordinate{PackagePath: event.PackagePath, Path: event.SkillPath}).Valid() || strings.TrimSpace(event.Version) == "" {
+	if len(event.EventID) < 16 || len(event.EventID) > 128 || strings.TrimSpace(event.Version) == "" || strings.TrimSpace(event.CLIVersion) == "" || strings.TrimSpace(event.AppVersion) != event.AppVersion {
 		return "invalid install event identity"
+	}
+	if len(event.Skills) == 0 || len(event.Skills) > 100 {
+		return "skills must contain 1 to 100 entries"
+	}
+	seenPaths := make(map[string]bool, len(event.Skills))
+	for _, skill := range event.Skills {
+		if !skillname.Valid(skill.Name) || !(api.SkillPathCoordinate{PackagePath: event.PackagePath, Path: skill.Path}).Valid() || seenPaths[skill.Path] {
+			return "invalid install event Skill"
+		}
+		seenPaths[skill.Path] = true
 	}
 	if !event.Scope.Valid() {
 		return "scope must be project or global"

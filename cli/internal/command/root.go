@@ -358,9 +358,9 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 }
 
 type addOptions struct {
-	global, yes, dryRun, replaceConflicts bool
-	agents, skills, skillPaths            []string
-	output, hubURL, projectRoot           string
+	global, yes, dryRun, replaceConflicts   bool
+	agents, skills, skillPaths              []string
+	output, hubURL, projectRoot, appVersion string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -493,5 +493,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))
 	defaultHub := defaultHubURL()
 	flags.StringVar(&options.hubURL, "hub", defaultHub, appi18n.T("flag.hub"))
+	flags.StringVar(&options.appVersion, "app-version", "", appi18n.Pick("Calling SkillsGo App version", "调用方 SkillsGo App 版本"))
 	return cmd
 }
