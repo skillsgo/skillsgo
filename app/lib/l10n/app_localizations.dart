@@ -171,6 +171,72 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settings;
 
+  /// No description provided for @appUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App updates'**
+  String get appUpdateTitle;
+
+  /// No description provided for @appUpdateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the release feed for a newer version of SkillsGo.'**
+  String get appUpdateDescription;
+
+  /// No description provided for @appUpdateNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'App updates are unavailable in this build.'**
+  String get appUpdateNotConfigured;
+
+  /// No description provided for @appUpdateReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Check when you’re ready. SkillsGo will not install an update without your action.'**
+  String get appUpdateReady;
+
+  /// No description provided for @appUpdateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for an App update…'**
+  String get appUpdateChecking;
+
+  /// No description provided for @appUpdateApplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the update. SkillsGo will restart when it is ready.'**
+  String get appUpdateApplying;
+
+  /// No description provided for @appUpdateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not check for an App update. Check your connection and try again.'**
+  String get appUpdateCheckFailed;
+
+  /// No description provided for @appUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo {version} is available.'**
+  String appUpdateAvailable(String version);
+
+  /// No description provided for @appUpdateCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo {version} is up to date.'**
+  String appUpdateCurrent(String version);
+
+  /// No description provided for @appUpdateCheckAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for App updates'**
+  String get appUpdateCheckAction;
+
+  /// No description provided for @appUpdateApplyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update and restart'**
+  String get appUpdateApplyAction;
+
   /// No description provided for @openSettings.
   ///
   /// In en, this message translates to:

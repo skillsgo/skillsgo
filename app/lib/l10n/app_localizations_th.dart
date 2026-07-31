@@ -24,6 +24,47 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settings => 'การตั้งค่า';
 
   @override
+  String get appUpdateTitle => 'การอัปเดตแอป';
+
+  @override
+  String get appUpdateDescription =>
+      'ตรวจสอบเวอร์ชัน SkillsGo ที่ใหม่กว่าจากฟีดรุ่นเผยแพร่';
+
+  @override
+  String get appUpdateNotConfigured => 'บิลด์นี้ไม่รองรับการอัปเดตแอป';
+
+  @override
+  String get appUpdateReady =>
+      'ตรวจสอบเมื่อคุณพร้อม SkillsGo จะไม่ติดตั้งการอัปเดตโดยไม่มีการดำเนินการจากคุณ';
+
+  @override
+  String get appUpdateChecking => 'กำลังตรวจสอบการอัปเดตแอป…';
+
+  @override
+  String get appUpdateApplying =>
+      'กำลังดาวน์โหลดการอัปเดต SkillsGo จะเริ่มใหม่เมื่อพร้อม';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo ตรวจสอบการอัปเดตไม่ได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version พร้อมใช้งานแล้ว';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version เป็นเวอร์ชันล่าสุด';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'ตรวจสอบการอัปเดตแอป';
+
+  @override
+  String get appUpdateApplyAction => 'อัปเดตและเริ่มใหม่';
+
+  @override
   String get openSettings => 'เปิดการตั้งค่า';
 
   @override

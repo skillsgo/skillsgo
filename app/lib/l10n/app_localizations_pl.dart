@@ -23,6 +23,48 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings => 'Ustawienia';
 
   @override
+  String get appUpdateTitle => 'Aktualizacje aplikacji';
+
+  @override
+  String get appUpdateDescription =>
+      'Sprawdź, czy w kanale wydań jest nowsza wersja SkillsGo.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Aktualizacje aplikacji są niedostępne w tej kompilacji.';
+
+  @override
+  String get appUpdateReady =>
+      'Sprawdź, kiedy chcesz. SkillsGo nie zainstaluje aktualizacji bez Twojego działania.';
+
+  @override
+  String get appUpdateChecking => 'Sprawdzanie aktualizacji aplikacji…';
+
+  @override
+  String get appUpdateApplying =>
+      'Pobieranie aktualizacji. SkillsGo uruchomi się ponownie, gdy będzie gotowa.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'Nie udało się sprawdzić aktualizacji. Sprawdź połączenie i spróbuj ponownie.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'Dostępna jest wersja SkillsGo $version.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version jest aktualny.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Sprawdź aktualizacje';
+
+  @override
+  String get appUpdateApplyAction => 'Zaktualizuj i uruchom ponownie';
+
+  @override
   String get openSettings => 'Otwórz Ustawienia';
 
   @override

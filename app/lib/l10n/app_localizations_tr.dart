@@ -23,6 +23,48 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settings => 'Ayarlar';
 
   @override
+  String get appUpdateTitle => 'Uygulama güncellemeleri';
+
+  @override
+  String get appUpdateDescription =>
+      'Sürüm akışında daha yeni bir SkillsGo sürümü olup olmadığını kontrol edin.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Bu derlemede uygulama güncellemeleri kullanılamıyor.';
+
+  @override
+  String get appUpdateReady =>
+      'Hazır olduğunuzda kontrol edin. SkillsGo, sizin işleminiz olmadan güncelleme kurmaz.';
+
+  @override
+  String get appUpdateChecking => 'Uygulama güncellemesi kontrol ediliyor…';
+
+  @override
+  String get appUpdateApplying =>
+      'Güncelleme indiriliyor. Hazır olduğunda SkillsGo yeniden başlayacak.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo güncelleme kontrolü yapamadı. Bağlantınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version kullanılabilir.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version güncel.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Uygulama güncellemelerini kontrol et';
+
+  @override
+  String get appUpdateApplyAction => 'Güncelle ve yeniden başlat';
+
+  @override
   String get openSettings => 'Ayarları Aç';
 
   @override

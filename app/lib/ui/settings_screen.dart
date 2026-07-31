@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives, bundled assets, HugeIcons, flutter_svg, the shared Mermaid WebView renderer, appearance callbacks, gateway settings and App diagnostic-log operations, the App-scoped Library controller, localization, shared components, and secondary-body entrance motion.
- * [OUTPUT]: Provides a focused Settings destination with short depth entrances between secondary routes, personalization, reminder preferences, Agent detection and recovery, bounded diagnostic-log controls, infrequent maintenance controls, and an official Mermaid.js gallery.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives, bundled assets, HugeIcons, flutter_svg, the native App updater/feed, the shared Mermaid WebView renderer, appearance callbacks, gateway settings and App diagnostic-log operations, the App-scoped Library controller, localization, shared components, and secondary-body entrance motion.
+ * [OUTPUT]: Provides a focused Settings destination with short depth entrances between secondary routes, personalization, native App update checks, reminder preferences, Agent detection and recovery, bounded diagnostic-log controls, infrequent maintenance controls, and an official Mermaid.js gallery.
  * [POS]: Serves as the user-facing Settings feature, keeping diagnostics conditional and developer inspection out of ordinary navigation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:multi_dropdown/multi_dropdown.dart';
 
 import '../domain/skills_gateway.dart';
+import '../infrastructure/app_updater.dart';
 import 'agent_catalog_controller.dart';
 import 'agent_logo.dart';
 import 'bloom_color_picker/bloom_color_picker.dart';
@@ -29,6 +30,7 @@ import 'ui_support.dart';
 
 part 'settings/settings_screen_core.dart';
 part 'settings/settings_sections.dart';
+part 'settings/app_update_settings.dart';
 part 'settings/diagnostic_log_viewer.dart';
 part 'settings/mermaid_gallery.dart';
 part 'settings/appearance_settings.dart';

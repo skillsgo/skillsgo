@@ -23,6 +23,48 @@ class AppLocalizationsNl extends AppLocalizations {
   String get settings => 'Instellingen';
 
   @override
+  String get appUpdateTitle => 'App-updates';
+
+  @override
+  String get appUpdateDescription =>
+      'Controleer de releasefeed op een nieuwere versie van SkillsGo.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'App-updates zijn niet beschikbaar in deze build.';
+
+  @override
+  String get appUpdateReady =>
+      'Controleer wanneer je wilt. SkillsGo installeert niets zonder jouw actie.';
+
+  @override
+  String get appUpdateChecking => 'Controleren op een app-update…';
+
+  @override
+  String get appUpdateApplying =>
+      'De update wordt gedownload. SkillsGo start opnieuw wanneer deze gereed is.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo kon niet op updates controleren. Controleer je verbinding en probeer opnieuw.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version is beschikbaar.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version is up-to-date.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Controleren op app-updates';
+
+  @override
+  String get appUpdateApplyAction => 'Bijwerken en opnieuw starten';
+
+  @override
   String get openSettings => 'Instellingen openen';
 
   @override

@@ -23,6 +23,48 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settings => 'Настройки';
 
   @override
+  String get appUpdateTitle => 'Обновления приложения';
+
+  @override
+  String get appUpdateDescription =>
+      'Проверить наличие новой версии SkillsGo в канале выпусков.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Обновления приложения недоступны в этой сборке.';
+
+  @override
+  String get appUpdateReady =>
+      'Проверяйте, когда удобно. SkillsGo не установит обновление без вашего действия.';
+
+  @override
+  String get appUpdateChecking => 'Проверка обновления приложения…';
+
+  @override
+  String get appUpdateApplying =>
+      'Загрузка обновления. SkillsGo перезапустится, когда всё будет готово.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'Не удалось проверить обновление. Проверьте подключение и повторите попытку.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'Доступна версия SkillsGo $version.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'Установлена актуальная версия SkillsGo $version.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Проверить обновления';
+
+  @override
+  String get appUpdateApplyAction => 'Обновить и перезапустить';
+
+  @override
   String get openSettings => 'Открыть настройки';
 
   @override

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material and image precaching, Riverpod, SkillsGateway, startup Cloud and appearance state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
- * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway, selected-wallpaper startup presentation readiness, always-enabled product motion, Mermaid renderer, and eager configured-Cloud initialization.
+ * [INPUT]: Depends on Flutter Material and image precaching, Riverpod, SkillsGateway, the native App updater and production feed, startup Cloud and appearance state, localization delegates, the App shell, brand tokens, and the shared Mermaid WebView renderer.
+ * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway/updater dependencies, selected-wallpaper startup presentation readiness, always-enabled product motion, Mermaid renderer, and eager configured-Cloud initialization.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'domain/skills_gateway.dart';
+import 'infrastructure/app_updater.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/app_shell.dart';
 import 'ui/app_providers.dart';
@@ -22,10 +23,14 @@ class SkillsGoApp extends StatelessWidget {
     super.key,
     required this.gateway,
     this.onStartupPresentationReady,
+    this.appUpdater,
+    this.appUpdateSource,
   });
 
   final SkillsGateway gateway;
   final Future<void> Function()? onStartupPresentationReady;
+  final AppUpdater? appUpdater;
+  final Uri? appUpdateSource;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +39,8 @@ class SkillsGoApp extends StatelessWidget {
       child: _SkillsGoMaterialApp(
         gateway: gateway,
         onStartupPresentationReady: onStartupPresentationReady,
+        appUpdater: appUpdater ?? VelopackAppUpdater(),
+        appUpdateSource: appUpdateSource ?? appUpdateProductionSource(),
       ),
     );
   }
@@ -43,10 +50,14 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
   const _SkillsGoMaterialApp({
     required this.gateway,
     required this.onStartupPresentationReady,
+    required this.appUpdater,
+    required this.appUpdateSource,
   });
 
   final SkillsGateway gateway;
   final Future<void> Function()? onStartupPresentationReady;
+  final AppUpdater appUpdater;
+  final Uri? appUpdateSource;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,7 +85,11 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
       builder: (context, child) => MermaidWebViewRendererScope(child: child!),
       home: _StartupPresentationGate(
         onReady: onStartupPresentationReady,
-        child: AppShell(gateway: gateway),
+        child: AppShell(
+          gateway: gateway,
+          appUpdater: appUpdater,
+          appUpdateSource: appUpdateSource,
+        ),
       ),
     );
   }

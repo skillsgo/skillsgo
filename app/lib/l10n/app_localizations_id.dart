@@ -23,6 +23,48 @@ class AppLocalizationsId extends AppLocalizations {
   String get settings => 'Pengaturan';
 
   @override
+  String get appUpdateTitle => 'Pembaruan aplikasi';
+
+  @override
+  String get appUpdateDescription =>
+      'Periksa versi SkillsGo terbaru di feed rilis.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Pembaruan aplikasi tidak tersedia dalam build ini.';
+
+  @override
+  String get appUpdateReady =>
+      'Periksa saat Anda siap. SkillsGo tidak akan memasang pembaruan tanpa tindakan Anda.';
+
+  @override
+  String get appUpdateChecking => 'Memeriksa pembaruan aplikasi…';
+
+  @override
+  String get appUpdateApplying =>
+      'Mengunduh pembaruan. SkillsGo akan dimulai ulang saat siap.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo tidak dapat memeriksa pembaruan. Periksa koneksi dan coba lagi.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version tersedia.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version sudah terbaru.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Periksa pembaruan aplikasi';
+
+  @override
+  String get appUpdateApplyAction => 'Perbarui dan mulai ulang';
+
+  @override
   String get openSettings => 'Buka Pengaturan';
 
   @override

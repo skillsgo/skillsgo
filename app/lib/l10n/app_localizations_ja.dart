@@ -23,6 +23,44 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings => '設定';
 
   @override
+  String get appUpdateTitle => 'アプリのアップデート';
+
+  @override
+  String get appUpdateDescription => 'リリースフィードで新しい SkillsGo バージョンを確認します。';
+
+  @override
+  String get appUpdateNotConfigured => 'このビルドではアプリのアップデートを利用できません。';
+
+  @override
+  String get appUpdateReady => '準備ができたら確認してください。操作なしで更新がインストールされることはありません。';
+
+  @override
+  String get appUpdateChecking => 'アプリのアップデートを確認しています…';
+
+  @override
+  String get appUpdateApplying =>
+      'アップデートをダウンロードしています。準備ができると SkillsGo が再起動します。';
+
+  @override
+  String get appUpdateCheckFailed => 'アップデートを確認できませんでした。接続を確認してもう一度お試しください。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version を利用できます。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version は最新です。';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'アップデートを確認';
+
+  @override
+  String get appUpdateApplyAction => '更新して再起動';
+
+  @override
   String get openSettings => '設定を開く';
 
   @override

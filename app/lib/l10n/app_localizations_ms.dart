@@ -23,6 +23,48 @@ class AppLocalizationsMs extends AppLocalizations {
   String get settings => 'tetapan';
 
   @override
+  String get appUpdateTitle => 'Kemas kini aplikasi';
+
+  @override
+  String get appUpdateDescription =>
+      'Semak versi SkillsGo yang lebih baharu dalam suapan keluaran.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Kemas kini aplikasi tidak tersedia dalam binaan ini.';
+
+  @override
+  String get appUpdateReady =>
+      'Semak apabila anda bersedia. SkillsGo tidak akan memasang kemas kini tanpa tindakan anda.';
+
+  @override
+  String get appUpdateChecking => 'Menyemak kemas kini aplikasi…';
+
+  @override
+  String get appUpdateApplying =>
+      'Memuat turun kemas kini. SkillsGo akan dimulakan semula apabila sedia.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo tidak dapat menyemak kemas kini. Semak sambungan dan cuba lagi.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version tersedia.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version adalah terkini.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Semak kemas kini aplikasi';
+
+  @override
+  String get appUpdateApplyAction => 'Kemas kini dan mula semula';
+
+  @override
   String get openSettings => 'Buka Tetapan';
 
   @override

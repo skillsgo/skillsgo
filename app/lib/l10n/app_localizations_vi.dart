@@ -23,6 +23,48 @@ class AppLocalizationsVi extends AppLocalizations {
   String get settings => 'Cài đặt';
 
   @override
+  String get appUpdateTitle => 'Bản cập nhật ứng dụng';
+
+  @override
+  String get appUpdateDescription =>
+      'Kiểm tra phiên bản SkillsGo mới hơn trong nguồn phát hành.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Bản dựng này không hỗ trợ cập nhật ứng dụng.';
+
+  @override
+  String get appUpdateReady =>
+      'Hãy kiểm tra khi bạn sẵn sàng. SkillsGo sẽ không cài đặt nếu bạn chưa thao tác.';
+
+  @override
+  String get appUpdateChecking => 'Đang kiểm tra bản cập nhật…';
+
+  @override
+  String get appUpdateApplying =>
+      'Đang tải bản cập nhật. SkillsGo sẽ khởi động lại khi sẵn sàng.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo không thể kiểm tra bản cập nhật. Hãy kiểm tra kết nối và thử lại.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version hiện đã có.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version đã được cập nhật.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Kiểm tra bản cập nhật';
+
+  @override
+  String get appUpdateApplyAction => 'Cập nhật và khởi động lại';
+
+  @override
   String get openSettings => 'Mở cài đặt';
 
   @override

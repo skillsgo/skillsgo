@@ -23,6 +23,48 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settings => 'Налаштування';
 
   @override
+  String get appUpdateTitle => 'Оновлення програми';
+
+  @override
+  String get appUpdateDescription =>
+      'Перевірити наявність нової версії SkillsGo у каналі випусків.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'Оновлення програми недоступні в цій збірці.';
+
+  @override
+  String get appUpdateReady =>
+      'Перевіряйте, коли зручно. SkillsGo не встановить оновлення без вашої дії.';
+
+  @override
+  String get appUpdateChecking => 'Перевірка оновлення програми…';
+
+  @override
+  String get appUpdateApplying =>
+      'Завантаження оновлення. SkillsGo перезапуститься, коли все буде готово.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'Не вдалося перевірити оновлення. Перевірте з’єднання та повторіть спробу.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'Доступна версія SkillsGo $version.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version оновлено.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Перевірити оновлення';
+
+  @override
+  String get appUpdateApplyAction => 'Оновити й перезапустити';
+
+  @override
   String get openSettings => 'Відкрийте налаштування';
 
   @override

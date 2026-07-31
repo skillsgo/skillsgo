@@ -23,6 +23,48 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings => 'الإعدادات';
 
   @override
+  String get appUpdateTitle => 'تحديثات التطبيق';
+
+  @override
+  String get appUpdateDescription =>
+      'تحقق من موجز الإصدارات للحصول على إصدار أحدث من SkillsGo.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'تحديثات التطبيق غير متاحة في هذا الإصدار.';
+
+  @override
+  String get appUpdateReady =>
+      'تحقق عندما تكون مستعدًا. لن يثبت SkillsGo تحديثًا دون إجراء منك.';
+
+  @override
+  String get appUpdateChecking => 'جارٍ التحقق من تحديث التطبيق…';
+
+  @override
+  String get appUpdateApplying =>
+      'جارٍ تنزيل التحديث. سيُعاد تشغيل SkillsGo عندما يصبح جاهزًا.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'تعذر على SkillsGo التحقق من التحديث. تحقق من الاتصال وحاول مرة أخرى.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'يتوفر SkillsGo $version.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version محدّث.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'التحقق من تحديثات التطبيق';
+
+  @override
+  String get appUpdateApplyAction => 'التحديث وإعادة التشغيل';
+
+  @override
   String get openSettings => 'افتح الإعدادات';
 
   @override
