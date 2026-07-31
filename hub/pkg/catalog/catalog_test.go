@@ -108,13 +108,13 @@ func TestForegroundAndBackgroundPoolConfigsRetainIndependentZeroMinimums(t *test
 	require.Zero(t, background.MinConns)
 }
 
-func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSHA, sum string, visibility PublicationVisibility, candidates []Skill) {
+func publishTestPackage(t *testing.T, c *Catalog, packagePath, version, commitSHA, sum string, candidates []Skill) {
 	t.Helper()
 	identity := PackageVersion{
 		Version: version, Ref: "refs/tags/" + version, CommitSHA: commitSHA, TreeSHA: "module-tree",
 		ContentSum: sum, Sum: sum, CommitTime: time.Now().UTC(),
 	}
-	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, visibility))
+	require.NoError(t, c.PublishPackageVersion(t.Context(), packagePath, identity, candidates))
 }
 
 func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
@@ -153,7 +153,7 @@ func upsertTestSkill(t *testing.T, c *Catalog, skill *Skill) error {
 		CommitSHA: "commit-" + fmt.Sprint(now.UnixNano()), TreeSHA: "module-tree-" + fmt.Sprint(now.UnixNano()),
 		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: now,
 	}
-	return c.PublishPackageVersionWithVisibility(t.Context(), skill.PackagePath, identity, candidates, CurrentPublication)
+	return c.PublishPackageVersion(t.Context(), skill.PackagePath, identity, candidates)
 }
 
 func TestValidatePackageVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T) {
@@ -166,7 +166,7 @@ func TestValidatePackageVersionAllowsDuplicateNamesAtDistinctPaths(t *testing.T)
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "module-tree",
 		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Now().UTC(),
 	}
-	require.NoError(t, ValidatePackageVersion(packagePath, identity, candidates, CurrentPublication))
+	require.NoError(t, ValidatePackageVersion(packagePath, identity, candidates))
 }
 
 func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
@@ -423,10 +423,10 @@ func TestPostgresCatalogSearchSkillCardsUsesOneQueryForEveryCardinalityLocaleAnd
 			Path: fmt.Sprintf("skills/skill-%03d", index), Description: "source description",
 		})
 	}
-	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/acme/many-skills", PackageVersion{
+	require.NoError(t, c.PublishPackageVersion(t.Context(), "github.com/acme/many-skills", PackageVersion{
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "many-skills", TreeSHA: "many-skills-tree",
 		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Unix(1, 0).UTC(),
-	}, onePackage, CurrentPublication))
+	}, onePackage))
 	for index := range 20 {
 		require.NoError(t, upsertTestSkill(t, c, &Skill{
 			PackagePath: fmt.Sprintf("github.com/acme/package-%02d", index), Name: fmt.Sprintf("common-package-skill-%02d", index),
@@ -552,7 +552,7 @@ func TestPackageVersionOwnsVersionAndMemberHistory(t *testing.T) {
 			}
 			candidates = append(candidates, Skill{PackagePath: module, Path: path, Name: name, Description: "History fixture"})
 		}
-		publishTestPackage(t, c, module, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, candidates)
+		publishTestPackage(t, c, module, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", candidates)
 	}
 
 	publish("v1.0.0", "commit-v1", "root", "member")
@@ -569,7 +569,7 @@ func TestPackageVersionOwnsVersionAndMemberHistory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"root", "member"}, []string{v1Members[0].Name, v1Members[1].Name})
 
-	// A lower current publication remains historical; members never own
+	// A lower-priority effective publication remains non-current; members never own
 	// independent latest-version pointers.
 	publish("v0.9.0", "commit-v0", "root", "member")
 	_, err = c.CurrentSkill(ctx, module, "member")
@@ -579,7 +579,7 @@ func TestPackageVersionOwnsVersionAndMemberHistory(t *testing.T) {
 	require.Equal(t, "v2.0.0", current.Version)
 }
 
-func TestCurrentPublicationPriorityMatrix(t *testing.T) {
+func TestEffectivePublicationCurrentPriorityMatrix(t *testing.T) {
 	c := openTestCatalog(t)
 	module := "github.com/acme/current-priority"
 	member := []Skill{{PackagePath: module, Path: "skills/demo", Name: "demo", Description: "Priority fixture"}}
@@ -599,7 +599,7 @@ func TestCurrentPublicationPriorityMatrix(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			publishTestPackage(t, c, module, test.candidate, "commit-"+test.candidate, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, member)
+			publishTestPackage(t, c, module, test.candidate, "commit-"+test.candidate, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", member)
 			currentVersion, found, err := c.CurrentPackageVersion(t.Context(), module)
 			require.NoError(t, err)
 			require.True(t, found)
@@ -611,7 +611,32 @@ func TestCurrentPublicationPriorityMatrix(t *testing.T) {
 	}
 }
 
-func TestConcurrentCurrentPublicationsConvergeOnHighestPriorityVersion(t *testing.T) {
+func TestEquivalentObservationRecomputesMissingCurrentFromEffectiveVersions(t *testing.T) {
+	c := openTestCatalog(t)
+	packagePath := "github.com/acme/equivalent-recompute"
+	members := []Skill{{PackagePath: packagePath, Path: "skills/demo", Name: "demo", Description: "Equivalent recompute fixture"}}
+	contentSum := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	publishTestPackage(t, c, packagePath, "v1.0.0", "commit-v1", contentSum, members)
+
+	_, err := c.pool.Exec(t.Context(), `UPDATE packages SET current_version_id=NULL WHERE path=$1`, packagePath)
+	require.NoError(t, err)
+
+	err = c.WithPackagePublicationLock(t.Context(), packagePath, func(writer PackagePublicationWriter) error {
+		changed, recordErr := writer.RecordEquivalent(PackageVersion{
+			Version: "v1.0.1", Ref: "refs/tags/v1.0.1", CommitSHA: "commit-v1.0.1", TreeSHA: "tree-v1.0.1",
+			ContentSum: contentSum, CommitTime: time.Unix(2, 0).UTC(),
+		}, "v1.0.0")
+		require.True(t, changed)
+		return recordErr
+	})
+	require.NoError(t, err)
+	current, found, err := c.CurrentPackageVersion(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.0.0", current, "the effective target becomes current, never its equivalent observed Version")
+}
+
+func TestConcurrentEffectivePublicationsConvergeOnHighestPriorityVersion(t *testing.T) {
 	c := openTestCatalog(t)
 	packagePath := "github.com/acme/concurrent-current"
 	versions := []string{"v1.4.0", "v0.9.0", "v2.0.0-rc.1", "v1.1.0", "v0.0.0-20260730000000-abcdef123456"}
@@ -629,7 +654,8 @@ func TestConcurrentCurrentPublicationsConvergeOnHighestPriorityVersion(t *testin
 					ContentSum: fmt.Sprintf("h1:%043d=", index), Sum: fmt.Sprintf("h1:%043d=", index), CommitTime: time.Unix(int64(index+1), 0).UTC(),
 				}
 				members := []Skill{{PackagePath: packagePath, Path: "skills/demo", Name: "demo", Description: version}}
-				return writer.Publish(identity, members, CurrentPublication)
+				_, err := writer.Publish(identity, members)
+				return err
 			})
 			errs <- err
 		}(index, version)

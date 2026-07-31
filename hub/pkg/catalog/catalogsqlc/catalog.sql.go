@@ -1298,21 +1298,6 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 	return items, nil
 }
 
-const setCurrentVersion = `-- name: SetCurrentVersion :exec
-UPDATE packages SET current_version_id=$2, updated_at=$3 WHERE id=$1
-`
-
-type SetCurrentVersionParams struct {
-	ID               int64       `json:"id"`
-	CurrentVersionID pgtype.Int8 `json:"current_version_id"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-}
-
-func (q *Queries) SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error {
-	_, err := q.db.Exec(ctx, setCurrentVersion, arg.ID, arg.CurrentVersionID, arg.UpdatedAt)
-	return err
-}
-
 const setCurrentVersionByCoordinate = `-- name: SetCurrentVersionByCoordinate :exec
 UPDATE packages AS target
 SET current_version_id=(

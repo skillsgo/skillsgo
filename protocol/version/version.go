@@ -27,12 +27,18 @@ func HasHigherPriority(candidate, current string) bool {
 	if !IsImmutable(current) {
 		return true
 	}
-	candidateKind := immutableVersionKind(candidate)
-	currentKind := immutableVersionKind(current)
-	if candidateKind != currentKind {
-		return candidateKind < currentKind
+	return comparePriority(candidate, current) > 0
+}
+
+// HighestPriority returns the stable-first highest canonical immutable Version.
+func HighestPriority(versions []string) string {
+	highest := ""
+	for _, candidate := range versions {
+		if HasHigherPriority(candidate, highest) {
+			highest = candidate
+		}
 	}
-	return semver.Compare(candidate, current) > 0
+	return highest
 }
 
 // OrderedImmutableVersions returns the unique canonical immutable versions in
@@ -51,14 +57,21 @@ func OrderedImmutableVersions(versions []string) []string {
 		ordered = append(ordered, candidate)
 	}
 	sort.Slice(ordered, func(i, j int) bool {
-		iKind := immutableVersionKind(ordered[i])
-		jKind := immutableVersionKind(ordered[j])
-		if iKind != jKind {
-			return iKind < jKind
-		}
-		return semver.Compare(ordered[i], ordered[j]) > 0
+		return comparePriority(ordered[i], ordered[j]) > 0
 	})
 	return ordered
+}
+
+func comparePriority(left, right string) int {
+	leftKind := immutableVersionKind(left)
+	rightKind := immutableVersionKind(right)
+	if leftKind < rightKind {
+		return 1
+	}
+	if leftKind > rightKind {
+		return -1
+	}
+	return semver.Compare(left, right)
 }
 
 func immutableVersionKind(version string) int {

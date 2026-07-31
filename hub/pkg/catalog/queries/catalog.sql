@@ -76,9 +76,6 @@ INSERT INTO skills (
     version_id, name, path, description, description_digest, document_digest, source_language
 ) VALUES ($1,$2,$3,$4,$5,$6,$7);
 
--- name: SetCurrentVersion :exec
-UPDATE packages SET current_version_id=$2, updated_at=$3 WHERE id=$1;
-
 -- name: SetCurrentVersionByCoordinate :exec
 UPDATE packages AS target
 SET current_version_id=(

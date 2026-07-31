@@ -83,6 +83,13 @@ func TestHasHigherPriorityScenarioMatrix(t *testing.T) {
 	}
 }
 
+func TestHighestPriorityUsesTheSharedCurrentVersionRule(t *testing.T) {
+	pseudo := "v3.0.0-0.20260727010101-fedcba654321"
+	if got := HighestPriority([]string{pseudo, "v4.0.0-rc.1", "v1.9.0", "v2.0.0", "latest"}); got != "v2.0.0" {
+		t.Fatalf("HighestPriority() = %q, want v2.0.0", got)
+	}
+}
+
 func TestLatestPublishedScenarioMatrix(t *testing.T) {
 	pseudo := "v1.0.1-0.20260101000000-abcdef123456"
 	tests := []struct {

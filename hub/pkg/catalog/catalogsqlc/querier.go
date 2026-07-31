@@ -45,7 +45,6 @@ type Querier interface {
 	RejectBackfillRun(ctx context.Context, arg RejectBackfillRunParams) (int64, error)
 	SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error)
 	SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error)
-	SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error
 	SetCurrentVersionByCoordinate(ctx context.Context, arg SetCurrentVersionByCoordinateParams) error
 	SkillByCoordinate(ctx context.Context, arg SkillByCoordinateParams) (SkillByCoordinateRow, error)
 	SkillLocalizedDescription(ctx context.Context, arg SkillLocalizedDescriptionParams) (pgtype.Text, error)

@@ -64,7 +64,7 @@ func TestPackagePublicationCommitsThroughItsAdvisoryLockConnection(t *testing.T)
 	identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "source-commit", TreeSHA: "source-tree", ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(1, 0).UTC()}
 	members := []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: "Demo.", DocumentDigest: digest, SourceLanguage: "en"}}
 	commit := newPackagePublicationCommit(backend, metadata, filepath.Join(t.TempDir(), "authoring"))
-	created, resolvedVersion, err := commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+	created, resolvedVersion, _, err := commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}})
 	require.NoError(t, err)
 	require.True(t, created)
 	require.Equal(t, version, resolvedVersion)
@@ -77,7 +77,7 @@ func TestPackagePublicationCommitsThroughItsAdvisoryLockConnection(t *testing.T)
 	require.True(t, found)
 }
 
-func TestCurrentPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T) {
+func TestDemandPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T) {
 	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
@@ -96,7 +96,8 @@ func TestCurrentPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T)
 		sum, sumErr := protocolartifact.PackageEntriesSum(entries, packagePath, version)
 		require.NoError(t, sumErr)
 		identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()}
-		return commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+		created, resolved, _, publishErr := commit.Publish(t.Context(), packagePath, identity, entries, members, []moduleSkillContent{{digest: digest, content: content}})
+		return created, resolved, publishErr
 	}
 	created, resolved, err := publish("v1.0.0")
 	require.NoError(t, err)
@@ -123,7 +124,7 @@ func TestCurrentPublicationRecordsEquivalentVersionWithoutArtifact(t *testing.T)
 	require.Equal(t, "commit-v1.0.1", commitSHA)
 }
 
-func TestCurrentPublicationPublishesContentThatReturnsAfterAnInterveningChange(t *testing.T) {
+func TestDemandPublicationPublishesContentThatReturnsAfterAnInterveningChange(t *testing.T) {
 	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
@@ -142,7 +143,7 @@ func TestCurrentPublicationPublishesContentThatReturnsAfterAnInterveningChange(t
 		require.NoError(t, contentErr)
 		digest := fmt.Sprintf("sha256:%x", sha256.Sum256(content))
 		identity := catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()}
-		created, resolved, publishErr := commit.Publish(t.Context(), packagePath, identity, entries, []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: description, DocumentDigest: digest}}, []moduleSkillContent{{digest: digest, content: content}}, catalog.CurrentPublication)
+		created, resolved, _, publishErr := commit.Publish(t.Context(), packagePath, identity, entries, []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: description, DocumentDigest: digest}}, []moduleSkillContent{{digest: digest, content: content}})
 		require.NoError(t, publishErr)
 		require.True(t, created)
 		require.Equal(t, version, resolved)
@@ -156,7 +157,7 @@ func TestCurrentPublicationPublishesContentThatReturnsAfterAnInterveningChange(t
 	require.Equal(t, []string{"v1.2.0", "v1.1.0", "v1.0.0"}, versions)
 }
 
-func TestHistoricalPublicationCollapsesAdjacentEquivalentContent(t *testing.T) {
+func TestBackfillPublicationCollapsesAdjacentEquivalentContentAndEstablishesCurrent(t *testing.T) {
 	metadata, err := catalog.Open(t.Context(), config.DatabaseConfig{DSN: actionTestPostgresDSN(t), MaxOpenConns: 1})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
@@ -193,6 +194,10 @@ func TestHistoricalPublicationCollapsesAdjacentEquivalentContent(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, "v1.0.0", resolved.Version)
+	current, found, err := metadata.CurrentPackageVersion(t.Context(), packagePath)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "v1.0.0", current, "historical batch writes must establish current from effective Versions")
 }
 
 func TestPackagePublicationSessionHydratesOnceAndFlushesBoundedGenerations(t *testing.T) {
@@ -287,6 +292,6 @@ func testModulePublicationInput(t *testing.T, packagePath, version string) modul
 		version: catalog.PackageVersion{Version: version, Ref: "refs/tags/" + version, CommitSHA: "source-" + version,
 			TreeSHA: "tree-" + version, ContentSum: contentSum, Sum: sum, CommitTime: time.Unix(int64(len(version)), 0).UTC()},
 		entries: entries, members: []catalog.Skill{{PackagePath: packagePath, Name: "demo", Path: ".", Description: description, DocumentDigest: digest, SourceLanguage: "en"}},
-		skillContents: []moduleSkillContent{{digest: digest, content: content}}, visibility: catalog.HistoricalPublication,
+		skillContents: []moduleSkillContent{{digest: digest, content: content}}, adjacentDedup: true,
 	}
 }
