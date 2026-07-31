@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.0.1, and unzip-compatible package inspection.
 # [OUTPUT]: Produces and verifies one platform-layout-aware unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
-# [POS]: Serves as the deterministic native-build-to-candidate packaging boundary shared by local release rehearsals and GitHub Actions.
+# [POS]: Serves as the deterministic, official-layout-aware native-build-to-candidate boundary shared by local rehearsals and GitHub Actions.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -24,8 +24,9 @@ case "${target}:${architecture}" in
     readonly pack_dir="${app_root}/build/windows/x64/runner/Release"
     readonly main_exe="skillsgo.exe"
     readonly bundled_cli="${pack_dir}/data/bin/skillsgo.exe"
-    readonly packaged_main="lib/app/skillsgo.exe"
-    readonly packaged_cli="lib/app/data/bin/skillsgo.exe"
+    readonly -a packaged_entries=(
+      "lib/app/skillsgo.exe"
+      "lib/app/data/bin/skillsgo.exe")
     readonly portable_name="SkillsGo-${channel}-Portable.zip"
     readonly installer_name="SkillsGo-${channel}-Setup.exe"
     ;;
@@ -35,8 +36,9 @@ case "${target}:${architecture}" in
     readonly pack_dir="${app_root}/build/linux/x64/release/bundle"
     readonly main_exe="skillsgo"
     readonly bundled_cli="${pack_dir}/data/bin/skillsgo"
-    readonly packaged_main="lib/app/usr/bin/skillsgo"
-    readonly packaged_cli="lib/app/usr/bin/data/bin/skillsgo"
+    # Velopack's official Linux release builder places the complete AppImage,
+    # rather than the expanded AppDir, inside the full update package.
+    readonly -a packaged_entries=("lib/app/SkillsGo.AppImage")
     readonly portable_name="SkillsGo-${channel}.AppImage"
     readonly installer_name=""
     ;;
@@ -46,8 +48,9 @@ case "${target}:${architecture}" in
     readonly pack_dir="${app_root}/build/macos-arm64/Build/Products/Release/SkillsGo.app"
     readonly main_exe="SkillsGo"
     readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
-    readonly packaged_main="lib/app/Contents/MacOS/SkillsGo"
-    readonly packaged_cli="lib/app/Contents/Resources/bin/skillsgo"
+    readonly -a packaged_entries=(
+      "lib/app/Contents/MacOS/SkillsGo"
+      "lib/app/Contents/Resources/bin/skillsgo")
     readonly portable_name="SkillsGo-${channel}-Portable.zip"
     readonly installer_name=""
     ;;
@@ -57,8 +60,9 @@ case "${target}:${architecture}" in
     readonly pack_dir="${app_root}/build/macos-x86_64/Build/Products/Release/SkillsGo.app"
     readonly main_exe="SkillsGo"
     readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
-    readonly packaged_main="lib/app/Contents/MacOS/SkillsGo"
-    readonly packaged_cli="lib/app/Contents/Resources/bin/skillsgo"
+    readonly -a packaged_entries=(
+      "lib/app/Contents/MacOS/SkillsGo"
+      "lib/app/Contents/Resources/bin/skillsgo")
     readonly portable_name="SkillsGo-${channel}-Portable.zip"
     readonly installer_name=""
     ;;
@@ -129,7 +133,7 @@ for manifest_field in \
 done
 
 readonly package_entries="$(unzip -Z1 "${full_package}")"
-for package_entry in "${packaged_main}" "${packaged_cli}"; do
+for package_entry in "${packaged_entries[@]}"; do
   if ! grep -Fxq "${package_entry}" <<<"${package_entries}"; then
     echo "Velopack full package is missing ${package_entry}: ${full_package}" >&2
     exit 1
