@@ -52,7 +52,7 @@ func TestPostgresCatalog(t *testing.T) {
 	} {
 		require.NoError(t, upsertTestSkill(t, c, item))
 	}
-	publishTestPackage(t, c, skill.PackagePath, "v1.0.0", "commit-a", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, []Skill{*skill})
+	publishTestPackage(t, c, skill.PackagePath, "v1.0.0", "commit-a", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", []Skill{*skill})
 	member, err := c.CurrentSkill(ctx, skill.PackagePath, skill.Name)
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", member.Version)
@@ -68,7 +68,7 @@ func TestPostgresCatalog(t *testing.T) {
 		{PackagePath: duplicatePackage, Name: "shared", Path: "two", Description: "Second"},
 		{PackagePath: duplicatePackage, Name: "shared", Path: "one", Description: "First"},
 	}
-	publishTestPackage(t, c, duplicatePackage, "v1.0.0", "commit-duplicate", "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CurrentPublication, duplicateCandidates)
+	publishTestPackage(t, c, duplicatePackage, "v1.0.0", "commit-duplicate", "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", duplicateCandidates)
 	members, err := c.VersionSkills(ctx, duplicatePackage, "v1.0.0")
 	require.NoError(t, err)
 	require.Equal(t, []string{"one", "two"}, []string{members[0].Path, members[1].Path})
