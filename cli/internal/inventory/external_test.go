@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses isolated Agent discovery roots containing independent External Skill copies, physical aliases, divergent files, and nested external symlinks.
- * [OUTPUT]: Specifies deterministic bounded content identity, identical-copy deduplication, divergent-content separation, alias collapse, and root-contained symlink hashing.
+ * [OUTPUT]: Specifies deterministic bounded scope-aware content identity, identical-copy deduplication, cross-scope and divergent-content separation, alias collapse, and root-contained symlink hashing.
  * [POS]: Serves as the executable behavior and safety contract for read-only External inventory identity.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/install"
 )
 
 func TestExternalInventoryMergesIdenticalCopiesAcrossAgents(t *testing.T) {
@@ -58,10 +59,24 @@ func TestExternalInventoryKeepsFallbackNamesSeparate(t *testing.T) {
 		}
 	}
 	entries := map[string]*Entry{}
-	ensureExternalEntry(entries, "first", "", first)
-	ensureExternalEntry(entries, "second", "", second)
+	ensureExternalEntry(entries, "first", "", first, install.ScopeGlobal, "")
+	ensureExternalEntry(entries, "second", "", second, install.ScopeGlobal, "")
 	if len(entries) != 2 {
 		t.Fatalf("different fallback names produced %d entries: %#v", len(entries), entries)
+	}
+}
+
+func TestExternalInventoryKeepsGlobalAndProjectCopiesSeparate(t *testing.T) {
+	root := t.TempDir()
+	global := filepath.Join(root, "global")
+	project := filepath.Join(root, "project")
+	writeExternalSkill(t, global, "shared")
+	writeExternalSkill(t, project, "shared")
+	entries := map[string]*Entry{}
+	ensureExternalEntry(entries, "demo", "", global, install.ScopeGlobal, "")
+	ensureExternalEntry(entries, "demo", "", project, install.ScopeProject, filepath.Dir(project))
+	if len(entries) != 2 {
+		t.Fatalf("cross-scope copies produced %d entries: %#v", len(entries), entries)
 	}
 }
 

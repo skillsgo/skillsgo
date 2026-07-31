@@ -6,7 +6,7 @@
 - `inventory.go`: composes Package-managed and External state, target health, and Discovery-Root-derived visibility into the mode-free inventory v7 Library report.
 - `package_reconciliation.go`: resolves exact locked metadata through the read-through Provider, verifies Scope Package Trees and member-symlink Projections, and optionally reacquires content for explicit verification commands.
 - `visibility_test.go`: specifies Discovery-Root-derived Agent visibility without introducing managed targets or persisted visibility state.
-- `external.go`: discovers content-identified External Installations and safe physical aliases through bounded read-only scans of installed Agents' known Discovery Roots and explicit project roots.
+- `external.go`: discovers scope-aware, content-identified External Installations and safe physical aliases through bounded read-only scans of installed Agents' known Discovery Roots and explicit project roots.
 - `external_test.go`: specifies identical-copy deduplication, divergent-content separation, physical alias handling, bounded hashing, and nested-symlink containment.
 
 ## Architectural Boundary

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the installed Agent Catalog, explicit project roots, accounted target keys, and bounded read-only filesystem content under known Agent Skill directories.
- * [OUTPUT]: Adds content-identified External Installation entries, manifest names/descriptions, and target metadata without creating declarations, mutating content, following nested symlinks, or contacting a Hub.
+ * [OUTPUT]: Adds scope-aware content-identified External Installation entries, manifest names/descriptions, and target metadata without creating declarations, mutating content, following nested symlinks, or contacting a Hub.
  * [POS]: Serves as the read-only external-content discovery half of unified inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -137,7 +137,7 @@ func scanExternalDirectory(
 		if name == "" {
 			name = child.Name()
 		}
-		entry := ensureExternalEntry(entries, name, metadata.description, path)
+		entry := ensureExternalEntry(entries, name, metadata.description, path, scope, projectRoot)
 		entry.Targets = append(entry.Targets, Target{
 			Scope: scope, ProjectRoot: projectRoot, Agent: agentID,
 			Path: filepath.Clean(path), Version: "", Health: HealthHealthy,
@@ -164,8 +164,8 @@ func lexicallyWithin(root, candidate string) bool {
 	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func ensureExternalEntry(entries map[string]*Entry, name, description, path string) *Entry {
-	inventoryKey := externalInventoryKey(name, path)
+func ensureExternalEntry(entries map[string]*Entry, name, description, path string, scope install.Scope, projectRoot string) *Entry {
+	inventoryKey := externalInventoryKey(name, path, scope, projectRoot)
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
@@ -178,17 +178,19 @@ func ensureExternalEntry(entries map[string]*Entry, name, description, path stri
 	return entry
 }
 
-func externalInventoryKey(name, path string) string {
+func externalInventoryKey(name, path string, scope install.Scope, projectRoot string) string {
 	resolvedPath := resolveInventoryPath(path)
 	digest, err := externalContentDigest(resolvedPath, externalContentEntryLimit, externalContentByteLimit)
 	if err == nil {
 		entryHash := sha256.New()
 		_, _ = io.WriteString(entryHash, "skillsgo-external-entry-v1\x00")
+		_ = writeExternalDigestFrame(entryHash, []byte(scope))
+		_ = writeExternalDigestFrame(entryHash, []byte(filepath.Clean(projectRoot)))
 		_ = writeExternalDigestFrame(entryHash, []byte(name))
 		_ = writeExternalDigestFrame(entryHash, []byte(digest))
 		return "external:" + hex.EncodeToString(entryHash.Sum(nil))
 	}
-	fallback := sha256.Sum256([]byte("skillsgo-external-path-v1\x00" + resolvedPath))
+	fallback := sha256.Sum256([]byte("skillsgo-external-path-v1\x00" + string(scope) + "\x00" + filepath.Clean(projectRoot) + "\x00" + resolvedPath))
 	return "external:" + hex.EncodeToString(fallback[:])
 }
 
