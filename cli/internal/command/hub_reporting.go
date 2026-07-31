@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on successful local installation facts, cryptographic event IDs, the current Hub Origin, and the shared install-event route.
- * [OUTPUT]: Provides best-effort, non-blocking current-Hub install-event reporting that never changes an installation result.
+ * [OUTPUT]: Provides one best-effort batch Package install-event request with stable event identity, exact Skill facts, optional App version, and bounded network time that never changes an installation result.
  * [POS]: Serves as the narrow post-commit adapter between CLI-owned installation facts and the Hub's always-present community-data surface.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,15 +23,15 @@ import (
 
 type hubInstallFact struct {
 	PackagePath string
-	SkillName   string
-	SkillPath   string
 	Version     string
+	Skills      []cloud.InstallEventSkill
 	Agents      []string
 	Scope       install.Scope
+	AppVersion  string
 }
 
 func reportHubInstall(ctx context.Context, hubURL string, fact hubInstallFact) {
-	if strings.TrimSpace(fact.PackagePath) == "" || strings.TrimSpace(fact.SkillName) == "" || strings.TrimSpace(fact.SkillPath) == "" || strings.TrimSpace(fact.Version) == "" || len(fact.Agents) == 0 {
+	if strings.TrimSpace(fact.PackagePath) == "" || strings.TrimSpace(fact.Version) == "" || len(fact.Skills) == 0 || len(fact.Agents) == 0 {
 		return
 	}
 	origin, err := url.Parse(hubURL)
@@ -45,9 +45,9 @@ func reportHubInstall(ctx context.Context, hubURL string, fact hubInstallFact) {
 		return
 	}
 	body, err := json.Marshal(cloud.InstallEvent{
-		EventID: hex.EncodeToString(eventID), PackagePath: fact.PackagePath, SkillName: fact.SkillName,
-		SkillPath: fact.SkillPath, Version: fact.Version, Agents: fact.Agents,
-		Scope: cloud.Scope(fact.Scope), CLIVersion: version, OccurredAt: time.Now().UTC(),
+		EventID: hex.EncodeToString(eventID), PackagePath: fact.PackagePath,
+		Version: fact.Version, Skills: fact.Skills, Agents: fact.Agents,
+		Scope: cloud.Scope(fact.Scope), CLIVersion: version, AppVersion: fact.AppVersion, OccurredAt: time.Now().UTC(),
 	})
 	if err != nil {
 		return

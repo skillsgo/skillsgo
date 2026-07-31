@@ -40,7 +40,7 @@ func VerifyHandler(t testingT, handler http.Handler) {
 func VerifyExecutor(t testingT, execute func(*http.Request) (*http.Response, error)) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), PackagePath: "github.com/skillsgo/conformance", SkillName: "fixture", SkillPath: "skills/fixture", Version: "v1.0.0", Agents: []string{"codex"}, Scope: cloud.ScopeGlobal, CLIVersion: "conformance", OccurredAt: now}
+	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), PackagePath: "github.com/skillsgo/conformance", Version: "v1.0.0", Skills: []cloud.InstallEventSkill{{Name: "fixture", Path: "skills/fixture"}}, Agents: []string{"codex"}, Scope: cloud.ScopeGlobal, CLIVersion: "conformance", OccurredAt: now}
 	body, err := json.Marshal(event)
 	if err != nil {
 		t.Fatalf("marshal event: %v", err)

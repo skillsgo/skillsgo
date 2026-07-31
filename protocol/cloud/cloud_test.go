@@ -37,7 +37,7 @@ func TestVocabularyAndPaths(t *testing.T) {
 
 func TestInstallEventValidationAndJSON(t *testing.T) {
 	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
-	event := InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "demo", SkillPath: "skills/demo", Version: "v1.0.0", Agents: []string{"codex"}, Scope: ScopeGlobal, CLIVersion: "0.1.0", OccurredAt: now}
+	event := InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", Version: "v1.0.0", Skills: []InstallEventSkill{{Name: "demo", Path: "skills/demo"}}, Agents: []string{"codex"}, Scope: ScopeGlobal, CLIVersion: "0.1.0", AppVersion: "1.2.3", OccurredAt: now}
 	if message := event.Validate(now); message != "" {
 		t.Fatal(message)
 	}
@@ -45,24 +45,38 @@ func TestInstallEventValidationAndJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{`"eventId"`, `"packagePath"`, `"skillName"`, `"skillPath"`, `"cliVersion"`, `"occurredAt"`} {
+	for _, field := range []string{`"eventId"`, `"packagePath"`, `"skills"`, `"name"`, `"path"`, `"cliVersion"`, `"appVersion"`, `"occurredAt"`} {
 		if !strings.Contains(string(encoded), field) {
 			t.Fatalf("missing field %s in %s", field, encoded)
 		}
 	}
+	clone := func() InstallEvent {
+		value := event
+		value.Skills = append([]InstallEventSkill(nil), event.Skills...)
+		value.Agents = append([]string(nil), event.Agents...)
+		return value
+	}
 	cases := map[string]InstallEvent{
-		"short identity":     func() InstallEvent { value := event; value.EventID = "short"; return value }(),
-		"blank repository":   func() InstallEvent { value := event; value.PackagePath = " "; return value }(),
-		"blank skill":        func() InstallEvent { value := event; value.SkillPath = " "; return value }(),
-		"invalid skill name": func() InstallEvent { value := event; value.SkillName = "Bad Skill"; return value }(),
-		"unsafe skill path":  func() InstallEvent { value := event; value.SkillPath = "../demo"; return value }(),
-		"invalid scope":      func() InstallEvent { value := event; value.Scope = "user"; return value }(),
-		"missing agents":     func() InstallEvent { value := event; value.Agents = nil; return value }(),
-		"too many agents":    func() InstallEvent { value := event; value.Agents = make([]string, 101); return value }(),
-		"missing time":       func() InstallEvent { value := event; value.OccurredAt = time.Time{}; return value }(),
-		"expired time":       func() InstallEvent { value := event; value.OccurredAt = now.Add(-8 * 24 * time.Hour); return value }(),
-		"future time":        func() InstallEvent { value := event; value.OccurredAt = now.Add(11 * time.Minute); return value }(),
-		"oversize event id":  func() InstallEvent { value := event; value.EventID = strings.Repeat("x", 129); return value }(),
+		"short identity":     func() InstallEvent { value := clone(); value.EventID = "short"; return value }(),
+		"blank repository":   func() InstallEvent { value := clone(); value.PackagePath = " "; return value }(),
+		"missing skills":     func() InstallEvent { value := clone(); value.Skills = nil; return value }(),
+		"blank skill":        func() InstallEvent { value := clone(); value.Skills[0].Path = " "; return value }(),
+		"invalid skill name": func() InstallEvent { value := clone(); value.Skills[0].Name = "Bad Skill"; return value }(),
+		"unsafe skill path":  func() InstallEvent { value := clone(); value.Skills[0].Path = "../demo"; return value }(),
+		"duplicate path": func() InstallEvent {
+			value := clone()
+			value.Skills = append(value.Skills, value.Skills[0])
+			return value
+		}(),
+		"invalid scope":      func() InstallEvent { value := clone(); value.Scope = "user"; return value }(),
+		"missing agents":     func() InstallEvent { value := clone(); value.Agents = nil; return value }(),
+		"too many agents":    func() InstallEvent { value := clone(); value.Agents = make([]string, 101); return value }(),
+		"missing CLI":        func() InstallEvent { value := clone(); value.CLIVersion = ""; return value }(),
+		"padded App version": func() InstallEvent { value := clone(); value.AppVersion = " 1.0 "; return value }(),
+		"missing time":       func() InstallEvent { value := clone(); value.OccurredAt = time.Time{}; return value }(),
+		"expired time":       func() InstallEvent { value := clone(); value.OccurredAt = now.Add(-8 * 24 * time.Hour); return value }(),
+		"future time":        func() InstallEvent { value := clone(); value.OccurredAt = now.Add(11 * time.Minute); return value }(),
+		"oversize event id":  func() InstallEvent { value := clone(); value.EventID = strings.Repeat("x", 129); return value }(),
 	}
 	for name, invalid := range cases {
 		if invalid.Validate(now) == "" {
@@ -89,7 +103,7 @@ func TestPublishedJSONVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	var event InstallEvent
-	if err := json.Unmarshal(installJSON, &event); err != nil || event.Scope != ScopeGlobal || event.PackagePath == "" || event.SkillName == "" || event.SkillPath == "" {
+	if err := json.Unmarshal(installJSON, &event); err != nil || event.Scope != ScopeGlobal || event.PackagePath == "" || len(event.Skills) == 0 {
 		t.Fatalf("invalid install vector: %#v, %v", event, err)
 	}
 	rankingJSON, err := os.ReadFile("testdata/ranking.valid.json")

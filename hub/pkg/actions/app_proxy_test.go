@@ -97,7 +97,7 @@ func TestProxyRoutes(t *testing.T) {
 			require.NoError(t, json.NewDecoder(resp.Body).Decode(&document))
 			assert.Equal(t, "3.1.0", document.OpenAPI)
 		}},
-		{"POST", cloud.InstallEventsPath, `{"eventId":"0123456789abcdef","packagePath":"github.com/acme/skills","skillName":"demo","skillPath":"skills/demo","version":"v1.0.0","agents":["codex"],"scope":"global","cliVersion":"v1.0.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339) + `"}`, func(t *testing.T, req *http.Request, resp *http.Response) {
+		{"POST", cloud.InstallEventsPath, `{"eventId":"0123456789abcdef","packagePath":"github.com/acme/skills","version":"v1.0.0","skills":[{"name":"demo","path":"skills/demo"}],"agents":["codex"],"scope":"global","cliVersion":"v1.0.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339) + `"}`, func(t *testing.T, req *http.Request, resp *http.Response) {
 			assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 			var response cloud.InstallEventResponse
 			require.NoError(t, json.NewDecoder(resp.Body).Decode(&response))
