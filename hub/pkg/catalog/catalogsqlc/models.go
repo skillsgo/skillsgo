@@ -11,15 +11,18 @@ import (
 )
 
 type Localization struct {
-	ResourceKind  string      `json:"resource_kind"`
-	SourceDigest  string      `json:"source_digest"`
-	Lang          string      `json:"lang"`
-	ResultKind    string      `json:"result_kind"`
-	TextContent   pgtype.Text `json:"text_content"`
-	ErrorKind     pgtype.Text `json:"error_kind"`
-	ErrorMessage  pgtype.Text `json:"error_message"`
-	PromptVersion string      `json:"prompt_version"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ResourceKind    string      `json:"resource_kind"`
+	SourceDigest    string      `json:"source_digest"`
+	Lang            string      `json:"lang"`
+	ResultKind      string      `json:"result_kind"`
+	TextContent     pgtype.Text `json:"text_content"`
+	ErrorKind       pgtype.Text `json:"error_kind"`
+	ErrorMessage    pgtype.Text `json:"error_message"`
+	PromptVersion   string      `json:"prompt_version"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+	FailureCount    int32       `json:"failure_count"`
+	RetryAt         *time.Time  `json:"retry_at"`
+	FailureTerminal bool        `json:"failure_terminal"`
 }
 
 // Canonical Skill Packages and mutable source/discovery state.

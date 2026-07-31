@@ -197,7 +197,7 @@ func defaultConfig() *Config {
 			BackgroundMaxOpenConns: 40,
 			ConnMaxLifetime:        1800,
 		},
-		TaskQueue: &TaskQueueConfig{MaxWorkers: 10, RepositoryMaterializerCapacity: 8},
+		TaskQueue: &TaskQueueConfig{MaxWorkers: 10, FetchPollSeconds: 10, RepositoryMaterializerCapacity: 8},
 		LLM: &LLMConfig{
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLangs: []string{"en", "zh-Hans-CN", "zh-Hant-TW", "zh-Hant-HK", "ja", "ko", "fr", "de", "it", "es", "pt-BR", "ru", "ar", "hi", "id", "tr", "nl", "pl", "th", "vi", "ms", "sv", "uk"}, TranslationInterval: 900,

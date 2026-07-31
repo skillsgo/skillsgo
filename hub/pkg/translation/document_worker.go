@@ -16,7 +16,7 @@ import (
 )
 
 type DocumentStore interface {
-	DocumentTranslationCandidates(context.Context, string, string, int) ([]catalog.DocumentTranslationCandidate, error)
+	DocumentTranslationCandidates(context.Context, []string, string, int) ([]catalog.DocumentTranslationCandidate, error)
 	UpsertDocumentLocalization(context.Context, string, string, string, string) error
 }
 
@@ -37,22 +37,13 @@ func NewDocumentWorker(store DocumentStore, contents storage.SkillContentStore, 
 }
 
 func (w *DocumentWorker) Plan(ctx context.Context) ([]DocumentWork, error) {
-	work := make([]DocumentWork, 0, w.batch)
-	for _, lang := range w.langs {
-		remaining := w.batch - len(work)
-		if remaining == 0 {
-			break
-		}
-		candidates, err := w.store.DocumentTranslationCandidates(ctx, lang, w.promptVersion, remaining)
-		if err != nil {
-			return nil, fmt.Errorf("scan document translation candidates for %s: %w", lang, err)
-		}
-		for _, candidate := range candidates {
-			if len(work) == w.batch {
-				break
-			}
-			work = append(work, DocumentWork{SourceDigest: candidate.DocumentDigest, Lang: lang, PromptVersion: w.promptVersion})
-		}
+	candidates, err := w.store.DocumentTranslationCandidates(ctx, w.langs, w.promptVersion, w.batch)
+	if err != nil {
+		return nil, fmt.Errorf("scan document translation candidates: %w", err)
+	}
+	work := make([]DocumentWork, 0, len(candidates))
+	for _, candidate := range candidates {
+		work = append(work, DocumentWork{SourceDigest: candidate.DocumentDigest, Lang: candidate.Lang, PromptVersion: w.promptVersion})
 	}
 	return work, nil
 }
