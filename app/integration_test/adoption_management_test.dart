@@ -205,9 +205,6 @@ Future<void> _executeAdoption(
   expect(find.byKey(const Key('batch-adoption-modal')), findsNothing);
 }
 
-Future<void> _pumpUntilAdoptionCount(WidgetTester tester, int count) =>
-    _pumpUntil(tester, _adoptionCount(count));
-
 Future<void> _pumpUntilEither(
   WidgetTester tester,
   Finder first,
