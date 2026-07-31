@@ -86,6 +86,7 @@ void main() {
             path: 'skills/ask-matt',
             description: 'Route a request to the best matching skill.',
             versions: ['v3.2.1', 'v2.0.0', 'v1.0.0'],
+            matchScore: 1,
             imageUrl: 'https://github.com/example.png?size=256',
           ),
           AdoptionCandidate(
@@ -94,6 +95,7 @@ void main() {
             path: 'skills/ask-matt',
             description: 'A less similar routing assistant.',
             versions: ['v1.0.0'],
+            matchScore: .4,
           ),
           AdoptionCandidate(
             packagePath: 'github.com/example/skills-zh',
@@ -101,6 +103,7 @@ void main() {
             path: 'skills/ask-matt',
             description: '询问哪项技能最适合当前情况。',
             versions: ['v1.0.0'],
+            matchScore: 0,
           ),
         ],
       );

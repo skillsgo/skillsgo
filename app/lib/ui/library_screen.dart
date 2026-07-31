@@ -29,7 +29,6 @@ import 'install_location_popover.dart';
 import 'install_operation_controller.dart';
 import 'installation_flows.dart';
 import 'library_controller.dart';
-import 'library/description_similarity.dart';
 import 'native_components.dart';
 import 'nested_navigation.dart';
 import 'project_identity_icon.dart';

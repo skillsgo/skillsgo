@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared system vocabulary for metrics, discovery collections, and canonical Skill coordinates.
- * [OUTPUT]: Provides discovery summaries with local-version install actions, canonical pagination, ordered Package-scoped candidate queries, canonical coordinate identity and exact Package member paths, Package metadata, pages, and auditable files.
+ * [OUTPUT]: Provides discovery summaries with local-version install actions, canonical pagination, ordered Package-scoped candidate queries carrying local descriptions for server ranking, canonical coordinate identity and exact Package member paths, Package metadata, pages, and auditable files.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -146,10 +146,15 @@ class Pagination {
 }
 
 class PackageFindQuery {
-  const PackageFindQuery({required this.name, this.packagePath = ''});
+  const PackageFindQuery({
+    required this.name,
+    this.packagePath = '',
+    this.description = '',
+  });
 
   final String name;
   final String packagePath;
+  final String description;
 }
 
 class SkillFile {

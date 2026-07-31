@@ -14,12 +14,12 @@ import (
 )
 
 func TestFindJSONContract(t *testing.T) {
-	request := FindCandidatesRequest{Queries: []CandidateQuery{{Name: "ask-matt"}, {Name: "demo", PackagePath: "github.com/o/r"}}, Limit: 10, Lang: "zh-CN"}
+	request := FindCandidatesRequest{Queries: []CandidateQuery{{Name: "ask-matt", Description: "Route requests."}, {Name: "demo", PackagePath: "github.com/o/r"}}, Limit: 10, Lang: "zh-CN"}
 	document, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(document) != `{"queries":[{"name":"ask-matt"},{"name":"demo","packagePath":"github.com/o/r"}],"limit":10,"lang":"zh-CN"}` {
+	if string(document) != `{"queries":[{"name":"ask-matt","description":"Route requests."},{"name":"demo","packagePath":"github.com/o/r"}],"limit":10,"lang":"zh-CN"}` {
 		t.Fatalf("unexpected Find request %s", document)
 	}
 	response := FindCandidatesResponse{Candidates: [][]SkillCandidate{
@@ -29,7 +29,7 @@ func TestFindJSONContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(document) != `{"candidates":[[{"packagePath":"github.com/o/r","versions":["v1.1.0","v1.0.0"],"name":"demo","path":"skills/demo","description":""}]]}` {
+	if string(document) != `{"candidates":[[{"packagePath":"github.com/o/r","versions":["v1.1.0","v1.0.0"],"name":"demo","path":"skills/demo","description":"","matchScore":0}]]}` {
 		t.Fatalf("unexpected Find response %s", document)
 	}
 }

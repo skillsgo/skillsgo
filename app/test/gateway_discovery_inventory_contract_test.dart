@@ -181,7 +181,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"candidates":[[{"packagePath":"github.com/example/skills","versions":["v1.2.3","v1.1.0"],"path":"skills/ask-matt","name":"ask-matt","description":"Route requests.","imageUrl":"https://github.com/example.png?size=256"}]]}',
+              '{"candidates":[[{"packagePath":"github.com/example/skills","versions":["v1.2.3","v1.1.0"],"path":"skills/ask-matt","name":"ask-matt","description":"Route requests.","imageUrl":"https://github.com/example.png?size=256","matchScore":1.0}]]}',
           stderr: '',
         );
       final gateway = DesktopSkillsGateway(
@@ -190,7 +190,7 @@ void main() {
       );
 
       final results = await gateway.findSources(const [
-        PackageFindQuery(name: 'ask-matt'),
+        PackageFindQuery(name: 'ask-matt', description: 'Route requests.'),
       ]);
 
       expect(runner.calls, hasLength(1));
@@ -205,9 +205,10 @@ void main() {
         'json',
       ]);
       expect(jsonDecode(runner.lastStdin!)['queries'], [
-        {'name': 'ask-matt'},
+        {'name': 'ask-matt', 'description': 'Route requests.'},
       ]);
       expect(results.single.single.versions, ['v1.2.3', 'v1.1.0']);
+      expect(results.single.single.matchScore, 1);
       expect(
         results.single.single.imageUrl,
         'https://github.com/example.png?size=256',

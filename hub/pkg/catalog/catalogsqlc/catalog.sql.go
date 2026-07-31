@@ -400,10 +400,11 @@ func (q *Queries) FailBackfillRun(ctx context.Context, arg FailBackfillRunParams
 
 const findExactLocalizedSkillsBatch = `-- name: FindExactLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, package_paths.package_path, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, package_paths.package_path, descriptions.description, ids.ordinal
     FROM unnest($2::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest($3::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
     JOIN unnest($4::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal) USING (ordinal)
+    JOIN unnest($5::text[]) WITH ORDINALITY AS descriptions(description, ordinal) USING (ordinal)
 ),
 ranked AS (
     SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,input.ordinal,
@@ -411,21 +412,26 @@ ranked AS (
            COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host,m.source_path AS source_repository,mvs.path,
            mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
+           CASE WHEN input.description='' THEN 0::double precision
+                ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
+               ORDER BY CASE WHEN input.package_path<>'' THEN 0 ELSE 1 END,
+                        CASE WHEN input.description='' THEN 0::double precision
+                             ELSE similarity(mvs.description,input.description)::double precision END DESC,
+                        CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
     JOIN packages m ON input.package_path='' OR m.path=input.package_path
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
-      ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
+      ON mvs.version_id=mv.id AND mvs.name=input.query
     LEFT JOIN localizations ls
-      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$5 AND ls.result_kind='translated'
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$6 AND ls.result_kind='translated'
 )
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
-       source_host,source_repository,path,latest_version,stars,created_at,updated_at
+       source_host,source_repository,path,latest_version,stars,created_at,updated_at,match_score
 FROM ranked
 WHERE result_ordinal<=CASE WHEN requested_package_path<>'' THEN 1 ELSE $1::bigint END
 ORDER BY ordinal,result_ordinal
@@ -436,6 +442,7 @@ type FindExactLocalizedSkillsBatchParams struct {
 	QueryIds     []string `json:"query_ids"`
 	Queries      []string `json:"queries"`
 	PackagePaths []string `json:"package_paths"`
+	Descriptions []string `json:"descriptions"`
 	Lang         string   `json:"lang"`
 }
 
@@ -455,6 +462,7 @@ type FindExactLocalizedSkillsBatchRow struct {
 	Stars                int64     `json:"stars"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+	MatchScore           float64   `json:"match_score"`
 }
 
 func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error) {
@@ -463,6 +471,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 		arg.QueryIds,
 		arg.Queries,
 		arg.PackagePaths,
+		arg.Descriptions,
 		arg.Lang,
 	)
 	if err != nil {
@@ -488,6 +497,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 			&i.Stars,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchScore,
 		); err != nil {
 			return nil, err
 		}
@@ -2024,7 +2034,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

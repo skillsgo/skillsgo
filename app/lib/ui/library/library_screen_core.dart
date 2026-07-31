@@ -341,23 +341,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           }),
                         ),
                         const SizedBox(width: 4),
-                        Tooltip(
-                          message: context.l10n.refresh,
-                          child: IconButton(
-                            key: const Key('library-refresh'),
-                            onPressed: loading ? null : () => unawaited(load()),
-                            icon: loading
-                                ? const SizedBox.square(
-                                    dimension: 16,
-                                    child: CircularProgressIndicator(
+                        SizedBox.square(
+                          dimension: 36,
+                          child: Tooltip(
+                            message: context.l10n.refresh,
+                            child: IconButton(
+                              key: const Key('library-refresh'),
+                              padding: EdgeInsets.zero,
+                              onPressed: loading
+                                  ? null
+                                  : () => unawaited(load()),
+                              icon: loading
+                                  ? const SizedBox.square(
+                                      dimension: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.8,
+                                      ),
+                                    )
+                                  : const HugeIcon(
+                                      icon: HugeIcons.strokeRoundedRefresh,
+                                      size: 18,
                                       strokeWidth: 1.8,
                                     ),
-                                  )
-                                : const HugeIcon(
-                                    icon: HugeIcons.strokeRoundedRefresh,
-                                    size: 18,
-                                    strokeWidth: 1.8,
-                                  ),
+                            ),
                           ),
                         ),
                       ],
