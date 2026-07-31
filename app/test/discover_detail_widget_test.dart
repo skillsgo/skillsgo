@@ -291,6 +291,34 @@ void main() {
     },
   );
 
+  testWidgets(
+    'successful installation toast does not block the surrounding App',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(installed: false);
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      final card = find.byType(SkillCard).first;
+      await tester.tap(
+        find.descendant(of: card, matching: find.text('Install')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(PrimaryCapsuleButton, 'Install').last,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(find.text('Installation complete'), findsOneWidget);
+      await tester.tap(searchInput());
+      await tester.enterText(searchInput(), 'still interactive');
+      await tester.pump();
+
+      expect(find.text('still interactive'), findsOneWidget);
+    },
+  );
+
   testWidgets('detail exposes canonical Package Version Skill metadata', (
     tester,
   ) async {
