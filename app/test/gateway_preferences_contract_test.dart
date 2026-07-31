@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SharedPreferences, temporary filesystem boundaries, controlled CLI output, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies appearance including persistent first-run theme-color and wallpaper selection, language, reminder, one-time adoption-introduction, the single Hub Origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
+ * [OUTPUT]: Specifies appearance including persistent first-run theme-color and wallpaper selection, language, reminder, one-time adoption-introduction, the single Hub Origin, onboarding, Added Project, offline local-management with unknown External source evidence, risk, storage, and diagnostics contracts.
  * [POS]: Serves as the preferences, onboarding, and project contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -490,7 +490,7 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 7,
+              'schemaVersion': 8,
               'entries': [
                 {
                   'inventoryKey': 'external:offline',
@@ -502,6 +502,11 @@ void main() {
                   'projects': <String>[],
                   'versions': <String>[],
                   'versionDivergence': false,
+                  'externalSource': {
+                    'status': 'unknown',
+                    'confidence': 'none',
+                    'evidence': <Object>[],
+                  },
                   'visibility': <Object>[],
                   'targets': [
                     {
@@ -544,6 +549,10 @@ void main() {
 
       expect(projects.single.name, 'Offline Project');
       expect(inventory.single.provenance, LibraryProvenance.external);
+      expect(
+        inventory.single.externalSource?.status,
+        ExternalSourceStatus.unknown,
+      );
       expect(agents.installed.single.id, 'codex');
       expect(detail.content, '# Offline Skill');
       expect(await gateway.loadAddedProjects(), isEmpty);

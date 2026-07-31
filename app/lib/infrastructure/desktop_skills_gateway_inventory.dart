@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, strict inventory codecs, local filesystem inspection, and Library domain models.
- * [OUTPUT]: Provides Agent catalogs, unified local inventory, local Skill detail, and shared structured CLI invocation.
+ * [OUTPUT]: Provides Agent catalogs, unified local inventory with strict External source evidence, local Skill detail, and shared structured CLI invocation.
  * [POS]: Serves as the offline-capable local inventory capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -153,6 +153,13 @@ mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
               throw const FormatException();
             }
             final provenance = _libraryProvenance(raw['provenance']);
+            final externalSource = provenance == LibraryProvenance.external
+                ? _externalSourceResolution(raw['externalSource'])
+                : null;
+            if (provenance != LibraryProvenance.external &&
+                raw['externalSource'] != null) {
+              throw const FormatException();
+            }
             final targetKeys = <String>{};
             final targets = (raw['targets'] as List)
                 .map((target) {
@@ -277,6 +284,7 @@ mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
               projects: projectRoots,
               versions: versions,
               versionDivergence: raw['versionDivergence'] as bool,
+              externalSource: externalSource,
             );
           })
           .toList(growable: false);

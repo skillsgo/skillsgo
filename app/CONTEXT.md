@@ -88,6 +88,10 @@ _Avoid_: repair, delete by Skill name, silent overwrite
 A Skill found in an Installed Agent's directory that is not derived from a declared Package Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Package dependency.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
+**External Source Evidence**:
+Read-only local metadata from supported skills.sh locks, ClawHub origin records, and Git origin configuration that describes an External Installation as confirmed, import-only, conflicting, or unknown. It remains separate from Hub candidates and never changes External ownership or authorizes mutation.
+_Avoid_: verified Hub identity, automatic adoption, remote provenance lookup
+
 **External Removal Plan**:
 A reviewed, state-bound deletion for one exact External Installation. SkillsGo shows the exact target and deletes only after confirmation; it does not create ownership metadata or infer a source.
 _Avoid_: name-based claim, automatic import, reinstall

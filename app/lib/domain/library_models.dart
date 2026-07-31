@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
+ * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, local External source evidence, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -222,6 +222,52 @@ class SkillDetail {
   final List<SkillInstallationTarget> packageInstallationTargets;
 }
 
+enum ExternalSourceStatus { confirmed, importOnly, conflict, unknown }
+
+enum ExternalSourceConfidence { high, medium, none }
+
+enum ExternalSourceEvidenceKind { skillsShLock, clawHubOrigin, gitOrigin }
+
+class ExternalSourceEvidence {
+  const ExternalSourceEvidence({
+    required this.kind,
+    required this.confidence,
+    required this.location,
+    this.coordinate = '',
+    this.url = '',
+    this.channel = '',
+    this.reference = '',
+  });
+
+  final ExternalSourceEvidenceKind kind;
+  final ExternalSourceConfidence confidence;
+  final String location;
+  final String coordinate;
+  final String url;
+  final String channel;
+  final String reference;
+}
+
+class ExternalSourceResolution {
+  const ExternalSourceResolution({
+    required this.status,
+    required this.confidence,
+    required this.evidence,
+    this.coordinate = '',
+    this.url = '',
+    this.channel = '',
+    this.reference = '',
+  });
+
+  final ExternalSourceStatus status;
+  final ExternalSourceConfidence confidence;
+  final String coordinate;
+  final String url;
+  final String channel;
+  final String reference;
+  final List<ExternalSourceEvidence> evidence;
+}
+
 class InstalledSkill {
   const InstalledSkill({
     required this.name,
@@ -238,6 +284,7 @@ class InstalledSkill {
     this.projects = const [],
     this.versions = const [],
     this.versionDivergence = false,
+    this.externalSource,
   });
 
   final String name;
@@ -254,6 +301,7 @@ class InstalledSkill {
   final List<String> projects;
   final List<String> versions;
   final bool versionDivergence;
+  final ExternalSourceResolution? externalSource;
 
   bool get isLinkedToCodex =>
       agents.any((agent) => agent.toLowerCase() == 'codex');
@@ -299,6 +347,7 @@ class InstalledSkill {
       projects: (selectedProjects.toList()..sort()),
       versions: versionList,
       versionDivergence: versionList.length > 1,
+      externalSource: externalSource,
     );
   }
 }

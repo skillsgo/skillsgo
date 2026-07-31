@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Find reads, an injected portable HTTP client with an independently configured Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, platform-HTTP-independent Cloud ranking contracts, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
+ * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, platform-HTTP-independent Cloud ranking contracts, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory with External source evidence, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,13 +36,13 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":8,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":8,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
       ]);
@@ -103,7 +103,7 @@ void main() {
         ),
         ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":7,"entries":[]}',
+          stdout: '{"schemaVersion":8,"entries":[]}',
           stderr: '',
         ),
         ProcessOutput(
@@ -114,7 +114,7 @@ void main() {
         ),
         ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":7,"entries":[]}',
+          stdout: '{"schemaVersion":8,"entries":[]}',
           stderr: '',
         ),
       ]);
@@ -404,7 +404,7 @@ void main() {
           ),
           const ProcessOutput(
             exitCode: 0,
-            stdout: '{"schemaVersion":7,"entries":[]}',
+            stdout: '{"schemaVersion":8,"entries":[]}',
             stderr: '',
           ),
         ]);
@@ -462,7 +462,7 @@ void main() {
           ProcessOutput(exitCode: 0, stdout: repositoryInfo, stderr: ''),
           ProcessOutput(
             exitCode: 0,
-            stdout: '{"schemaVersion":7,"entries":[]}',
+            stdout: '{"schemaVersion":8,"entries":[]}',
             stderr: '',
           ),
         ]);
@@ -506,7 +506,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
+            r'{"schemaVersion":8,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
     final gateway = DesktopSkillsGateway(
@@ -575,7 +575,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
+            '{"schemaVersion":8,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = DesktopSkillsGateway(
@@ -614,7 +614,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
+            '{"schemaVersion":8,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"externalSource":{"status":"confirmed","confidence":"high","coordinate":"github.com/a/b","url":"https://github.com/a/b","evidence":[{"kind":"skills-sh-lock","confidence":"high","location":".agents/.skill-lock.json","coordinate":"github.com/a/b","url":"https://github.com/a/b","channel":"skills.sh","reference":"github"}]},"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = DesktopSkillsGateway(
@@ -633,6 +633,19 @@ void main() {
     expect(external.packagePath, isEmpty);
     expect(external.versions, isEmpty);
     expect(external.targets.single.version, isEmpty);
+    expect(external.externalSource?.status, ExternalSourceStatus.confirmed);
+    expect(external.externalSource?.confidence, ExternalSourceConfidence.high);
+    expect(external.externalSource?.coordinate, 'github.com/a/b');
+    expect(
+      external.externalSource?.evidence.single.kind,
+      ExternalSourceEvidenceKind.skillsShLock,
+    );
+    expect(
+      skills
+          .singleWhere((skill) => skill.provenance == LibraryProvenance.hub)
+          .externalSource,
+      isNull,
+    );
   });
 
   test(

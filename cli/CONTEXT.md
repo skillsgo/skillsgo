@@ -100,6 +100,10 @@ _Avoid_: Managed Scope registry file, App preferences, Workspace manifest, confi
 The state-bound execution of App-reviewed External Skill mappings. Each item carries an exact Package Path, immutable Version, Skill Path, and existing Installation Targets. The user's confirmation authorizes replacement of conflicting Package Store and Package Projection paths in the selected scope. The CLI fully prepares the ordinary Package add change set before touching External paths, then commits Package state and External retirement through the same mutation Plan; any pre-publication failure rolls everything back, while successful commit hands superseded copies to Trash during final cleanup.
 _Avoid_: Tree-SHA authority, automatic candidate choice, separate adoption Store, subprocess recursion, pre-download External movement, implicit local import
 
+**External Source Evidence**:
+A bounded, read-only, offline description recovered from supported local manager records or the External Skill's own Git origin. It distinguishes a confirmed canonical repository, an import channel without upstream proof, conflicting repository claims, and no evidence. It never changes External ownership, proves content identity, or authorizes a mutation. Inventory does not transmit it, and Adoption Review does not add it to the existing explicit Hub name-and-description candidate query.
+_Avoid_: Hub candidate, managed Package identity, content authentication, automatic adoption
+
 **Recovery Area**:
 The CLI-owned rollback location used only for External paths that are not direct Package Projection replacements during adoption. Its durable mapping preserves original directory and symlink paths across process interruption. A retry restores unfinished retirement before new adoption; a failed mutation restores the original topology; successful commit moves the recovery directory to the operating-system Trash during final cleanup.
 _Avoid_: permanent backup, Package Store, cache, installation source, post-commit Package compensation

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on visible External Library entries, CLI-mediated batch Find, localized management copy, the SkillsGo logo asset, PackageAvatar, native buttons, single-select MultiDropdown controls, the vendored Portal Labs split interaction, and semantic theme roles.
- * [OUTPUT]: Provides the feature-gated inline Adoption Review with one server-ranked exact-name bounded batch match, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, reviewed handoff records, and group-bounded sticky morphing actions.
+ * [OUTPUT]: Provides the feature-gated inline Adoption Review with separate local source evidence and Hub-ranked candidates, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled candidate options, Package-synchronized single-select Version menus, latest eligible version selection, reviewed handoff records, and group-bounded sticky morphing actions.
  * [POS]: Serves as the user-reviewed matching presentation inside the Library journey while leaving Hub transport and filesystem mutation to the Gateway and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -480,7 +480,7 @@ class _AdoptionReviewColumnHeader extends StatelessWidget {
       child: _AdoptionReviewGridRow(
         leading: const SizedBox.shrink(),
         skill: Text(context.l10n.skillColumnLabel, style: style),
-        source: Text(context.l10n.packageSourceColumnLabel, style: style),
+        source: Text(context.l10n.hub, style: style),
         version: Text(context.l10n.versionColumnLabel, style: style),
       ),
     );
@@ -583,6 +583,20 @@ class _AdoptionReviewRow extends StatelessWidget {
                 height: 1.35,
               ),
             ),
+            const SizedBox(height: 2),
+            Text(
+              '${context.l10n.localSource}: ${_externalSourceSummary(context, skill.externalSource)}',
+              key: ValueKey(
+                'library-adoption-local-source-${skill.inventoryKey}',
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                fontSize: 11,
+                height: 1.3,
+              ),
+            ),
           ],
         ),
         source: _AdoptionSourceSelector(
@@ -600,6 +614,16 @@ class _AdoptionReviewRow extends StatelessWidget {
     );
   }
 }
+
+String _externalSourceSummary(
+  BuildContext context,
+  ExternalSourceResolution? source,
+) => switch (source?.status) {
+  ExternalSourceStatus.confirmed => source!.coordinate,
+  ExternalSourceStatus.importOnly => '${source!.channel} · ${source.reference}',
+  ExternalSourceStatus.conflict => context.l10n.targetConflict,
+  ExternalSourceStatus.unknown || null => context.l10n.unknown,
+};
 
 class _AdoptionVersionSelector extends StatelessWidget {
   const _AdoptionVersionSelector({

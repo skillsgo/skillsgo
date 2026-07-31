@@ -262,7 +262,7 @@ void main() {
       ..serverResponses.add(
         ProcessOutput(
           exitCode: 0,
-          stdout: jsonEncode({'schemaVersion': 7, 'entries': <Object>[]}),
+          stdout: jsonEncode({'schemaVersion': 8, 'entries': <Object>[]}),
           stderr: '',
         ),
       );
@@ -590,7 +590,7 @@ class _BlockingCliServerRunner extends FakeProcessRunner
   void completeRequest() => _requestResult.complete(
     ProcessOutput(
       exitCode: 0,
-      stdout: jsonEncode({'schemaVersion': 7, 'entries': <Object>[]}),
+      stdout: jsonEncode({'schemaVersion': 8, 'entries': <Object>[]}),
       stderr: '',
     ),
   );

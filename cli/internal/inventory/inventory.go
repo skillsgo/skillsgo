@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, and read-only target filesystem metadata.
- * [OUTPUT]: Provides inventory v7 Package-managed and External Library reconciliation with explicit projects, direct-Projection target health, and Discovery-Root-derived visibility.
+ * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, and bounded local External source records.
+ * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with explicit projects, direct-Projection target health, local External source evidence, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,7 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
 
-const SchemaVersion = 7
+const SchemaVersion = 8
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -47,18 +47,19 @@ type Report struct {
 }
 
 type Entry struct {
-	InventoryKey      string       `json:"inventoryKey"`
-	Name              string       `json:"name"`
-	Description       string       `json:"description"`
-	PackagePath       string       `json:"packagePath,omitempty"`
-	Provenance        Provenance   `json:"provenance"`
-	Health            Health       `json:"health"`
-	Agents            []string     `json:"agents"`
-	Projects          []string     `json:"projects"`
-	Versions          []string     `json:"versions"`
-	VersionDivergence bool         `json:"versionDivergence"`
-	Targets           []Target     `json:"targets"`
-	Visibility        []Visibility `json:"visibility"`
+	InventoryKey      string                    `json:"inventoryKey"`
+	Name              string                    `json:"name"`
+	Description       string                    `json:"description"`
+	PackagePath       string                    `json:"packagePath,omitempty"`
+	Provenance        Provenance                `json:"provenance"`
+	Health            Health                    `json:"health"`
+	Agents            []string                  `json:"agents"`
+	Projects          []string                  `json:"projects"`
+	Versions          []string                  `json:"versions"`
+	VersionDivergence bool                      `json:"versionDivergence"`
+	Targets           []Target                  `json:"targets"`
+	Visibility        []Visibility              `json:"visibility"`
+	ExternalSource    *ExternalSourceResolution `json:"externalSource,omitempty"`
 }
 
 type Visibility struct {
@@ -132,6 +133,7 @@ func Build(options Options) (Report, error) {
 		options.IncludeGlobal,
 		options.Catalog,
 	)
+	addExternalSourceEvidence(entries, home)
 	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}

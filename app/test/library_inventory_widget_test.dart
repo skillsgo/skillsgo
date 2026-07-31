@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library loading, icon-only local refresh, all-provenance Global inventory, inventory resilience, location navigation, filtering, project recovery, reviewed external-Skill Source matching, and Batch Adoption console geometry.
+ * [OUTPUT]: Specifies Library loading, icon-only local refresh, all-provenance Global inventory, inventory resilience, location navigation, filtering, project recovery, locally evidenced External Skills with separate Hub candidate matching, and Batch Adoption console geometry.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,6 +40,23 @@ void main() {
             ),
           ],
           provenance: LibraryProvenance.external,
+          externalSource: ExternalSourceResolution(
+            status: ExternalSourceStatus.confirmed,
+            confidence: ExternalSourceConfidence.high,
+            coordinate: 'github.com/example/original',
+            url: 'https://github.com/example/original',
+            evidence: [
+              ExternalSourceEvidence(
+                kind: ExternalSourceEvidenceKind.skillsShLock,
+                confidence: ExternalSourceConfidence.high,
+                location: '.agents/.skill-lock.json',
+                coordinate: 'github.com/example/original',
+                url: 'https://github.com/example/original',
+                channel: 'skills.sh',
+                reference: 'github',
+              ),
+            ],
+          ),
         ),
         InstalledSkill(
           inventoryKey: 'external:second',
@@ -126,6 +143,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(gateway.queries, ['ask-matt']);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('library-adoption-column-header')),
+          matching: find.text('Hub'),
+        ),
+        findsOneWidget,
+      );
+      final localSource = tester.widget<Text>(
+        find.byKey(
+          const ValueKey('library-adoption-local-source-external:first'),
+        ),
+      );
+      expect(localSource.data, contains('github.com/example/original'));
       expect(find.text('example/skills'), findsNWidgets(2));
       expect(
         find.byKey(

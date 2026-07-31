@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared DesktopSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
- * [OUTPUT]: Provides centralized machine-document envelope validation, minimal Package-install receipt validation, private strict CLI decoders, argument encoders, and schema invariants.
+ * [OUTPUT]: Provides centralized machine-document envelope validation, strict local External source evidence decoding, minimal Package-install receipt validation, private CLI decoders, argument encoders, and schema invariants.
  * [POS]: Serves as the machine-protocol codec implementation inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,7 +79,136 @@ int _localTargetReadRank(SkillInstallationTarget target) {
   return 1;
 }
 
-const _inventorySchemaVersion = 7;
+const _inventorySchemaVersion = 8;
+
+ExternalSourceStatus _externalSourceStatus(Object? value) => switch (value) {
+  'confirmed' => ExternalSourceStatus.confirmed,
+  'import-only' => ExternalSourceStatus.importOnly,
+  'conflict' => ExternalSourceStatus.conflict,
+  'unknown' => ExternalSourceStatus.unknown,
+  _ => throw const FormatException('Unknown External source status.'),
+};
+
+ExternalSourceConfidence _externalSourceConfidence(Object? value) =>
+    switch (value) {
+      'high' => ExternalSourceConfidence.high,
+      'medium' => ExternalSourceConfidence.medium,
+      'none' => ExternalSourceConfidence.none,
+      _ => throw const FormatException('Unknown External source confidence.'),
+    };
+
+ExternalSourceEvidenceKind _externalSourceEvidenceKind(Object? value) =>
+    switch (value) {
+      'skills-sh-lock' => ExternalSourceEvidenceKind.skillsShLock,
+      'clawhub-origin' => ExternalSourceEvidenceKind.clawHubOrigin,
+      'git-origin' => ExternalSourceEvidenceKind.gitOrigin,
+      _ => throw const FormatException('Unknown External evidence kind.'),
+    };
+
+ExternalSourceResolution _externalSourceResolution(Object? value) {
+  if (value is! Map<String, dynamic> || value['evidence'] is! List) {
+    throw const FormatException();
+  }
+  final status = _externalSourceStatus(value['status']);
+  final confidence = _externalSourceConfidence(value['confidence']);
+  final coordinate = _optionalString(value, 'coordinate');
+  final url = _optionalExternalUrl(value, 'url');
+  final channel = _optionalString(value, 'channel');
+  final reference = _optionalString(value, 'reference');
+  final evidence = (value['evidence'] as List)
+      .map(_externalSourceEvidence)
+      .toList(growable: false);
+  final valid = switch (status) {
+    ExternalSourceStatus.confirmed =>
+      coordinate.isNotEmpty &&
+          url.isNotEmpty &&
+          channel.isEmpty &&
+          reference.isEmpty &&
+          confidence != ExternalSourceConfidence.none &&
+          evidence.isNotEmpty,
+    ExternalSourceStatus.importOnly =>
+      coordinate.isEmpty &&
+          channel.isNotEmpty &&
+          reference.isNotEmpty &&
+          confidence != ExternalSourceConfidence.none &&
+          evidence.isNotEmpty,
+    ExternalSourceStatus.conflict =>
+      coordinate.isEmpty &&
+          url.isEmpty &&
+          channel.isEmpty &&
+          reference.isEmpty &&
+          confidence == ExternalSourceConfidence.none &&
+          evidence.length > 1,
+    ExternalSourceStatus.unknown =>
+      coordinate.isEmpty &&
+          url.isEmpty &&
+          channel.isEmpty &&
+          reference.isEmpty &&
+          confidence == ExternalSourceConfidence.none &&
+          evidence.isEmpty,
+  };
+  if (!valid) throw const FormatException();
+  return ExternalSourceResolution(
+    status: status,
+    confidence: confidence,
+    coordinate: coordinate,
+    url: url,
+    channel: channel,
+    reference: reference,
+    evidence: List.unmodifiable(evidence),
+  );
+}
+
+ExternalSourceEvidence _externalSourceEvidence(Object? value) {
+  if (value is! Map<String, dynamic> ||
+      value['location'] is! String ||
+      (value['location'] as String).isEmpty) {
+    throw const FormatException();
+  }
+  final kind = _externalSourceEvidenceKind(value['kind']);
+  final confidence = _externalSourceConfidence(value['confidence']);
+  final coordinate = _optionalString(value, 'coordinate');
+  final url = _optionalExternalUrl(value, 'url');
+  final channel = _optionalString(value, 'channel');
+  final reference = _optionalString(value, 'reference');
+  if (confidence == ExternalSourceConfidence.none ||
+      (coordinate.isNotEmpty && url.isEmpty) ||
+      (kind == ExternalSourceEvidenceKind.gitOrigin &&
+          (coordinate.isEmpty || channel.isNotEmpty || reference.isNotEmpty))) {
+    throw const FormatException();
+  }
+  return ExternalSourceEvidence(
+    kind: kind,
+    confidence: confidence,
+    location: value['location'] as String,
+    coordinate: coordinate,
+    url: url,
+    channel: channel,
+    reference: reference,
+  );
+}
+
+String _optionalString(Map<String, dynamic> value, String key) {
+  final item = value[key];
+  if (item == null) return '';
+  if (item is! String) throw const FormatException();
+  return item;
+}
+
+String _optionalExternalUrl(Map<String, dynamic> value, String key) {
+  final item = _optionalString(value, key);
+  if (item.isEmpty) return '';
+  final parsed = Uri.tryParse(item);
+  if (parsed == null ||
+      (parsed.scheme != 'https' && parsed.scheme != 'http') ||
+      parsed.host.isEmpty ||
+      parsed.userInfo.isNotEmpty ||
+      parsed.hasQuery ||
+      parsed.hasFragment) {
+    throw const FormatException();
+  }
+  return item;
+}
 
 List<String> _strictStringList(Object? value) {
   if (value is! List || value.any((item) => item is! String || item.isEmpty)) {
