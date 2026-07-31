@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the installed Agent Catalog, explicit project roots, accounted target keys, and read-only filesystem metadata under known Agent Skill directories.
- * [OUTPUT]: Adds path-identified External Installation entries, manifest names/descriptions, and target metadata without creating declarations, mutating content, or contacting a Hub.
+ * [INPUT]: Depends on the installed Agent Catalog, explicit project roots, accounted target keys, and bounded read-only filesystem content under known Agent Skill directories.
+ * [OUTPUT]: Adds content-identified External Installation entries, manifest names/descriptions, and target metadata without creating declarations, mutating content, following nested symlinks, or contacting a Hub.
  * [POS]: Serves as the read-only external-content discovery half of unified inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,8 +8,11 @@ package inventory
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,7 +23,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const externalManifestReadLimit = 256 * 1024
+const (
+	externalManifestReadLimit = 256 * 1024
+	externalContentEntryLimit = 5000
+	externalContentByteLimit  = 64 << 20
+)
 
 func addExternalInstallations(
 	entries map[string]*Entry,
@@ -158,8 +165,7 @@ func lexicallyWithin(root, candidate string) bool {
 }
 
 func ensureExternalEntry(entries map[string]*Entry, name, description, path string) *Entry {
-	digest := sha256.Sum256([]byte(resolveInventoryPath(path)))
-	inventoryKey := "external:" + hex.EncodeToString(digest[:])
+	inventoryKey := externalInventoryKey(name, path)
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
@@ -170,6 +176,120 @@ func ensureExternalEntry(entries map[string]*Entry, name, description, path stri
 	}
 	entries[inventoryKey] = entry
 	return entry
+}
+
+func externalInventoryKey(name, path string) string {
+	resolvedPath := resolveInventoryPath(path)
+	digest, err := externalContentDigest(resolvedPath, externalContentEntryLimit, externalContentByteLimit)
+	if err == nil {
+		entryHash := sha256.New()
+		_, _ = io.WriteString(entryHash, "skillsgo-external-entry-v1\x00")
+		_ = writeExternalDigestFrame(entryHash, []byte(name))
+		_ = writeExternalDigestFrame(entryHash, []byte(digest))
+		return "external:" + hex.EncodeToString(entryHash.Sum(nil))
+	}
+	fallback := sha256.Sum256([]byte("skillsgo-external-path-v1\x00" + resolvedPath))
+	return "external:" + hex.EncodeToString(fallback[:])
+}
+
+func externalContentDigest(rootPath string, entryLimit int, byteLimit int64) (string, error) {
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		return "", err
+	}
+	defer root.Close()
+
+	hash := sha256.New()
+	_, _ = io.WriteString(hash, "skillsgo-external-content-v1\x00")
+	entries := 0
+	var bytesRead int64
+	err = fs.WalkDir(root.FS(), ".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil || path == "." {
+			return walkErr
+		}
+		entries++
+		if entries > entryLimit {
+			return fmt.Errorf("external Skill exceeds %d filesystem entries", entryLimit)
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		kind := byte('f')
+		switch {
+		case entry.IsDir():
+			kind = 'd'
+		case info.Mode()&os.ModeSymlink != 0:
+			kind = 'l'
+		case !info.Mode().IsRegular():
+			return fmt.Errorf("external Skill contains unsupported file %q", path)
+		}
+		if _, err := hash.Write([]byte{kind}); err != nil {
+			return err
+		}
+		if err := writeExternalDigestFrame(hash, []byte(path)); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := root.Readlink(filepath.FromSlash(path))
+			if err != nil {
+				return err
+			}
+			data := []byte(filepath.ToSlash(target))
+			if int64(len(data)) > byteLimit-bytesRead {
+				return fmt.Errorf("external Skill exceeds %d content bytes", byteLimit)
+			}
+			bytesRead += int64(len(data))
+			return writeExternalDigestFrame(hash, data)
+		}
+		if info.Size() < 0 || info.Size() > byteLimit-bytesRead {
+			return fmt.Errorf("external Skill exceeds %d content bytes", byteLimit)
+		}
+		file, err := root.Open(filepath.FromSlash(path))
+		if err != nil {
+			return err
+		}
+		openedInfo, statErr := file.Stat()
+		if statErr != nil || !openedInfo.Mode().IsRegular() || openedInfo.Size() != info.Size() || !os.SameFile(info, openedInfo) {
+			_ = file.Close()
+			if statErr != nil {
+				return statErr
+			}
+			return fmt.Errorf("external Skill changed while hashing %q", path)
+		}
+		if err := binary.Write(hash, binary.BigEndian, uint64(info.Size())); err != nil {
+			_ = file.Close()
+			return err
+		}
+		copied, copyErr := io.Copy(hash, io.LimitReader(file, info.Size()+1))
+		closeErr := file.Close()
+		if copyErr != nil || copied != info.Size() {
+			if copyErr != nil {
+				return copyErr
+			}
+			return fmt.Errorf("external Skill changed while hashing %q", path)
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		bytesRead += copied
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func writeExternalDigestFrame(writer io.Writer, data []byte) error {
+	if err := binary.Write(writer, binary.BigEndian, uint64(len(data))); err != nil {
+		return err
+	}
+	_, err := writer.Write(data)
+	return err
 }
 
 type skillManifestMetadata struct {
