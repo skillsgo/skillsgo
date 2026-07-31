@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on errors returned by deterministic translation validation and external infrastructure adapters.
- * [OUTPUT]: Provides explicit permanent-failure classification without coupling translation policy to River.
+ * [OUTPUT]: Provides named permanent and retryable failure classification without coupling translation policy to River.
  * [POS]: Serves as the retry-semantics boundary between translation workers and task transport.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,6 +20,13 @@ type permanentError struct {
 
 func (e permanentError) Unwrap() error { return e.error }
 
+type retryableError struct {
+	kind string
+	error
+}
+
+func (e retryableError) Unwrap() error { return e.error }
+
 func Permanent(err error) error {
 	return permanent("validation", err)
 }
@@ -36,6 +43,10 @@ func FailureKind(err error) string {
 	if errors.As(err, &target) {
 		return target.kind
 	}
+	var retryable retryableError
+	if errors.As(err, &retryable) {
+		return retryable.kind
+	}
 	return "retry_exhausted"
 }
 
@@ -49,8 +60,13 @@ func classifyProviderError(err error) error {
 	if !errors.As(err, &apiErr) {
 		return err
 	}
+	if apiErr.StatusCode == http.StatusPaymentRequired {
+		return retryableError{kind: "provider_payment_required", error: err}
+	}
 	if apiErr.StatusCode >= http.StatusBadRequest && apiErr.StatusCode < http.StatusInternalServerError &&
-		apiErr.StatusCode != http.StatusRequestTimeout && apiErr.StatusCode != http.StatusConflict && apiErr.StatusCode != http.StatusTooManyRequests {
+		apiErr.StatusCode != http.StatusRequestTimeout &&
+		apiErr.StatusCode != http.StatusConflict &&
+		apiErr.StatusCode != http.StatusTooManyRequests {
 		return permanent("provider_rejected", err)
 	}
 	return err

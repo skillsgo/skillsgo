@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, synchronous-substitute timers, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides standalone River schema migration, type-safe registration, native leader-elected periodic jobs, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, deterministic synchronous execution, lifecycle-owned asynchronous dispatch, and transactional enqueue.
+ * [OUTPUT]: Provides standalone River schema migration, type-safe registration, native leader-elected periodic jobs, per-job timeout overrides, bounded workload-isolated queue allocation, terminal finalization excluding River control flow, active-job reconciliation lookup, deterministic synchronous execution, lifecycle-owned asynchronous dispatch, and transactional enqueue.
  * [POS]: Serves as the Hub infrastructure seam for observable, retryable, multi-instance-safe background jobs.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package taskqueue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -113,10 +114,16 @@ func (w *typedWorker[T]) Work(ctx context.Context, job *river.Job[T]) (err error
 		}
 	}()
 	err = w.handler(ctx, job.Args)
-	if err != nil && job.Attempt >= job.MaxAttempts {
+	if err != nil && job.Attempt >= job.MaxAttempts && !isRiverJobControl(err) {
 		w.finalize(ctx, job.Args, err)
 	}
 	return err
+}
+
+func isRiverJobControl(err error) bool {
+	var snooze *rivertype.JobSnoozeError
+	var cancel *rivertype.JobCancelError
+	return errors.As(err, &snooze) || errors.As(err, &cancel)
 }
 
 func (w *typedWorker[T]) finalize(ctx context.Context, args T, cause error) {
