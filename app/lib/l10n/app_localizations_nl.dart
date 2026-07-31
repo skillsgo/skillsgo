@@ -23,46 +23,46 @@ class AppLocalizationsNl extends AppLocalizations {
   String get settings => 'Instellingen';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'App-updates';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Controleer de releasefeed op een nieuwere versie van SkillsGo.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'App-updates zijn niet beschikbaar in deze build.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Controleer wanneer je wilt. SkillsGo installeert niets zonder jouw actie.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Controleren op een app-update…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'De update wordt gedownload. SkillsGo start opnieuw wanneer deze gereed is.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo kon niet op updates controleren. Controleer je verbinding en probeer opnieuw.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version is beschikbaar.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version is up-to-date.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Controleren op app-updates';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Bijwerken en opnieuw starten';
 
   @override
   String get openSettings => 'Instellingen openen';

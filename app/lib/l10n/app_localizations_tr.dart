@@ -23,46 +23,46 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settings => 'Ayarlar';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Uygulama güncellemeleri';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Sürüm akışında daha yeni bir SkillsGo sürümü olup olmadığını kontrol edin.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Bu derlemede uygulama güncellemeleri kullanılamıyor.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Hazır olduğunuzda kontrol edin. SkillsGo, sizin işleminiz olmadan güncelleme kurmaz.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Uygulama güncellemesi kontrol ediliyor…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Güncelleme indiriliyor. Hazır olduğunda SkillsGo yeniden başlayacak.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo güncelleme kontrolü yapamadı. Bağlantınızı kontrol edip tekrar deneyin.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version kullanılabilir.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version güncel.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Uygulama güncellemelerini kontrol et';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Güncelle ve yeniden başlat';
 
   @override
   String get openSettings => 'Ayarları Aç';

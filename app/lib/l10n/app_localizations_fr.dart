@@ -23,46 +23,46 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settings => 'Paramètres';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Mises à jour de l’application';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Rechercher une version plus récente de SkillsGo dans le flux des versions.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Les mises à jour ne sont pas disponibles dans cette version.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Vérifiez quand vous le souhaitez. SkillsGo n’installera rien sans votre action.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Recherche d’une mise à jour…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Téléchargement de la mise à jour. SkillsGo redémarrera lorsqu’elle sera prête.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo n’a pas pu rechercher de mise à jour. Vérifiez votre connexion et réessayez.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version est disponible.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version est à jour.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Rechercher les mises à jour';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Mettre à jour et redémarrer';
 
   @override
   String get openSettings => 'Ouvrir les paramètres';

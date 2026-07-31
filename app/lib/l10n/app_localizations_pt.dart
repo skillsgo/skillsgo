@@ -23,46 +23,46 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settings => 'Configurações';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Atualizações do aplicativo';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Verifique no feed de versões se há uma versão mais recente do SkillsGo.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'As atualizações não estão disponíveis nesta compilação.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Verifique quando quiser. O SkillsGo não instalará uma atualização sem sua ação.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Verificando atualizações…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Baixando a atualização. O SkillsGo será reiniciado quando estiver pronta.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'O SkillsGo não conseguiu verificar atualizações. Verifique a conexão e tente novamente.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version está disponível.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version está atualizado.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Verificar atualizações';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Atualizar e reiniciar';
 
   @override
   String get openSettings => 'Abra Configurações';

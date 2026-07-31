@@ -24,46 +24,45 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settings => 'การตั้งค่า';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'การอัปเดตแอป';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'ตรวจสอบเวอร์ชัน SkillsGo ที่ใหม่กว่าจากฟีดรุ่นเผยแพร่';
 
   @override
-  String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+  String get appUpdateNotConfigured => 'บิลด์นี้ไม่รองรับการอัปเดตแอป';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'ตรวจสอบเมื่อคุณพร้อม SkillsGo จะไม่ติดตั้งการอัปเดตโดยไม่มีการดำเนินการจากคุณ';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'กำลังตรวจสอบการอัปเดตแอป…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'กำลังดาวน์โหลดการอัปเดต SkillsGo จะเริ่มใหม่เมื่อพร้อม';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo ตรวจสอบการอัปเดตไม่ได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version พร้อมใช้งานแล้ว';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version เป็นเวอร์ชันล่าสุด';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'ตรวจสอบการอัปเดตแอป';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'อัปเดตและเริ่มใหม่';
 
   @override
   String get openSettings => 'เปิดการตั้งค่า';

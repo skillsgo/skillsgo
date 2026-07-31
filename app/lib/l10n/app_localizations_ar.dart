@@ -23,46 +23,46 @@ class AppLocalizationsAr extends AppLocalizations {
   String get settings => 'الإعدادات';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'تحديثات التطبيق';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'تحقق من موجز الإصدارات للحصول على إصدار أحدث من SkillsGo.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'تحديثات التطبيق غير متاحة في هذا الإصدار.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'تحقق عندما تكون مستعدًا. لن يثبت SkillsGo تحديثًا دون إجراء منك.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'جارٍ التحقق من تحديث التطبيق…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'جارٍ تنزيل التحديث. سيُعاد تشغيل SkillsGo عندما يصبح جاهزًا.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'تعذر على SkillsGo التحقق من التحديث. تحقق من الاتصال وحاول مرة أخرى.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'يتوفر SkillsGo $version.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version محدّث.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'التحقق من تحديثات التطبيق';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'التحديث وإعادة التشغيل';
 
   @override
   String get openSettings => 'افتح الإعدادات';

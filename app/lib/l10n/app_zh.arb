@@ -5,7 +5,7 @@
   "library": "已安装",
   "settings": "设置",
   "appUpdateTitle": "应用更新",
-  "appUpdateDescription": "从已签名的发布源检查 SkillsGo 新版本。",
+  "appUpdateDescription": "从发布源检查 SkillsGo 新版本。",
   "appUpdateNotConfigured": "此构建未配置应用更新。",
   "appUpdateReady": "需要时手动检查；未经你确认，SkillsGo 不会安装更新。",
   "appUpdateChecking": "正在检查应用更新…",

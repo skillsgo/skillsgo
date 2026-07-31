@@ -23,46 +23,42 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings => '設定';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'アプリのアップデート';
 
   @override
-  String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+  String get appUpdateDescription => 'リリースフィードで新しい SkillsGo バージョンを確認します。';
 
   @override
-  String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+  String get appUpdateNotConfigured => 'このビルドではアプリのアップデートを利用できません。';
 
   @override
-  String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+  String get appUpdateReady => '準備ができたら確認してください。操作なしで更新がインストールされることはありません。';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'アプリのアップデートを確認しています…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'アップデートをダウンロードしています。準備ができると SkillsGo が再起動します。';
 
   @override
-  String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+  String get appUpdateCheckFailed => 'アップデートを確認できませんでした。接続を確認してもう一度お試しください。';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version を利用できます。';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version は最新です。';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'アップデートを確認';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => '更新して再起動';
 
   @override
   String get openSettings => '設定を開く';

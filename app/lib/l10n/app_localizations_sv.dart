@@ -23,46 +23,46 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settings => 'Inställningar';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Appuppdateringar';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Sök efter en nyare version av SkillsGo i versionsflödet.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Appuppdateringar är inte tillgängliga i denna version.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Kontrollera när du vill. SkillsGo installerar inget utan din åtgärd.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Söker efter en appuppdatering…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Hämtar uppdateringen. SkillsGo startar om när den är klar.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo kunde inte söka efter en uppdatering. Kontrollera anslutningen och försök igen.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version är tillgänglig.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version är uppdaterad.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Sök efter appuppdateringar';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Uppdatera och starta om';
 
   @override
   String get openSettings => 'Öppna Inställningar';

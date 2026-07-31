@@ -180,7 +180,7 @@ abstract class AppLocalizations {
   /// No description provided for @appUpdateDescription.
   ///
   /// In en, this message translates to:
-  /// **'Check the signed release feed for a newer version of SkillsGo.'**
+  /// **'Check the release feed for a newer version of SkillsGo.'**
   String get appUpdateDescription;
 
   /// No description provided for @appUpdateNotConfigured.

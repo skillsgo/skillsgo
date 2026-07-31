@@ -23,46 +23,46 @@ class AppLocalizationsId extends AppLocalizations {
   String get settings => 'Pengaturan';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Pembaruan aplikasi';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Periksa versi SkillsGo terbaru di feed rilis.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Pembaruan aplikasi tidak tersedia dalam build ini.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Periksa saat Anda siap. SkillsGo tidak akan memasang pembaruan tanpa tindakan Anda.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Memeriksa pembaruan aplikasi…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Mengunduh pembaruan. SkillsGo akan dimulai ulang saat siap.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo tidak dapat memeriksa pembaruan. Periksa koneksi dan coba lagi.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version tersedia.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version sudah terbaru.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Periksa pembaruan aplikasi';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Perbarui dan mulai ulang';
 
   @override
   String get openSettings => 'Buka Pengaturan';

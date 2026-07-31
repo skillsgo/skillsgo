@@ -26,7 +26,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appUpdateTitle => '应用更新';
 
   @override
-  String get appUpdateDescription => '从已签名的发布源检查 SkillsGo 新版本。';
+  String get appUpdateDescription => '从发布源检查 SkillsGo 新版本。';
 
   @override
   String get appUpdateNotConfigured => '此构建未配置应用更新。';
@@ -2029,6 +2029,43 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get settings => '設置';
 
   @override
+  String get appUpdateTitle => '應用程式更新';
+
+  @override
+  String get appUpdateDescription => '從發佈來源檢查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此版本未提供應用程式更新。';
+
+  @override
+  String get appUpdateReady => '需要時手動檢查；未經你的操作，SkillsGo 不會安裝更新。';
+
+  @override
+  String get appUpdateChecking => '正在檢查應用程式更新…';
+
+  @override
+  String get appUpdateApplying => '正在下載更新，準備完成後 SkillsGo 將重新啟動。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 無法檢查更新，請檢查網絡連線後再試。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可供使用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '檢查應用程式更新';
+
+  @override
+  String get appUpdateApplyAction => '更新並重新啟動';
+
+  @override
   String get openSettings => '打開設置';
 
   @override
@@ -3995,6 +4032,43 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get settings => '設定';
+
+  @override
+  String get appUpdateTitle => '應用程式更新';
+
+  @override
+  String get appUpdateDescription => '從發布來源檢查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此版本未提供應用程式更新。';
+
+  @override
+  String get appUpdateReady => '需要時手動檢查；未經你的操作，SkillsGo 不會安裝更新。';
+
+  @override
+  String get appUpdateChecking => '正在檢查應用程式更新…';
+
+  @override
+  String get appUpdateApplying => '正在下載更新，準備完成後 SkillsGo 將重新啟動。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 無法檢查更新，請檢查網路連線後再試一次。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可供使用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '檢查應用程式更新';
+
+  @override
+  String get appUpdateApplyAction => '更新並重新啟動';
 
   @override
   String get openSettings => '開啟設定';

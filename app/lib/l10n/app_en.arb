@@ -5,7 +5,7 @@
   "library": "Library",
   "settings": "Settings",
   "appUpdateTitle": "App updates",
-  "appUpdateDescription": "Check the signed release feed for a newer version of SkillsGo.",
+  "appUpdateDescription": "Check the release feed for a newer version of SkillsGo.",
   "appUpdateNotConfigured": "App updates are unavailable in this build.",
   "appUpdateReady": "Check when you’re ready. SkillsGo will not install an update without your action.",
   "appUpdateChecking": "Checking for an App update…",

@@ -27,7 +27,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Check the release feed for a newer version of SkillsGo.';
 
   @override
   String get appUpdateNotConfigured =>

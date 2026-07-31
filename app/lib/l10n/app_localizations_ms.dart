@@ -23,46 +23,46 @@ class AppLocalizationsMs extends AppLocalizations {
   String get settings => 'tetapan';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Kemas kini aplikasi';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Semak versi SkillsGo yang lebih baharu dalam suapan keluaran.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Kemas kini aplikasi tidak tersedia dalam binaan ini.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Semak apabila anda bersedia. SkillsGo tidak akan memasang kemas kini tanpa tindakan anda.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Menyemak kemas kini aplikasi…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Memuat turun kemas kini. SkillsGo akan dimulakan semula apabila sedia.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo tidak dapat menyemak kemas kini. Semak sambungan dan cuba lagi.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version tersedia.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version adalah terkini.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Semak kemas kini aplikasi';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Kemas kini dan mula semula';
 
   @override
   String get openSettings => 'Buka Tetapan';

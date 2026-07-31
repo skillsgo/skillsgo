@@ -23,46 +23,46 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settings => 'Налаштування';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Оновлення програми';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Перевірити наявність нової версії SkillsGo у каналі випусків.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Оновлення програми недоступні в цій збірці.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Перевіряйте, коли зручно. SkillsGo не встановить оновлення без вашої дії.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Перевірка оновлення програми…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Завантаження оновлення. SkillsGo перезапуститься, коли все буде готово.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'Не вдалося перевірити оновлення. Перевірте з’єднання та повторіть спробу.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'Доступна версія SkillsGo $version.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version оновлено.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Перевірити оновлення';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Оновити й перезапустити';
 
   @override
   String get openSettings => 'Відкрийте налаштування';

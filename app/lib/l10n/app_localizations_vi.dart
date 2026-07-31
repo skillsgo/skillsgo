@@ -23,46 +23,46 @@ class AppLocalizationsVi extends AppLocalizations {
   String get settings => 'Cài đặt';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Bản cập nhật ứng dụng';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Kiểm tra phiên bản SkillsGo mới hơn trong nguồn phát hành.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Bản dựng này không hỗ trợ cập nhật ứng dụng.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Hãy kiểm tra khi bạn sẵn sàng. SkillsGo sẽ không cài đặt nếu bạn chưa thao tác.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Đang kiểm tra bản cập nhật…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Đang tải bản cập nhật. SkillsGo sẽ khởi động lại khi sẵn sàng.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo không thể kiểm tra bản cập nhật. Hãy kiểm tra kết nối và thử lại.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version hiện đã có.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version đã được cập nhật.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Kiểm tra bản cập nhật';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Cập nhật và khởi động lại';
 
   @override
   String get openSettings => 'Mở cài đặt';

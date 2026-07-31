@@ -23,46 +23,46 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settings => 'Impostazioni';
 
   @override
-  String get appUpdateTitle => 'App updates';
+  String get appUpdateTitle => 'Aggiornamenti dell’app';
 
   @override
   String get appUpdateDescription =>
-      'Check the signed release feed for a newer version of SkillsGo.';
+      'Cerca una versione più recente di SkillsGo nel feed delle release.';
 
   @override
   String get appUpdateNotConfigured =>
-      'App updates are unavailable in this build.';
+      'Gli aggiornamenti non sono disponibili in questa build.';
 
   @override
   String get appUpdateReady =>
-      'Check when you’re ready. SkillsGo will not install an update without your action.';
+      'Controlla quando vuoi. SkillsGo non installerà aggiornamenti senza la tua azione.';
 
   @override
-  String get appUpdateChecking => 'Checking for an App update…';
+  String get appUpdateChecking => 'Ricerca di un aggiornamento…';
 
   @override
   String get appUpdateApplying =>
-      'Downloading the update. SkillsGo will restart when it is ready.';
+      'Download dell’aggiornamento. SkillsGo si riavvierà quando sarà pronto.';
 
   @override
   String get appUpdateCheckFailed =>
-      'SkillsGo could not check for an App update. Check your connection and try again.';
+      'SkillsGo non ha potuto cercare un aggiornamento. Controlla la connessione e riprova.';
 
   @override
   String appUpdateAvailable(String version) {
-    return 'SkillsGo $version is available.';
+    return 'SkillsGo $version è disponibile.';
   }
 
   @override
   String appUpdateCurrent(String version) {
-    return 'SkillsGo $version is up to date.';
+    return 'SkillsGo $version è aggiornato.';
   }
 
   @override
-  String get appUpdateCheckAction => 'Check for App updates';
+  String get appUpdateCheckAction => 'Cerca aggiornamenti';
 
   @override
-  String get appUpdateApplyAction => 'Update and restart';
+  String get appUpdateApplyAction => 'Aggiorna e riavvia';
 
   @override
   String get openSettings => 'Apri Impostazioni';
