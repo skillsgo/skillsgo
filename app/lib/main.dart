@@ -43,11 +43,18 @@ bool isVelopackFastExitInvocation(List<String> arguments) =>
 Future<void> main(List<String> arguments) async {
   final updater = VelopackAppUpdater();
   final rehearsalSource = appUpdateRehearsalSource(Platform.environment);
+  final rehearsalChannel = appUpdateRehearsalChannel(Platform.environment);
   var updaterInitialized = false;
   if (rehearsalSource != null) {
+    stderr.writeln(
+      'Starting Velopack rehearsal from $rehearsalSource '
+      'on channel ${rehearsalChannel ?? '(installed default)'}.',
+    );
     final applying = await updater.applyAvailableUpdateAndRestart(
       rehearsalSource,
+      channel: rehearsalChannel,
     );
+    stderr.writeln('Velopack rehearsal update available: $applying.');
     if (applying) return;
     updaterInitialized = true;
   }

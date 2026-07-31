@@ -25,7 +25,7 @@ abstract interface class AppUpdater {
 
   Future<AppUpdateCheck> checkForUpdate(Uri source);
 
-  Future<bool> applyAvailableUpdateAndRestart(Uri source);
+  Future<bool> applyAvailableUpdateAndRestart(Uri source, {String? channel});
 }
 
 final class VelopackAppUpdater implements AppUpdater {
@@ -44,10 +44,13 @@ final class VelopackAppUpdater implements AppUpdater {
   }
 
   @override
-  Future<bool> applyAvailableUpdateAndRestart(Uri source) async {
-    await velopack.initializeVelopack(url: source.toString());
-    if (!await velopack.isUpdateAvailable()) return false;
-    await velopack.updateAndRestart();
+  Future<bool> applyAvailableUpdateAndRestart(
+    Uri source, {
+    String? channel,
+  }) async {
+    await velopack.initializeVelopack(url: source.toString(), channel: channel);
+    if (!await velopack.isUpdateAvailable(channel: channel)) return false;
+    await velopack.updateAndRestart(channel: channel);
     return true;
   }
 }

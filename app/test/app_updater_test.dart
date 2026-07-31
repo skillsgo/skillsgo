@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the App updater's production and unsigned rehearsal source parsers.
- * [OUTPUT]: Proves production builds accept only clean HTTPS feeds while the CI escape hatch accepts only explicit loopback HTTP feeds.
+ * [INPUT]: Depends on the App updater's production source and unsigned rehearsal source/channel parsers.
+ * [OUTPUT]: Proves production builds accept only clean HTTPS feeds while the CI escape hatch accepts only explicit loopback HTTP feeds and safe Velopack channels.
  * [POS]: Serves as the security and configuration contract for production App updates and real packaged update rehearsals.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,6 +49,22 @@ void main() {
     expect(
       appUpdateRehearsalSource(const {appUpdateRehearsalUrlEnvironment: '   '}),
       isNull,
+    );
+    expect(appUpdateRehearsalChannel(const {}), isNull);
+  });
+
+  test('accepts only an explicit Velopack rehearsal channel', () {
+    expect(
+      appUpdateRehearsalChannel(const {
+        appUpdateRehearsalChannelEnvironment: 'osx-x64',
+      }),
+      'osx-x64',
+    );
+    expect(
+      () => appUpdateRehearsalChannel(const {
+        appUpdateRehearsalChannelEnvironment: '../osx-x64',
+      }),
+      throwsFormatException,
     );
   });
 

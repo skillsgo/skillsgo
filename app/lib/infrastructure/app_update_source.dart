@@ -1,12 +1,14 @@
 /*
- * [INPUT]: Depends on a build-time production URL and caller-supplied process environment.
- * [OUTPUT]: Parses production public-HTTPS and rehearsal loopback-HTTP App update sources with one shared security policy.
+ * [INPUT]: Depends on a build-time production URL and caller-supplied process environment containing an optional rehearsal source/channel pair.
+ * [OUTPUT]: Parses production public-HTTPS and rehearsal loopback-HTTP App update configuration with one shared security policy.
  * [POS]: Serves as the pure-Dart update-source contract shared by the App and release CI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:io';
 
 const appUpdateRehearsalUrlEnvironment = 'SKILLSGO_APP_UPDATE_REHEARSAL_URL';
+const appUpdateRehearsalChannelEnvironment =
+    'SKILLSGO_APP_UPDATE_REHEARSAL_CHANNEL';
 const appUpdateProductionUrl = String.fromEnvironment(
   'SKILLSGO_APP_UPDATE_URL',
 );
@@ -50,6 +52,18 @@ Uri? appUpdateRehearsalSource(Map<String, String> environment) {
     );
   }
   return source;
+}
+
+String? appUpdateRehearsalChannel(Map<String, String> environment) {
+  final channel = environment[appUpdateRehearsalChannelEnvironment]?.trim();
+  if (channel == null || channel.isEmpty) return null;
+  if (!RegExp(r'^[a-z0-9-]+$').hasMatch(channel)) {
+    throw FormatException(
+      '$appUpdateRehearsalChannelEnvironment must be a Velopack channel.',
+      channel,
+    );
+  }
+  return channel;
 }
 
 bool _isLoopbackHost(String host) {

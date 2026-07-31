@@ -695,7 +695,10 @@ final class _FakeAppUpdater implements AppUpdater {
   }
 
   @override
-  Future<bool> applyAvailableUpdateAndRestart(Uri source) async {
+  Future<bool> applyAvailableUpdateAndRestart(
+    Uri source, {
+    String? channel,
+  }) async {
     appliedSources.add(source);
     await Future<void>.delayed(const Duration(milliseconds: 1));
     return applyResult;
