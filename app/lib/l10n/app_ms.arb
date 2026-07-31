@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Naik taraf kepada {version}",
   "downgradeToVersion": "Turun taraf kepada {version}",
   "libraryGlobalScope": "Kemahiran Global",
+  "libraryExternalScope": "Kemahiran Luaran",
+  "libraryEmptyAddProject": "Pergi ke Tambah Projek",
   "globalSkills": "Kemahiran Global",
   "projectMissingMessage": "Direktori mungkin telah berpindah atau volumnya mungkin di luar talian. Semak laluan atau alih keluar rujukan Aplnya.",
   "projectPermissionMessage": "SkillsGo tidak boleh memeriksa akar projek ini. Semak kebenaran sistem failnya atau alih keluar rujukan Aplnya.",

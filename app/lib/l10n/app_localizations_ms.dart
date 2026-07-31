@@ -431,10 +431,10 @@ class AppLocalizationsMs extends AppLocalizations {
   String get libraryGlobalScope => 'Kemahiran Global';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Kemahiran Luaran';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Pergi ke Tambah Projek';
 
   @override
   String get globalScope => 'Global';

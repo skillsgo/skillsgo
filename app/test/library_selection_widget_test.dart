@@ -226,7 +226,7 @@ void main() {
       expect(find.text('Can’t connect to SkillsGo'), findsOneWidget);
       expect(find.text('hub-demo'), findsOneWidget);
 
-      await tester.tap(libraryLocation('Global Skills'));
+      await tester.tap(libraryLocation('External Skills'));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();

@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "{version}(으)로 업그레이드",
   "downgradeToVersion": "{version}(으)로 다운그레이드",
   "libraryGlobalScope": "글로벌 스킬",
+  "libraryExternalScope": "외부 스킬",
+  "libraryEmptyAddProject": "프로젝트 추가로 이동",
   "globalSkills": "글로벌 스킬",
   "projectMissingMessage": "디렉터리가 이동되었거나 해당 볼륨이 오프라인 상태일 수 있습니다. 경로를 확인하거나 해당 앱 참조를 제거하세요.",
   "projectPermissionMessage": "SkillsGo에서는 이 프로젝트 루트를 검사할 수 없습니다. 파일 시스템 권한을 확인하거나 앱 참조를 제거하세요.",

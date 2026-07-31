@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Оновити до {version}",
   "downgradeToVersion": "Повернутися до {version}",
   "libraryGlobalScope": "Глобальні навички",
+  "libraryExternalScope": "Зовнішні навички",
+  "libraryEmptyAddProject": "Перейти до додавання проєкту",
   "globalSkills": "Глобальні навички",
   "projectMissingMessage": "Можливо, каталог переміщено або його том не в мережі. Перевірте шлях або видаліть посилання на додаток.",
   "projectPermissionMessage": "SkillsGo не може перевірити корінь цього проекту. Перевірте дозволи файлової системи або видаліть посилання на додаток.",

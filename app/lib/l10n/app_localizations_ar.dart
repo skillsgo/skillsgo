@@ -436,10 +436,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get libraryGlobalScope => 'المهارات العالمية';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'المهارات الخارجية';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'الانتقال إلى إضافة مشروع';
 
   @override
   String get globalScope => 'عام';

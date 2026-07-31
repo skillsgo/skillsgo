@@ -432,10 +432,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get libraryGlobalScope => 'Compétences mondiales';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Compétences externes';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Accéder à Ajouter un projet';
 
   @override
   String get globalScope => 'Mondial';

@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Uaktualnij do {version}",
   "downgradeToVersion": "Przejdź na {version}",
   "libraryGlobalScope": "Umiejętności globalne",
+  "libraryExternalScope": "Umiejętności zewnętrzne",
+  "libraryEmptyAddProject": "Przejdź do dodawania projektu",
   "globalSkills": "Umiejętności globalne",
   "projectMissingMessage": "Katalog mógł zostać przeniesiony lub jego wolumen może być w trybie offline. Sprawdź ścieżkę lub usuń odniesienie do aplikacji.",
   "projectPermissionMessage": "SkillsGo nie może sprawdzić katalogu głównego projektu. Sprawdź uprawnienia do systemu plików lub usuń odniesienie do aplikacji.",

@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Tingkatkan ke {version}",
   "downgradeToVersion": "Turunkan versi ke {version}",
   "libraryGlobalScope": "Keterampilan Global",
+  "libraryExternalScope": "Keterampilan Eksternal",
+  "libraryEmptyAddProject": "Buka Tambah Proyek",
   "globalSkills": "Keterampilan Global",
   "projectMissingMessage": "Direktori mungkin telah berpindah atau volumenya mungkin offline. Periksa jalurnya atau hapus referensi Aplikasinya.",
   "projectPermissionMessage": "SkillsGo tidak dapat memeriksa akar proyek ini. Periksa izin sistem filenya atau hapus referensi Aplikasinya.",

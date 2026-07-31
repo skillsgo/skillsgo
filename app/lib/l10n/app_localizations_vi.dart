@@ -432,10 +432,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get libraryGlobalScope => 'Kỹ năng toàn cầu';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Kỹ năng bên ngoài';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Đi tới Thêm dự án';
 
   @override
   String get globalScope => 'Toàn cầu';

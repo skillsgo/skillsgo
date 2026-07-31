@@ -432,10 +432,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get libraryGlobalScope => 'Globala färdigheter';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Externa färdigheter';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Gå till Lägg till projekt';
 
   @override
   String get globalScope => 'Global';

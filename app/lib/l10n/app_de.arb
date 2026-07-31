@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Upgrade auf {version}",
   "downgradeToVersion": "Downgrade auf {version}",
   "libraryGlobalScope": "Globale Fähigkeiten",
+  "libraryExternalScope": "Externe Fähigkeiten",
+  "libraryEmptyAddProject": "Zu „Projekt hinzufügen“",
   "globalSkills": "Globale Fähigkeiten",
   "projectMissingMessage": "Möglicherweise wurde das Verzeichnis verschoben oder sein Volume ist offline. Überprüfen Sie den Pfad oder entfernen Sie die App-Referenz.",
   "projectPermissionMessage": "SkillsGo kann dieses Projektstammverzeichnis nicht überprüfen. Überprüfen Sie die Dateisystemberechtigungen oder entfernen Sie die App-Referenz.",

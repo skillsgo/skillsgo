@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "{version}'a yükseltin",
   "downgradeToVersion": "{version} sürümüne geç",
   "libraryGlobalScope": "Küresel Beceriler",
+  "libraryExternalScope": "Harici Beceriler",
+  "libraryEmptyAddProject": "Proje Ekle'ye git",
   "globalSkills": "Küresel Beceriler",
   "projectMissingMessage": "Dizin taşınmış olabilir veya birimi çevrimdışı olabilir. Yolu kontrol edin veya Uygulama referansını kaldırın.",
   "projectPermissionMessage": "SkillsGo bu proje kökünü inceleyemiyor. Dosya sistemi izinlerini kontrol edin veya Uygulama referansını kaldırın.",

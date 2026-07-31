@@ -432,10 +432,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryGlobalScope => 'Küresel Beceriler';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Harici Beceriler';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Proje Ekle\'ye git';
 
   @override
   String get globalScope => 'Küresel';

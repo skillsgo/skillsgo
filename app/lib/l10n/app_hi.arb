@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "{version} पर अपग्रेड करें",
   "downgradeToVersion": "{version} पर डाउनग्रेड करें",
   "libraryGlobalScope": "वैश्विक कौशल",
+  "libraryExternalScope": "बाहरी कौशल",
+  "libraryEmptyAddProject": "प्रोजेक्ट जोड़ें पर जाएँ",
   "globalSkills": "वैश्विक कौशल",
   "projectMissingMessage": "हो सकता है कि निर्देशिका स्थानांतरित हो गई हो या उसका वॉल्यूम ऑफ़लाइन हो। पथ की जाँच करें या उसका ऐप संदर्भ हटा दें।",
   "projectPermissionMessage": "SkillsGo इस प्रोजेक्ट रूट का निरीक्षण नहीं कर सकता। इसकी फ़ाइल सिस्टम अनुमतियाँ जांचें या इसका ऐप संदर्भ हटा दें।",

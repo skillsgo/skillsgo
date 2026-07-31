@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Uppgradera till {version}",
   "downgradeToVersion": "Nedgradera till {version}",
   "libraryGlobalScope": "Globala färdigheter",
+  "libraryExternalScope": "Externa färdigheter",
+  "libraryEmptyAddProject": "Gå till Lägg till projekt",
   "globalSkills": "Globala färdigheter",
   "projectMissingMessage": "Katalogen kan ha flyttats eller dess volym kan vara offline. Kontrollera sökvägen eller ta bort dess appreferens.",
   "projectPermissionMessage": "SkillsGo kan inte inspektera denna projektrot. Kontrollera dess filsystembehörigheter eller ta bort dess appreferens.",

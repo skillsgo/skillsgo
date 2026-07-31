@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "อัปเกรดเป็น {version}",
   "downgradeToVersion": "ดาวน์เกรดเป็น {version}",
   "libraryGlobalScope": "ทักษะระดับโลก",
+  "libraryExternalScope": "ทักษะภายนอก",
+  "libraryEmptyAddProject": "ไปที่เพิ่มโปรเจกต์",
   "globalSkills": "ทักษะระดับโลก",
   "projectMissingMessage": "ไดเร็กทอรีอาจถูกย้ายหรือโวลุ่มของไดเร็กทอรีอาจออฟไลน์ ตรวจสอบเส้นทางหรือลบการอ้างอิงแอป",
   "projectPermissionMessage": "SkillsGo ไม่สามารถตรวจสอบรูทโปรเจ็กต์นี้ได้ ตรวจสอบสิทธิ์ของระบบไฟล์หรือลบการอ้างอิงแอป",

@@ -436,10 +436,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get libraryGlobalScope => 'Глобальные навыки';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Внешние навыки';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Перейти к добавлению проекта';
 
   @override
   String get globalScope => 'Глобальный';

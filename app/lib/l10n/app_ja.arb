@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "{version} にアップグレードする",
   "downgradeToVersion": "{version} にダウングレード",
   "libraryGlobalScope": "グローバルスキル",
+  "libraryExternalScope": "外部スキル",
+  "libraryEmptyAddProject": "「プロジェクトを追加」へ移動",
   "globalSkills": "グローバルスキル",
   "projectMissingMessage": "ディレクトリが移動したか、そのボリュームがオフラインになっている可能性があります。パスを確認するか、そのアプリ参照を削除してください。",
   "projectPermissionMessage": "SkillsGo はこのプロジェクトのルートを検査できません。ファイルシステムのアクセス許可を確認するか、アプリ参照を削除してください。",

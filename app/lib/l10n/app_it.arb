@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Esegui l'upgrade a {version}",
   "downgradeToVersion": "Esegui il downgrade a {version}",
   "libraryGlobalScope": "Competenze globali",
+  "libraryExternalScope": "Competenze esterne",
+  "libraryEmptyAddProject": "Vai ad Aggiungi progetto",
   "globalSkills": "Competenze globali",
   "projectMissingMessage": "La directory potrebbe essere stata spostata o il suo volume potrebbe essere offline. Controlla il percorso o rimuovi il riferimento all'app.",
   "projectPermissionMessage": "SkillsGo non può controllare la radice di questo progetto. Controlla le autorizzazioni del file system o rimuovi il riferimento all'app.",

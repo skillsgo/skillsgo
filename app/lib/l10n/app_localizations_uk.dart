@@ -436,10 +436,10 @@ class AppLocalizationsUk extends AppLocalizations {
   String get libraryGlobalScope => 'Глобальні навички';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Зовнішні навички';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Перейти до додавання проєкту';
 
   @override
   String get globalScope => 'Глобальний';

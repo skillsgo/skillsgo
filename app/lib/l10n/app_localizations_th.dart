@@ -433,10 +433,10 @@ class AppLocalizationsTh extends AppLocalizations {
   String get libraryGlobalScope => 'ทักษะระดับโลก';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'ทักษะภายนอก';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'ไปที่เพิ่มโปรเจกต์';
 
   @override
   String get globalScope => 'ทั่วโลก';

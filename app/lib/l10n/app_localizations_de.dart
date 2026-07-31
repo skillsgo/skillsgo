@@ -436,10 +436,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get libraryGlobalScope => 'Globale Fähigkeiten';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Externe Fähigkeiten';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Zu „Projekt hinzufügen“';
 
   @override
   String get globalScope => 'Global';

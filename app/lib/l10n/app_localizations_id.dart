@@ -433,10 +433,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get libraryGlobalScope => 'Keterampilan Global';
 
   @override
-  String get libraryExternalScope => 'External Skills';
+  String get libraryExternalScope => 'Keterampilan Eksternal';
 
   @override
-  String get libraryEmptyAddProject => 'Go to Add Project';
+  String get libraryEmptyAddProject => 'Buka Tambah Proyek';
 
   @override
   String get globalScope => 'Global';

@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Обновите до {version}",
   "downgradeToVersion": "Понизить версию до {version}",
   "libraryGlobalScope": "Глобальные навыки",
+  "libraryExternalScope": "Внешние навыки",
+  "libraryEmptyAddProject": "Перейти к добавлению проекта",
   "globalSkills": "Глобальные навыки",
   "projectMissingMessage": "Возможно, каталог был перемещен или его том отключен от сети. Проверьте путь или удалите ссылку на приложение.",
   "projectPermissionMessage": "SkillsGo не может проверить корень этого проекта. Проверьте разрешения файловой системы или удалите ссылку на приложение.",

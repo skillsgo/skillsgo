@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Atualizar para {version}",
   "downgradeToVersion": "Fazer downgrade para {version}",
   "libraryGlobalScope": "Habilidades Globais",
+  "libraryExternalScope": "Habilidades Externas",
+  "libraryEmptyAddProject": "Ir para Adicionar projeto",
   "globalSkills": "Habilidades Globais",
   "projectMissingMessage": "O diretório pode ter sido movido ou seu volume pode estar offline. Verifique o caminho ou remova a referência do aplicativo.",
   "projectPermissionMessage": "SkillsGo não pode inspecionar a raiz deste projeto. Verifique as permissões do sistema de arquivos ou remova a referência do aplicativo.",

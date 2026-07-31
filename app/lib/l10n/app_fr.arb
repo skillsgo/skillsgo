@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Passer à {version}",
   "downgradeToVersion": "Revenir à {version}",
   "libraryGlobalScope": "Compétences mondiales",
+  "libraryExternalScope": "Compétences externes",
+  "libraryEmptyAddProject": "Accéder à Ajouter un projet",
   "globalSkills": "Compétences mondiales",
   "projectMissingMessage": "Le répertoire a peut-être été déplacé ou son volume est peut-être hors ligne. Vérifiez le chemin ou supprimez sa référence d'application.",
   "projectPermissionMessage": "SkillsGo ne peut pas inspecter la racine de ce projet. Vérifiez les autorisations de son système de fichiers ou supprimez sa référence d'application.",

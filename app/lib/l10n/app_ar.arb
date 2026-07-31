@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "الترقية إلى {version}",
   "downgradeToVersion": "الرجوع إلى {version}",
   "libraryGlobalScope": "المهارات العالمية",
+  "libraryExternalScope": "المهارات الخارجية",
+  "libraryEmptyAddProject": "الانتقال إلى إضافة مشروع",
   "globalSkills": "المهارات العالمية",
   "projectMissingMessage": "ربما تم نقل الدليل أو قد يكون حجمه غير متصل. تحقق من المسار أو قم بإزالة مرجع التطبيق الخاص به.",
   "projectPermissionMessage": "لا يمكن لـ SkillsGo فحص جذر المشروع هذا. تحقق من أذونات نظام الملفات الخاص به أو قم بإزالة مرجع التطبيق الخاص به.",

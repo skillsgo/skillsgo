@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Upgrade naar {version}",
   "downgradeToVersion": "Downgraden naar {version}",
   "libraryGlobalScope": "Mondiale vaardigheden",
+  "libraryExternalScope": "Externe vaardigheden",
+  "libraryEmptyAddProject": "Ga naar Project toevoegen",
   "globalSkills": "Mondiale vaardigheden",
   "projectMissingMessage": "De map is mogelijk verplaatst of het volume ervan is mogelijk offline. Controleer het pad of verwijder de app-referentie ervan.",
   "projectPermissionMessage": "SkillsGo kan deze projectroot niet inspecteren. Controleer de bestandssysteemrechten of verwijder de app-referentie.",

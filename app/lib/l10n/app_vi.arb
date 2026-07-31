@@ -1078,6 +1078,8 @@
   "upgradeToVersion": "Nâng cấp lên {version}",
   "downgradeToVersion": "Hạ cấp xuống {version}",
   "libraryGlobalScope": "Kỹ năng toàn cầu",
+  "libraryExternalScope": "Kỹ năng bên ngoài",
+  "libraryEmptyAddProject": "Đi tới Thêm dự án",
   "globalSkills": "Kỹ năng toàn cầu",
   "projectMissingMessage": "Thư mục có thể đã di chuyển hoặc ổ đĩa của nó có thể ngoại tuyến. Kiểm tra đường dẫn hoặc xóa tham chiếu Ứng dụng của nó.",
   "projectPermissionMessage": "SkillsGo không thể kiểm tra gốc dự án này. Kiểm tra quyền hệ thống tệp của nó hoặc xóa tham chiếu Ứng dụng của nó.",
