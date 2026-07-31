@@ -7,7 +7,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 ## Workspace Identity
 
 - Package: `skillsgo`
-- Runtime: Flutter desktop; CI maintains macOS arm64, macOS x64, Windows x64, and Linux x64 build/startup coverage, while the complete product Journey suite remains macOS-only.
+- Runtime: Flutter desktop; CI maintains macOS arm64, macOS x64, Windows x64, and Linux x64 build/startup coverage, while the complete product Journey suite runs independently on macOS, Windows, and Linux.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
 - Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, and delegate every Hub and local operation to the bundled CLI.
@@ -34,11 +34,16 @@ Canonical release builds run from the repository root:
 make build-app-macos-arm64
 make build-app-macos-x86_64
 make build-app-macos
+./scripts/package-app-candidate.sh macos arm64
+./scripts/package-app-candidate.sh macos x86_64
+./scripts/package-app-candidate.sh windows x64
+./scripts/package-app-candidate.sh linux x64
 ```
 
 - `build-app-macos-arm64` produces an arm64-only App under `app/build/macos-arm64/Build/Products/Release/SkillsGo.app`.
 - `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
 - `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
+- `package-app-candidate.sh` requires the corresponding native Release build and pinned Velopack CLI, then emits one unsigned architecture-specific channel under `app/build/velopack/`.
 
 ## Workspace Map
 

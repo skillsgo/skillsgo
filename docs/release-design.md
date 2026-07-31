@@ -97,9 +97,9 @@ Stable releases update full, minor, major, and `latest` container tags. Pre-rele
 
 ## App Candidate Builds
 
-Manual dispatch and App pull-request smoke tests may produce expiring, explicitly unsigned GitHub Actions artifacts. Candidate builds do not create GitHub Releases.
+Every maintained native App Desktop CI job packages its verified Release bundle as an expiring, explicitly unsigned Velopack candidate. Candidate builds do not create GitHub Releases and must not be presented as production downloads.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version, executable contract, and single-architecture Mach-O layout before packaging. Successful `main` CI runs retain separate `SkillsGo_macos_arm64.zip` and `SkillsGo_macos_x86_64.zip` candidates for seven days.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, and portable package, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App and deliberately skips the unsigned PKG because an unsigned installer is not a distributable macOS artifact. Successful CI runs retain all four candidates for seven days.
 
 ## App Production Release
 
