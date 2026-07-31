@@ -231,6 +231,11 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 		})
 	}
 	if conf.LLM.Enabled() {
+		translationSchedule, err := translation.NewExecutionSchedule(conf.LLM.TranslationTimeZone, conf.LLM.TranslationBlockedWindows)
+		if err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("configure translation execution schedule: %w", err)
+		}
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
 		languageAnalyzer := translation.NewLanguageAnalyzer()
 		descriptionWorker := translation.NewWorker(
@@ -250,6 +255,9 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			})
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ descriptionTranslationDispatchArgs) error {
+			if translationSchedule.Delay(time.Now()) > 0 {
+				return nil
+			}
 			work, err := descriptionWorker.Plan(ctx)
 			if err != nil {
 				return err
@@ -270,6 +278,9 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register description translation dispatcher: %w", err)
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args descriptionTranslationArgs) error {
+			if delay := translationSchedule.Delay(time.Now()); delay > 0 {
+				return river.JobSnooze(delay)
+			}
 			err := descriptionWorker.RunOne(ctx, translation.DescriptionWork{
 				ResourceKind: args.ResourceKind, ResourceID: args.ResourceID, Description: args.Description,
 				SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion,
@@ -290,12 +301,15 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
 		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args descriptionTranslationArgs, cause error) error {
-			return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
+			return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(cause), true, cause)
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation failure handler: %w", err)
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ documentTranslationDispatchArgs) error {
+			if translationSchedule.Delay(time.Now()) > 0 {
+				return nil
+			}
 			work, err := documentWorker.Plan(ctx)
 			if err != nil {
 				return err
@@ -314,6 +328,9 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register document translation dispatcher: %w", err)
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args documentTranslationArgs) error {
+			if delay := translationSchedule.Delay(time.Now()); delay > 0 {
+				return river.JobSnooze(delay)
+			}
 			err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
 			if translation.IsPermanent(err) {
 				logger.Warnf("document translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
@@ -331,7 +348,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
 		}
 		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args documentTranslationArgs, cause error) error {
-			return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
+			return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(cause), true, cause)
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register document translation failure handler: %w", err)

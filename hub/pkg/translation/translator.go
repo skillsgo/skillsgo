@@ -102,7 +102,7 @@ func (t *OpenAITranslator) translate(ctx context.Context, source, sourceLang, ta
 		}
 		return Result{Content: content}, nil
 	}
-	return Result{}, Permanent(validationErr)
+	return Result{}, validationErr
 }
 
 func parseTranslationResult(raw string) (string, error) {

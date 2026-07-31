@@ -1937,16 +1937,27 @@ VALUES ($1,$2,$3,'failed',$4,$5,$6,1,$7,$8,$9)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
 error_kind=excluded.error_kind,error_message=excluded.error_message,
-failure_count=CASE WHEN localizations.prompt_version=excluded.prompt_version THEN localizations.failure_count+1 ELSE 1 END,
+failure_count=CASE
+  WHEN localizations.prompt_version=excluded.prompt_version AND localizations.error_kind=excluded.error_kind
+    THEN localizations.failure_count+1
+  ELSE 1
+END,
 retry_at=CASE
   WHEN excluded.failure_terminal THEN NULL
-  WHEN localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4 THEN NULL
+  WHEN excluded.error_kind='provider_payment_required'
+    AND localizations.prompt_version=excluded.prompt_version AND localizations.error_kind=excluded.error_kind
+    THEN excluded.updated_at + LEAST(INTERVAL '7 days', INTERVAL '6 hours' * power(2,localizations.failure_count))
+  WHEN excluded.error_kind='provider_payment_required' THEN excluded.retry_at
   WHEN localizations.prompt_version=excluded.prompt_version
+    AND localizations.error_kind=excluded.error_kind AND localizations.failure_count>=4 THEN NULL
+  WHEN localizations.prompt_version=excluded.prompt_version AND localizations.error_kind=excluded.error_kind
     THEN excluded.updated_at + LEAST(INTERVAL '7 days', INTERVAL '6 hours' * power(2,localizations.failure_count))
   ELSE excluded.retry_at
 END,
 failure_terminal=excluded.failure_terminal
-  OR (localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4),
+  OR (excluded.error_kind<>'provider_payment_required'
+    AND localizations.prompt_version=excluded.prompt_version
+    AND localizations.error_kind=excluded.error_kind AND localizations.failure_count>=4),
 updated_at=excluded.updated_at
 `
 
