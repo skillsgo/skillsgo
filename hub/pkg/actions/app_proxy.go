@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers, asynchronous Repository metadata maintenance, native Fiber routing, static disk delivery, and Huma documentation projection.
- * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, local static Git delivery, background Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, and authenticated Backfill administration.
+ * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, local static Git delivery, background Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, a generic embedding prewarm seam, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,7 +31,8 @@ func addProxyRoutes(
 	l *log.Logger,
 	c *config.Config,
 ) error {
-	return addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, nil, nil, false)
+	_, err := addProxyRoutesWithCatalog(app, r, s, l, c, nil, nil, nil, nil, nil, false)
+	return err
 }
 
 func addProxyRoutesWithCatalog(
@@ -46,7 +47,7 @@ func addProxyRoutesWithCatalog(
 	communityStore community.Store,
 	adminRouter fiber.Router,
 	adminEnabled bool,
-) error {
+) (PackagePrewarmer, error) {
 	if taskRuntime == nil {
 		taskRuntime = taskqueue.NewSynchronous()
 	}
@@ -74,20 +75,21 @@ func addProxyRoutesWithCatalog(
 		skill.WithRepositoryCachePolicy(time.Duration(c.RepositoryCacheTTL)*time.Second, c.RepositoryCacheMaxBytes),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	lister, err := skill.NewVCSLister(repositoryFetcher, c.TimeoutDuration())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	dp := download.New(&download.Opts{Lister: lister, NetworkMode: c.NetworkMode})
+	var packagePrewarmer PackagePrewarmer
 	if metadata != nil {
 		metadataSource := newGitHubRepositoryMetadataReader(c.GitHubTokens())
 		backgroundMetadataRefresher := newQueuedRepositoryMetadataRefresher(backgroundMetadata, taskRuntime, metadataSource)
 		if err := backgroundMetadataRefresher.RegisterTasks(); err != nil {
-			return fmt.Errorf("register repository metadata task: %w", err)
+			return nil, fmt.Errorf("register repository metadata task: %w", err)
 		}
 		publisher := newPackagePublisher(
 			repositoryFetcher,
@@ -98,10 +100,8 @@ func addProxyRoutesWithCatalog(
 		)
 		registerPackageSkillRoute(r, metadata, publisher, s)
 		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
-		if adminEnabled {
-			if backgroundMetadata.PostgresPool() == nil {
-				return fmt.Errorf("Package Backfill administration requires PostgreSQL")
-			}
+		var backfills *packageBackfillService
+		if backgroundMetadata.PostgresPool() != nil {
 			backgroundPublisher := newPackagePublisher(
 				repositoryFetcher,
 				s,
@@ -109,9 +109,15 @@ func addProxyRoutesWithCatalog(
 				withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
 				withRepositoryMaterializerCapacity(c.TaskQueue.RepositoryMaterializerCapacity),
 			)
-			backfills := newRepositoryBackfillService(backgroundMetadata, taskRuntime, lister, backgroundPublisher, l)
+			backfills = newRepositoryBackfillService(backgroundMetadata, taskRuntime, lister, backgroundPublisher, l)
 			if err := backfills.Register(); err != nil {
-				return fmt.Errorf("register Package Backfill task: %w", err)
+				return nil, fmt.Errorf("register Package Backfill task: %w", err)
+			}
+			packagePrewarmer = packagePrewarmService{submitter: backfills}
+		}
+		if adminEnabled {
+			if backfills == nil {
+				return nil, fmt.Errorf("Package Backfill administration requires PostgreSQL")
 			}
 			registerPackageBackfillRoutes(adminRouter, backfills)
 		}
@@ -121,5 +127,8 @@ func addProxyRoutesWithCatalog(
 	handlerOpts := &download.HandlerOpts{Protocol: dp, Logger: l, ArtifactOrigin: c.ArtifactOrigin}
 	api := registerHubAPIDocs(app, r, c, adminEnabled)
 	download.RegisterHandlers(r, handlerOpts)
-	return validateDocumentedProductRoutes(app, api, c.PathPrefix)
+	if err := validateDocumentedProductRoutes(app, api, c.PathPrefix); err != nil {
+		return nil, err
+	}
+	return packagePrewarmer, nil
 }

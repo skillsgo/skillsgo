@@ -55,7 +55,7 @@ type Querier interface {
 	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]PackageBackfillRun, error)
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
-	TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error)
+	TranslationCandidates(ctx context.Context, arg TranslationCandidatesParams) ([]TranslationCandidatesRow, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
 	UpsertBackfillVersionOutcome(ctx context.Context, arg UpsertBackfillVersionOutcomeParams) error
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error

@@ -64,6 +64,7 @@ func openRuntimeResources(logger *log.Logger, conf *config.Config, client *http.
 	resources.tasks = taskqueue.NewSynchronous()
 	if pool := resources.backgroundMetadata.PostgresPool(); pool != nil {
 		resources.tasks, err = taskqueue.NewRiver(resources.workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
+			FetchPollInterval:    time.Duration(conf.TaskQueue.FetchPollSeconds) * time.Second,
 			JobTimeout:           translationJobTimeout,
 			RescueStuckJobsAfter: 15 * time.Minute,
 			QueueWorkers:         taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),

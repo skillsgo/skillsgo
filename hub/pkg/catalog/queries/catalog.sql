@@ -163,14 +163,26 @@ INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_con
 VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind=excluded.result_kind,text_content=excluded.text_content,
-prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,updated_at=excluded.updated_at;
+prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,
+failure_count=0,retry_at=NULL,failure_terminal=FALSE,updated_at=excluded.updated_at;
 
 -- name: UpsertLocalizationFailure :exec
-INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,updated_at)
-VALUES ($1,$2,$3,'failed',$4,$5,$6,$7)
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,failure_count,retry_at,failure_terminal,updated_at)
+VALUES ($1,$2,$3,'failed',$4,$5,$6,1,$7,$8,$9)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
-error_kind=excluded.error_kind,error_message=excluded.error_message,updated_at=excluded.updated_at;
+error_kind=excluded.error_kind,error_message=excluded.error_message,
+failure_count=CASE WHEN localizations.prompt_version=excluded.prompt_version THEN localizations.failure_count+1 ELSE 1 END,
+retry_at=CASE
+  WHEN excluded.failure_terminal THEN NULL
+  WHEN localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4 THEN NULL
+  WHEN localizations.prompt_version=excluded.prompt_version
+    THEN excluded.updated_at + LEAST(INTERVAL '7 days', INTERVAL '6 hours' * power(2,localizations.failure_count))
+  ELSE excluded.retry_at
+END,
+failure_terminal=excluded.failure_terminal
+  OR (localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4),
+updated_at=excluded.updated_at;
 
 -- name: PackageLocalizedDescription :one
 SELECT l.text_content
@@ -292,28 +304,54 @@ similarity(mvs.name,sqlc.arg(query)) DESC,m.path,mvs.path
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: TranslationCandidates :many
-SELECT DISTINCT ON (m.description_digest) 'package_description'::text AS resource_kind,
-       m.path AS resource_id, m.description, m.description_digest AS content_digest,
-       COALESCE(ld.source_digest, '') AS source_digest,
-       COALESCE(ld.prompt_version, '') AS prompt_version
-FROM packages m
-LEFT JOIN localizations ld
-  ON ld.resource_kind='package_description' AND ld.source_digest=m.description_digest AND ld.lang=$1
-WHERE trim(m.description)<>''
-UNION ALL
-SELECT DISTINCT ON (mvs.description_digest) 'skill_description'::text,
-       m.path || '@' || mv.version || ':' || mvs.path, mvs.description, mvs.description_digest,
-       COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-FROM packages m
-JOIN versions mv ON mv.id=m.current_version_id
-JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localizations ld
-  ON ld.resource_kind='skill_description' AND ld.source_digest=mvs.description_digest AND ld.lang=$1
-WHERE trim(mvs.description)<>''
-ORDER BY resource_kind, resource_id;
+WITH target_languages AS (
+  SELECT requested.lang::text AS lang,requested.lang_order::bigint AS lang_order
+  FROM unnest(sqlc.arg(langs)::text[]) WITH ORDINALITY AS requested(lang,lang_order)
+),
+descriptions AS (
+  SELECT DISTINCT ON (m.description_digest)
+         'package_description'::text AS resource_kind,
+         m.path AS resource_id,m.description,m.description_digest AS content_digest
+  FROM packages m
+  WHERE trim(m.description)<>''
+  UNION ALL
+  SELECT DISTINCT ON (mvs.description_digest)
+         'skill_description'::text,
+         m.path || '@' || mv.version || ':' || mvs.path,mvs.description,mvs.description_digest
+  FROM packages m
+  JOIN versions mv ON mv.id=m.current_version_id
+  JOIN skills mvs ON mvs.version_id=mv.id
+  WHERE trim(mvs.description)<>''
+),
+candidates AS (
+  SELECT descriptions.*,target_languages.lang,target_languages.lang_order,
+         COALESCE(l.source_digest,'') AS source_digest,
+         COALESCE(l.prompt_version,'') AS stored_prompt_version,
+         row_number() OVER (
+           PARTITION BY target_languages.lang
+           ORDER BY descriptions.resource_kind,descriptions.resource_id
+         ) AS language_position
+  FROM target_languages
+  CROSS JOIN descriptions
+  LEFT JOIN localizations l
+    ON l.resource_kind=descriptions.resource_kind
+   AND l.source_digest=descriptions.content_digest
+   AND l.lang=target_languages.lang
+  WHERE l.source_digest IS NULL
+     OR l.prompt_version<>sqlc.arg(target_prompt_version)
+     OR (l.result_kind='failed' AND NOT l.failure_terminal AND l.retry_at<=CURRENT_TIMESTAMP)
+)
+SELECT resource_kind,resource_id,description,content_digest,lang,source_digest,stored_prompt_version
+FROM candidates
+ORDER BY language_position,lang_order
+LIMIT sqlc.arg(page_limit);
 
 -- name: DocumentTranslationCandidates :many
-WITH documents AS (
+WITH target_languages AS (
+  SELECT requested.lang::text AS lang,requested.lang_order::bigint AS lang_order
+  FROM unnest(sqlc.arg(langs)::text[]) WITH ORDINALITY AS requested(lang,lang_order)
+),
+documents AS (
   SELECT mvs.document_digest,
          bool_or(m.current_version_id=mvs.version_id) AS is_current
   FROM skills mvs
@@ -321,14 +359,28 @@ WITH documents AS (
   JOIN packages m ON m.id=mv.package_id
   WHERE mvs.document_digest<>''
   GROUP BY mvs.document_digest
+),
+candidates AS (
+  SELECT documents.document_digest,target_languages.lang,target_languages.lang_order,
+         COALESCE(l.source_digest,'') AS source_digest,
+         COALESCE(l.prompt_version,'') AS stored_prompt_version,
+         row_number() OVER (
+           PARTITION BY target_languages.lang
+           ORDER BY documents.is_current DESC,documents.document_digest
+         ) AS language_position
+  FROM target_languages
+  CROSS JOIN documents
+  LEFT JOIN localizations l
+    ON l.resource_kind='skill_document'
+   AND l.source_digest=documents.document_digest
+   AND l.lang=target_languages.lang
+  WHERE l.source_digest IS NULL
+     OR l.prompt_version<>sqlc.arg(target_prompt_version)
+     OR (l.result_kind='failed' AND NOT l.failure_terminal AND l.retry_at<=CURRENT_TIMESTAMP)
 )
-SELECT documents.document_digest,
-       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS stored_prompt_version
-FROM documents
-LEFT JOIN localizations l
-  ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
-WHERE l.source_digest IS NULL OR l.prompt_version<>sqlc.arg(target_prompt_version)
-ORDER BY documents.is_current DESC,documents.document_digest
+SELECT document_digest,lang,source_digest,stored_prompt_version
+FROM candidates
+ORDER BY language_position,lang_order
 LIMIT sqlc.arg(page_limit);
 
 -- name: SearchLocalizedSkills :many

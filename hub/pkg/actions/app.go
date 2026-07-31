@@ -42,6 +42,7 @@ type Assembly struct {
 	BackgroundCatalog *catalog.Catalog
 	Storage           storage.Backend
 	Community         community.Store
+	PackagePrewarmer  PackagePrewarmer
 }
 
 type appOptions struct {
@@ -200,6 +201,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 	taskRuntime := taskqueue.NewSynchronous()
 	if pool := backgroundMetadata.PostgresPool(); pool != nil {
 		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
+			FetchPollInterval:    time.Duration(conf.TaskQueue.FetchPollSeconds) * time.Second,
 			JobTimeout:           translationJobTimeout,
 			RescueStuckJobsAfter: 15 * time.Minute,
 			QueueWorkers:         taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
@@ -217,12 +219,16 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("creating community data: %w", err)
 		}
 	}
-	if options.assemblyReceiver != nil {
-		options.assemblyReceiver(Assembly{Catalog: metadata, BackgroundCatalog: backgroundMetadata, Storage: store, Community: communityStore})
-	}
-	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, communityStore, adminRouter, adminEnabled); err != nil {
+	packagePrewarmer, err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, backgroundMetadata, taskRuntime, communityStore, adminRouter, adminEnabled)
+	if err != nil {
 		cancelWorkers()
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
+	}
+	if options.assemblyReceiver != nil {
+		options.assemblyReceiver(Assembly{
+			Catalog: metadata, BackgroundCatalog: backgroundMetadata, Storage: store,
+			Community: communityStore, PackagePrewarmer: packagePrewarmer,
+		})
 	}
 	if conf.LLM.Enabled() {
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
@@ -232,7 +238,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			conf.LLM.TranslationBatch,
 		)
 		documentWorker := translation.NewDocumentWorker(backgroundMetadata, store, translator, languageAnalyzer, conf.LLM.TranslationLangs, conf.LLM.DocumentPromptVersion, conf.LLM.TranslationBatch)
-		recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, cause error) error {
+		recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, retryable bool, cause error) error {
 			message := cause.Error()
 			runes := []rune(message)
 			if len(runes) > 2048 {
@@ -240,7 +246,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			}
 			return backgroundMetadata.UpsertLocalizationFailure(ctx, catalog.LocalizationFailure{
 				ResourceKind: resourceKind, SourceDigest: digest, Lang: lang, PromptVersion: prompt,
-				ErrorKind: kind, ErrorMessage: message,
+				ErrorKind: kind, ErrorMessage: message, Retryable: retryable,
 			})
 		}
 		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ descriptionTranslationDispatchArgs) error {
@@ -270,7 +276,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			})
 			if translation.IsPermanent(err) {
 				logger.Warnf("description translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-				if persistErr := recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+				if persistErr := recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), false, err); persistErr != nil {
 					return persistErr
 				}
 				return river.JobCancel(err)
@@ -284,7 +290,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
 		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args descriptionTranslationArgs, cause error) error {
-			return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+			return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register description translation failure handler: %w", err)
@@ -311,7 +317,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
 			if translation.IsPermanent(err) {
 				logger.Warnf("document translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-				if persistErr := recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+				if persistErr := recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), false, err); persistErr != nil {
 					return persistErr
 				}
 				return river.JobCancel(err)
@@ -325,7 +331,7 @@ func App(logger *log.Logger, conf *config.Config, suppliedOptions ...AppOption) 
 			return nil, cleanup, fmt.Errorf("register document translation job: %w", err)
 		}
 		if err := taskqueue.RegisterFailureHandler(taskRuntime, func(ctx context.Context, args documentTranslationArgs, cause error) error {
-			return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+			return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
 		}); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register document translation failure handler: %w", err)
