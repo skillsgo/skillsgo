@@ -38,6 +38,7 @@ void main() {
     final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+      appVersion: 'test',
     );
 
     await expectLater(
@@ -83,6 +84,7 @@ void main() {
     final gateway = DesktopSkillsGateway(
       processRunner: runner,
       initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
+      appVersion: 'test',
     );
     const summary = SkillSummary(
       packagePath: r'github.com/a/b',
@@ -120,6 +122,8 @@ void main() {
       'json',
       '--hub',
       'https://hub.skillsgo.ai',
+      '--app-version',
+      'test',
     ]);
     runner.result = const ProcessOutput(
       exitCode: 0,
@@ -195,6 +199,7 @@ void main() {
       final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+        appVersion: 'test',
       );
       const skill = SkillSummary(
         packagePath: packagePath,
@@ -245,6 +250,7 @@ void main() {
       final gateway = DesktopSkillsGateway(
         processRunner: runner,
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+        appVersion: 'test',
       );
       const skills = [
         SkillSummary(
@@ -292,6 +298,8 @@ void main() {
         'json',
         '--hub',
         'https://hub.skillsgo.ai',
+        '--app-version',
+        'test',
       ]);
     },
   );
@@ -433,6 +441,7 @@ void main() {
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
         hubBaseUrl: 'https://must-not-be-used.example',
+        appVersion: 'test',
       );
 
       final result = await gateway.adopt(const [
@@ -479,6 +488,8 @@ void main() {
         'json',
         '--hub',
         'https://must-not-be-used.example',
+        '--app-version',
+        'test',
       ]);
       expect(jsonDecode(runner.lastStdin!), {
         'schemaVersion': 1,
@@ -526,6 +537,7 @@ void main() {
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
       hubBaseUrl: 'https://must-not-be-used.example',
+      appVersion: 'test',
     );
 
     await expectLater(

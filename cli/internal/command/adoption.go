@@ -91,7 +91,7 @@ type externalStageCandidate struct {
 }
 
 func newAdoptCommand(catalog *agent.Catalog) *cobra.Command {
-	var input, output, hubURL string
+	var input, output, hubURL, appVersion string
 	cmd := &cobra.Command{
 		Use:   "adopt",
 		Short: appi18n.T("adoption.short"),
@@ -107,13 +107,14 @@ func newAdoptCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report := adoptionReport{SchemaVersion: adoptionSchemaVersion, Results: executeAdoptionItems(cmd, catalog, hubURL, request.Items)}
+			report := adoptionReport{SchemaVersion: adoptionSchemaVersion, Results: executeAdoptionItems(cmd, catalog, hubURL, appVersion, request.Items)}
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 		},
 	}
 	cmd.Flags().StringVar(&input, "input", "", "JSON request source; use - for stdin")
 	cmd.Flags().StringVar(&output, "output", "json", "output format: json")
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
+	cmd.Flags().StringVar(&appVersion, "app-version", "", "calling SkillsGo App version for install reporting")
 	return cmd
 }
 
@@ -167,7 +168,7 @@ type adoptionGroup struct {
 	indexes     []int
 }
 
-func executeAdoptionItems(cmd *cobra.Command, catalog *agent.Catalog, hubURL string, items []adoptionItem) []adoptionResult {
+func executeAdoptionItems(cmd *cobra.Command, catalog *agent.Catalog, hubURL, appVersion string, items []adoptionItem) []adoptionResult {
 	results := make([]adoptionResult, len(items))
 	if err := recoverInterruptedAdoptions(); err != nil {
 		for index, item := range items {
@@ -194,12 +195,12 @@ func executeAdoptionItems(cmd *cobra.Command, catalog *agent.Catalog, hubURL str
 		group.indexes = append(group.indexes, index)
 	}
 	for _, key := range order {
-		executeAdoptionGroup(cmd, catalog, hubURL, items, groups[key], results)
+		executeAdoptionGroup(cmd, catalog, hubURL, appVersion, items, groups[key], results)
 	}
 	return results
 }
 
-func executeAdoptionGroup(cmd *cobra.Command, catalog *agent.Catalog, hubURL string, items []adoptionItem, group *adoptionGroup, results []adoptionResult) {
+func executeAdoptionGroup(cmd *cobra.Command, catalog *agent.Catalog, hubURL, appVersion string, items []adoptionItem, group *adoptionGroup, results []adoptionResult) {
 	groupItems := make([]adoptionItem, 0, len(group.indexes))
 	skillPaths := make([]string, 0, len(group.indexes))
 	for _, index := range group.indexes {
@@ -217,7 +218,7 @@ func executeAdoptionGroup(cmd *cobra.Command, catalog *agent.Catalog, hubURL str
 	discard.SetContext(cmd.Context())
 	discard.SetOut(io.Discard)
 	discard.SetErr(io.Discard)
-	options := addOptions{hubURL: hubURL, output: "json", skillPaths: skillPaths, replaceConflicts: true}
+	options := addOptions{hubURL: hubURL, output: "json", skillPaths: skillPaths, replaceConflicts: true, appVersion: appVersion}
 	changeSet, err := preparePackageAdd(discard, catalog, source.Reference{PackagePath: group.packagePath, Version: group.version}, group.agents, group.scope, group.projectRoot, options, skillPaths, true)
 	if err != nil {
 		setAdoptionGroupFailure(group.indexes, results, "install-prepare-failed: "+err.Error())

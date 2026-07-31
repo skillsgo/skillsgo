@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/protocol/cloud"
 )
 
 func TestReportHubInstallPostsDirectlyToCurrentHub(t *testing.T) {
@@ -28,11 +29,13 @@ func TestReportHubInstallPostsDirectlyToCurrentHub(t *testing.T) {
 	defer hub.Close()
 
 	reportHubInstall(t.Context(), hub.URL, hubInstallFact{
-		PackagePath: "github.com/acme/skills", SkillName: "demo", SkillPath: "skills/demo", Version: "v1.0.0",
-		Agents: []string{"codex"}, Scope: install.ScopeGlobal,
+		PackagePath: "github.com/acme/skills", Version: "v1.0.0",
+		Skills: []cloud.InstallEventSkill{{Name: "demo", Path: "skills/demo"}, {Name: "other", Path: "skills/other"}},
+		Agents: []string{"codex"}, Scope: install.ScopeGlobal, AppVersion: "1.2.3",
 	})
 	event := <-events
-	if event["packagePath"] != "github.com/acme/skills" || event["skillName"] != "demo" || event["skillPath"] != "skills/demo" || event["scope"] != "global" {
+	skills, ok := event["skills"].([]any)
+	if event["packagePath"] != "github.com/acme/skills" || event["scope"] != "global" || event["appVersion"] != "1.2.3" || !ok || len(skills) != 2 {
 		t.Fatalf("unexpected event %#v", event)
 	}
 }

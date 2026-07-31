@@ -39,6 +39,7 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
           },
       ],
     });
+    final appVersion = await loadAppVersion();
     final command = await _runCli([
       'adopt',
       '--input',
@@ -47,6 +48,7 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
       'json',
       '--hub',
       _hubOrigin,
+      if (appVersion.trim().isNotEmpty) ...['--app-version', appVersion.trim()],
     ], stdin: request);
     if (!command.succeeded) throw _commandFailure(command);
     try {
@@ -167,9 +169,15 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
     }
     await _ensureHubOrigin();
     final groups = _installationSelectionGroups(selections);
+    final appVersion = await loadAppVersion();
     var succeededTargets = 0;
     for (final group in groups.values) {
-      final arguments = _packageAddArguments(skills, immutableVersion, group);
+      final arguments = _packageAddArguments(
+        skills,
+        immutableVersion,
+        group,
+        appVersion,
+      );
       final command = await _runCli(arguments);
       if (!command.succeeded) throw _commandFailure(command);
       try {
@@ -224,6 +232,7 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
     List<SkillSummary> skills,
     String immutableVersion,
     List<InstallationTargetSelection> group,
+    String appVersion,
   ) {
     final first = group.first;
     return [
@@ -244,6 +253,7 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
       'json',
       '--hub',
       _hubOrigin,
+      if (appVersion.trim().isNotEmpty) ...['--app-version', appVersion.trim()],
     ];
   }
 }
