@@ -4,9 +4,6 @@
 
 <!-- README-I18N:START -->
 
-<details>
-  <summary><strong>हिन्दी</strong> · भाषाएँ</summary>
-  <br>
   <p>
     <a href="../../README.md">English</a> ·
     <a href="./README.zh-CN.md">简体中文</a> ·
@@ -32,14 +29,9 @@
     <a href="./README.sv.md">Svenska</a> ·
     <a href="./README.uk.md">Українська</a>
   </p>
-</details>
-
 <!-- README-I18N:END -->
 
 SkillsGo, Agent Skills खोजने और प्रबंधित करने के लिए एक खुला पारिस्थितिकी तंत्र है। डेस्कटॉप App लोगों को Skills खोजने और प्रबंधित करने का दृश्य तरीका देता है, जबकि CLI उसी Hub कैटलॉग को CI/CD और दोहराए जा सकने वाले परिवेश कार्यप्रवाहों से जोड़ता है।
-
-> [!IMPORTANT]
-> SkillsGo अपनी पहली स्थिर रिलीज़ से पहले सक्रिय विकास में है। सार्वजनिक प्रोटोकॉल, स्थायी प्रारूप और इंस्टॉलेशन व्यवहार बदल सकते हैं।
 
 ## SkillsGo को काम करते देखें
 

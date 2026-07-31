@@ -4,9 +4,6 @@
 
 <!-- README-I18N:START -->
 
-<details>
-  <summary><strong>Svenska</strong> · Språk</summary>
-  <br>
   <p>
     <a href="../../README.md">English</a> ·
     <a href="./README.zh-CN.md">简体中文</a> ·
@@ -32,14 +29,9 @@
     <strong>Svenska</strong> ·
     <a href="./README.uk.md">Українська</a>
   </p>
-</details>
-
 <!-- README-I18N:END -->
 
 SkillsGo är ett öppet ekosystem för att upptäcka och hantera Agent Skills. Desktop-Appen ger människor ett visuellt sätt att upptäcka och hantera Skills, medan CLI gör samma Hub-katalog tillgänglig för CI/CD och reproducerbara miljöarbetsflöden.
-
-> [!IMPORTANT]
-> SkillsGo utvecklas aktivt inför den första stabila versionen. Offentliga protokoll, beständiga format och installationsbeteende kan komma att ändras.
 
 ## Se SkillsGo i praktiken
 

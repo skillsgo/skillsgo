@@ -4,9 +4,6 @@
 
 <!-- README-I18N:START -->
 
-<details>
-  <summary><strong>العربية</strong> · اللغات</summary>
-  <br>
   <p>
     <a href="../../README.md">English</a> ·
     <a href="./README.zh-CN.md">简体中文</a> ·
@@ -32,14 +29,9 @@
     <a href="./README.sv.md">Svenska</a> ·
     <a href="./README.uk.md">Українська</a>
   </p>
-</details>
-
 <!-- README-I18N:END -->
 
 SkillsGo منظومة مفتوحة لاكتشاف Agent Skills وإدارتها. يوفّر App سطح المكتب للأشخاص مسارًا مرئيًا لاكتشاف Skills وإدارتها، بينما يربط CLI كتالوج Hub نفسه بمسارات CI/CD وبيئات العمل القابلة لإعادة الإنتاج.
-
-> [!IMPORTANT]
-> ما يزال SkillsGo قيد التطوير النشط قبل الإصدار المستقر الأول. قد تتغير البروتوكولات العامة وتنسيقات التخزين الدائم وسلوك التثبيت.
 
 ## شاهد SkillsGo أثناء العمل
 

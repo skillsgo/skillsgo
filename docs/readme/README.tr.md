@@ -4,9 +4,6 @@
 
 <!-- README-I18N:START -->
 
-<details>
-  <summary><strong>Türkçe</strong> · Diller</summary>
-  <br>
   <p>
     <a href="../../README.md">English</a> ·
     <a href="./README.zh-CN.md">简体中文</a> ·
@@ -32,14 +29,9 @@
     <a href="./README.sv.md">Svenska</a> ·
     <a href="./README.uk.md">Українська</a>
   </p>
-</details>
-
 <!-- README-I18N:END -->
 
 SkillsGo, Agent Skills keşfetmek ve yönetmek için açık bir ekosistemdir. Masaüstü App, insanların Skills keşfedip yönetmesi için görsel bir yol sunarken CLI, aynı Hub kataloğunu CI/CD ve tekrarlanabilir ortam iş akışlarına taşır.
-
-> [!IMPORTANT]
-> SkillsGo, ilk kararlı sürümünden önce etkin biçimde geliştirilmektedir. Genel protokoller, kalıcı biçimler ve kurulum davranışı değişebilir.
 
 ## SkillsGo’yu çalışırken görün
 
