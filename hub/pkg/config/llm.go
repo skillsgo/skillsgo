@@ -8,14 +8,16 @@ package config
 
 // LLMConfig enables translation when APIKey is non-empty.
 type LLMConfig struct {
-	BaseURL                  string   `envconfig:"SKILLSGO_HUB_LLM_BASE_URL" validate:"required,url"`
-	APIKey                   string   `envconfig:"SKILLSGO_HUB_LLM_API_KEY"`
-	Model                    string   `envconfig:"SKILLSGO_HUB_LLM_MODEL" validate:"required"`
-	TranslationLangs         []string `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_LANGS" validate:"min=1,dive,required"`
-	TranslationInterval      int      `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_INTERVAL" validate:"min=1"`
-	TranslationBatch         int      `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_BATCH" validate:"min=1,max=500"`
-	DescriptionPromptVersion string   `envconfig:"SKILLSGO_HUB_LLM_DESCRIPTION_PROMPT_VERSION" validate:"required"`
-	DocumentPromptVersion    string   `envconfig:"SKILLSGO_HUB_LLM_DOCUMENT_PROMPT_VERSION" validate:"required"`
+	BaseURL                   string   `envconfig:"SKILLSGO_HUB_LLM_BASE_URL" validate:"required,url"`
+	APIKey                    string   `envconfig:"SKILLSGO_HUB_LLM_API_KEY"`
+	Model                     string   `envconfig:"SKILLSGO_HUB_LLM_MODEL" validate:"required"`
+	TranslationLangs          []string `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_LANGS" validate:"min=1,dive,required"`
+	TranslationInterval       int      `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_INTERVAL" validate:"min=1"`
+	TranslationBatch          int      `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_BATCH" validate:"min=1,max=500"`
+	TranslationTimeZone       string   `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_TIME_ZONE"`
+	TranslationBlockedWindows []string `envconfig:"SKILLSGO_HUB_LLM_TRANSLATION_BLOCKED_WINDOWS"`
+	DescriptionPromptVersion  string   `envconfig:"SKILLSGO_HUB_LLM_DESCRIPTION_PROMPT_VERSION" validate:"required"`
+	DocumentPromptVersion     string   `envconfig:"SKILLSGO_HUB_LLM_DOCUMENT_PROMPT_VERSION" validate:"required"`
 }
 
 func (c *LLMConfig) Enabled() bool { return c != nil && c.APIKey != "" }

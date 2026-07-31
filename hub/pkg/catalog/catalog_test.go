@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, monotonic and concurrency-safe current-Version selection, explicit Backfill Run/Version outcomes, complete member history, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, monotonic and concurrency-safe current-Version selection, explicit Backfill Run/Version outcomes, complete member history, localization failure recovery, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -564,6 +564,76 @@ func TestRetryExhaustedTranslationEventuallyBecomesTerminal(t *testing.T) {
 	require.Equal(t, 5, count)
 	require.True(t, terminal)
 	require.Nil(t, retryAt)
+}
+
+func TestProviderPaymentFailureRemainsRecoverable(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	failure := LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: DescriptionDigest("Payment failure"), Lang: "fr",
+		PromptVersion: "description-v1", ErrorKind: "provider_payment_required", ErrorMessage: "payment required", Retryable: true,
+	}
+	for range 8 {
+		require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+	}
+	var count int
+	var terminal bool
+	var retryAt *time.Time
+	require.NoError(t, c.pool.QueryRow(ctx, `SELECT failure_count,failure_terminal,retry_at FROM localizations
+		WHERE resource_kind=$1 AND source_digest=$2 AND lang=$3`, failure.ResourceKind, failure.SourceDigest, failure.Lang).Scan(&count, &terminal, &retryAt))
+	require.Equal(t, 8, count)
+	require.False(t, terminal)
+	require.NotNil(t, retryAt)
+}
+
+func TestProviderPaymentFailureDoesNotPoisonLaterFailureKind(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	failure := LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: DescriptionDigest("Recovered payment"), Lang: "fr",
+		PromptVersion: "description-v1", ErrorKind: "provider_payment_required", ErrorMessage: "payment required", Retryable: true,
+	}
+	for range 8 {
+		require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+	}
+	failure.ErrorKind = "retry_exhausted"
+	failure.ErrorMessage = "invalid model format"
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+
+	var count int
+	var terminal bool
+	require.NoError(t, c.pool.QueryRow(ctx, `SELECT failure_count,failure_terminal FROM localizations
+		WHERE resource_kind=$1 AND source_digest=$2 AND lang=$3`, failure.ResourceKind, failure.SourceDigest, failure.Lang).Scan(&count, &terminal))
+	require.Equal(t, 1, count)
+	require.False(t, terminal)
+}
+
+func TestProviderPaymentFailureRevivesLegacyTerminalIdentity(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	skill := &Skill{PackagePath: "github.com/acme/payment-recovery", Path: "review", Name: "review", Description: "Review changes", DocumentDigest: ContentDigest([]byte("payment-recovery-document")), LatestVersion: "main"}
+	require.NoError(t, upsertTestSkill(t, c, skill))
+	digest := DescriptionDigest(skill.Description)
+	failure := LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: digest, Lang: "de", PromptVersion: "description-v1",
+		ErrorKind: "provider_rejected", ErrorMessage: "legacy payment rejection",
+	}
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+	failure.ErrorKind = "provider_payment_required"
+	failure.ErrorMessage = "payment required"
+	failure.Retryable = true
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+
+	var retryAt time.Time
+	require.NoError(t, c.pool.QueryRow(ctx, `SELECT retry_at FROM localizations
+		WHERE resource_kind=$1 AND source_digest=$2 AND lang=$3`, LocalizedSkill, digest, "de").Scan(&retryAt))
+	require.WithinDuration(t, time.Now().UTC().Add(6*time.Hour), retryAt, time.Minute)
+	_, err := c.pool.Exec(ctx, `UPDATE localizations SET retry_at=$1 WHERE resource_kind=$2 AND source_digest=$3 AND lang=$4`,
+		time.Now().UTC().Add(-time.Minute), LocalizedSkill, digest, "de")
+	require.NoError(t, err)
+	candidates, err := c.TranslationCandidates(ctx, []string{"de"}, "description-v1", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
 }
 
 func TestDocumentTranslationCandidatesHonorDatabaseLimit(t *testing.T) {
