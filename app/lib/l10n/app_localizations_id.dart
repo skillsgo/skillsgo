@@ -433,6 +433,12 @@ class AppLocalizationsId extends AppLocalizations {
   String get libraryGlobalScope => 'Global Skills';
 
   @override
+  String get libraryExternalScope => 'External Skills';
+
+  @override
+  String get libraryEmptyAddProject => 'Go to Add Project';
+
+  @override
   String get globalScope => 'Global';
 
   @override

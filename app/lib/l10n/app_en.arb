@@ -135,6 +135,8 @@
   "allProjects": "All Projects",
   "specificProject": "Project",
   "libraryGlobalScope": "Global Skills",
+  "libraryExternalScope": "External Skills",
+  "libraryEmptyAddProject": "Go to Add Project",
   "globalScope": "Global",
   "globalSkills": "Global Skills",
   "addProject": "Add Project",

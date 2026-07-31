@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, direct SkillsGateway Package mutations, the App-scoped update coordinator, inline removal state, the localized Adoption story, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with coordinated preview refresh, inline-confirmed removal, and detail transitions.
+ * [OUTPUT]: Provides Library loading, shared-refresh reconciliation, managed-location versus cross-location External target projection, selection, Added Project, reviewed adoption, one-card-at-a-time Package update with coordinated preview refresh, inline-confirmed removal, and detail transitions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -379,10 +379,19 @@ extension _LibraryActions on _LibraryScreenState {
     final current = skills ?? const <InstalledSkill>[];
     final projected = <InstalledSkill>[];
     for (final skill in current) {
+      final external = skill.provenance == LibraryProvenance.external;
+      if (selectedLocation.kind == _LibraryLocationKind.external) {
+        if (!external) continue;
+      } else if (external) {
+        continue;
+      }
       final project = _selectedProject;
       final visibleTargets = skill.targets
           .where((target) {
-            final matchesLocation = project == null
+            final matchesLocation =
+                selectedLocation.kind == _LibraryLocationKind.external
+                ? true
+                : project == null
                 ? target.scope == InstallationScope.global
                 : target.scope == InstallationScope.project &&
                       target.projectRoot == project.path;
