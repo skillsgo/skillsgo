@@ -322,7 +322,7 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	} {
 		require.NoError(t, upsertTestSkill(t, c, skill))
 	}
-	candidates, err := c.TranslationCandidates(t.Context(), "zh-Hans", "prompt", 10)
+	candidates, err := c.TranslationCandidates(t.Context(), []string{"zh-Hans"}, "prompt", 10)
 	require.NoError(t, err)
 	var oneDigest string
 	for _, candidate := range candidates {
@@ -462,7 +462,7 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	documentDigest := ContentDigest([]byte("---\nname: review\ndescription: Review a change\n---\n\nReview changes.\n"))
 	skill := &Skill{PackagePath: "github.com/acme/skills", Path: "review", Name: "review", Description: "Review a change", DocumentDigest: documentDigest, LatestVersion: "main"}
 	require.NoError(t, upsertTestSkill(t, c, skill))
-	candidates, err := c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	candidates, err := c.TranslationCandidates(ctx, []string{"zh-CN"}, "description-v1", 10)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
 	require.Equal(t, LocalizedSkill, candidates[0].ResourceKind)
@@ -475,32 +475,32 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, localizedResults, 1)
 	require.Equal(t, "审查变更", localizedResults[0].Description)
-	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	candidates, err = c.TranslationCandidates(ctx, []string{"zh-CN"}, "description-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, candidates)
 
 	fork := &Skill{PackagePath: "github.com/acme/forked-skills", Path: "review", Name: "review", Description: skill.Description, DocumentDigest: documentDigest, LatestVersion: "main"}
 	require.NoError(t, upsertTestSkill(t, c, fork))
-	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	candidates, err = c.TranslationCandidates(ctx, []string{"zh-CN"}, "description-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, candidates, "an identical description in a fork must reuse the global localization")
-	documentCandidates, err := c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v1", 10)
+	documentCandidates, err := c.DocumentTranslationCandidates(ctx, []string{"zh-CN"}, "document-v1", 10)
 	require.NoError(t, err)
 	require.Len(t, documentCandidates, 1, "identical forked SKILL.md content must produce one global candidate")
 	require.NoError(t, c.UpsertLocalizationFailure(ctx, LocalizationFailure{
 		ResourceKind: LocalizedSkillDocument, SourceDigest: documentDigest, Lang: "zh-CN",
 		PromptVersion: "document-v1", ErrorKind: "validation", ErrorMessage: "bad envelope",
 	}))
-	documentCandidates, err = c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v1", 10)
+	documentCandidates, err = c.DocumentTranslationCandidates(ctx, []string{"zh-CN"}, "document-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, documentCandidates, "a terminal failure must suppress the same immutable translation identity")
-	documentCandidates, err = c.DocumentTranslationCandidates(ctx, "zh-CN", "document-v2", 1)
+	documentCandidates, err = c.DocumentTranslationCandidates(ctx, []string{"zh-CN"}, "document-v2", 1)
 	require.NoError(t, err)
 	require.Len(t, documentCandidates, 1, "a prompt change must create a fresh translation identity")
 
 	skill.Description = "Review code changes"
 	require.NoError(t, upsertTestSkill(t, c, skill))
-	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	candidates, err = c.TranslationCandidates(ctx, []string{"zh-CN"}, "description-v1", 10)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
 }
@@ -515,12 +515,55 @@ func TestTranslationFailureSuppressesOnlyTheExactPromptIdentity(t *testing.T) {
 		ResourceKind: LocalizedSkill, SourceDigest: digest, Lang: "tr", PromptVersion: "description-v1",
 		ErrorKind: "validation", ErrorMessage: "bad envelope",
 	}))
-	candidates, err := c.TranslationCandidates(ctx, "tr", "description-v1", 10)
+	candidates, err := c.TranslationCandidates(ctx, []string{"tr"}, "description-v1", 10)
 	require.NoError(t, err)
 	require.Empty(t, candidates)
-	candidates, err = c.TranslationCandidates(ctx, "tr", "description-v2", 10)
+	candidates, err = c.TranslationCandidates(ctx, []string{"tr"}, "description-v2", 10)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
+}
+
+func TestRetryExhaustedTranslationBecomesEligibleWhenCooldownExpires(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	skill := &Skill{PackagePath: "github.com/acme/retry-translation", Path: "review", Name: "review", Description: "Review changes", DocumentDigest: ContentDigest([]byte("retry-document")), LatestVersion: "main"}
+	require.NoError(t, upsertTestSkill(t, c, skill))
+	digest := DescriptionDigest(skill.Description)
+	require.NoError(t, c.UpsertLocalizationFailure(ctx, LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: digest, Lang: "de", PromptVersion: "description-v1",
+		ErrorKind: "retry_exhausted", ErrorMessage: "provider unavailable", Retryable: true,
+	}))
+
+	candidates, err := c.TranslationCandidates(ctx, []string{"de"}, "description-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, candidates, "cooldown must prevent an immediate retry storm")
+
+	_, err = c.pool.Exec(ctx, `UPDATE localizations SET retry_at=$1 WHERE resource_kind=$2 AND source_digest=$3 AND lang=$4`,
+		time.Now().UTC().Add(-time.Minute), LocalizedSkill, digest, "de")
+	require.NoError(t, err)
+	candidates, err = c.TranslationCandidates(ctx, []string{"de"}, "description-v1", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
+}
+
+func TestRetryExhaustedTranslationEventuallyBecomesTerminal(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	failure := LocalizationFailure{
+		ResourceKind: LocalizedSkill, SourceDigest: DescriptionDigest("Persistent failure"), Lang: "fr",
+		PromptVersion: "description-v1", ErrorKind: "retry_exhausted", ErrorMessage: "provider unavailable", Retryable: true,
+	}
+	for range 5 {
+		require.NoError(t, c.UpsertLocalizationFailure(ctx, failure))
+	}
+	var count int
+	var terminal bool
+	var retryAt *time.Time
+	require.NoError(t, c.pool.QueryRow(ctx, `SELECT failure_count,failure_terminal,retry_at FROM localizations
+		WHERE resource_kind=$1 AND source_digest=$2 AND lang=$3`, failure.ResourceKind, failure.SourceDigest, failure.Lang).Scan(&count, &terminal, &retryAt))
+	require.Equal(t, 5, count)
+	require.True(t, terminal)
+	require.Nil(t, retryAt)
 }
 
 func TestDocumentTranslationCandidatesHonorDatabaseLimit(t *testing.T) {
@@ -528,9 +571,32 @@ func TestDocumentTranslationCandidatesHonorDatabaseLimit(t *testing.T) {
 	c := openTestCatalog(t)
 	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/limited", Path: "one", Name: "one", Description: "One", DocumentDigest: ContentDigest([]byte("one")), LatestVersion: "main"}))
 	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/limited", Path: "two", Name: "two", Description: "Two", DocumentDigest: ContentDigest([]byte("two")), LatestVersion: "main"}))
-	candidates, err := c.DocumentTranslationCandidates(ctx, "ja", "document-v1", 1)
+	candidates, err := c.DocumentTranslationCandidates(ctx, []string{"ja"}, "document-v1", 1)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
+}
+
+func TestDocumentTranslationCandidatesShareCapacityAcrossLanguages(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/fair", Path: "one", Name: "one", Description: "One", DocumentDigest: ContentDigest([]byte("one")), LatestVersion: "main"}))
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/fair", Path: "two", Name: "two", Description: "Two", DocumentDigest: ContentDigest([]byte("two")), LatestVersion: "main"}))
+
+	candidates, err := c.DocumentTranslationCandidates(ctx, []string{"en", "zh-Hans-CN"}, "document-v1", 2)
+	require.NoError(t, err)
+	require.Equal(t, []string{"en", "zh-Hans-CN"}, []string{candidates[0].Lang, candidates[1].Lang})
+}
+
+func TestDescriptionTranslationCandidatesShareCapacityAcrossLanguages(t *testing.T) {
+	ctx := t.Context()
+	c := openTestCatalog(t)
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/descriptions", Path: "one", Name: "one", Description: "One", DocumentDigest: ContentDigest([]byte("description-one")), LatestVersion: "main"}))
+	require.NoError(t, upsertTestSkill(t, c, &Skill{PackagePath: "github.com/acme/descriptions", Path: "two", Name: "two", Description: "Two", DocumentDigest: ContentDigest([]byte("description-two")), LatestVersion: "main"}))
+
+	candidates, err := c.TranslationCandidates(ctx, []string{"en", "zh-Hans-CN"}, "description-v1", 2)
+	require.NoError(t, err)
+	require.Len(t, candidates, 2)
+	require.Equal(t, []string{"en", "zh-Hans-CN"}, []string{candidates[0].Lang, candidates[1].Lang})
 }
 
 func TestPackagePublicationRequiresCanonicalPackagePath(t *testing.T) {
@@ -800,7 +866,7 @@ func TestPostgresMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := openTestCatalog(t)
 	var version string
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
-	require.Equal(t, "202607230001", version)
+	require.Equal(t, "202607310002", version)
 	require.NoError(t, c.Migrate(ctx))
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
 }

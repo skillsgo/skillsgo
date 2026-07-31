@@ -14,7 +14,7 @@ import (
 )
 
 type Store interface {
-	TranslationCandidates(context.Context, string, string, int) ([]catalog.TranslationCandidate, error)
+	TranslationCandidates(context.Context, []string, string, int) ([]catalog.TranslationCandidate, error)
 	UpsertLocalizedDescription(context.Context, catalog.LocalizedDescription) error
 }
 
@@ -36,25 +36,16 @@ func NewWorker(store Store, translator Translator, analyzer *LanguageAnalyzer, l
 }
 
 func (w *Worker) Plan(ctx context.Context) ([]DescriptionWork, error) {
-	work := make([]DescriptionWork, 0, w.batch)
-	for _, lang := range w.langs {
-		remaining := w.batch - len(work)
-		if remaining == 0 {
-			break
-		}
-		candidates, err := w.store.TranslationCandidates(ctx, lang, w.promptVersion, remaining)
-		if err != nil {
-			return nil, fmt.Errorf("scan description translation candidates for %s: %w", lang, err)
-		}
-		for _, candidate := range candidates {
-			if len(work) == w.batch {
-				break
-			}
-			work = append(work, DescriptionWork{
-				ResourceKind: candidate.ResourceKind, ResourceID: candidate.ResourceID, Description: candidate.Description,
-				SourceDigest: candidate.ContentDigest, Lang: lang, PromptVersion: w.promptVersion,
-			})
-		}
+	candidates, err := w.store.TranslationCandidates(ctx, w.langs, w.promptVersion, w.batch)
+	if err != nil {
+		return nil, fmt.Errorf("scan description translation candidates: %w", err)
+	}
+	work := make([]DescriptionWork, 0, len(candidates))
+	for _, candidate := range candidates {
+		work = append(work, DescriptionWork{
+			ResourceKind: candidate.ResourceKind, ResourceID: candidate.ResourceID, Description: candidate.Description,
+			SourceDigest: candidate.ContentDigest, Lang: candidate.Lang, PromptVersion: w.promptVersion,
+		})
 	}
 	return work, nil
 }

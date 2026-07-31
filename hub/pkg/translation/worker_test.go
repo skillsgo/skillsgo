@@ -21,7 +21,7 @@ type workerStore struct {
 	scanErr, saveErr error
 }
 
-func (s *workerStore) TranslationCandidates(context.Context, string, string, int) ([]catalog.TranslationCandidate, error) {
+func (s *workerStore) TranslationCandidates(context.Context, []string, string, int) ([]catalog.TranslationCandidate, error) {
 	return s.candidates, s.scanErr
 }
 func (s *workerStore) UpsertLocalizedDescription(_ context.Context, item catalog.LocalizedDescription) error {
@@ -36,7 +36,7 @@ func (f translatorFunc) Translate(ctx context.Context, source, sourceLang, local
 }
 
 func TestWorkerPlanBoundsTranslationIdentitiesAcrossLocales(t *testing.T) {
-	store := &workerStore{candidates: []catalog.TranslationCandidate{{ResourceKind: catalog.LocalizedSkill, ResourceID: "review", Description: "Review", ContentDigest: "digest"}}}
+	store := &workerStore{candidates: []catalog.TranslationCandidate{{ResourceKind: catalog.LocalizedSkill, ResourceID: "review", Description: "Review", ContentDigest: "digest", Lang: "zh-Hans-CN"}}}
 	worker := NewWorker(store, translatorFunc(nil), NewLanguageAnalyzer(), []string{"zh-Hans-CN", "ja"}, "description-v1", 1)
 	work, err := worker.Plan(t.Context())
 	require.NoError(t, err)

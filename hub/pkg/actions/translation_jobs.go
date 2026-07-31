@@ -30,7 +30,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	languageAnalyzer := translation.NewLanguageAnalyzer()
 	descriptionWorker := translation.NewWorker(metadata, translator, languageAnalyzer, conf.TranslationLangs, conf.DescriptionPromptVersion, conf.TranslationBatch)
 	documentWorker := translation.NewDocumentWorker(metadata, store, translator, languageAnalyzer, conf.TranslationLangs, conf.DocumentPromptVersion, conf.TranslationBatch)
-	recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, cause error) error {
+	recordFailure := func(ctx context.Context, resourceKind, digest, lang, prompt, kind string, retryable bool, cause error) error {
 		message := cause.Error()
 		runes := []rune(message)
 		if len(runes) > 2048 {
@@ -38,7 +38,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		}
 		return metadata.UpsertLocalizationFailure(ctx, catalog.LocalizationFailure{
 			ResourceKind: resourceKind, SourceDigest: digest, Lang: lang, PromptVersion: prompt,
-			ErrorKind: kind, ErrorMessage: message,
+			ErrorKind: kind, ErrorMessage: message, Retryable: retryable,
 		})
 	}
 
@@ -67,7 +67,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		})
 		if translation.IsPermanent(err) {
 			logger.Warnf("description translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-			if persistErr := recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+			if persistErr := recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), false, err); persistErr != nil {
 				return persistErr
 			}
 			return river.JobCancel(err)
@@ -80,7 +80,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register description translation job: %w", err)
 	}
 	if err := taskqueue.RegisterFailureHandler(tasks, func(ctx context.Context, args descriptionTranslationArgs, cause error) error {
-		return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+		return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
 	}); err != nil {
 		return fmt.Errorf("register description translation failure handler: %w", err)
 	}
@@ -105,7 +105,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
 		if translation.IsPermanent(err) {
 			logger.Warnf("document translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-			if persistErr := recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), err); persistErr != nil {
+			if persistErr := recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(err), false, err); persistErr != nil {
 				return persistErr
 			}
 			return river.JobCancel(err)
@@ -118,7 +118,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register document translation job: %w", err)
 	}
 	if err := taskqueue.RegisterFailureHandler(tasks, func(ctx context.Context, args documentTranslationArgs, cause error) error {
-		return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", cause)
+		return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
 	}); err != nil {
 		return fmt.Errorf("register document translation failure handler: %w", err)
 	}

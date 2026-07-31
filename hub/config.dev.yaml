@@ -208,6 +208,9 @@ Database:
 # Env override: SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS
 TaskQueue:
   MaxWorkers: 10
+  # LISTEN/NOTIFY remains immediate; this is only the missed-notification fallback.
+  # Env override: SKILLSGO_HUB_TASK_QUEUE_FETCH_POLL_SECONDS
+  FetchPollSeconds: 10
   # Bounds concurrent Repository snapshot materialization in each publisher.
   # Env override: SKILLSGO_HUB_REPOSITORY_MATERIALIZER_CAPACITY
   RepositoryMaterializerCapacity: 8

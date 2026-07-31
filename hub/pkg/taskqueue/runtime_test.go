@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed synchronous jobs, workload queue options, sleep-first periodic scheduling, lifecycle-owned asynchronous dispatch, River job-state rows, and deterministic handlers.
- * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, synchronous and non-blocking dispatch, periodic execution, cancellation, validation, and due-versus-future work decisions.
+ * [INPUT]: Depends on typed synchronous jobs, workload queue options, synchronous periodic scheduling, lifecycle-owned asynchronous dispatch, River job-state rows, and deterministic handlers.
+ * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, synchronous and non-blocking dispatch, periodic execution, cancellation, validation, and polling policy.
  * [POS]: Serves as unit coverage for the Hub task queue infrastructure boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/stretchr/testify/assert"
@@ -132,37 +131,9 @@ func TestRiverDefaultRetryPolicyUsesIncreasingExponentialBackoff(t *testing.T) {
 	}
 }
 
-func TestWorkScheduleKeepsDueWorkRunningAndArmsFutureWake(t *testing.T) {
-	now := time.Date(2026, time.July, 27, 12, 0, 0, 0, time.UTC)
-	active, next, err := workSchedule(now, []*rivertype.JobRow{{State: rivertype.JobStateRunning}}, nil)
-	require.NoError(t, err)
-	require.True(t, active)
-	require.Nil(t, next)
-
-	due := now.Add(-time.Second)
-	active, next, err = workSchedule(now, nil, []*rivertype.JobRow{{State: rivertype.JobStateRetryable, ScheduledAt: due}})
-	require.NoError(t, err)
-	require.True(t, active)
-	require.Equal(t, due, *next)
-
-	future := now.Add(time.Hour)
-	active, next, err = workSchedule(now, nil, []*rivertype.JobRow{{State: rivertype.JobStateScheduled, ScheduledAt: future}})
-	require.NoError(t, err)
-	require.False(t, active)
-	require.Equal(t, future, *next)
-
-	active, next, err = workSchedule(now, nil, nil)
-	require.NoError(t, err)
-	require.False(t, active)
-	require.Nil(t, next)
-}
-
-func TestWakeIsNonBlockingAndCoalescesBursts(t *testing.T) {
-	runtime := NewSynchronous()
-	runtime.river = &river.Client[pgx.Tx]{}
-	runtime.Wake()
-	runtime.Wake()
-	require.Len(t, runtime.wake, 1)
+func TestFetchPollingUsesSlowFallbackBehindPostgresNotifications(t *testing.T) {
+	require.Equal(t, 10*time.Second, fetchPollInterval(0))
+	require.Equal(t, 30*time.Second, fetchPollInterval(30*time.Second))
 }
 
 func TestSynchronousRuntimeDispatchesTypedJob(t *testing.T) {

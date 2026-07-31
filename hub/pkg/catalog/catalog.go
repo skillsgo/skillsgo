@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -208,6 +208,7 @@ type TranslationCandidate struct {
 	ResourceID    string `db:"resource_id"`
 	Description   string `db:"description"`
 	ContentDigest string `db:"content_digest"`
+	Lang          string `db:"lang"`
 	SourceDigest  string `db:"source_digest"`
 	PromptVersion string `db:"prompt_version"`
 }
@@ -224,6 +225,7 @@ type LocalizedDescription struct {
 
 type LocalizationFailure struct {
 	ResourceKind, SourceDigest, Lang, PromptVersion, ErrorKind, ErrorMessage string
+	Retryable                                                                bool
 }
 
 func DescriptionDigest(description string) string {
@@ -234,24 +236,23 @@ func ContentDigest(content []byte) string {
 	return fmt.Sprintf("sha256:%x", sha256.Sum256(content))
 }
 
-func (c *Catalog) TranslationCandidates(ctx context.Context, lang, promptVersion string, limit int) ([]TranslationCandidate, error) {
+func (c *Catalog) TranslationCandidates(ctx context.Context, langs []string, promptVersion string, limit int) ([]TranslationCandidate, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	stored, err := c.queries.TranslationCandidates(ctx, lang)
+	stored, err := c.queries.TranslationCandidates(ctx, catalogsqlc.TranslationCandidatesParams{
+		Langs: langs, TargetPromptVersion: promptVersion, PageLimit: int32(limit),
+	})
 	if err != nil {
 		return nil, err
 	}
-	candidates := make([]TranslationCandidate, 0, limit)
+	candidates := make([]TranslationCandidate, 0, len(stored))
 	for _, item := range stored {
-		row := TranslationCandidate{ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description, ContentDigest: item.ContentDigest, SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion}
-		if row.SourceDigest == DescriptionDigest(row.Description) && row.PromptVersion == promptVersion {
-			continue
-		}
-		candidates = append(candidates, row)
-		if len(candidates) == limit {
-			break
-		}
+		candidates = append(candidates, TranslationCandidate{
+			ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description,
+			ContentDigest: item.ContentDigest, Lang: item.Lang, SourceDigest: item.SourceDigest,
+			PromptVersion: item.StoredPromptVersion,
+		})
 	}
 	return candidates, nil
 }
@@ -292,30 +293,37 @@ type VersionSkillLocalization struct {
 
 type DocumentTranslationCandidate struct {
 	DocumentDigest string
+	Lang           string
 	SourceDigest   string
 	PromptVersion  string
 }
 
-func (c *Catalog) DocumentTranslationCandidates(ctx context.Context, lang, promptVersion string, limit int) ([]DocumentTranslationCandidate, error) {
+func (c *Catalog) DocumentTranslationCandidates(ctx context.Context, langs []string, promptVersion string, limit int) ([]DocumentTranslationCandidate, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	rows, err := c.queries.DocumentTranslationCandidates(ctx, catalogsqlc.DocumentTranslationCandidatesParams{Lang: lang, TargetPromptVersion: promptVersion, PageLimit: int32(limit)})
+	rows, err := c.queries.DocumentTranslationCandidates(ctx, catalogsqlc.DocumentTranslationCandidatesParams{Langs: langs, TargetPromptVersion: promptVersion, PageLimit: int32(limit)})
 	if err != nil {
 		return nil, err
 	}
 	result := make([]DocumentTranslationCandidate, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, DocumentTranslationCandidate{DocumentDigest: row.DocumentDigest, SourceDigest: row.SourceDigest, PromptVersion: row.StoredPromptVersion})
+		result = append(result, DocumentTranslationCandidate{DocumentDigest: row.DocumentDigest, Lang: row.Lang, SourceDigest: row.SourceDigest, PromptVersion: row.StoredPromptVersion})
 	}
 	return result, nil
 }
 
 func (c *Catalog) UpsertLocalizationFailure(ctx context.Context, item LocalizationFailure) error {
+	var retryAt *time.Time
+	if item.Retryable {
+		due := time.Now().UTC().Add(6 * time.Hour)
+		retryAt = &due
+	}
 	return c.queries.UpsertLocalizationFailure(ctx, catalogsqlc.UpsertLocalizationFailureParams{
 		ResourceKind: item.ResourceKind, SourceDigest: item.SourceDigest, Lang: item.Lang,
 		PromptVersion: item.PromptVersion, ErrorKind: pgtype.Text{String: item.ErrorKind, Valid: true},
-		ErrorMessage: pgtype.Text{String: item.ErrorMessage, Valid: true}, UpdatedAt: time.Now().UTC(),
+		ErrorMessage: pgtype.Text{String: item.ErrorMessage, Valid: true},
+		RetryAt:      retryAt, FailureTerminal: !item.Retryable, UpdatedAt: time.Now().UTC(),
 	})
 }
 
