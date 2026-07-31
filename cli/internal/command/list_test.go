@@ -98,6 +98,42 @@ func TestInventoryIgnoresUnsupportedSkillsShLockSource(t *testing.T) {
 	require.NotContains(t, output.String(), "adoptionPackagePath")
 }
 
+func TestInventoryUsesClawHubOriginAsAdoptionPackageHint(t *testing.T) {
+	root := t.TempDir()
+	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "agent")
+	t.Setenv("HOME", home)
+	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
+	target := filepath.Join(agentHome, "skills", "external-demo")
+	require.NoError(t, os.MkdirAll(filepath.Join(target, ".clawhub"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(target, ".clawhub", "origin.json"), []byte(`{"version":1,"registry":"https://clawhub.ai","slug":"external-demo","sourceRepository":"openclaw/skills","sourcePath":"skills/external-demo","installedVersion":"1.0.0","installedAt":1}`), 0o600))
+
+	var output bytes.Buffer
+	require.NoError(t, Execute([]string{"list", "--global", "--output", "json"}, &output, &output), output.String())
+	var report inventory.Report
+	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
+	require.Len(t, report.Entries, 1)
+	require.Equal(t, "github.com/openclaw/skills", report.Entries[0].AdoptionPackagePath)
+}
+
+func TestInventoryOmitsConflictingLockAndClawHubPackageHints(t *testing.T) {
+	root := t.TempDir()
+	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "agent")
+	t.Setenv("HOME", home)
+	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
+	target := filepath.Join(agentHome, "skills", "external-demo")
+	require.NoError(t, os.MkdirAll(filepath.Join(target, ".clawhub"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(target, ".clawhub", "origin.json"), []byte(`{"version":1,"registry":"https://clawhub.ai","slug":"external-demo","sourceRepository":"openclaw/skills","installedVersion":"1.0.0","installedAt":1}`), 0o600))
+	lockPath := filepath.Join(home, ".agents", ".skill-lock.json")
+	require.NoError(t, os.MkdirAll(filepath.Dir(lockPath), 0o755))
+	require.NoError(t, os.WriteFile(lockPath, []byte(`{"version":3,"skills":{"external-demo":{"source":"skillsgo/example-skills","sourceType":"github"}}}`), 0o600))
+
+	var output bytes.Buffer
+	require.NoError(t, Execute([]string{"list", "--global", "--output", "json"}, &output, &output), output.String())
+	require.NotContains(t, output.String(), "adoptionPackagePath")
+}
+
 func TestInventoryDefaultsToCurrentWorkspaceAndRendersPaths(t *testing.T) {
 	workspace := t.TempDir()
 	t.Setenv("HOME", filepath.Join(workspace, "home"))

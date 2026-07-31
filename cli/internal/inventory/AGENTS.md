@@ -7,7 +7,7 @@
 - `package_reconciliation.go`: resolves exact locked metadata through the read-through Provider, verifies Scope Package Trees and member-symlink Projections, and optionally reacquires content for explicit verification commands.
 - `visibility_test.go`: specifies Discovery-Root-derived Agent visibility without introducing managed targets or persisted visibility state.
 - `external.go`: discovers path-identified External Installations and safe physical aliases through read-only scans of installed Agents' known Discovery Roots and explicit project roots.
-- `external_adoption.go`: reads bounded supported skills.sh global and Workspace locks and attaches a canonical Package hint for Adoption candidate restriction without changing External ownership.
+- `external_adoption.go`: reads bounded supported skills.sh global and Workspace locks plus per-Skill ClawHub origin records, then attaches one agreeing canonical Package hint for Adoption candidate prioritization without changing External ownership.
 
 ## Architectural Boundary
 
