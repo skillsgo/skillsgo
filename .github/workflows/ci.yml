@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, unsigned Velopack 0.x candidate packaging and post-package startup gates, macOS 14 GUI E2E isolated from Flutter's macOS 15 launch regression, and blocking known-vulnerability enforcement for every maintained product boundary.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack 0.x candidate packaging and post-package startup gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -251,7 +251,7 @@ jobs:
 
       - name: Install pinned Velopack CLI
         working-directory: .
-        run: dotnet tool install --global vpk --version 1.0.1
+        run: dotnet tool install --global vpk --version 1.2.0
 
       - name: Package unsigned Velopack candidate
         shell: bash

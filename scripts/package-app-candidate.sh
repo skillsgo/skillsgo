@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.0.1, and unzip-compatible package inspection.
+# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.2.0, and unzip-compatible package inspection.
 # [OUTPUT]: Produces and verifies one platform-layout-aware unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
 # [POS]: Serves as the deterministic, official-layout-aware native-build-to-candidate boundary shared by local rehearsals and GitHub Actions.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
