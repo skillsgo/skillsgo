@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.0.1, and unzip-compatible package inspection.
-# [OUTPUT]: Produces and structurally verifies one unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
+# [OUTPUT]: Produces and verifies one platform-layout-aware unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
 # [POS]: Serves as the deterministic native-build-to-candidate packaging boundary shared by local release rehearsals and GitHub Actions.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -35,8 +35,8 @@ case "${target}:${architecture}" in
     readonly pack_dir="${app_root}/build/linux/x64/release/bundle"
     readonly main_exe="skillsgo"
     readonly bundled_cli="${pack_dir}/data/bin/skillsgo"
-    readonly packaged_main="lib/app/skillsgo"
-    readonly packaged_cli="lib/app/data/bin/skillsgo"
+    readonly packaged_main="lib/app/usr/bin/skillsgo"
+    readonly packaged_cli="lib/app/usr/bin/data/bin/skillsgo"
     readonly portable_name="SkillsGo-${channel}.AppImage"
     readonly installer_name=""
     ;;
