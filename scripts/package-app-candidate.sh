@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, and Velopack CLI 1.0.1.
+# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.0.1, and unzip-compatible package inspection.
 # [OUTPUT]: Produces and structurally verifies one unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
 # [POS]: Serves as the deterministic native-build-to-candidate packaging boundary shared by local release rehearsals and GitHub Actions.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -128,7 +128,7 @@ for manifest_field in \
   fi
 done
 
-readonly package_entries="$(tar -tf "${full_package}")"
+readonly package_entries="$(unzip -Z1 "${full_package}")"
 for package_entry in "${packaged_main}" "${packaged_cli}"; do
   if ! grep -Fxq "${package_entry}" <<<"${package_entries}"; then
     echo "Velopack full package is missing ${package_entry}: ${full_package}" >&2
