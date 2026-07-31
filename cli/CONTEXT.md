@@ -20,6 +20,10 @@ _Avoid_: App-private protocol, localized JSON output, stderr parsing
 The CLI's transport of an explicit, canonical BCP 47 content-language preference between App or developer requests and Hub discovery/detail APIs. It normalizes platform-style separators and casing, selects display and search projections only, and never participates in artifact resolution, verification, or installation.
 _Avoid_: localized machine protocol, artifact locale, translated installation
 
+**Install Event Reporting**:
+The post-commit, best-effort emission of one Package Install Event for one successful Package transaction. The event batches every selected exact Skill Path and Agent, includes the CLI version plus an optional calling App version, and never changes the installation result when community reporting is unavailable.
+_Avoid_: per-Skill request loop, installation prerequisite, local receipt
+
 **Installation Target Group**:
 The set of requested Installation Targets that share one physical mutation and compensation scope. A group succeeds or rolls back atomically, while unrelated groups in the same Installation Request may complete independently.
 _Avoid_: globally atomic Installation Request, independent shared-path targets

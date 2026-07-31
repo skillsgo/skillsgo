@@ -116,7 +116,7 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", Version: "v1", Skills: []cloud.InstallEventSkill{{Name: "skill", Path: "skills/skill"}}, Agents: []string{"codex"}, Scope: cloud.ScopeProject, CLIVersion: "test", OccurredAt: time.Now().UTC()}
 	body, _ := json.Marshal(event)
 	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
 	if err != nil {
@@ -133,7 +133,7 @@ func TestMockResetEventsClearsRecordedEvents(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", Version: "v1", Skills: []cloud.InstallEventSkill{{Name: "skill", Path: "skills/skill"}}, Agents: []string{"codex"}, Scope: cloud.ScopeProject, CLIVersion: "test", OccurredAt: time.Now().UTC()}
 	body, err := json.Marshal(event)
 	if err != nil {
 		t.Fatal(err)
