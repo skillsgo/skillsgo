@@ -208,6 +208,9 @@ Database:
 # Env override: SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS
 TaskQueue:
   MaxWorkers: 10
+  # Bounds concurrent Repository snapshot materialization in each publisher.
+  # Env override: SKILLSGO_HUB_REPOSITORY_MATERIALIZER_CAPACITY
+  RepositoryMaterializerCapacity: 8
 
 # Optional OpenAI-compatible LLM used only for presentation descriptions and display-only Skill documents.
 # An empty APIKey disables the worker. For local development, prefer the

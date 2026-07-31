@@ -221,9 +221,11 @@ func TestEnvOverrides(t *testing.T) {
 func TestTaskQueueEnvironmentOverride(t *testing.T) {
 	setTestHome(t)
 	t.Setenv("SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS", "24")
+	t.Setenv("SKILLSGO_HUB_REPOSITORY_MATERIALIZER_CAPACITY", "32")
 	conf := defaultConfig()
 	require.NoError(t, envOverride(conf))
 	require.Equal(t, 24, conf.TaskQueue.MaxWorkers)
+	require.Equal(t, 32, conf.TaskQueue.RepositoryMaterializerCapacity)
 }
 
 func TestDatabasePoolsHaveIndependentEnvironmentCapacity(t *testing.T) {

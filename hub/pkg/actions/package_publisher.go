@@ -36,17 +36,17 @@ type historicalRepositoryMaterializer interface {
 }
 
 type modulePublisher struct {
-	fetcher                 skill.RepositoryFetcher
-	publication             *modulePublicationCommit
+	fetcher            skill.RepositoryFetcher
+	publication        *modulePublicationCommit
 	afterCurrentChange func(context.Context, string)
-	work                    singleflight.Group
-	commit                  singleflight.Group
-	upstream                chan struct{}
-	mu                      sync.Mutex
-	negative                map[string]negativePublication
-	now                     func() time.Time
-	negativeTTL             time.Duration
-	languageAnalyzer        *translation.LanguageAnalyzer
+	work               singleflight.Group
+	commit             singleflight.Group
+	upstream           chan struct{}
+	mu                 sync.Mutex
+	negative           map[string]negativePublication
+	now                func() time.Time
+	negativeTTL        time.Duration
+	languageAnalyzer   *translation.LanguageAnalyzer
 }
 
 type negativePublication struct {
@@ -55,6 +55,12 @@ type negativePublication struct {
 }
 
 type packagePublisherOption func(*modulePublisher)
+
+func withRepositoryMaterializerCapacity(capacity int) packagePublisherOption {
+	return func(publisher *modulePublisher) {
+		publisher.upstream = make(chan struct{}, capacity)
+	}
+}
 
 func withCurrentChangeObserver(observer func(context.Context, string)) packagePublisherOption {
 	return func(publisher *modulePublisher) {
