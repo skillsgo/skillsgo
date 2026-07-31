@@ -1,17 +1,20 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library and App-scoped update-check state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, global-default location state with reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, distinct Global/External/Project routes, an inline empty-project add link, reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
 
-enum _LibraryLocationKind { global, project }
+enum _LibraryLocationKind { global, external, project }
 
 class _LibraryLocationRoute {
   const _LibraryLocationRoute._(this.kind, [this.projectId]);
 
   static const global = _LibraryLocationRoute._(_LibraryLocationKind.global);
+  static const external = _LibraryLocationRoute._(
+    _LibraryLocationKind.external,
+  );
 
   factory _LibraryLocationRoute.project(String projectId) =>
       _LibraryLocationRoute._(_LibraryLocationKind.project, projectId);
@@ -184,6 +187,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             label: context.l10n.libraryGlobalScope,
             icon: HugeIcons.strokeRoundedUser,
           ),
+          SkillsRailItem(
+            value: _LibraryLocationRoute.external,
+            label: context.l10n.libraryExternalScope,
+            icon: HugeIcons.strokeRoundedFolderUnknown,
+          ),
         ],
         items: [
           for (var index = 0; index < projects.length; index++)
@@ -196,6 +204,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               image: ProjectIdentityIcon(project: projects[index], size: 18),
             ),
         ],
+        emptySection: _LibraryEmptyProjectAction(
+          adding: addingProject,
+          onPressed: () => unawaited(_addProject()),
+        ),
         footer: _LibraryAddProjectAction(
           adding: addingProject,
           onPressed: () => unawaited(_addProject()),
@@ -369,4 +381,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       ),
     );
   }
+}
+
+class _LibraryEmptyProjectAction extends StatelessWidget {
+  const _LibraryEmptyProjectAction({
+    required this.adding,
+    required this.onPressed,
+  });
+
+  final bool adding;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: TextButton(
+      key: const Key('library-empty-add-project'),
+      onPressed: adding ? null : onPressed,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: context.skillsTypography.caption.copyWith(
+          fontSize: 11,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+      child: Text(context.l10n.libraryEmptyAddProject),
+    ),
+  );
 }

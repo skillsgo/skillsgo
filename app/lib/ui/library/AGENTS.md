@@ -3,7 +3,7 @@
 
 ## Members
 
-- `library_screen_core.dart`: owns Library lifecycle, global-default location navigation, reviewed Adoption execution state, controller subscriptions, and destination composition.
+- `library_screen_core.dart`: owns Library lifecycle, Global/External/Project navigation, empty-project entry, reviewed Adoption execution state, controller subscriptions, and destination composition.
 - `library_body.dart`: selects loading, content, empty, and failure bodies without discarding valid stale inventory, composes installed groups, and renders one-at-a-time Package update cards without batch update controls.
 - `library_filters.dart`: renders location, Agent, provenance, and search filters.
 - `library_selection.dart`: owns filtered selection, select-all, batch removal actions, and toolbar motion.
