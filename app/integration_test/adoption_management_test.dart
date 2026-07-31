@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
- * [OUTPUT]: Verifies exact All/User/Project adoption counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies unified External Skills adoption counts, cross-scope Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -80,18 +80,18 @@ void registerAdoptionManagementJourney() {
       );
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
-      final globalAdoption = _adoptionCount(1);
+      final externalSkills = find.text('External Skills');
+      await _pumpUntil(tester, externalSkills);
+      await tester.tap(externalSkills);
+      await tester.pumpAndSettle();
+      final externalAdoption = _adoptionCount(2);
       final retry = find.text('Retry');
-      await _pumpUntilEither(tester, globalAdoption, retry);
+      await _pumpUntilEither(tester, externalAdoption, retry);
       if (retry.evaluate().isNotEmpty) {
         await tester.tap(retry);
       }
-      await _pumpUntil(tester, globalAdoption);
-      await _pumpUntil(tester, find.text('adoption-project'));
-
-      await tester.tap(find.text('adoption-project'));
-      await _pumpUntilAdoptionCount(tester, 1);
-      await _executeAdoption(tester, adopted: 1, failed: 0);
+      await _pumpUntil(tester, externalAdoption);
+      await _executeAdoption(tester, adopted: 2, failed: 0);
       expect(File('${projectRoot.path}/skills.yaml').existsSync(), isTrue);
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
@@ -107,18 +107,6 @@ void registerAdoptionManagementJourney() {
         projectSkillBytes,
       );
       expect(projectTarget.existsSync(), isFalse);
-      await _pumpUntilGone(
-        tester,
-        find.byKey(const Key('library-adoption-review-enter')),
-      );
-
-      await tester.tap(_globalRailLabel());
-      await _pumpUntilAdoptionCount(tester, 1);
-      await _executeAdoption(tester, adopted: 1, failed: 0);
-      await _pumpUntilGone(
-        tester,
-        find.byKey(const Key('library-adoption-review-enter')),
-      );
       expect(File('$sandbox/home/.agents/skills.yaml').existsSync(), isTrue);
       expect(
         File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
@@ -129,8 +117,20 @@ void registerAdoptionManagementJourney() {
         userSkillBytes,
       );
       expect(globalTarget.existsSync(), isFalse);
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const Key('library-adoption-review-enter')),
+      );
 
+      await _pumpUntil(tester, find.text('adoption-project'));
       await tester.tap(find.text('adoption-project'));
+      await tester.pumpAndSettle();
+      await _pumpUntilGone(
+        tester,
+        find.byKey(const Key('library-adoption-review-enter')),
+      );
+      await tester.tap(_globalRailLabel());
+      await tester.pumpAndSettle();
       await _pumpUntilGone(
         tester,
         find.byKey(const Key('library-adoption-review-enter')),
