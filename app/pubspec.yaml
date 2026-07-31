@@ -1,5 +1,5 @@
-# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, structured logging, Markdown, CDN Mermaid.js download/integrity/cache-backed WebView rendering, localization, persistence, natural ordering, process-backed integration, Velopack's Rust-backed Flutter bridge, and platform services.
-# [OUTPUT]: Defines the skillsgo package identity, build version, dependency graph including platform-native macOS HTTP and Velopack 1.2.0 update integration, bundled assets, and Flutter generation settings.
+# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, structured logging, Markdown, CDN Mermaid.js download/integrity/cache-backed WebView rendering, localization, persistence, natural ordering, process-backed integration, the commit-pinned Velopack Rust-backed Flutter bridge, and platform services.
+# [OUTPUT]: Defines the skillsgo package identity, build version, reproducible dependency graph including platform-native macOS HTTP and patched Velopack 1.2.0 update integration, bundled assets, and Flutter generation settings.
 # [POS]: Serves as the F2 build manifest and package boundary for the SkillsGo desktop App workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: skillsgo
@@ -61,7 +61,11 @@ dependencies:
   multi_dropdown: ^3.2.1
   url_launcher: ^6.3.2
   portal_labs: ^0.34.0
-  velopack_flutter: 0.3.2
+  # Pin the Native Assets lifecycle guard until an upstream release contains it.
+  velopack_flutter:
+    git:
+      url: https://github.com/skillsgo/velopack_flutter.git
+      ref: 87f1585f1c72a6be9758877dfca153c3ceb27def
 
 dev_dependencies:
   flutter_test:
