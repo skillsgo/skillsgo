@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library loading, inventory resilience, location navigation, filtering, project recovery, reviewed external-Skill Source matching, and Batch Adoption console geometry.
+ * [OUTPUT]: Specifies Library loading, icon-only local refresh, all-provenance Global inventory, inventory resilience, location navigation, filtering, project recovery, reviewed external-Skill Source matching, and Batch Adoption console geometry.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -570,6 +570,38 @@ void main() {
     expect(find.text('local-skill'), findsOneWidget);
   });
 
+  testWidgets('Library refresh icon reloads CLI-installed inventory in place', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    expect(find.text('local-skill'), findsOneWidget);
+
+    final refresh = Completer<List<InstalledSkill>>();
+    gateway.libraryCompleter = refresh;
+    await tester.tap(find.byKey(const Key('library-refresh')));
+    await tester.pump();
+
+    expect(find.text('local-skill'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('library-refresh')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+
+    refresh.complete(const []);
+    await tester.pumpAndSettle();
+
+    expect(find.text('local-skill'), findsNothing);
+    expect(find.text('No skills installed yet'), findsOneWidget);
+  });
+
   testWidgets('Library clears an Agent filter when that Agent disappears', (
     tester,
   ) async {
@@ -729,81 +761,82 @@ void main() {
     expect(find.text('No skills installed yet'), findsOneWidget);
   });
 
-  testWidgets('Library separates External Skills from managed locations', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      SkillsGoApp(
-        gateway: FakeSkillsGateway(
-          installed: false,
-          libraryEntries: const [
-            InstalledSkill(
-              inventoryKey: 'managed',
-              name: 'managed-skill',
-              path: '/Users/test/.codex/skills/managed-skill',
-              agents: ['codex'],
-              targetCount: 1,
-              targets: [
-                SkillInstallationTarget(
-                  agent: 'codex',
-                  scope: InstallationScope.global,
-                  path: '/Users/test/.codex/skills/managed-skill',
-                  version: 'v1',
-                ),
-              ],
-            ),
-            InstalledSkill(
-              inventoryKey: 'external',
-              name: 'external-skill',
-              path: '/tmp/external-skill',
-              agents: ['codex'],
-              targetCount: 1,
-              provenance: LibraryProvenance.external,
-              targets: [
-                SkillInstallationTarget(
-                  agent: 'codex',
-                  scope: InstallationScope.global,
-                  path: '/tmp/external-skill',
-                  version: '',
-                ),
-              ],
-            ),
-          ],
+  testWidgets(
+    'Global includes External Skills and External remains dedicated',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            installed: false,
+            libraryEntries: const [
+              InstalledSkill(
+                inventoryKey: 'managed',
+                name: 'managed-skill',
+                path: '/Users/test/.codex/skills/managed-skill',
+                agents: ['codex'],
+                targetCount: 1,
+                targets: [
+                  SkillInstallationTarget(
+                    agent: 'codex',
+                    scope: InstallationScope.global,
+                    path: '/Users/test/.codex/skills/managed-skill',
+                    version: 'v1',
+                  ),
+                ],
+              ),
+              InstalledSkill(
+                inventoryKey: 'external',
+                name: 'external-skill',
+                path: '/tmp/external-skill',
+                agents: ['codex'],
+                targetCount: 1,
+                provenance: LibraryProvenance.external,
+                targets: [
+                  SkillInstallationTarget(
+                    agent: 'codex',
+                    scope: InstallationScope.global,
+                    path: '/tmp/external-skill',
+                    version: '',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-library')));
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
 
-    expect(find.text('managed-skill'), findsOneWidget);
-    expect(find.text('external-skill'), findsNothing);
+      expect(find.text('managed-skill'), findsOneWidget);
+      expect(find.text('external-skill'), findsOneWidget);
 
-    await tester.tap(libraryLocation('External Skills'));
-    await tester.pumpAndSettle();
+      await tester.tap(libraryLocation('External Skills'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('managed-skill'), findsNothing);
-    expect(find.text('external-skill'), findsOneWidget);
-    final externalButton = find
-        .ancestor(
-          of: libraryLocation('External Skills'),
-          matching: find.byType(TextButton),
-        )
-        .first;
-    expect(
-      tester
-          .widget<HugeIcon>(
-            find.descendant(
-              of: externalButton,
-              matching: find.byType(HugeIcon),
-            ),
+      expect(find.text('managed-skill'), findsNothing);
+      expect(find.text('external-skill'), findsOneWidget);
+      final externalButton = find
+          .ancestor(
+            of: libraryLocation('External Skills'),
+            matching: find.byType(TextButton),
           )
-          .icon,
-      HugeIcons.strokeRoundedFolderUnknown,
-    );
-  });
+          .first;
+      expect(
+        tester
+            .widget<HugeIcon>(
+              find.descendant(
+                of: externalButton,
+                matching: find.byType(HugeIcon),
+              ),
+            )
+            .icon,
+        HugeIcons.strokeRoundedFolderUnknown,
+      );
+    },
+  );
 
   testWidgets('empty Project section offers a centered inline add link', (
     tester,
@@ -989,7 +1022,7 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('library-refresh')), findsNothing);
+    expect(find.byKey(const Key('library-refresh')), findsOneWidget);
 
     final global = libraryLocation('Global Skills');
     final addProject = find.byKey(const Key('library-add-project'));

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library and App-scoped update-check state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, distinct Global/External/Project routes, an inline empty-project add link, reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, distinct Global/External/Project routes, an inline empty-project add link, an icon-only local-inventory refresh action, reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -339,6 +339,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               ..clear()
                               ..addAll(agents);
                           }),
+                        ),
+                        const SizedBox(width: 4),
+                        Tooltip(
+                          message: context.l10n.refresh,
+                          child: IconButton(
+                            key: const Key('library-refresh'),
+                            onPressed: loading ? null : () => unawaited(load()),
+                            icon: loading
+                                ? const SizedBox.square(
+                                    dimension: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.8,
+                                    ),
+                                  )
+                                : const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedRefresh,
+                                    size: 18,
+                                    strokeWidth: 1.8,
+                                  ),
+                          ),
                         ),
                       ],
                     ),
