@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, and task execution behavior.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, task execution, and translation schedule environment overrides.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -100,12 +100,16 @@ func TestLLMEnvironmentOverrides(t *testing.T) {
 	t.Setenv("SKILLSGO_HUB_LLM_API_KEY", "test-key")
 	t.Setenv("SKILLSGO_HUB_LLM_MODEL", "test-model")
 	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_LANGS", "ja,fr")
+	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_TIME_ZONE", "Asia/Shanghai")
+	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_BLOCKED_WINDOWS", "09:00-12:00,14:00-18:00")
 	config := defaultConfig()
 	require.NoError(t, envOverride(config))
 	require.True(t, config.LLM.Enabled())
 	require.Equal(t, "https://llm.example/v1", config.LLM.BaseURL)
 	require.Equal(t, "test-model", config.LLM.Model)
 	require.Equal(t, []string{"ja", "fr"}, config.LLM.TranslationLangs)
+	require.Equal(t, "Asia/Shanghai", config.LLM.TranslationTimeZone)
+	require.Equal(t, []string{"09:00-12:00", "14:00-18:00"}, config.LLM.TranslationBlockedWindows)
 }
 
 func TestGitHubTokenConfigurationCompatibility(t *testing.T) {

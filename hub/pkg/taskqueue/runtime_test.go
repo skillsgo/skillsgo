@@ -171,6 +171,26 @@ func TestTypedWorkerFinalizesTerminalFailure(t *testing.T) {
 	require.Equal(t, "skill-1", (<-finalized).ID)
 }
 
+func TestTypedWorkerDoesNotFinalizeSnoozedJobAtAttemptLimit(t *testing.T) {
+	runtime := NewSynchronous()
+	finalized := make(chan reindexArgs, 1)
+	handler := Handler[reindexArgs](func(context.Context, reindexArgs) error { return river.JobSnooze(time.Hour) })
+	require.NoError(t, Register(runtime, handler))
+	require.NoError(t, RegisterFailureHandler(runtime, func(_ context.Context, args reindexArgs, _ error) error {
+		finalized <- args
+		return nil
+	}))
+	worker := &typedWorker[reindexArgs]{handler: handler, runtime: runtime, kind: reindexArgs{}.Kind()}
+	err := worker.Work(t.Context(), &river.Job[reindexArgs]{JobRow: &rivertype.JobRow{Attempt: 2, MaxAttempts: 2}, Args: reindexArgs{ID: "skill-1"}})
+	var snoozeErr *rivertype.JobSnoozeError
+	require.ErrorAs(t, err, &snoozeErr)
+	select {
+	case <-finalized:
+		t.Fatal("snoozed job must not invoke the terminal failure finalizer")
+	default:
+	}
+}
+
 func TestSynchronousRuntimeRegistersPeriodicJobsBeforeStart(t *testing.T) {
 	executed := make(chan struct{}, 1)
 	runtime := NewSynchronous()

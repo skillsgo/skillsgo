@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on translation workers, the background Catalog, Skill content storage, River job semantics, and validated LLM configuration.
- * [OUTPUT]: Registers description/document translation dispatch, execution, failure finalization, and periodic scheduling on the Hub task runtime.
+ * [OUTPUT]: Registers blocked-window-aware description/document dispatch, snoozable execution, failure finalization, and periodic scheduling on the Hub task runtime.
  * [POS]: Serves as the presentation-localization behavior-registration unit beneath the App composition root.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,6 +25,10 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	if !conf.Enabled() {
 		return nil
 	}
+	schedule, err := translation.NewExecutionSchedule(conf.TranslationTimeZone, conf.TranslationBlockedWindows)
+	if err != nil {
+		return fmt.Errorf("configure translation execution schedule: %w", err)
+	}
 
 	translator := translation.NewOpenAITranslator(conf.BaseURL, conf.APIKey, conf.Model)
 	languageAnalyzer := translation.NewLanguageAnalyzer()
@@ -43,6 +47,9 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	}
 
 	if err := taskqueue.Register(tasks, func(ctx context.Context, _ descriptionTranslationDispatchArgs) error {
+		if schedule.Delay(time.Now()) > 0 {
+			return nil
+		}
 		work, err := descriptionWorker.Plan(ctx)
 		if err != nil {
 			return err
@@ -61,6 +68,9 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register description translation dispatcher: %w", err)
 	}
 	if err := taskqueue.Register(tasks, func(ctx context.Context, args descriptionTranslationArgs) error {
+		if delay := schedule.Delay(time.Now()); delay > 0 {
+			return river.JobSnooze(delay)
+		}
 		err := descriptionWorker.RunOne(ctx, translation.DescriptionWork{
 			ResourceKind: args.ResourceKind, ResourceID: args.ResourceID, Description: args.Description,
 			SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion,
@@ -80,11 +90,14 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register description translation job: %w", err)
 	}
 	if err := taskqueue.RegisterFailureHandler(tasks, func(ctx context.Context, args descriptionTranslationArgs, cause error) error {
-		return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
+		return recordFailure(ctx, args.ResourceKind, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(cause), true, cause)
 	}); err != nil {
 		return fmt.Errorf("register description translation failure handler: %w", err)
 	}
 	if err := taskqueue.Register(tasks, func(ctx context.Context, _ documentTranslationDispatchArgs) error {
+		if schedule.Delay(time.Now()) > 0 {
+			return nil
+		}
 		work, err := documentWorker.Plan(ctx)
 		if err != nil {
 			return err
@@ -102,6 +115,9 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register document translation dispatcher: %w", err)
 	}
 	if err := taskqueue.Register(tasks, func(ctx context.Context, args documentTranslationArgs) error {
+		if delay := schedule.Delay(time.Now()); delay > 0 {
+			return river.JobSnooze(delay)
+		}
 		err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
 		if translation.IsPermanent(err) {
 			logger.Warnf("document translation permanently failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
@@ -118,7 +134,7 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register document translation job: %w", err)
 	}
 	if err := taskqueue.RegisterFailureHandler(tasks, func(ctx context.Context, args documentTranslationArgs, cause error) error {
-		return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, "retry_exhausted", true, cause)
+		return recordFailure(ctx, catalog.LocalizedSkillDocument, args.SourceDigest, args.Lang, args.PromptVersion, translation.FailureKind(cause), true, cause)
 	}); err != nil {
 		return fmt.Errorf("register document translation failure handler: %w", err)
 	}
