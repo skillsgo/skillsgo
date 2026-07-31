@@ -106,7 +106,7 @@ Repeated materialization of the same Package Version from the same accepted sour
 
 Package Info remains the immutable SkillsGo distribution document. It continues to carry Package Path, canonical Version, source commit time, Package Sum, and complete path-ordered `{name, path}` Skill membership. It does not become a file manifest and does not duplicate Git refs or object indexes.
 
-Package Info schema version 2 removes `ArchiveSize` and adds `artifactRepository` because no independent archive exists and one Pack may serve several Versions. Each fetched Pack has its own transport size, and CLI derives progress from actual dumb-HTTP response bytes relative to its local cache.
+Package Info schema version 2 removes transport-specific `ArchiveSize`, adds `artifactRepository`, and exposes `packageSize` as the uncompressed byte size of the normalized immutable Package Artifact tree. `packageSize` is stable product metadata for one effective Version; it does not describe Git Pack encoding, CDN transfer bytes, or local cache behavior. Each fetched Pack has its own transport size, and CLI derives progress from actual dumb-HTTP response bytes relative to its local cache.
 
 Package `h1:` remains the Workspace Lock integrity identity. Git object IDs authenticate Git objects, while Package `h1:` authenticates the normalized file set under its Package Path and immutable Version. The shared Protocol implementation will compute the same Package `h1:` directly from an ordered Artifact tree or verified Scope Package Store instead of requiring ZIP bytes. Hub computes it before publication; CLI recomputes it after staging and before commit.
 

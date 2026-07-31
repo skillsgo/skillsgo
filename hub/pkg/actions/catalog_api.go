@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog's set-based localized read models, canonical presentation languages, freshness-cached Package artifact resolution, and request validation.
- * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, ordered exact-name candidate lookup, stable-first exact-path versions and Package avatar metadata, constant-query ordered batch Skill-card hydration, Catalog-backed current Package Publication reads, and correlated private diagnostics.
+ * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, description-ranked exact-name candidate lookup with match confidence, stable-first exact-path versions and Package avatar metadata, constant-query ordered batch Skill-card hydration, Catalog-backed current Package Publication reads, and correlated private diagnostics.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,8 +263,12 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		for index, item := range request.Queries {
 			item.Name = strings.TrimSpace(item.Name)
 			item.PackagePath = strings.TrimSpace(item.PackagePath)
+			item.Description = strings.TrimSpace(item.Description)
 			if item.Name == "" || len([]rune(item.Name)) > 200 {
 				return writeAPIError(c, fiber.StatusBadRequest, "Candidate queries require name containing 1 to 200 characters")
+			}
+			if len([]rune(item.Description)) > 4000 {
+				return writeAPIError(c, fiber.StatusBadRequest, "Candidate descriptions must contain at most 4000 characters")
 			}
 			if item.PackagePath != "" && !(protocolapi.SkillCoordinate{PackagePath: item.PackagePath, Name: item.Name}).Valid() {
 				return writeAPIError(c, fiber.StatusBadRequest, "Candidate packagePath and name must form a canonical Skill coordinate")
@@ -275,7 +279,7 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		batchQueries := make([]catalog.FindBatchQuery, 0, len(request.Queries))
 		for index, item := range request.Queries {
 			batchQueries = append(batchQueries, catalog.FindBatchQuery{
-				ID: strconv.Itoa(index), Query: item.Name, PackagePath: item.PackagePath, ExactName: true,
+				ID: strconv.Itoa(index), Query: item.Name, PackagePath: item.PackagePath, Description: item.Description, ExactName: true,
 			})
 		}
 		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, lang, request.Limit)
@@ -296,7 +300,8 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 				matches = append(matches, protocolapi.SkillCandidate{
 					PackagePath: skill.PackagePath, Versions: versions, Name: skill.Name,
 					Path: skill.Path, Description: skill.Description,
-					ImageURL: skillImageURL(skill.SourceHost, skill.SourceRepository),
+					ImageURL:   skillImageURL(skill.SourceHost, skill.SourceRepository),
+					MatchScore: skill.MatchScore,
 				})
 			}
 			candidates = append(candidates, matches)

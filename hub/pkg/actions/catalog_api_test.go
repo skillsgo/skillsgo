@@ -239,7 +239,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, invalidVersionedFind.Code)
 
 	findBatch := httptest.NewRecorder()
-	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills"}],"limit":10}`))
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"queries":[{"name":"ask-matt","description":"Engineering skill router"},{"name":"ask-matt","packagePath":"github.com/mattpocock/skills","description":"Engineering skill router"}],"limit":10}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")
 	serveFiber(t, r, findBatch, findBatchRequest)
 	require.Equal(t, http.StatusOK, findBatch.Code)
@@ -248,6 +248,8 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Len(t, batchResponse.Candidates, 2)
 	require.Len(t, batchResponse.Candidates[0], 1)
 	require.Len(t, batchResponse.Candidates[1], 1)
+	require.Equal(t, 1.0, batchResponse.Candidates[0][0].MatchScore)
+	require.Equal(t, 1.0, batchResponse.Candidates[1][0].MatchScore)
 	require.Equal(t, []string{"v0.0.0-test"}, batchResponse.Candidates[1][0].Versions)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *batchResponse.Candidates[1][0].ImageURL)
 	require.Len(t, response.Skills, 1)

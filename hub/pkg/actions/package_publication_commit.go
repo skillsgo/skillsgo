@@ -120,6 +120,13 @@ func (commit *modulePublicationCommit) WithSession(ctx context.Context, packageP
 }
 
 func (session *modulePublicationSession) Stage(input modulePublicationInput) error {
+	var packageSize int64
+	for _, entry := range input.entries {
+		if !entry.Directory {
+			packageSize += int64(len(entry.Contents))
+		}
+	}
+	input.version.PackageSizeBytes = packageSize
 	if err := catalog.ValidatePackageVersion(session.packagePath, input.version, input.members); err != nil {
 		return withPublicationFailure(publicationFailureVersionValidation, err)
 	}
@@ -131,6 +138,7 @@ func (session *modulePublicationSession) Stage(input modulePublicationInput) err
 		if exists && current.ContentSum == input.version.ContentSum && current.Version != input.version.Version {
 			input.version.EquivalentVersion = current.Version
 			input.version.Sum = ""
+			input.version.PackageSizeBytes = current.PackageSizeBytes
 			input.entries = nil
 			input.members = nil
 			input.skillContents = nil

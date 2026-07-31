@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, server-ranked exact-name candidate confidence, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -367,6 +367,7 @@ type PackageVersion struct {
 	ContentSum        string
 	EquivalentVersion string
 	Sum               string
+	PackageSizeBytes  int64
 	CommitTime        time.Time
 }
 
@@ -428,6 +429,7 @@ func (c *Catalog) publishPackageVersionOn(ctx context.Context, beginner transact
 		}
 		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
 			existingVersion.TreeSha != version.TreeSHA || existingVersion.ContentSum != version.ContentSum || textValue(existingVersion.Sum) != version.Sum ||
+			existingVersion.PackageSizeBytes != version.PackageSizeBytes ||
 			!existingVersion.CommitTime.Equal(version.CommitTime) {
 			return false, fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
@@ -519,7 +521,7 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 		} else if queryErr != nil {
 			return PackageVersion{}, false, queryErr
 		}
-		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum}, true, nil
+		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum, PackageSizeBytes: row.PackageSizeBytes}, true, nil
 	}
 	recordEquivalent := func(version PackageVersion, equivalent string) (bool, error) {
 		return c.recordEquivalentVersionOn(ctx, connection, packagePath, version, equivalent)
@@ -530,7 +532,7 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, skills []Skill, createdAt time.Time) error {
 	versionRowID, err := q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: moduleRowID,
 		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
-		ContentSum: version.ContentSum, Sum: nullableText(version.Sum), CommitTime: version.CommitTime, CreatedAt: createdAt})
+		ContentSum: version.ContentSum, Sum: nullableText(version.Sum), PackageSizeBytes: version.PackageSizeBytes, CommitTime: version.CommitTime, CreatedAt: createdAt})
 	if err != nil {
 		return err
 	}
@@ -639,7 +641,7 @@ func (c *Catalog) PackageVersionInfo(ctx context.Context, packagePath, version s
 	}
 	info := protocolapi.PackageInfo{
 		SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath,
-		Version: stored.Version, Time: stored.CommitTime, Sum: textValue(stored.Sum),
+		Version: stored.Version, Time: stored.CommitTime, Sum: textValue(stored.Sum), PackageSize: stored.PackageSizeBytes,
 		Skills: make([]protocolapi.PackageSkill, 0, len(members)),
 	}
 	for _, member := range members {
@@ -664,18 +666,20 @@ func (c *Catalog) PackageVersionByCoordinate(ctx context.Context, packagePath, v
 	}
 	return PackageVersion{
 		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
-		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), CommitTime: stored.CommitTime,
+		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), PackageSizeBytes: stored.PackageSizeBytes, CommitTime: stored.CommitTime,
 	}, true, nil
 }
 
 type SearchSkill struct {
 	Skill
+	MatchScore float64
 }
 
 type FindBatchQuery struct {
 	ID          string
 	Query       string
 	PackagePath string
+	Description string
 	ExactName   bool
 }
 
@@ -999,6 +1003,7 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 		PackagePaths: make([]string, 0, len(queries)),
 		ExactNames:   make([]bool, 0, len(queries)),
 	}
+	descriptions := make([]string, 0, len(queries))
 	results := make([]FindBatchResult, len(queries))
 	indexByID := make(map[string]int, len(queries))
 	allExact := true
@@ -1010,31 +1015,32 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 		params.QueryIds = append(params.QueryIds, query.ID)
 		params.Queries = append(params.Queries, query.Query)
 		params.PackagePaths = append(params.PackagePaths, query.PackagePath)
+		descriptions = append(descriptions, query.Description)
 		params.ExactNames = append(params.ExactNames, query.ExactName)
 		allExact = allExact && (query.ExactName || query.PackagePath != "")
 		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, PackagePath: query.PackagePath, Skills: []SearchSkill{}}
 	}
-	appendSkill := func(queryID string, skill Skill) error {
+	appendSkill := func(queryID string, skill SearchSkill) error {
 		index, ok := indexByID[queryID]
 		if !ok {
 			return fmt.Errorf("unexpected Find batch query ID %q", queryID)
 		}
-		results[index].Skills = append(results[index].Skills, SearchSkill{Skill: skill})
+		results[index].Skills = append(results[index].Skills, skill)
 		return nil
 	}
 	if allExact {
 		rows, err := c.queries.FindExactLocalizedSkillsBatch(ctx, catalogsqlc.FindExactLocalizedSkillsBatchParams{
-			Lang: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, PackagePaths: params.PackagePaths,
+			Lang: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, PackagePaths: params.PackagePaths, Descriptions: descriptions,
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
-			if err := appendSkill(row.QueryID, *skillFromSQLC(
+			if err := appendSkill(row.QueryID, SearchSkill{Skill: *skillFromSQLC(
 				row.ID, row.PackageID, row.PackagePath, row.Name, row.Description,
 				row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
 				row.Stars, row.CreatedAt, row.UpdatedAt,
-			)); err != nil {
+			), MatchScore: row.MatchScore}); err != nil {
 				return nil, err
 			}
 		}
@@ -1045,11 +1051,11 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 		return nil, err
 	}
 	for _, row := range rows {
-		if err := appendSkill(row.QueryID, *skillFromSQLC(
+		if err := appendSkill(row.QueryID, SearchSkill{Skill: *skillFromSQLC(
 			row.ID, row.PackageID, row.PackagePath, row.Name, row.Description,
 			row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
 			row.Stars, row.CreatedAt, row.UpdatedAt,
-		)); err != nil {
+		)}); err != nil {
 			return nil, err
 		}
 	}
