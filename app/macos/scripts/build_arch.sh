@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on Flutter's generated macOS workspace, one supported target architecture, and the bundled-CLI build phase.
-# [OUTPUT]: Produces one fully architecture-verified Release SkillsGo.app in an isolated DerivedData directory.
-# [POS]: Serves as the canonical macOS arm64/x86_64 App build entry point for local packaging and CI candidates.
+# [INPUT]: Depends on Flutter's generated macOS workspace, one supported target architecture, optional release version overrides, and the bundled-CLI build phase.
+# [OUTPUT]: Produces one fully architecture- and version-verified Release SkillsGo.app in an isolated DerivedData directory.
+# [POS]: Serves as the canonical macOS arm64/x86_64 App build entry point for local packaging, CI candidates, and multi-version update rehearsals.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -21,7 +21,14 @@ readonly app_bundle="${derived_data}/Build/Products/Release/SkillsGo.app"
 readonly code_signing_allowed="${SKILLSGO_MACOS_CODE_SIGNING_ALLOWED:-NO}"
 
 cd "${app_root}"
-flutter build macos --release --config-only
+flutter_build_args=(macos --release --config-only)
+if [[ -n "${SKILLSGO_APP_BUILD_NAME:-}" ]]; then
+  flutter_build_args+=(--build-name "${SKILLSGO_APP_BUILD_NAME}")
+fi
+if [[ -n "${SKILLSGO_APP_BUILD_NUMBER:-}" ]]; then
+  flutter_build_args+=(--build-number "${SKILLSGO_APP_BUILD_NUMBER}")
+fi
+flutter build "${flutter_build_args[@]}"
 
 xcodebuild \
   -quiet \

@@ -13,6 +13,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, and delegate every Hub and local operation to the bundled CLI.
 - Version boundary: the bundled CLI reports the App product version (for example `0.0.1`); Flutter's `+build` suffix remains platform packaging metadata and must not enter the CLI version contract.
 - Installer lifecycle: `lib/main.dart` must handle Velopack's four official fast-exit arguments before logging, Flutter binding, or UI initialization; normal first-run/restart environment launches continue through the standard App path.
+- Update runtime: `velopack_flutter` is the App's thin Flutter-to-Velopack 1.2.0 bridge. Ordinary starts initialize `VelopackApp` before Flutter UI; the CI-only update source accepts loopback HTTP only and must never become a production endpoint override.
 
 ## Commands
 
@@ -46,6 +47,7 @@ make build-app-macos
 - `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
 - `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
 - `package-app-candidate.sh` requires the corresponding native Release build and pinned Velopack CLI, then emits one unsigned architecture-specific channel under `app/build/velopack/`.
+- `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral `0.0.2` package to a `0.0.1` feed and prove check, download, apply, replacement, and restart without publishing or signing.
 
 ## Workspace Map
 

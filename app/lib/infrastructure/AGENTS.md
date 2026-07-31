@@ -4,6 +4,7 @@
 ## Members
 
 - `desktop_skills_gateway.dart`: defines the production `SkillsGateway` adapter, stdin-capable CLI seam, shared state, platform pickers, internal capability composition, and the shared App-side protocol-decode failure telemetry boundary.
+- `app_updater.dart`: adapts the community `velopack_flutter` bridge over Velopack 1.2.0 into the App's early runtime and update/restart seam, with a loopback-only unsigned rehearsal source for CI.
 - `bundled_cli_locator.dart`: defines the shared macOS, Windows, and Linux bundle-layout contract used to locate the packaged CLI.
 - `io_process_runner.dart`: executes one-shot CLI probes and owns the long-lived NDJSON CLI Server session with request correlation, bounded runtime, crash fan-out, optional stdout events, process-scope isolation, and sanitized completion telemetry used by real-process E2E journeys.
 - `desktop_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, minimal Package-install receipt validation, strict payload decoding for read/planning contracts, argument encoding, and bounded local Skill inspection.
@@ -22,7 +23,7 @@
 
 ## Architectural Boundary
 
-This module adapts operating-system processes, preferences, directory pickers, immutable CDN renderer assets, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Every Hub and local business operation crosses the bundled CLI machine protocol. No capability may call Hub HTTP directly or parse human-oriented CLI output.
+This module adapts operating-system processes, native App update mechanics, preferences, directory pickers, immutable CDN renderer assets, bounded filesystem inspection, and App-owned local diagnostic logging to the App domain. Every Hub and local business operation crosses the bundled CLI machine protocol; Velopack update feeds are a release-delivery concern rather than Hub business data. No capability may call Hub HTTP directly or parse human-oriented CLI output.
 
 `DesktopSkillsGateway` is the external seam. Its private capability mixins are internal implementation partitions and may share adapter state, but each owns one coherent change axis and remains below the workspace file-size limit.
 

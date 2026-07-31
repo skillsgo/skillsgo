@@ -97,9 +97,11 @@ Stable releases update full, minor, major, and `latest` container tags. Pre-rele
 
 ## App Candidate Builds
 
-Every maintained native App Desktop CI job packages its verified Release bundle as an expiring, explicitly unsigned Velopack candidate. Candidate builds do not create GitHub Releases and must not be presented as production downloads.
+Every maintained native App Desktop CI job packages its verified Release bundle as an expiring, explicitly unsigned Velopack candidate and then exercises an ephemeral two-version update feed. Candidate builds do not create GitHub Releases and must not be presented as production downloads.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, and portable package, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App and deliberately skips the unsigned PKG because an unsigned installer is not a distributable macOS artifact. Successful CI runs retain all four candidates for seven days.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, and portable package, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App and deliberately skips the unsigned PKG because an unsigned installer is not a distributable macOS artifact.
+
+Each platform job then preserves its packaged `0.0.1` launcher, rebuilds the same source as `0.0.2`, and appends the later full package to the channel feed. A traversal-safe loopback HTTP server provides that feed only inside the runner. The packaged `0.0.1` App uses the community `velopack_flutter` bridge, which embeds Velopack Rust SDK 1.2.0, to check, download, verify, apply, and restart into `0.0.2`; the bundled CLI version proves the installed or portable payload actually changed. The loopback source accepts no remote host, credentials, query, or fragment. This gate proves update mechanics without hosting fees, certificates, or release publication, but it does not establish production publisher trust. Successful CI runs retain all four two-version candidate feeds for seven days.
 
 ## App Production Release
 
@@ -177,6 +179,7 @@ The Hub uses a native GitHub Actions build matrix instead of GoReleaser because 
 - Build the App and bundled CLI together.
 - Keep native CI builds and bundled-CLI startup smoke green for macOS arm64, macOS x64, Windows x64, and Linux x64.
 - Produce unsigned platform candidate artifacts only after the build gates stabilize.
+- Exercise a real unsigned `0.0.1` to `0.0.2` check/download/apply/restart against an ephemeral loopback feed on every maintained App platform.
 - Use dual-architecture macOS delivery unless a later packaging decision explicitly selects a Universal Binary.
 - Finalize the product name and bundle identifier.
 

@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack candidate packaging with lifecycle/install/startup gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack candidate packaging plus real 0.0.1-to-0.0.2 loopback update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -293,6 +293,101 @@ jobs:
           if ($process.HasExited) { throw "Installed App exited during startup smoke with $($process.ExitCode)" }
           Stop-Process -Id $process.Id -Force
           Write-Host "Installed and started SkillsGo $expectedVersion from Velopack Setup."
+
+      - name: Prepare unsigned Velopack update rehearsal
+        shell: bash
+        working-directory: .
+        run: ./scripts/prepare-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Apply and verify packaged macOS or Linux update
+        if: matrix.target != 'windows'
+        shell: bash
+        working-directory: .
+        run: ./scripts/smoke-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Apply and verify packaged Windows update
+        if: matrix.target == 'windows'
+        shell: pwsh
+        working-directory: .
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $channel = 'win-x64'
+          $port = 38127
+          $updateUrl = "http://127.0.0.1:$port/"
+          $feedDir = Join-Path $env:GITHUB_WORKSPACE "app/build/velopack/$channel"
+          $runtimeDir = Join-Path $env:GITHUB_WORKSPACE "app/build/update-rehearsal/$channel/runtime"
+          New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+          $feedLog = Join-Path $runtimeDir 'feed.log'
+          $feedErrorLog = Join-Path $runtimeDir 'feed-error.log'
+          $appLog = Join-Path $runtimeDir 'app.log'
+          $server = $null
+          $appProcess = $null
+
+          try {
+            $server = Start-Process -FilePath 'dart' -ArgumentList @(
+              (Join-Path $env:GITHUB_WORKSPACE 'scripts/serve-update-feed.dart'),
+              $feedDir,
+              $port
+            ) -RedirectStandardOutput $feedLog -RedirectStandardError $feedErrorLog -PassThru
+
+            $feedReady = $false
+            for ($attempt = 0; $attempt -lt 50; $attempt++) {
+              try {
+                Invoke-WebRequest -UseBasicParsing -Uri "${updateUrl}releases.$channel.json" | Out-Null
+                $feedReady = $true
+                break
+              } catch {
+                Start-Sleep -Milliseconds 200
+              }
+            }
+            if (-not $feedReady) { throw 'The local Velopack feed did not become ready.' }
+
+            $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
+            $app = Join-Path $current 'skillsgo.exe'
+            $cli = Join-Path $current 'data/bin/skillsgo.exe'
+            $env:SKILLSGO_APP_UPDATE_REHEARSAL_URL = $updateUrl
+            $appProcess = Start-Process -FilePath $app -RedirectStandardOutput $appLog -RedirectStandardError (Join-Path $runtimeDir 'app-error.log') -PassThru
+
+            $updated = $false
+            for ($attempt = 0; $attempt -lt 180; $attempt++) {
+              if (Test-Path $cli) {
+                $cliVersion = (& $cli --version 2>$null | Out-String).Trim()
+                if ($cliVersion -eq 'skillsgo version 0.0.2') {
+                  $updated = $true
+                  break
+                }
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $updated) {
+              if (Test-Path $feedLog) { Get-Content $feedLog }
+              if (Test-Path $feedErrorLog) { Get-Content $feedErrorLog }
+              if (Test-Path $appLog) { Get-Content $appLog }
+              throw 'Timed out waiting for SkillsGo win-x64 to update to 0.0.2.'
+            }
+            $restarted = $null
+            for ($attempt = 0; $attempt -lt 20; $attempt++) {
+              $restarted = Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
+                Where-Object { $_.Id -ne $appProcess.Id -and -not $_.HasExited } |
+                Select-Object -First 1
+              if ($restarted) { break }
+              Start-Sleep -Milliseconds 250
+            }
+            if (-not $restarted) {
+              throw 'Velopack replaced win-x64 but did not restart the updated App.'
+            }
+            Write-Host 'Updated and restarted SkillsGo 0.0.1 -> 0.0.2 for win-x64.'
+          } finally {
+            Remove-Item Env:SKILLSGO_APP_UPDATE_REHEARSAL_URL -ErrorAction SilentlyContinue
+            if ($appProcess -and -not $appProcess.HasExited) {
+              Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
+            }
+            Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            if ($server -and -not $server.HasExited) {
+              Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
 
       - name: Upload unsigned Velopack candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

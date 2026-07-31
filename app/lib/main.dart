@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on native-runner-forwarded arguments including Windows Velopack fast-exit hooks, Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, native window integration, Marionette instrumentation, App logging, and DesktopSkillsGateway.
- * [OUTPUT]: Exits before UI initialization for official Velopack lifecycle hooks, otherwise starts or replaces SkillsGo through main or runSkillsGoApp with failure/lifecycle capture, first-frame presentation, native window initialization, Hub defaults, Gateway injection, and debug measurements.
+ * [INPUT]: Depends on native-runner-forwarded arguments including Windows Velopack fast-exit hooks, the Velopack-backed App updater and guarded rehearsal source, Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, native window integration, Marionette instrumentation, App logging, and DesktopSkillsGateway.
+ * [OUTPUT]: Initializes Velopack at the earliest process boundary, exits before UI initialization for official lifecycle hooks, optionally executes a loopback-only unsigned update rehearsal, otherwise starts or replaces SkillsGo through main or runSkillsGoApp with failure/lifecycle capture, first-frame presentation, native window initialization, Hub defaults, Gateway injection, and debug measurements.
  * [POS]: Serves as the earliest desktop lifecycle boundary, Flutter process entry point, observability bootstrap, and native-window presentation boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'infrastructure/app_updater.dart';
 import 'infrastructure/logging/app_logger.dart';
 import 'infrastructure/desktop_skills_gateway.dart';
 import 'ui/brand.dart';
@@ -40,6 +41,17 @@ bool isVelopackFastExitInvocation(List<String> arguments) =>
     arguments.length == 2 && _velopackFastExitHooks.contains(arguments.first);
 
 Future<void> main(List<String> arguments) async {
+  final updater = VelopackAppUpdater();
+  final rehearsalSource = appUpdateRehearsalSource(Platform.environment);
+  var updaterInitialized = false;
+  if (rehearsalSource != null) {
+    final applying = await updater.applyAvailableUpdateAndRestart(
+      rehearsalSource,
+    );
+    if (applying) return;
+    updaterInitialized = true;
+  }
+  if (!updaterInitialized) await updater.initializeRuntime();
   if (isVelopackFastExitInvocation(arguments)) return;
   await appLogger.initialize();
   appLogger.info('app.lifecycle', 'launch_started');

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, the workspace App version, Velopack CLI 1.2.0, and unzip-compatible package inspection.
-# [OUTPUT]: Produces and verifies one platform-layout-aware unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64.
-# [POS]: Serves as the deterministic, official-layout-aware native-build-to-candidate boundary shared by local rehearsals and GitHub Actions.
+# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, a workspace or explicit App version, Velopack CLI 1.2.0, optional prior channel packages, and unzip-compatible package inspection.
+# [OUTPUT]: Produces and verifies one platform-layout-aware unsigned Velopack candidate channel for Windows x64, Linux x64, macOS arm64, or macOS x64, optionally appending a later version to an existing feed.
+# [POS]: Serves as the deterministic, official-layout-aware native-build-to-candidate and multi-version rehearsal-feed boundary shared by local rehearsals and GitHub Actions.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -10,7 +10,9 @@ readonly target="${1:-}"
 readonly architecture="${2:-}"
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly app_root="${repository_root}/app"
-readonly version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' "${app_root}/pubspec.yaml")"
+readonly workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' "${app_root}/pubspec.yaml")"
+readonly version="${SKILLSGO_APP_PACKAGE_VERSION:-${workspace_version}}"
+readonly append_to_feed="${SKILLSGO_APP_PACKAGE_APPEND:-0}"
 
 if [[ -z "${version}" ]]; then
   echo "Unable to read the App version from app/pubspec.yaml." >&2
@@ -45,7 +47,8 @@ case "${target}:${architecture}" in
   macos:arm64)
     readonly channel="osx-arm64"
     readonly runtime="osx-arm64"
-    readonly pack_dir="${app_root}/build/macos-arm64/Build/Products/Release/SkillsGo.app"
+    readonly macos_derived_data="${SKILLSGO_MACOS_DERIVED_DATA:-${app_root}/build/macos-arm64}"
+    readonly pack_dir="${macos_derived_data}/Build/Products/Release/SkillsGo.app"
     readonly main_exe="SkillsGo"
     readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
     readonly -a packaged_entries=(
@@ -57,7 +60,8 @@ case "${target}:${architecture}" in
   macos:x86_64)
     readonly channel="osx-x64"
     readonly runtime="osx-x64"
-    readonly pack_dir="${app_root}/build/macos-x86_64/Build/Products/Release/SkillsGo.app"
+    readonly macos_derived_data="${SKILLSGO_MACOS_DERIVED_DATA:-${app_root}/build/macos-x86_64}"
+    readonly pack_dir="${macos_derived_data}/Build/Products/Release/SkillsGo.app"
     readonly main_exe="SkillsGo"
     readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
     readonly -a packaged_entries=(
@@ -73,7 +77,9 @@ case "${target}:${architecture}" in
 esac
 
 readonly output_dir="${app_root}/build/velopack/${channel}"
-rm -rf "${output_dir}"
+if [[ "${append_to_feed}" != "1" ]]; then
+  rm -rf "${output_dir}"
+fi
 mkdir -p "${output_dir}"
 
 if [[ ! -x "${bundled_cli}" ]]; then
