@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on visible External Library entries, CLI-mediated batch Find, localized management copy, the SkillsGo logo asset, PackageAvatar, native buttons, single-select MultiDropdown controls, the vendored Portal Labs split interaction, and semantic theme roles.
- * [OUTPUT]: Provides the feature-gated inline Adoption Review with one exact-name bounded batch match, App-ranked Source candidates, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, reviewed handoff records, and group-bounded sticky morphing actions.
+ * [OUTPUT]: Provides the feature-gated inline Adoption Review with one server-ranked exact-name bounded batch match, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, reviewed handoff records, and group-bounded sticky morphing actions.
  * [POS]: Serves as the user-reviewed matching presentation inside the Library journey while leaving Hub transport and filesystem mutation to the Gateway and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -96,7 +96,11 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
       queryIndices.putIfAbsent(signature, () {
         final index = queries.length;
         queries.add(
-          PackageFindQuery(name: skill.name, packagePath: skill.packagePath),
+          PackageFindQuery(
+            name: skill.name,
+            packagePath: skill.packagePath,
+            description: skill.description,
+          ),
         );
         return index;
       });
@@ -124,33 +128,15 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
 
   void _applyCandidates(InstalledSkill skill, List<AdoptionCandidate> skills) {
     final key = _librarySelectionKey(skill);
-    final candidates =
-        skills
-            .where(
-              (candidate) =>
-                  candidate.name.toLowerCase() == skill.name.toLowerCase(),
-            )
-            .map(
-              (candidate) => _AdoptionCandidate(
-                skill: candidate,
-                similarity: compareDescriptions(
-                  skill.description,
-                  candidate.description,
-                ),
-              ),
-            )
-            .toList(growable: false)
-          ..sort((a, b) {
-            if (a.similarity.comparable != b.similarity.comparable) {
-              return a.similarity.comparable ? -1 : 1;
-            }
-            final score = b.similarity.score.compareTo(a.similarity.score);
-            if (score != 0) return score;
-            final package = a.skill.packagePath.compareTo(b.skill.packagePath);
-            return package != 0
-                ? package
-                : a.skill.path.compareTo(b.skill.path);
-          });
+    final candidates = skills
+        .where((candidate) => candidate.name == skill.name)
+        .map(
+          (candidate) => _AdoptionCandidate(
+            skill: candidate,
+            matchScore: candidate.matchScore,
+          ),
+        )
+        .toList(growable: false);
     final selected = candidates.firstOrNull;
     matches[key] = _AdoptionMatch.content(
       candidates: candidates,
@@ -168,7 +154,11 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
     setState(() => matches[key] = const _AdoptionMatch.loading());
     try {
       final results = await widget.gateway.findSources([
-        PackageFindQuery(name: skill.name, packagePath: skill.packagePath),
+        PackageFindQuery(
+          name: skill.name,
+          packagePath: skill.packagePath,
+          description: skill.description,
+        ),
       ]);
       if (!mounted) return;
       setState(() => _applyCandidates(skill, results.firstOrNull ?? []));
@@ -917,7 +907,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
               'library-adoption-selected-source-match-${selected.skill.packagePath}',
             ),
             label: context.l10n.sourceMatchPercent(
-              (selected.similarity.score * 100).round(),
+              (selected.matchScore * 100).round(),
             ),
           ),
         ],
@@ -943,7 +933,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
                   'library-adoption-source-match-${candidate.skill.packagePath}',
                 ),
                 label: context.l10n.sourceMatchPercent(
-                  (candidate.similarity.score * 100).round(),
+                  (candidate.matchScore * 100).round(),
                 ),
               ),
             ],
@@ -1016,10 +1006,10 @@ class _AdoptionMatchChip extends StatelessWidget {
 }
 
 class _AdoptionCandidate {
-  const _AdoptionCandidate({required this.skill, required this.similarity});
+  const _AdoptionCandidate({required this.skill, required this.matchScore});
 
   final AdoptionCandidate skill;
-  final DescriptionSimilarity similarity;
+  final double matchScore;
 }
 
 class _AdoptionMatch {

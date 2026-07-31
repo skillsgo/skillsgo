@@ -141,9 +141,11 @@
   "allAgents": "所有智能体",
   "allProjects": "所有项目",
   "specificProject": "指定项目",
-  "libraryGlobalScope": "全局 Skills",
+  "libraryGlobalScope": "全局技能",
+  "libraryExternalScope": "外部技能",
+  "libraryEmptyAddProject": "前往添加项目",
   "globalScope": "全局安装",
-  "globalSkills": "全局 Skills",
+  "globalSkills": "全局技能",
   "addProject": "添加项目",
   "removeFromList": "从列表移除",
   "removeProjectTitle": "从 SkillsGo 移除 {name}？",
@@ -693,7 +695,7 @@
   "detailPackageSource": "包来源",
   "detailStars": "星标",
   "detailUpdated": "最近更新",
-  "detailArchiveSize": "包大小",
+  "detailPackageSize": "包大小",
   "pathLabel": "项目路径",
   "copyProjectPath": "复制项目路径",
   "projectPathCopied": "项目路径已复制",
@@ -731,5 +733,6 @@
   "@removingSkillsProgress": {"placeholders": {"finished": {"type": "int"}, "total": {"type": "int"}}},
   "confirmRemoveSkillsAction": "确认移除",
   "viewRemovalDetails": "查看详情",
-  "hideRemovalDetails": "收起详情"
+  "hideRemovalDetails": "收起详情",
+  "originalContent": "原来的"
 }

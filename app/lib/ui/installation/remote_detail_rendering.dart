@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on RemoteDetailScreen state, localized copy, audit models, installation scope widgets, and Markdown presentation.
- * [OUTPUT]: Provides remote detail toolbar, loading/error/content regions, X-inspired inline translation state, Git Artifact identity metadata, and document rendering methods.
+ * [OUTPUT]: Provides remote detail toolbar, loading/error/content regions, X-inspired inline translation state, Git Artifact identity and immutable Package size metadata, and document rendering methods.
  * [POS]: Serves as the private rendering implementation of the remote Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -395,6 +395,10 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
         value: _packageDisplayName(value.packagePath),
       ),
       (label: context.l10n.detailUpdated, value: _shortDate(value.time)),
+      (
+        label: context.l10n.detailPackageSize,
+        value: _fileSize(value.packageSize),
+      ),
     ];
     return SizedBox(
       height: 88,
@@ -484,5 +488,13 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
     final month = value.month.toString().padLeft(2, '0');
     final day = value.day.toString().padLeft(2, '0');
     return '${value.year}-$month-$day';
+  }
+
+  String _fileSize(int bytes) {
+    if (bytes <= 0) return '—';
+    if (bytes >= 1 << 20) {
+      return '${(bytes / (1 << 20)).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / 1024).toStringAsFixed(bytes >= 10240 ? 0 : 1)} KB';
   }
 }

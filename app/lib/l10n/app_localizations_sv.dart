@@ -251,26 +251,26 @@ class AppLocalizationsSv extends AppLocalizations {
   String get install => 'Installera';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Uppgradera';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Nedvärdera';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Färdigheter från detta paket kommer att byta version tillsammans.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Byt version';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'Uppgradera till $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'Nedgradera till $version';
   }
 
   @override
@@ -471,13 +471,19 @@ class AppLocalizationsSv extends AppLocalizations {
   String get specificProject => 'Projekt';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Globala färdigheter';
+
+  @override
+  String get libraryExternalScope => 'Externa färdigheter';
+
+  @override
+  String get libraryEmptyAddProject => 'Gå till Lägg till projekt';
 
   @override
   String get globalScope => 'Global';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Globala färdigheter';
 
   @override
   String get addProject => 'Lägg till projekt';
@@ -510,21 +516,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'Katalogen kan ha flyttats eller dess volym kan vara offline. Kontrollera sökvägen eller ta bort dess appreferens.';
 
   @override
   String get projectPermissionTitle => 'Projekttillstånd krävs';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo kan inte inspektera denna projektrot. Kontrollera dess filsystembehörigheter eller ta bort dess appreferens.';
 
   @override
   String get projectInaccessibleTitle => 'Projektkatalogen är otillgänglig';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo behöll denna projektreferens. Kontrollera sökvägen eller volymen, eller ta bort dess appreferens.';
 
   @override
   String get checking => 'Kontroll…';
@@ -1005,23 +1011,23 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Molnet returnerade HTTP $status. Kontrollera ursprungs- och tjänstkonfigurationen.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'Servern returnerade inte SkillsGo molnrankningsprotokollet.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Molnet returnerade ogiltig JSON.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Kunde inte nå Cloud. Kontrollera ursprungs-, nätverks-, proxy- och TLS-konfigurationen.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Molnanslutningen tog timeout. Kontrollera nätverket eller försök igen.';
 
   @override
   String get riskPolicyTitle => 'Personlig riskpolicy';
@@ -1152,70 +1158,70 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Söktext och skicklighetsinnehåll loggas inte. Sanitiserad lokal diagnostik bevaras i upp till 7 dagar och laddas aldrig upp automatiskt.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Diagnostiska loggar';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Lokal app och CLI diagnostik använder $size. Loggar roterar automatiskt, sparas i upp till 7 dagar och laddas aldrig upp automatiskt.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Öppna mappen';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Se live';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Exportera loggar';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Rensa loggar';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Diagnostiska loggar exporterade.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Diagnostikloggarna rensades.';
 
   @override
   String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+      'Den diagnostiska loggåtgärden kunde inte slutföras.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'Bo';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Pausad';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Sök i loggar';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'Alla';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Varningar';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Fel';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Paus';
 
   @override
   String get resumeLogFollow => 'Resume';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Fri sikt';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Inga matchande loggar ännu.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'Senast';
 
   @override
   String get language => 'Språk';
@@ -1766,39 +1772,39 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'Låt SkillsGo hantera $count externa färdigheter';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'Bekräfta hantering av SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Skicklighet';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Källa';
 
   @override
   String get versionColumnLabel => 'Version';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Matchande källor...';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Källmatchning är inte tillgänglig';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Ingen matchande källa';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% matchning';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Välj en källa först';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -2006,15 +2012,15 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted färdigheter lades till i ledningen, $failed misslyckades.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Misslyckades';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name misslyckades';
   }
 
   @override
@@ -2033,7 +2039,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get detailUpdated => 'Uppdaterad';
 
   @override
-  String get detailArchiveSize => 'Paketstorlek';
+  String get detailPackageSize => 'Paketstorlek';
 
   @override
   String get pathLabel => 'Projektväg';
@@ -2138,24 +2144,25 @@ class AppLocalizationsSv extends AppLocalizations {
       'Reparera den medföljande CLI och försök sedan igen för att fortsätta.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription =>
+      'Följande färdigheter kommer att tas bort';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'Ta bort $count färdigheter?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'Tar bort $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Ta bort nu';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Visa detaljer';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Dölj detaljer';
 }

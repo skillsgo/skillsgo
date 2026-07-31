@@ -148,6 +148,8 @@
   "allProjects": "All Projects",
   "specificProject": "Project",
   "libraryGlobalScope": "Global Skills",
+  "libraryExternalScope": "External Skills",
+  "libraryEmptyAddProject": "Go to Add Project",
   "globalScope": "Global",
   "globalSkills": "Global Skills",
   "addProject": "Add Project",
@@ -701,7 +703,10 @@
   "detailPackageSource": "Package Source",
   "detailStars": "Stars",
   "detailUpdated": "Updated",
-  "detailArchiveSize": "Package Size",
+  "detailPackageSize": "Package Size",
+  "@detailPackageSize": {
+    "description": "Label for the uncompressed size of an immutable Package version."
+  },
   "pathLabel": "Project path",
   "copyProjectPath": "Copy project path",
   "projectPathCopied": "Project path copied",

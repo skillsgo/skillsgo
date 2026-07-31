@@ -252,26 +252,26 @@ class AppLocalizationsTr extends AppLocalizations {
   String get install => 'Yükle';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Güncelleme';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Sürüm düşürme';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Bu paketteki beceriler sürüme birlikte geçiş yapacaktır.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Sürümü değiştir';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return '$version\'a yükseltin';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return '$version sürümüne geç';
   }
 
   @override
@@ -471,13 +471,19 @@ class AppLocalizationsTr extends AppLocalizations {
   String get specificProject => 'Proje';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Küresel Beceriler';
+
+  @override
+  String get libraryExternalScope => 'Harici Beceriler';
+
+  @override
+  String get libraryEmptyAddProject => 'Proje Ekle\'ye git';
 
   @override
   String get globalScope => 'Küresel';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Küresel Beceriler';
 
   @override
   String get addProject => 'Proje Ekle';
@@ -510,21 +516,21 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'Dizin taşınmış olabilir veya birimi çevrimdışı olabilir. Yolu kontrol edin veya Uygulama referansını kaldırın.';
 
   @override
   String get projectPermissionTitle => 'Proje izni gerekli';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo bu proje kökünü inceleyemiyor. Dosya sistemi izinlerini kontrol edin veya Uygulama referansını kaldırın.';
 
   @override
   String get projectInaccessibleTitle => 'Proje dizinine erişilemiyor';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo bu proje referansını korudu. Yolu veya birimi kontrol edin veya Uygulama referansını kaldırın.';
 
   @override
   String get checking => 'Kontrol ediliyor…';
@@ -1005,23 +1011,23 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Bulut HTTP $status değerini döndürdü. Kaynak ve hizmet yapılandırmasını kontrol edin.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'Sunucu SkillsGo Bulut sıralama protokolünü döndürmedi.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Bulut geçersiz JSON döndürdü.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Bulut\'a ulaşılamadı. Kaynak, ağ, proxy ve TLS yapılandırmasını kontrol edin.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Bulut bağlantısı zaman aşımına uğradı. Ağı kontrol edin veya tekrar deneyin.';
 
   @override
   String get riskPolicyTitle => 'Kişisel risk politikası';
@@ -1152,76 +1158,75 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Arama metni ve Beceri içeriği günlüğe kaydedilmez. Temizlenmiş yerel teşhisler 7 güne kadar saklanır ve hiçbir zaman otomatik olarak yüklenmez.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Teşhis günlükleri';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Yerel Uygulama ve CLI teşhisleri $size kullanır. Günlükler otomatik olarak dönüşümlü olarak 7 güne kadar saklanır ve hiçbir zaman otomatik olarak yüklenmez.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Klasörü aç';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Canlı görüntüle';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Günlükleri dışa aktar';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Günlükleri temizle';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Tanılama günlükleri dışa aktarıldı.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Tanılama günlükleri temizlendi.';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => 'Tanılama günlüğü eylemi tamamlanamadı.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'Canlı';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Duraklatıldı';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Günlüklerde arama yapın';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'Tüm';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Uyarılar';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Hatalar';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Duraklat';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'Sürdürmek';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Görünümü temizle';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Henüz eşleşen günlük yok.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'En sonuncu';
 
   @override
   String get language => 'Dil';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'Orijinal';
 
   @override
   String get translatedContent => 'Çevrildi';
@@ -1761,39 +1766,39 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'SkillsGo\'in $count harici becerilerini yönetmesine izin ver';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'SkillsGo yönetimini onaylayın ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Yetenek';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Kaynak';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'Sürüm';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Kaynaklar eşleşiyor…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Kaynak eşleştirme kullanılamıyor';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Eşleşen kaynak yok';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '%$percent eşleşme';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Önce bir kaynak seçin';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -2004,15 +2009,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted becerileri yönetime eklendi, $failed başarısız oldu.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Arızalı';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name başarısız oldu';
   }
 
   @override
@@ -2031,7 +2036,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get detailUpdated => 'Güncellendi';
 
   @override
-  String get detailArchiveSize => 'Paket boyutu';
+  String get detailPackageSize => 'Paket boyutu';
 
   @override
   String get pathLabel => 'Proje yolu';
@@ -2135,24 +2140,24 @@ class AppLocalizationsTr extends AppLocalizations {
       'Birlikte verilen CLI\'yi onarın ve devam etmeyi yeniden deneyin.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'Aşağıdaki Beceriler kaldırılacak';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return '$count Becerileri kaldırılsın mı?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return '$finished/$total kaldırılıyor';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Şimdi kaldır';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Ayrıntıları görüntüle';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Ayrıntıları gizle';
 }

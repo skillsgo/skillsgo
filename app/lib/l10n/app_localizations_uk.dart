@@ -255,26 +255,26 @@ class AppLocalizationsUk extends AppLocalizations {
   String get install => 'встановити';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Оновлення';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Понизити';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Навички з цього пакету змінюватимуть версію разом.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Змінна версія';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'Оновити до $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'Повернутися до $version';
   }
 
   @override
@@ -475,13 +475,19 @@ class AppLocalizationsUk extends AppLocalizations {
   String get specificProject => 'Проект';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Глобальні навички';
+
+  @override
+  String get libraryExternalScope => 'Зовнішні навички';
+
+  @override
+  String get libraryEmptyAddProject => 'Перейти до додавання проєкту';
 
   @override
   String get globalScope => 'Глобальний';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Глобальні навички';
 
   @override
   String get addProject => 'Додати проект';
@@ -514,21 +520,21 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'Можливо, каталог переміщено або його том не в мережі. Перевірте шлях або видаліть посилання на додаток.';
 
   @override
   String get projectPermissionTitle => 'Потрібен дозвіл на проект';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo не може перевірити корінь цього проекту. Перевірте дозволи файлової системи або видаліть посилання на додаток.';
 
   @override
   String get projectInaccessibleTitle => 'Каталог проекту недоступний';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo зберіг цей проект. Перевірте шлях або том або видаліть посилання на додаток.';
 
   @override
   String get checking => 'Перевірка…';
@@ -1009,23 +1015,23 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Хмара повернула HTTP $status. Перевірте походження та конфігурацію служби.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'Сервер не повернув SkillsGo Хмарний протокол ранжирування.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Хмара повернула недійсний JSON.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Не вдалося зв’язатися з Cloud. Перевірте налаштування джерела, мережі, проксі та TLS.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Час очікування підключення до хмари минув. Перевірте мережу або повторіть спробу.';
 
   @override
   String get riskPolicyTitle => 'Політика персональних ризиків';
@@ -1156,76 +1162,75 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Текст пошуку та вміст навичок не реєструються. Продезінфікована локальна діагностика зберігається до 7 днів і ніколи не завантажується автоматично.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Журнали діагностики';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Локальна програма та діагностика CLI використовують $size. Журнали змінюються автоматично, зберігаються до 7 днів і ніколи не завантажуються автоматично.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Відкрити папку';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Дивіться в прямому ефірі';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Експорт журналів';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Очистити журнали';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Журнали діагностики експортовано.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Журнали діагностики очищено.';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => 'Не вдалося виконати дію журналу діагностики.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'Жити';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Призупинено';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Журнали пошуку';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'всі';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Попередження';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Помилки';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Пауза';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'Резюме';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Чіткий погляд';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Відповідних журналів ще немає.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'Останній';
 
   @override
   String get language => 'Мова';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'Оригінал';
 
   @override
   String get translatedContent => 'Перекладено';
@@ -1772,39 +1777,39 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'Дозвольте SkillsGo керувати зовнішніми навичками $count';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'Підтвердити керування SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Майстерність';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Джерело';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'Версія';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Відповідні джерела…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Відповідність джерела недоступна';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Немає відповідного джерела';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% збіг';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Спочатку виберіть джерело';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -2018,15 +2023,15 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return 'Навички $adopted додано до керування, $failed не вдалося.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Не вдалося';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name не вдалося';
   }
 
   @override
@@ -2045,7 +2050,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get detailUpdated => 'Оновлено';
 
   @override
-  String get detailArchiveSize => 'Розмір пакета';
+  String get detailPackageSize => 'Розмір пакета';
 
   @override
   String get pathLabel => 'Шлях проекту';
@@ -2150,24 +2155,24 @@ class AppLocalizationsUk extends AppLocalizations {
       'Відремонтуйте CLI, а потім повторіть спробу, щоб продовжити.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'Наступні навички будуть видалені';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'Видалити навички $count?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'Видалення $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Видаліть зараз';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Переглянути деталі';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Приховати деталі';
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SharedPreferences, temporary filesystem boundaries, controlled CLI output, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies appearance including persistent first-run wallpaper selection, language, reminder, one-time adoption-introduction, the single Hub Origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
+ * [OUTPUT]: Specifies appearance including persistent first-run theme-color and wallpaper selection, language, reminder, one-time adoption-introduction, the single Hub Origin, onboarding, Added Project, offline local-management, risk, storage, and diagnostics contracts.
  * [POS]: Serves as the preferences, onboarding, and project contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -124,10 +124,17 @@ void main() {
     expect(await restored.loadLanguage(), AppLanguage.simplifiedChinese);
   });
 
-  test('unset theme color defaults to white', () async {
+  test('first launch selects and persists one theme color', () async {
     final gateway = DesktopSkillsGateway();
 
-    expect(await gateway.loadFolderTheme(), '#FFFFFF');
+    final selected = await gateway.loadFolderTheme();
+
+    expect(selected, matches(RegExp(r'^#[0-9A-F]{6}$')));
+    expect(
+      (await SharedPreferences.getInstance()).getString('folder_theme'),
+      selected,
+    );
+    expect(await DesktopSkillsGateway().loadFolderTheme(), selected);
   });
 
   test('first launch selects and persists one wallpaper', () async {

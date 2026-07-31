@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the source coordinate parser, the public Hub Repository Info client, Cobra output selection, and terminal writers.
- * [OUTPUT]: Provides the read-only `skillsgo show <module>` command for terminal Package summaries and App-facing exact-path Skill content.
+ * [OUTPUT]: Provides the read-only `skillsgo show <module>` command for terminal Package summaries and App-facing exact-path Skill content with immutable Package size.
  * [POS]: Serves as the detail-read Adapter after discovery, without mutating local CLI state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

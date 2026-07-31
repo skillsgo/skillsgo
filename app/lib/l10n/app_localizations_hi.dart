@@ -250,26 +250,26 @@ class AppLocalizationsHi extends AppLocalizations {
   String get install => 'स्थापित करें';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'उन्नत करना';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'ढाल';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'इस पैकेज से कौशल एक साथ संस्करण बदल देंगे।';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'संस्करण स्विच करें';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return '$version पर अपग्रेड करें';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return '$version पर डाउनग्रेड करें';
   }
 
   @override
@@ -469,13 +469,19 @@ class AppLocalizationsHi extends AppLocalizations {
   String get specificProject => 'प्रोजेक्ट';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'वैश्विक कौशल';
+
+  @override
+  String get libraryExternalScope => 'बाहरी कौशल';
+
+  @override
+  String get libraryEmptyAddProject => 'प्रोजेक्ट जोड़ें पर जाएँ';
 
   @override
   String get globalScope => 'वैश्विक';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'वैश्विक कौशल';
 
   @override
   String get addProject => 'प्रोजेक्ट जोड़ें';
@@ -508,14 +514,14 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'हो सकता है कि निर्देशिका स्थानांतरित हो गई हो या उसका वॉल्यूम ऑफ़लाइन हो। पथ की जाँच करें या उसका ऐप संदर्भ हटा दें।';
 
   @override
   String get projectPermissionTitle => 'प्रोजेक्ट की अनुमति आवश्यक है';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo इस प्रोजेक्ट रूट का निरीक्षण नहीं कर सकता। इसकी फ़ाइल सिस्टम अनुमतियाँ जांचें या इसका ऐप संदर्भ हटा दें।';
 
   @override
   String get projectInaccessibleTitle =>
@@ -523,7 +529,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo ने इस प्रोजेक्ट का संदर्भ रखा। पथ या वॉल्यूम जांचें, या उसका ऐप संदर्भ हटा दें।';
 
   @override
   String get checking => 'जाँच हो रही है...';
@@ -1005,23 +1011,23 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'बादल HTTP $status लौटा। उत्पत्ति और सेवा कॉन्फ़िगरेशन की जाँच करें।';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'सर्वर ने SkillsGo क्लाउड रैंकिंग प्रोटोकॉल वापस नहीं किया।';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'क्लाउड ने अमान्य JSON लौटाया।';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'क्लाउड तक नहीं पहुंच सका. उत्पत्ति, नेटवर्क, प्रॉक्सी और TLS कॉन्फ़िगरेशन की जाँच करें।';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'क्लाउड कनेक्शन का समय समाप्त हो गया. नेटवर्क जाँचें या पुनः प्रयास करें।';
 
   @override
   String get riskPolicyTitle => 'व्यक्तिगत जोखिम नीति';
@@ -1152,76 +1158,75 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'खोज पाठ और कौशल सामग्री लॉग नहीं की गई है। सेनिटाइज्ड स्थानीय डायग्नोस्टिक्स को 7 दिनों तक बनाए रखा जाता है और कभी भी स्वचालित रूप से अपलोड नहीं किया जाता है।';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'डायग्नोस्टिक लॉग';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'स्थानीय ऐप और CLI डायग्नोस्टिक्स $size का उपयोग करते हैं। लॉग स्वचालित रूप से घूमते हैं, 7 दिनों तक बनाए रखे जाते हैं, और कभी भी स्वचालित रूप से अपलोड नहीं होते हैं।';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'फोल्डर खोलें';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'लाइव देखें';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'लॉग निर्यात करें';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'लॉग साफ़ करें';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'डायग्नोस्टिक लॉग निर्यात किए गए।';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'डायग्नोस्टिक लॉग साफ़ किए गए.';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => 'डायग्नोस्टिक लॉग कार्रवाई पूरी नहीं हो सकी.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'रहना';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'रुका हुआ';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'लॉग खोजें';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'सभी';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'चेतावनियाँ';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'त्रुटियाँ';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'विराम';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'फिर शुरू करना';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'साफ़ दृश्य';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'अभी तक कोई मिलान लॉग नहीं.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'नवीनतम';
 
   @override
   String get language => 'भाषा';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'मूल';
 
   @override
   String get translatedContent => 'अनुवादित';
@@ -1761,39 +1766,39 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'SkillsGo को $count बाहरी कौशल प्रबंधित करने दें';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'SkillsGo प्रबंधन की पुष्टि करें ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'कौशल';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'स्रोत';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'संस्करण';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'मिलान स्रोत...';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'स्रोत मिलान अनुपलब्ध';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'कोई मेल खाता स्रोत नहीं';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% मिलान';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'पहले एक स्रोत चुनें';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -2001,15 +2006,15 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return 'प्रबंधन में $adopted कौशल जोड़े गए, $failed विफल रहे।';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'असफल';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name विफल';
   }
 
   @override
@@ -2028,7 +2033,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get detailUpdated => 'अद्यतन किया गया';
 
   @override
-  String get detailArchiveSize => 'पैकेज का आकार';
+  String get detailPackageSize => 'पैकेज का आकार';
 
   @override
   String get pathLabel => 'प्रोजेक्ट पथ';
@@ -2134,24 +2139,24 @@ class AppLocalizationsHi extends AppLocalizations {
       'बंडल किए गए CLI की मरम्मत करें, फिर जारी रखने के लिए पुनः प्रयास करें।';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'निम्नलिखित कौशल हटा दिए जाएंगे';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return '$count कौशल हटाएँ?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return '$finished/$total को हटाया जा रहा है';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'अभी हटाओ';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'विवरण देखें';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'विवरण छुपाओ';
 }

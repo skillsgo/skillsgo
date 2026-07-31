@@ -201,7 +201,8 @@ func defaultConfig() *Config {
 		LLM: &LLMConfig{
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLangs: []string{"en", "zh-Hans-CN", "zh-Hant-TW", "zh-Hant-HK", "ja", "ko", "fr", "de", "it", "es", "pt-BR", "ru", "ar", "hi", "id", "tr", "nl", "pl", "th", "vi", "ms", "sv", "uk"}, TranslationInterval: 900,
-			TranslationBatch: 100, DescriptionPromptVersion: "description-v7", DocumentPromptVersion: "skill-document-v9",
+			TranslationBatch: 100, TranslationTimeZone: "UTC",
+			DescriptionPromptVersion: "description-v7", DocumentPromptVersion: "skill-document-v9",
 		},
 	}
 }

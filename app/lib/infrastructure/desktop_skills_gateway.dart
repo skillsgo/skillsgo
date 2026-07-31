@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the platform bundle's resolved CLI process boundary for all Hub and local business access, the local filesystem, secure randomness, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed long-lived and recoverable CLI-backed Mandatory Onboarding, Hub Find/detail/rankings, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed long-lived and recoverable CLI-backed Mandatory Onboarding, Hub Find/detail/rankings, installation and reviewed Adoption, inspection, CLI-owned Managed Project references with cached asynchronous identity enrichment, diagnostics, protocol-decode failure telemetry, and persisted appearance/language/first-run-randomized-theme-and-wallpaper/reminder operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
