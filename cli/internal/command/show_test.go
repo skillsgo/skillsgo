@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub serving unified latest Package Info plus canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Package and exact-path Skill Show JSON including latest metadata resolution, version-scoped exact Skill lookup, and structured Hub failure output in machine mode.
+ * [OUTPUT]: Specifies direct read-only Package and exact-path Skill Show JSON including latest metadata resolution, version-scoped exact Skill lookup, Package size presence, and structured Hub failure output in machine mode.
  * [POS]: Serves as the public CLI behavior contract for terminal Package details and App Skill details.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -106,9 +106,13 @@ func TestShowSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 		Version     string `json:"version"`
 		Path        string `json:"path"`
 		Content     string `json:"content"`
+		PackageSize int64  `json:"packageSize"`
 	}
 	if err := json.Unmarshal(output.Bytes(), &detail); err != nil || detail.PackagePath != packagePath || detail.Version != version || detail.Path != "skills/demo" || detail.Content == "" {
 		t.Fatalf("unexpected exact-path Skill detail: %#v: %v", detail, err)
+	}
+	if !bytes.Contains(output.Bytes(), []byte(`"packageSize": 0`)) {
+		t.Fatalf("exact-path Skill detail omitted Package size: %s", output.String())
 	}
 }
 

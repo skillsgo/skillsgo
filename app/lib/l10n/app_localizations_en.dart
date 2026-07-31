@@ -1987,7 +1987,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailUpdated => 'Updated';
 
   @override
-  String get detailArchiveSize => 'Package Size';
+  String get detailPackageSize => 'Package Size';
 
   @override
   String get pathLabel => 'Project path';

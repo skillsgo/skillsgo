@@ -22,6 +22,7 @@ final defaultRemoteDetail = SkillDetail(
   packagePath: 'example/skills',
   version: 'v1.2.3',
   time: DateTime.utc(2026, 7, 15),
+  packageSize: 24576,
   description: 'Build reliable Flutter products.',
   sourceLanguage: 'en',
   translated: true,

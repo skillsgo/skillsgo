@@ -1993,7 +1993,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get detailUpdated => 'Đã cập nhật';
 
   @override
-  String get detailArchiveSize => 'Kích thước gói';
+  String get detailPackageSize => 'Kích thước gói';
 
   @override
   String get pathLabel => 'Đường dẫn dự án';

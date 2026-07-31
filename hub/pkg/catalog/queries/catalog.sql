@@ -57,7 +57,7 @@ WHERE m.id=sqlc.arg(package_id)
 FOR UPDATE OF m;
 
 -- name: CurrentEffectiveVersion :one
-SELECT mv.version, mv.content_sum
+SELECT mv.version, mv.content_sum, mv.package_size_bytes
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 WHERE m.path=sqlc.arg(package_path) AND mv.equivalent_version IS NULL;
@@ -68,8 +68,8 @@ source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), s
 updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(package_path);
 
 -- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id;
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, package_size_bytes, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id;
 
 -- name: InsertSkill :exec
 INSERT INTO skills (
@@ -92,7 +92,7 @@ WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: PackageVersion :one
 SELECT effective.id, effective.package_id, effective.version, effective.ref, effective.commit_sha, effective.tree_sha,
-       effective.content_sum, effective.equivalent_version, effective.sum, effective.commit_time, effective.created_at
+       effective.content_sum, effective.equivalent_version, effective.sum, effective.package_size_bytes, effective.commit_time, effective.created_at
 FROM versions requested
 JOIN packages m ON m.id=requested.package_id
 JOIN versions effective ON effective.package_id=requested.package_id

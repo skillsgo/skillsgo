@@ -367,6 +367,7 @@ type PackageVersion struct {
 	ContentSum        string
 	EquivalentVersion string
 	Sum               string
+	PackageSizeBytes  int64
 	CommitTime        time.Time
 }
 
@@ -428,6 +429,7 @@ func (c *Catalog) publishPackageVersionOn(ctx context.Context, beginner transact
 		}
 		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
 			existingVersion.TreeSha != version.TreeSHA || existingVersion.ContentSum != version.ContentSum || textValue(existingVersion.Sum) != version.Sum ||
+			existingVersion.PackageSizeBytes != version.PackageSizeBytes ||
 			!existingVersion.CommitTime.Equal(version.CommitTime) {
 			return false, fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
@@ -519,7 +521,7 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 		} else if queryErr != nil {
 			return PackageVersion{}, false, queryErr
 		}
-		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum}, true, nil
+		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum, PackageSizeBytes: row.PackageSizeBytes}, true, nil
 	}
 	recordEquivalent := func(version PackageVersion, equivalent string) (bool, error) {
 		return c.recordEquivalentVersionOn(ctx, connection, packagePath, version, equivalent)
@@ -530,7 +532,7 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, skills []Skill, createdAt time.Time) error {
 	versionRowID, err := q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: moduleRowID,
 		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
-		ContentSum: version.ContentSum, Sum: nullableText(version.Sum), CommitTime: version.CommitTime, CreatedAt: createdAt})
+		ContentSum: version.ContentSum, Sum: nullableText(version.Sum), PackageSizeBytes: version.PackageSizeBytes, CommitTime: version.CommitTime, CreatedAt: createdAt})
 	if err != nil {
 		return err
 	}
@@ -639,7 +641,7 @@ func (c *Catalog) PackageVersionInfo(ctx context.Context, packagePath, version s
 	}
 	info := protocolapi.PackageInfo{
 		SchemaVersion: protocolapi.PackageInfoSchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath,
-		Version: stored.Version, Time: stored.CommitTime, Sum: textValue(stored.Sum),
+		Version: stored.Version, Time: stored.CommitTime, Sum: textValue(stored.Sum), PackageSize: stored.PackageSizeBytes,
 		Skills: make([]protocolapi.PackageSkill, 0, len(members)),
 	}
 	for _, member := range members {
@@ -664,7 +666,7 @@ func (c *Catalog) PackageVersionByCoordinate(ctx context.Context, packagePath, v
 	}
 	return PackageVersion{
 		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
-		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), CommitTime: stored.CommitTime,
+		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), PackageSizeBytes: stored.PackageSizeBytes, CommitTime: stored.CommitTime,
 	}, true, nil
 }
 

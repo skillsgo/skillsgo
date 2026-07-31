@@ -1040,7 +1040,7 @@
   "detailPackageSource": "Paketkälla",
   "detailStars": "Stjärnor",
   "detailUpdated": "Uppdaterad",
-  "detailArchiveSize": "Paketstorlek",
+  "detailPackageSize": "Paketstorlek",
   "pathLabel": "Projektväg",
   "copyProjectPath": "Kopiera projektsökväg",
   "projectPathCopied": "Projektsökvägen kopierad",

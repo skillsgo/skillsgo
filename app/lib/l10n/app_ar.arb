@@ -1040,7 +1040,7 @@
   "detailPackageSource": "مصدر الحزمة",
   "detailStars": "النجوم",
   "detailUpdated": "تم التحديث",
-  "detailArchiveSize": "حجم الحزمة",
+  "detailPackageSize": "حجم الحزمة",
   "pathLabel": "مسار المشروع",
   "copyProjectPath": "نسخ مسار المشروع",
   "projectPathCopied": "تم نسخ مسار المشروع",

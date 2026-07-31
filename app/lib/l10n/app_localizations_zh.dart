@@ -1853,7 +1853,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '项目路径';
@@ -3705,7 +3705,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '項目路徑';
@@ -5536,7 +5536,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '專案路徑';

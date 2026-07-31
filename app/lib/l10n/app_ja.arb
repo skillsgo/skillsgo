@@ -1040,7 +1040,7 @@
   "detailPackageSource": "パッケージの提供元",
   "detailStars": "スター",
   "detailUpdated": "更新されました",
-  "detailArchiveSize": "パッケージサイズ",
+  "detailPackageSize": "パッケージサイズ",
   "pathLabel": "プロジェクトパス",
   "copyProjectPath": "プロジェクトパスをコピーする",
   "projectPathCopied": "プロジェクトパスがコピーされました",

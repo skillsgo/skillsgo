@@ -1991,7 +1991,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get detailUpdated => 'Uppdaterad';
 
   @override
-  String get detailArchiveSize => 'Paketstorlek';
+  String get detailPackageSize => 'Paketstorlek';
 
   @override
   String get pathLabel => 'Projektväg';

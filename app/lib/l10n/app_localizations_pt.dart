@@ -1998,7 +1998,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get detailUpdated => 'Atualizado';
 
   @override
-  String get detailArchiveSize => 'Tamanho do pacote';
+  String get detailPackageSize => 'Tamanho do pacote';
 
   @override
   String get pathLabel => 'Caminho do projeto';

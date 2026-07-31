@@ -1991,7 +1991,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get detailUpdated => 'dikemas kini';
 
   @override
-  String get detailArchiveSize => 'Saiz pakej';
+  String get detailPackageSize => 'Saiz pakej';
 
   @override
   String get pathLabel => 'Laluan projek';

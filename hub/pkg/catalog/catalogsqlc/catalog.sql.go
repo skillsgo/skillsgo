@@ -119,21 +119,22 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 }
 
 const currentEffectiveVersion = `-- name: CurrentEffectiveVersion :one
-SELECT mv.version, mv.content_sum
+SELECT mv.version, mv.content_sum, mv.package_size_bytes
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 WHERE m.path=$1 AND mv.equivalent_version IS NULL
 `
 
 type CurrentEffectiveVersionRow struct {
-	Version    string `json:"version"`
-	ContentSum string `json:"content_sum"`
+	Version          string `json:"version"`
+	ContentSum       string `json:"content_sum"`
+	PackageSizeBytes int64  `json:"package_size_bytes"`
 }
 
 func (q *Queries) CurrentEffectiveVersion(ctx context.Context, packagePath string) (CurrentEffectiveVersionRow, error) {
 	row := q.db.QueryRow(ctx, currentEffectiveVersion, packagePath)
 	var i CurrentEffectiveVersionRow
-	err := row.Scan(&i.Version, &i.ContentSum)
+	err := row.Scan(&i.Version, &i.ContentSum, &i.PackageSizeBytes)
 	return i, err
 }
 
@@ -647,8 +648,8 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 }
 
 const insertPackageVersion = `-- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, package_size_bytes, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id
 `
 
 type InsertPackageVersionParams struct {
@@ -660,6 +661,7 @@ type InsertPackageVersionParams struct {
 	ContentSum        string      `json:"content_sum"`
 	EquivalentVersion pgtype.Text `json:"equivalent_version"`
 	Sum               pgtype.Text `json:"sum"`
+	PackageSizeBytes  int64       `json:"package_size_bytes"`
 	CommitTime        time.Time   `json:"commit_time"`
 	CreatedAt         time.Time   `json:"created_at"`
 }
@@ -674,6 +676,7 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 		arg.ContentSum,
 		arg.EquivalentVersion,
 		arg.Sum,
+		arg.PackageSizeBytes,
 		arg.CommitTime,
 		arg.CreatedAt,
 	)
@@ -877,7 +880,7 @@ func (q *Queries) LockRunningBackfillRun(ctx context.Context, id string) (string
 }
 
 const observedPackageVersion = `-- name: ObservedPackageVersion :one
-SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha, mv.content_sum, mv.equivalent_version, mv.sum, mv.commit_time, mv.created_at FROM versions mv
+SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha, mv.content_sum, mv.equivalent_version, mv.sum, mv.commit_time, mv.created_at, mv.package_size_bytes FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=$1 AND mv.version=$2
 `
@@ -902,6 +905,7 @@ func (q *Queries) ObservedPackageVersion(ctx context.Context, arg ObservedPackag
 		&i.Sum,
 		&i.CommitTime,
 		&i.CreatedAt,
+		&i.PackageSizeBytes,
 	)
 	return i, err
 }
@@ -999,7 +1003,7 @@ func (q *Queries) PackagePublishedVersions(ctx context.Context, packagePath stri
 
 const packageVersion = `-- name: PackageVersion :one
 SELECT effective.id, effective.package_id, effective.version, effective.ref, effective.commit_sha, effective.tree_sha,
-       effective.content_sum, effective.equivalent_version, effective.sum, effective.commit_time, effective.created_at
+       effective.content_sum, effective.equivalent_version, effective.sum, effective.package_size_bytes, effective.commit_time, effective.created_at
 FROM versions requested
 JOIN packages m ON m.id=requested.package_id
 JOIN versions effective ON effective.package_id=requested.package_id
@@ -1012,9 +1016,24 @@ type PackageVersionParams struct {
 	Version     string `json:"version"`
 }
 
-func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error) {
+type PackageVersionRow struct {
+	ID                int64       `json:"id"`
+	PackageID         int64       `json:"package_id"`
+	Version           string      `json:"version"`
+	Ref               string      `json:"ref"`
+	CommitSha         string      `json:"commit_sha"`
+	TreeSha           string      `json:"tree_sha"`
+	ContentSum        string      `json:"content_sum"`
+	EquivalentVersion pgtype.Text `json:"equivalent_version"`
+	Sum               pgtype.Text `json:"sum"`
+	PackageSizeBytes  int64       `json:"package_size_bytes"`
+	CommitTime        time.Time   `json:"commit_time"`
+	CreatedAt         time.Time   `json:"created_at"`
+}
+
+func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) (PackageVersionRow, error) {
 	row := q.db.QueryRow(ctx, packageVersion, arg.PackagePath, arg.Version)
-	var i Version
+	var i PackageVersionRow
 	err := row.Scan(
 		&i.ID,
 		&i.PackageID,
@@ -1025,6 +1044,7 @@ func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) 
 		&i.ContentSum,
 		&i.EquivalentVersion,
 		&i.Sum,
+		&i.PackageSizeBytes,
 		&i.CommitTime,
 		&i.CreatedAt,
 	)

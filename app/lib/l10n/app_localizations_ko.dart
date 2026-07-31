@@ -1926,7 +1926,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get detailUpdated => '업데이트됨';
 
   @override
-  String get detailArchiveSize => '패키지 크기';
+  String get detailPackageSize => '패키지 크기';
 
   @override
   String get pathLabel => '프로젝트 경로';

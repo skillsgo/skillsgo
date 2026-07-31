@@ -38,7 +38,7 @@ type Querier interface {
 	PackageLocalizedDescription(ctx context.Context, arg PackageLocalizedDescriptionParams) (pgtype.Text, error)
 	PackagePublicationCommit(ctx context.Context, arg PackagePublicationCommitParams) (string, error)
 	PackagePublishedVersions(ctx context.Context, packagePath string) ([]string, error)
-	PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error)
+	PackageVersion(ctx context.Context, arg PackageVersionParams) (PackageVersionRow, error)
 	PackageVersionCount(ctx context.Context, arg PackageVersionCountParams) (int64, error)
 	PackagesDueForSourceMetadataRefresh(ctx context.Context, arg PackagesDueForSourceMetadataRefreshParams) ([]PackagesDueForSourceMetadataRefreshRow, error)
 	RefreshBackfillRunCounts(ctx context.Context, arg RefreshBackfillRunCountsParams) (int64, error)

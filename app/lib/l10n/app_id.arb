@@ -1040,7 +1040,7 @@
   "detailPackageSource": "Sumber paket",
   "detailStars": "Bintang",
   "detailUpdated": "Diperbarui",
-  "detailArchiveSize": "Ukuran paket",
+  "detailPackageSize": "Ukuran paket",
   "pathLabel": "Jalur proyek",
   "copyProjectPath": "Salin jalur proyek",
   "projectPathCopied": "Jalur proyek disalin",

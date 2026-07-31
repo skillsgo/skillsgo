@@ -305,6 +305,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Real instructions'), findsOneWidget);
+    expect(find.text('Package Size'), findsOneWidget);
+    expect(find.text('24 KB'), findsOneWidget);
     expect(find.text('Immutable v1.2.3'), findsNothing);
     expect(find.text('Commit commit-abc'), findsNothing);
     expect(find.text('Tree tree-def'), findsNothing);

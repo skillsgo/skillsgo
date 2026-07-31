@@ -1931,7 +1931,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get detailUpdated => '更新されました';
 
   @override
-  String get detailArchiveSize => 'パッケージサイズ';
+  String get detailPackageSize => 'パッケージサイズ';
 
   @override
   String get pathLabel => 'プロジェクトパス';

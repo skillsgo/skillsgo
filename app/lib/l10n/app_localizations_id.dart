@@ -1998,7 +1998,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get detailUpdated => 'Diperbarui';
 
   @override
-  String get detailArchiveSize => 'Ukuran paket';
+  String get detailPackageSize => 'Ukuran paket';
 
   @override
   String get pathLabel => 'Jalur proyek';

@@ -3411,11 +3411,11 @@ abstract class AppLocalizations {
   /// **'Updated'**
   String get detailUpdated;
 
-  /// No description provided for @detailArchiveSize.
+  /// Label for the uncompressed size of an immutable Package version.
   ///
   /// In en, this message translates to:
   /// **'Package Size'**
-  String get detailArchiveSize;
+  String get detailPackageSize;
 
   /// No description provided for @pathLabel.
   ///

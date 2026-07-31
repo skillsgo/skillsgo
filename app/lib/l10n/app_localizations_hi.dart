@@ -1986,7 +1986,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get detailUpdated => 'अद्यतन किया गया';
 
   @override
-  String get detailArchiveSize => 'पैकेज का आकार';
+  String get detailPackageSize => 'पैकेज का आकार';
 
   @override
   String get pathLabel => 'प्रोजेक्ट पथ';

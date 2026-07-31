@@ -98,7 +98,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":true}',
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","packageSize":24576,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":true}',
           stderr: '',
         ),
         ProcessOutput(
@@ -109,7 +109,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":false}',
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","packageSize":24576,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo","sourceLanguage":"en","translated":false}',
           stderr: '',
         ),
         ProcessOutput(

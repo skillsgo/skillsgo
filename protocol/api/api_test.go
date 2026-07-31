@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses representative complete and optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, Find wire documents, Package-level Sum/archive identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
+ * [OUTPUT]: Specifies risk validation, Find wire documents, Package-level Sum, immutable Package size and Artifact identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,7 +36,7 @@ func TestFindJSONContract(t *testing.T) {
 
 func TestPackageInfoJSONContract(t *testing.T) {
 	now := time.Date(2026, 7, 21, 1, 2, 3, 0, time.UTC)
-	repository := PackageInfo{SchemaVersion: PackageInfoSchemaVersion, Kind: KindPackage, PackagePath: "github.com/o/r", Version: "v1.0.0", Time: now, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Skills: []PackageSkill{{Name: "demo", Path: "skills/demo"}}}
+	repository := PackageInfo{SchemaVersion: PackageInfoSchemaVersion, Kind: KindPackage, PackagePath: "github.com/o/r", Version: "v1.0.0", Time: now, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", PackageSize: 24576, Skills: []PackageSkill{{Name: "demo", Path: "skills/demo"}}}
 	repositoryJSON, err := json.Marshal(repository)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestPackageInfoJSONContract(t *testing.T) {
 		t.Fatalf("repository round trip: %#v, %v", roundTrip, err)
 	}
 	text := string(repositoryJSON)
-	for _, field := range []string{`"kind":"Package"`, `"packagePath":"github.com/o/r"`, `"path":"skills/demo"`} {
+	for _, field := range []string{`"kind":"Package"`, `"packagePath":"github.com/o/r"`, `"packageSize":24576`, `"path":"skills/demo"`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("missing wire field %s in %s", field, text)
 		}
@@ -69,12 +69,12 @@ func TestPackageVersionsJSONContract(t *testing.T) {
 }
 
 func TestPackageVersionSkillTranslationProvenanceJSONContract(t *testing.T) {
-	document, err := json.Marshal(PackageVersionSkill{SourceLanguage: "en", Translated: true})
+	document, err := json.Marshal(PackageVersionSkill{PackageSize: 24576, SourceLanguage: "en", Translated: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(document)
-	for _, field := range []string{`"sourceLanguage":"en"`, `"translated":true`} {
+	for _, field := range []string{`"packageSize":24576`, `"sourceLanguage":"en"`, `"translated":true`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("missing translation provenance %s in %s", field, text)
 		}

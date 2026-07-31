@@ -1984,7 +1984,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get detailUpdated => 'อัปเดตแล้ว';
 
   @override
-  String get detailArchiveSize => 'ขนาดแพ็กเกจ';
+  String get detailPackageSize => 'ขนาดแพ็กเกจ';
 
   @override
   String get pathLabel => 'เส้นทางโครงการ';

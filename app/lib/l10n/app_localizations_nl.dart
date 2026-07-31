@@ -1993,7 +1993,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get detailUpdated => 'Bijgewerkt';
 
   @override
-  String get detailArchiveSize => 'Pakketgrootte';
+  String get detailPackageSize => 'Pakketgrootte';
 
   @override
   String get pathLabel => 'Projectpad';

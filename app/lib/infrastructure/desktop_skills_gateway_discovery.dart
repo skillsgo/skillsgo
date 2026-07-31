@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared gateway state, the single Hub Origin, content locale, CLI Skill/ranking reads and source-language candidate Find, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Hub Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with exact Skill targets plus Package-scope version targets through `show --path`.
+ * [OUTPUT]: Provides current-language unified CLI Find enriched with local target counts and versions, source-language exact-path Adoption candidate versions and Package avatar decoding, system-proxy-aware Hub Ranking/Trending/Hot, and translation-aware Git Artifact Package Version Skill detail with immutable Package size, exact Skill targets, and Package-scope version targets through `show --path`.
  * [POS]: Serves as the public discovery capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -475,6 +475,7 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           decoded['time'] is! String ||
+          decoded['packageSize'] is! num ||
           decoded['translated'] is! bool ||
           decoded['packagePath'] != skill.packagePath ||
           decoded['name'] != skill.name ||
@@ -510,6 +511,7 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
         packagePath: decoded['packagePath'] as String,
         version: decoded['version'] as String,
         time: DateTime.parse(decoded['time'] as String).toLocal(),
+        packageSize: (decoded['packageSize'] as num).toInt(),
         description: decoded['description'] as String,
         sourceLanguage: decoded['sourceLanguage'] as String,
         translated: decoded['translated'] as bool,

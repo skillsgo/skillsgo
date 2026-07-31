@@ -2001,7 +2001,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get detailUpdated => 'Actualizado';
 
   @override
-  String get detailArchiveSize => 'Tamaño del paquete';
+  String get detailPackageSize => 'Tamaño del paquete';
 
   @override
   String get pathLabel => 'Ruta del proyecto';

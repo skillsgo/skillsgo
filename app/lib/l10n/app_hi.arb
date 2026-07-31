@@ -1040,7 +1040,7 @@
   "detailPackageSource": "पैकेज स्रोत",
   "detailStars": "सितारे",
   "detailUpdated": "अद्यतन किया गया",
-  "detailArchiveSize": "पैकेज का आकार",
+  "detailPackageSize": "पैकेज का आकार",
   "pathLabel": "प्रोजेक्ट पथ",
   "copyProjectPath": "प्रोजेक्ट पथ कॉपी करें",
   "projectPathCopied": "प्रोजेक्ट पथ की प्रतिलिपि बनाई गई",

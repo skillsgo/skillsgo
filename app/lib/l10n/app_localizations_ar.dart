@@ -2000,7 +2000,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get detailUpdated => 'تم التحديث';
 
   @override
-  String get detailArchiveSize => 'حجم الحزمة';
+  String get detailPackageSize => 'حجم الحزمة';
 
   @override
   String get pathLabel => 'مسار المشروع';

@@ -2012,7 +2012,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get detailUpdated => 'Обновлено';
 
   @override
-  String get detailArchiveSize => 'Размер пакета';
+  String get detailPackageSize => 'Размер пакета';
 
   @override
   String get pathLabel => 'Путь проекта';

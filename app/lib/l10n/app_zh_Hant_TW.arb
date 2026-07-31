@@ -1021,7 +1021,7 @@
   "detailPackageSource": "包來源",
   "detailStars": "星標",
   "detailUpdated": "最近更新",
-  "detailArchiveSize": "包大小",
+  "detailPackageSize": "包大小",
   "pathLabel": "專案路徑",
   "copyProjectPath": "複製專案路徑",
   "projectPathCopied": "專案路徑已複製",

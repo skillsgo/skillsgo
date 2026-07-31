@@ -2007,7 +2007,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get detailUpdated => 'Aktualisiert';
 
   @override
-  String get detailArchiveSize => 'Paketgröße';
+  String get detailPackageSize => 'Paketgröße';
 
   @override
   String get pathLabel => 'Projektpfad';

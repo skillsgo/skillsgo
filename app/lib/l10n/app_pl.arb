@@ -1040,7 +1040,7 @@
   "detailPackageSource": "Źródło pakietu",
   "detailStars": "Gwiazdy",
   "detailUpdated": "Zaktualizowano",
-  "detailArchiveSize": "Rozmiar pakietu",
+  "detailPackageSize": "Rozmiar pakietu",
   "pathLabel": "Ścieżka projektu",
   "copyProjectPath": "Skopiuj ścieżkę projektu",
   "projectPathCopied": "Skopiowano ścieżkę projektu",

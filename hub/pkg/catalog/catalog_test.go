@@ -866,7 +866,7 @@ func TestPostgresMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := openTestCatalog(t)
 	var version string
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
-	require.Equal(t, "202607310002", version)
+	require.Equal(t, "202607310003", version)
 	require.NoError(t, c.Migrate(ctx))
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
 }

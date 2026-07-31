@@ -1040,7 +1040,7 @@
   "detailPackageSource": "Nguồn gói",
   "detailStars": "Ngôi sao",
   "detailUpdated": "Đã cập nhật",
-  "detailArchiveSize": "Kích thước gói",
+  "detailPackageSize": "Kích thước gói",
   "pathLabel": "Đường dẫn dự án",
   "copyProjectPath": "Sao chép đường dẫn dự án",
   "projectPathCopied": "Đã sao chép đường dẫn dự án",

@@ -1040,7 +1040,7 @@
   "detailPackageSource": "패키지 출처",
   "detailStars": "별",
   "detailUpdated": "업데이트됨",
-  "detailArchiveSize": "패키지 크기",
+  "detailPackageSize": "패키지 크기",
   "pathLabel": "프로젝트 경로",
   "copyProjectPath": "프로젝트 경로 복사",
   "projectPathCopied": "프로젝트 경로가 복사되었습니다.",

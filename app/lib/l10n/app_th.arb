@@ -1040,7 +1040,7 @@
   "detailPackageSource": "แหล่งที่มาของแพ็กเกจ",
   "detailStars": "ดาว",
   "detailUpdated": "อัปเดตแล้ว",
-  "detailArchiveSize": "ขนาดแพ็กเกจ",
+  "detailPackageSize": "ขนาดแพ็กเกจ",
   "pathLabel": "เส้นทางโครงการ",
   "copyProjectPath": "คัดลอกเส้นทางโครงการ",
   "projectPathCopied": "คัดลอกเส้นทางโครงการแล้ว",

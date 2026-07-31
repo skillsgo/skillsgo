@@ -1989,7 +1989,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get detailUpdated => 'Güncellendi';
 
   @override
-  String get detailArchiveSize => 'Paket boyutu';
+  String get detailPackageSize => 'Paket boyutu';
 
   @override
   String get pathLabel => 'Proje yolu';

@@ -1999,7 +1999,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get detailUpdated => 'Mis à jour';
 
   @override
-  String get detailArchiveSize => 'Taille du paquet';
+  String get detailPackageSize => 'Taille du paquet';
 
   @override
   String get pathLabel => 'Cheminement du projet';

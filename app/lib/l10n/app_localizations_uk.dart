@@ -2003,7 +2003,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get detailUpdated => 'Оновлено';
 
   @override
-  String get detailArchiveSize => 'Розмір пакета';
+  String get detailPackageSize => 'Розмір пакета';
 
   @override
   String get pathLabel => 'Шлях проекту';
