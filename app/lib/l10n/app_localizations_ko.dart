@@ -203,26 +203,25 @@ class AppLocalizationsKo extends AppLocalizations {
   String get install => '설치';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => '치받이';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => '다운그레이드';
 
   @override
-  String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+  String get packageSkillsSwitchTogether => '이 패키지의 스킬은 버전을 함께 전환합니다.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => '버전 전환';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return '$version(으)로 업그레이드';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return '$version(으)로 다운그레이드';
   }
 
   @override
@@ -421,13 +420,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get specificProject => '프로젝트';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => '글로벌 스킬';
+
+  @override
+  String get libraryExternalScope => '외부 스킬';
+
+  @override
+  String get libraryEmptyAddProject => '프로젝트 추가로 이동';
 
   @override
   String get globalScope => '글로벌';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => '글로벌 스킬';
 
   @override
   String get addProject => '프로젝트 추가';
@@ -460,21 +465,21 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      '디렉터리가 이동되었거나 해당 볼륨이 오프라인 상태일 수 있습니다. 경로를 확인하거나 해당 앱 참조를 제거하세요.';
 
   @override
   String get projectPermissionTitle => '프로젝트 권한이 필요합니다';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo에서는 이 프로젝트 루트를 검사할 수 없습니다. 파일 시스템 권한을 확인하거나 앱 참조를 제거하세요.';
 
   @override
   String get projectInaccessibleTitle => '프로젝트 디렉터리에 액세스할 수 없습니다.';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo이 이 프로젝트 참조를 보관했습니다. 경로나 볼륨을 확인하거나 해당 앱 참조를 제거하세요.';
 
   @override
   String get checking => '확인 중…';
@@ -925,23 +930,22 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return '클라우드는 HTTP $status을(를) 반환했습니다. 오리진 및 서비스 구성을 확인하세요.';
   }
 
   @override
-  String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+  String get cloudInvalidProtocol => '서버가 SkillsGo 클라우드 순위 프로토콜을 반환하지 않았습니다.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => '클라우드가 잘못된 JSON을(를) 반환했습니다.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      '클라우드에 연결할 수 없습니다. 원본, 네트워크, 프록시 및 TLS 구성을 확인하세요.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      '클라우드 연결 시간이 초과되었습니다. 네트워크를 확인하거나 다시 시도하세요.';
 
   @override
   String get riskPolicyTitle => '개인 위험 정책';
@@ -1067,76 +1071,75 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      '검색 텍스트와 스킬 콘텐츠는 기록되지 않습니다. 삭제된 로컬 진단은 최대 7일 동안 보관되며 자동으로 업로드되지 않습니다.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => '진단 로그';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return '로컬 앱 및 CLI 진단은 $size을 사용합니다. 로그는 자동으로 순환되고 최대 7일 동안 보관되며 자동으로 업로드되지 않습니다.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => '폴더 열기';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => '실시간 보기';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => '로그 내보내기';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => '로그 지우기';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => '진단 로그를 내보냈습니다.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => '진단 로그가 지워졌습니다.';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => '진단 로그 작업을 완료할 수 없습니다.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => '살다';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => '일시중지됨';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => '로그 검색';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => '모두';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => '경고';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => '오류';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => '정지시키다';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => '재개하다';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => '선명한 시야';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => '아직 일치하는 로그가 없습니다.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => '최신';
 
   @override
   String get language => '언어';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => '원래의';
 
   @override
   String get translatedContent => '번역됨';
@@ -1663,39 +1666,39 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'SkillsGo이(가) $count 외부 기술을 관리하도록 허용';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'SkillsGo 관리 확인($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => '기능';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => '원천';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => '버전';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => '소스 일치…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => '소스 매칭 불가';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => '일치하는 소스가 없습니다.';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% 일치';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => '먼저 소스를 선택하세요.';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1899,15 +1902,15 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted 기술이 관리에 추가되었으며 $failed이(가) 실패했습니다.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => '실패한';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name 실패';
   }
 
   @override
@@ -1926,7 +1929,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get detailUpdated => '업데이트됨';
 
   @override
-  String get detailArchiveSize => '패키지 크기';
+  String get detailPackageSize => '패키지 크기';
 
   @override
   String get pathLabel => '프로젝트 경로';
@@ -2024,24 +2027,24 @@ class AppLocalizationsKo extends AppLocalizations {
   String get onboardingCliErrorDescription => '번들 CLI를 복구한 후 다시 시도하여 계속하십시오.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => '다음 스킬이 삭제됩니다.';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return '$count 기술을 제거하시겠습니까?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return '$finished/$total 삭제';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => '지금 삭제';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => '세부정보 보기';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => '세부정보 숨기기';
 }

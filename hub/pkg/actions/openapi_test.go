@@ -56,6 +56,8 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 	require.Equal(t, "no-store", response.Header.Get("Cache-Control"))
 	require.NotContains(t, document.Components.Schemas["skillsResponse"].Properties, "collection")
 	require.Contains(t, document.Components.Schemas["CandidateQuery"].Properties, "packagePath")
+	require.Contains(t, document.Components.Schemas["CandidateQuery"].Properties, "description")
+	require.Contains(t, document.Components.Schemas["SkillCandidate"].Properties, "matchScore")
 	require.NotContains(t, document.Components.Schemas["CandidateQuery"].Properties, "id")
 	require.NotContains(t, document.Components.Schemas["CandidateQuery"].Properties, "exactName")
 	require.NotContains(t, document.Components.Schemas["FindCandidatesRequest"].Properties, "schemaVersion")

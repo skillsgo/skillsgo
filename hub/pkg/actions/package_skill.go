@@ -105,7 +105,7 @@ func moduleSkillHandler(metadata *catalog.Catalog, materializer repositoryMateri
 			c.Set(fiber.HeaderCacheControl, "public, max-age=31536000, immutable")
 		}
 		return writeJSON(c, fiber.StatusOK, protocolapi.PackageVersionSkill{
-			PackagePath: packagePath, Version: version, Time: identity.CommitTime,
+			PackagePath: packagePath, Version: version, Time: identity.CommitTime, PackageSize: identity.PackageSizeBytes,
 			Name: member.Name, Path: member.Path, Description: description, Content: string(content), SourceLanguage: member.SourceLanguage, Translated: wasTranslated,
 		})
 	}

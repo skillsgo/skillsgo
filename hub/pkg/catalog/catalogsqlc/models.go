@@ -114,4 +114,6 @@ type Version struct {
 	// Source commit time exposed as Package Info time.
 	CommitTime time.Time `json:"commit_time"`
 	CreatedAt  time.Time `json:"created_at"`
+	// Uncompressed byte size of the normalized immutable Package Artifact tree.
+	PackageSizeBytes int64 `json:"package_size_bytes"`
 }

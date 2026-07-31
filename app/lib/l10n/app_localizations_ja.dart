@@ -203,26 +203,25 @@ class AppLocalizationsJa extends AppLocalizations {
   String get install => 'インストール';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'アップグレード';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'ダウングレード';
 
   @override
-  String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+  String get packageSkillsSwitchTogether => 'このパッケージのスキルはバージョンをまとめて切り替えます。';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'スイッチ版';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return '$version にアップグレードする';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return '$version にダウングレード';
   }
 
   @override
@@ -421,13 +420,19 @@ class AppLocalizationsJa extends AppLocalizations {
   String get specificProject => 'プロジェクト';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'グローバルスキル';
+
+  @override
+  String get libraryExternalScope => '外部スキル';
+
+  @override
+  String get libraryEmptyAddProject => '「プロジェクトを追加」へ移動';
 
   @override
   String get globalScope => 'グローバル';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'グローバルスキル';
 
   @override
   String get addProject => 'プロジェクトの追加';
@@ -460,21 +465,21 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'ディレクトリが移動したか、そのボリュームがオフラインになっている可能性があります。パスを確認するか、そのアプリ参照を削除してください。';
 
   @override
   String get projectPermissionTitle => 'プロジェクトの許可が必要です';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo はこのプロジェクトのルートを検査できません。ファイルシステムのアクセス許可を確認するか、アプリ参照を削除してください。';
 
   @override
   String get projectInaccessibleTitle => 'プロジェクトディレクトリにアクセスできません';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo はこのプロジェクト参照を保持しました。パスまたはボリュームを確認するか、そのアプリ参照を削除してください。';
 
   @override
   String get checking => '確認中…';
@@ -927,23 +932,23 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'クラウドは HTTP $status を返しました。オリジンとサービスの設定を確認してください。';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'サーバーは SkillsGo クラウド ランキング プロトコルを返しませんでした。';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'クラウドが無効な JSON を返しました。';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'クラウドに到達できませんでした。オリジン、ネットワーク、プロキシ、および TLS 構成を確認してください。';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'クラウド接続がタイムアウトしました。ネットワークを確認するか、もう一度試してください。';
 
   @override
   String get riskPolicyTitle => '個人リスクポリシー';
@@ -1070,76 +1075,75 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      '検索テキストとスキルのコンテンツは記録されません。サニタイズされたローカル診断は最大 7 日間保持され、自動的にアップロードされることはありません。';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => '診断ログ';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'ローカル アプリと CLI 診断は $size を使用します。ログは自動的にローテーションされ、最大 7 日間保持され、自動的にアップロードされることはありません。';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'フォルダーを開く';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'ライブを見る';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'ログのエクスポート';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'ログをクリアする';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => '診断ログがエクスポートされました。';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => '診断ログがクリアされました。';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => '診断ログアクションを完了できませんでした。';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'ライブ';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => '一時停止中';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'ログの検索';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => '全て';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => '警告';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'エラー';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => '一時停止';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => '再開する';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'クリアな視界';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => '一致するログはまだありません。';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => '最新';
 
   @override
   String get language => '言語';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'オリジナル';
 
   @override
   String get translatedContent => '翻訳済み';
@@ -1668,39 +1672,39 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'SkillsGo に $count の外部スキルを管理させましょう';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'SkillsGo 管理を確認します ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'スキル';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'ソース';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'バージョン';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'ソースが一致しています…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'ソースマッチングは利用できません';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => '一致するソースがありません';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% 一致';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => '最初にソースを選択してください';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1904,15 +1908,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted スキルが管理に追加されましたが、$failed は失敗しました。';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => '失敗した';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name が失敗しました';
   }
 
   @override
@@ -1931,7 +1935,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get detailUpdated => '更新されました';
 
   @override
-  String get detailArchiveSize => 'パッケージサイズ';
+  String get detailPackageSize => 'パッケージサイズ';
 
   @override
   String get pathLabel => 'プロジェクトパス';
@@ -2031,24 +2035,24 @@ class AppLocalizationsJa extends AppLocalizations {
       'バンドルされた CLI を修復してから、再試行して続行してください。';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => '以下のスキルが削除されます';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return '$count スキルを削除しますか?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return '$finished/$total を削除しています';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => '今すぐ削除';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => '詳細を見る';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => '詳細を隠す';
 }

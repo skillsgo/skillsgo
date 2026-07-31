@@ -119,21 +119,22 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 }
 
 const currentEffectiveVersion = `-- name: CurrentEffectiveVersion :one
-SELECT mv.version, mv.content_sum
+SELECT mv.version, mv.content_sum, mv.package_size_bytes
 FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 WHERE m.path=$1 AND mv.equivalent_version IS NULL
 `
 
 type CurrentEffectiveVersionRow struct {
-	Version    string `json:"version"`
-	ContentSum string `json:"content_sum"`
+	Version          string `json:"version"`
+	ContentSum       string `json:"content_sum"`
+	PackageSizeBytes int64  `json:"package_size_bytes"`
 }
 
 func (q *Queries) CurrentEffectiveVersion(ctx context.Context, packagePath string) (CurrentEffectiveVersionRow, error) {
 	row := q.db.QueryRow(ctx, currentEffectiveVersion, packagePath)
 	var i CurrentEffectiveVersionRow
-	err := row.Scan(&i.Version, &i.ContentSum)
+	err := row.Scan(&i.Version, &i.ContentSum, &i.PackageSizeBytes)
 	return i, err
 }
 
@@ -399,10 +400,11 @@ func (q *Queries) FailBackfillRun(ctx context.Context, arg FailBackfillRunParams
 
 const findExactLocalizedSkillsBatch = `-- name: FindExactLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, package_paths.package_path, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, package_paths.package_path, descriptions.description, ids.ordinal
     FROM unnest($2::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest($3::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
     JOIN unnest($4::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal) USING (ordinal)
+    JOIN unnest($5::text[]) WITH ORDINALITY AS descriptions(description, ordinal) USING (ordinal)
 ),
 ranked AS (
     SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,input.ordinal,
@@ -410,21 +412,26 @@ ranked AS (
            COALESCE(ls.text_content,mvs.description) AS description,
            m.source_host,m.source_path AS source_repository,mvs.path,
            mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
+           CASE WHEN input.description='' THEN 0::double precision
+                ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
+               ORDER BY CASE WHEN input.package_path<>'' THEN 0 ELSE 1 END,
+                        CASE WHEN input.description='' THEN 0::double precision
+                             ELSE similarity(mvs.description,input.description)::double precision END DESC,
+                        CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
     JOIN packages m ON input.package_path='' OR m.path=input.package_path
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
-      ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
+      ON mvs.version_id=mv.id AND mvs.name=input.query
     LEFT JOIN localizations ls
-      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$5 AND ls.result_kind='translated'
+      ON ls.resource_kind='skill_description' AND ls.source_digest=mvs.description_digest AND ls.lang=$6 AND ls.result_kind='translated'
 )
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
-       source_host,source_repository,path,latest_version,stars,created_at,updated_at
+       source_host,source_repository,path,latest_version,stars,created_at,updated_at,match_score
 FROM ranked
 WHERE result_ordinal<=CASE WHEN requested_package_path<>'' THEN 1 ELSE $1::bigint END
 ORDER BY ordinal,result_ordinal
@@ -435,6 +442,7 @@ type FindExactLocalizedSkillsBatchParams struct {
 	QueryIds     []string `json:"query_ids"`
 	Queries      []string `json:"queries"`
 	PackagePaths []string `json:"package_paths"`
+	Descriptions []string `json:"descriptions"`
 	Lang         string   `json:"lang"`
 }
 
@@ -454,6 +462,7 @@ type FindExactLocalizedSkillsBatchRow struct {
 	Stars                int64     `json:"stars"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+	MatchScore           float64   `json:"match_score"`
 }
 
 func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error) {
@@ -462,6 +471,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 		arg.QueryIds,
 		arg.Queries,
 		arg.PackagePaths,
+		arg.Descriptions,
 		arg.Lang,
 	)
 	if err != nil {
@@ -487,6 +497,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 			&i.Stars,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MatchScore,
 		); err != nil {
 			return nil, err
 		}
@@ -647,8 +658,8 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 }
 
 const insertPackageVersion = `-- name: InsertPackageVersion :one
-INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, commit_time, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, content_sum, equivalent_version, sum, package_size_bytes, commit_time, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id
 `
 
 type InsertPackageVersionParams struct {
@@ -660,6 +671,7 @@ type InsertPackageVersionParams struct {
 	ContentSum        string      `json:"content_sum"`
 	EquivalentVersion pgtype.Text `json:"equivalent_version"`
 	Sum               pgtype.Text `json:"sum"`
+	PackageSizeBytes  int64       `json:"package_size_bytes"`
 	CommitTime        time.Time   `json:"commit_time"`
 	CreatedAt         time.Time   `json:"created_at"`
 }
@@ -674,6 +686,7 @@ func (q *Queries) InsertPackageVersion(ctx context.Context, arg InsertPackageVer
 		arg.ContentSum,
 		arg.EquivalentVersion,
 		arg.Sum,
+		arg.PackageSizeBytes,
 		arg.CommitTime,
 		arg.CreatedAt,
 	)
@@ -877,7 +890,7 @@ func (q *Queries) LockRunningBackfillRun(ctx context.Context, id string) (string
 }
 
 const observedPackageVersion = `-- name: ObservedPackageVersion :one
-SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha, mv.content_sum, mv.equivalent_version, mv.sum, mv.commit_time, mv.created_at FROM versions mv
+SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha, mv.content_sum, mv.equivalent_version, mv.sum, mv.commit_time, mv.created_at, mv.package_size_bytes FROM versions mv
 JOIN packages m ON m.id=mv.package_id
 WHERE m.path=$1 AND mv.version=$2
 `
@@ -902,6 +915,7 @@ func (q *Queries) ObservedPackageVersion(ctx context.Context, arg ObservedPackag
 		&i.Sum,
 		&i.CommitTime,
 		&i.CreatedAt,
+		&i.PackageSizeBytes,
 	)
 	return i, err
 }
@@ -999,7 +1013,7 @@ func (q *Queries) PackagePublishedVersions(ctx context.Context, packagePath stri
 
 const packageVersion = `-- name: PackageVersion :one
 SELECT effective.id, effective.package_id, effective.version, effective.ref, effective.commit_sha, effective.tree_sha,
-       effective.content_sum, effective.equivalent_version, effective.sum, effective.commit_time, effective.created_at
+       effective.content_sum, effective.equivalent_version, effective.sum, effective.package_size_bytes, effective.commit_time, effective.created_at
 FROM versions requested
 JOIN packages m ON m.id=requested.package_id
 JOIN versions effective ON effective.package_id=requested.package_id
@@ -1012,9 +1026,24 @@ type PackageVersionParams struct {
 	Version     string `json:"version"`
 }
 
-func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) (Version, error) {
+type PackageVersionRow struct {
+	ID                int64       `json:"id"`
+	PackageID         int64       `json:"package_id"`
+	Version           string      `json:"version"`
+	Ref               string      `json:"ref"`
+	CommitSha         string      `json:"commit_sha"`
+	TreeSha           string      `json:"tree_sha"`
+	ContentSum        string      `json:"content_sum"`
+	EquivalentVersion pgtype.Text `json:"equivalent_version"`
+	Sum               pgtype.Text `json:"sum"`
+	PackageSizeBytes  int64       `json:"package_size_bytes"`
+	CommitTime        time.Time   `json:"commit_time"`
+	CreatedAt         time.Time   `json:"created_at"`
+}
+
+func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) (PackageVersionRow, error) {
 	row := q.db.QueryRow(ctx, packageVersion, arg.PackagePath, arg.Version)
-	var i Version
+	var i PackageVersionRow
 	err := row.Scan(
 		&i.ID,
 		&i.PackageID,
@@ -1025,6 +1054,7 @@ func (q *Queries) PackageVersion(ctx context.Context, arg PackageVersionParams) 
 		&i.ContentSum,
 		&i.EquivalentVersion,
 		&i.Sum,
+		&i.PackageSizeBytes,
 		&i.CommitTime,
 		&i.CreatedAt,
 	)
@@ -2004,7 +2034,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the menu contracts, full-width responsive toast overlay, focus/keyboard state, animation, and async request presentation.
- * [OUTPUT]: Provides the public anchored menu widget and overlay lifecycle that presents one Installation Request surface at a time, preserves the selection when a destructive confirmation is cancelled, and exposes interactive responsive operation feedback.
+ * [INPUT]: Depends on the menu contracts, pointer-transparent responsive toast overlay, focus/keyboard state, animation, and async request presentation.
+ * [OUTPUT]: Provides the public anchored menu widget and overlay lifecycle that presents one Installation Request surface at a time, preserves the selection when a destructive confirmation is cancelled, and exposes interactive operation feedback without blocking the surrounding App.
  * [POS]: Serves as the overlay and focus owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -61,12 +61,9 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
         left: 0,
         right: 0,
         height: 320,
-        child: Material(
-          color: Colors.transparent,
-          child: StackedToastInteraction(
-            controller: toastController,
-            style: const StackedToastStyle(topMargin: 16, maxStackedItems: 3),
-          ),
+        child: StackedToastInteraction(
+          controller: toastController,
+          style: const StackedToastStyle(topMargin: 16, maxStackedItems: 3),
         ),
       ),
     );

@@ -37,6 +37,7 @@ var exampleFindCandidatesRequest = protocolapi.FindCandidatesRequest{
 	Queries: []protocolapi.CandidateQuery{{
 		Name:        "grill-me",
 		PackagePath: examplePackagePath,
+		Description: "A relentless interview to sharpen a plan or design.",
 	}},
 	Limit: 10,
 	Lang:  "en",
@@ -50,6 +51,7 @@ var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
 		Path:        "skills/productivity/grill-me",
 		Description: "A relentless interview to sharpen a plan or design.",
 		ImageURL:    stringPointer("https://github.com/mattpocock.png?size=256"),
+		MatchScore:  1,
 	}}},
 }
 

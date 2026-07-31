@@ -210,26 +210,26 @@ class AppLocalizationsVi extends AppLocalizations {
   String get install => 'cài đặt';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Nâng cấp';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Hạ cấp';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Các kỹ năng từ gói này sẽ chuyển đổi phiên bản cùng nhau.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Chuyển đổi phiên bản';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'Nâng cấp lên $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'Hạ cấp xuống $version';
   }
 
   @override
@@ -429,13 +429,19 @@ class AppLocalizationsVi extends AppLocalizations {
   String get specificProject => 'dự án';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Kỹ năng toàn cầu';
+
+  @override
+  String get libraryExternalScope => 'Kỹ năng bên ngoài';
+
+  @override
+  String get libraryEmptyAddProject => 'Đi tới Thêm dự án';
 
   @override
   String get globalScope => 'Toàn cầu';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Kỹ năng toàn cầu';
 
   @override
   String get addProject => 'Thêm dự án';
@@ -468,14 +474,14 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'Thư mục có thể đã di chuyển hoặc ổ đĩa của nó có thể ngoại tuyến. Kiểm tra đường dẫn hoặc xóa tham chiếu Ứng dụng của nó.';
 
   @override
   String get projectPermissionTitle => 'Cần có sự cho phép của dự án';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo không thể kiểm tra gốc dự án này. Kiểm tra quyền hệ thống tệp của nó hoặc xóa tham chiếu Ứng dụng của nó.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -483,7 +489,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo đã lưu giữ tài liệu tham khảo dự án này. Kiểm tra đường dẫn hoặc ổ đĩa hoặc xóa tham chiếu Ứng dụng của nó.';
 
   @override
   String get checking => 'Đang kiểm tra…';
@@ -963,23 +969,23 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Đám mây đã trả về HTTP $status. Kiểm tra cấu hình Origin và dịch vụ.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'Máy chủ không trả về giao thức xếp hạng đám mây SkillsGo.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Đám mây trả về JSON không hợp lệ.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Không thể liên lạc với Đám mây. Kiểm tra cấu hình Origin, mạng, proxy và TLS.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Kết nối đám mây đã hết thời gian chờ. Hãy kiểm tra mạng hoặc thử lại.';
 
   @override
   String get riskPolicyTitle => 'Chính sách rủi ro cá nhân';
@@ -1111,76 +1117,76 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Văn bản tìm kiếm và nội dung Kỹ năng không được ghi lại. Thông tin chẩn đoán cục bộ đã được làm sạch sẽ được lưu giữ tối đa 7 ngày và không bao giờ được tự động tải lên.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Nhật ký chẩn đoán';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Ứng dụng cục bộ và chẩn đoán CLI sử dụng $size. Nhật ký được luân chuyển tự động, được lưu giữ tối đa 7 ngày và không bao giờ được tải lên tự động.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Mở thư mục';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Xem trực tiếp';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Xuất nhật ký';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Xóa nhật ký';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Đã xuất nhật ký chẩn đoán.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Đã xóa nhật ký chẩn đoán.';
 
   @override
   String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+      'Không thể hoàn thành hành động nhật ký chẩn đoán.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'Sống';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Đã tạm dừng';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Nhật ký tìm kiếm';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'Tất cả';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Cảnh báo';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Lỗi';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Tạm dừng';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'Bản tóm tắt';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Xóa chế độ xem';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Chưa có nhật ký phù hợp nào.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'Mới nhất';
 
   @override
   String get language => 'Ngôn ngữ';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'Nguyên bản';
 
   @override
   String get translatedContent => 'Đã dịch';
@@ -1726,39 +1732,39 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'Hãy để SkillsGo quản lý $count kỹ năng bên ngoài';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'Xác nhận quản lý SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Kỹ năng';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Nguồn';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'Phiên bản';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Nguồn phù hợp…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Không khớp nguồn';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Không có nguồn phù hợp';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% trùng khớp';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Chọn nguồn trước';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1966,15 +1972,15 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted kỹ năng được thêm vào quản lý, $failed không thành công.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Thất bại';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name không thành công';
   }
 
   @override
@@ -1993,7 +1999,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get detailUpdated => 'Đã cập nhật';
 
   @override
-  String get detailArchiveSize => 'Kích thước gói';
+  String get detailPackageSize => 'Kích thước gói';
 
   @override
   String get pathLabel => 'Đường dẫn dự án';
@@ -2097,24 +2103,24 @@ class AppLocalizationsVi extends AppLocalizations {
       'Hãy sửa CLI đi kèm rồi thử lại để tiếp tục.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'Các kỹ năng sau sẽ bị loại bỏ';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'Xóa $count Kỹ năng?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'Đang xóa $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Xóa ngay bây giờ';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Xem chi tiết';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Ẩn chi tiết';
 }

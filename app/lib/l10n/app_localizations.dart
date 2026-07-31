@@ -849,6 +849,18 @@ abstract class AppLocalizations {
   /// **'Global Skills'**
   String get libraryGlobalScope;
 
+  /// No description provided for @libraryExternalScope.
+  ///
+  /// In en, this message translates to:
+  /// **'External Skills'**
+  String get libraryExternalScope;
+
+  /// No description provided for @libraryEmptyAddProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Add Project'**
+  String get libraryEmptyAddProject;
+
   /// No description provided for @globalScope.
   ///
   /// In en, this message translates to:
@@ -3411,11 +3423,11 @@ abstract class AppLocalizations {
   /// **'Updated'**
   String get detailUpdated;
 
-  /// No description provided for @detailArchiveSize.
+  /// Label for the uncompressed size of an immutable Package version.
   ///
   /// In en, this message translates to:
   /// **'Package Size'**
-  String get detailArchiveSize;
+  String get detailPackageSize;
 
   /// No description provided for @pathLabel.
   ///

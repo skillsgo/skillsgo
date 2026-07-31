@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides Adoption candidates and exact reviewed mappings, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with exact Skill and Package-scope targets, and Batch Adoption presentation results.
+ * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ class AdoptionCandidate {
     required this.path,
     required this.description,
     required this.versions,
+    this.matchScore = 0,
     this.imageUrl,
   });
 
@@ -22,6 +23,7 @@ class AdoptionCandidate {
   final String path;
   final String description;
   final List<String> versions;
+  final double matchScore;
   final String? imageUrl;
 }
 
@@ -198,6 +200,7 @@ class SkillDetail {
     this.packagePath = '',
     this.version = '',
     this.time,
+    this.packageSize = 0,
     this.description = '',
     this.sourceLanguage = '',
     this.translated = false,
@@ -211,6 +214,7 @@ class SkillDetail {
   final String packagePath;
   final String version;
   final DateTime? time;
+  final int packageSize;
   final String description;
   final String sourceLanguage;
   final bool translated;

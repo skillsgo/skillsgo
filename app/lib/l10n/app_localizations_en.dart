@@ -430,6 +430,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryGlobalScope => 'Global Skills';
 
   @override
+  String get libraryExternalScope => 'External Skills';
+
+  @override
+  String get libraryEmptyAddProject => 'Go to Add Project';
+
+  @override
   String get globalScope => 'Global';
 
   @override
@@ -1987,7 +1993,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailUpdated => 'Updated';
 
   @override
-  String get detailArchiveSize => 'Package Size';
+  String get detailPackageSize => 'Package Size';
 
   @override
   String get pathLabel => 'Project path';

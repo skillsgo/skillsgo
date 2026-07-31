@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info, immutable Package Version Skill content with translation provenance, canonical Skill and Package coordinates, and current Package Publication DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-name candidate query descriptions plus server-ranked match scores, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info with immutable Package size, immutable Package Version Skill content with size and translation provenance, canonical Skill and Package coordinates, and current Package Publication DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,6 +34,7 @@ type PackageInfo struct {
 	Version            string         `json:"version"`
 	Time               time.Time      `json:"time"`
 	Sum                string         `json:"sum"`
+	PackageSize        int64          `json:"packageSize"`
 	ArtifactRepository string         `json:"artifactRepository"`
 	Skills             []PackageSkill `json:"skills"`
 }
@@ -44,6 +45,7 @@ type PackageVersionSkill struct {
 	PackagePath    string    `json:"packagePath"`
 	Version        string    `json:"version"`
 	Time           time.Time `json:"time"`
+	PackageSize    int64     `json:"packageSize"`
 	Name           string    `json:"name"`
 	Path           string    `json:"path"`
 	Description    string    `json:"description"`
@@ -64,6 +66,7 @@ type SkillPathCoordinate struct {
 type CandidateQuery struct {
 	Name        string `json:"name"`
 	PackagePath string `json:"packagePath,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 type FindCandidatesRequest struct {
@@ -88,6 +91,7 @@ type SkillCandidate struct {
 	Path        string   `json:"path"`
 	Description string   `json:"description"`
 	ImageURL    *string  `json:"imageUrl,omitempty"`
+	MatchScore  float64  `json:"matchScore"`
 }
 
 type FindCandidatesResponse struct {

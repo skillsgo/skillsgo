@@ -399,13 +399,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get specificProject => '指定项目';
 
   @override
-  String get libraryGlobalScope => '全局 Skills';
+  String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往添加项目';
 
   @override
   String get globalScope => '全局安装';
 
   @override
-  String get globalSkills => '全局 Skills';
+  String get globalSkills => '全局技能';
 
   @override
   String get addProject => '添加项目';
@@ -1103,7 +1109,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get language => '语言';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => '原来的';
 
   @override
   String get translatedContent => '已翻译';
@@ -1853,7 +1859,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '项目路径';
@@ -2146,6 +2152,28 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get install => '安裝';
 
   @override
+  String get upgrade => '升級';
+
+  @override
+  String get downgrade => '降級';
+
+  @override
+  String get packageSkillsSwitchTogether => '該包中的技能將一起切換版本。';
+
+  @override
+  String get switchVersion => '切換版本';
+
+  @override
+  String upgradeToVersion(String version) {
+    return '升級到 $version';
+  }
+
+  @override
+  String downgradeToVersion(String version) {
+    return '降級至 $version';
+  }
+
+  @override
   String get installAll => '安裝所有技能';
 
   @override
@@ -2339,10 +2367,19 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get specificProject => '指定項目';
 
   @override
-  String get libraryGlobalScope => '全局 Skills';
+  String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往新增專案';
 
   @override
   String get globalScope => '全局安裝';
+
+  @override
+  String get globalSkills => '全球技能';
 
   @override
   String get addProject => '添加項目';
@@ -2834,6 +2871,23 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get hubConnectionTimeout => 'Hub 連接超時。請檢查網絡或重試。';
 
   @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud 回傳了 HTTP $status。檢查 Origin 和服務配置。';
+  }
+
+  @override
+  String get cloudInvalidProtocol => '伺服器未傳回 SkillsGo 雲端排名協定。';
+
+  @override
+  String get cloudInvalidJson => 'Cloud 傳回無效的 JSON。';
+
+  @override
+  String get cloudConnectionFailure => '無法到達雲。檢查來源、網路、代理程式和 TLS 設定。';
+
+  @override
+  String get cloudConnectionTimeout => '雲端連線逾時。檢查網路或重試。';
+
+  @override
   String get riskPolicyTitle => '個人風險策略';
 
   @override
@@ -2955,7 +3009,75 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get privacyProvenance => '隱私與來源説明';
 
   @override
+  String get privacySummary => '不記錄搜尋文字和技能內容。清理後的本地診斷資訊最多可保留 7 天，且絕不會自動上傳。';
+
+  @override
+  String get diagnosticLogsTitle => '診斷日誌';
+
+  @override
+  String diagnosticLogsDescription(String size) {
+    return '本機應用程式和 CLI 診斷使用 $size。日誌自動輪轉，最多保留 7 天，從不自動上傳。';
+  }
+
+  @override
+  String get openLogFolder => '打開資料夾';
+
+  @override
+  String get viewLiveLogs => '觀看直播';
+
+  @override
+  String get exportLogs => '匯出日誌';
+
+  @override
+  String get clearLogs => '清除日誌';
+
+  @override
+  String get logsExported => '匯出診斷日誌。';
+
+  @override
+  String get logsCleared => '診斷日誌已清除。';
+
+  @override
+  String get logActionFailed => '診斷日誌操作無法完成。';
+
+  @override
+  String get logViewerLive => '居住';
+
+  @override
+  String get logViewerPaused => '已暫停';
+
+  @override
+  String get searchLogs => '搜尋日誌';
+
+  @override
+  String get allLogLevels => '全部';
+
+  @override
+  String get warningLogs => '警告';
+
+  @override
+  String get errorLogs => '錯誤';
+
+  @override
+  String get pauseLogFollow => '暫停';
+
+  @override
+  String get resumeLogFollow => '恢復';
+
+  @override
+  String get clearViewer => '視野清晰';
+
+  @override
+  String get noDiagnosticLogs => '尚無匹配的日誌。';
+
+  @override
+  String get backToLatestLog => '最新的';
+
+  @override
   String get language => '語言';
+
+  @override
+  String get originalContent => '原來的';
 
   @override
   String get translatedContent => '已翻譯';
@@ -3705,7 +3827,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '項目路徑';
@@ -3797,6 +3919,28 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get onboardingCliErrorDescription => '修復內置 CLI 後重試，即可繼續。';
+
+  @override
+  String get removeSkillsDescription => '以下技能將被刪除';
+
+  @override
+  String confirmRemoveSkillsInline(int count) {
+    return '刪除 $count 技能？';
+  }
+
+  @override
+  String removingSkillsProgress(int finished, int total) {
+    return '正在刪除 $finished/$total';
+  }
+
+  @override
+  String get confirmRemoveSkillsAction => '立即刪除';
+
+  @override
+  String get viewRemovalDetails => '看詳情';
+
+  @override
+  String get hideRemovalDetails => '隱藏詳細訊息';
 }
 
 /// The translations for Chinese, as used in Taiwan, using the Han script (`zh_Hant_TW`).
@@ -3975,6 +4119,28 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get install => '安裝';
+
+  @override
+  String get upgrade => '升級';
+
+  @override
+  String get downgrade => '降級';
+
+  @override
+  String get packageSkillsSwitchTogether => '該包中的技能將一起切換版本。';
+
+  @override
+  String get switchVersion => '切換版本';
+
+  @override
+  String upgradeToVersion(String version) {
+    return '升級到 $version';
+  }
+
+  @override
+  String downgradeToVersion(String version) {
+    return '降級至 $version';
+  }
 
   @override
   String get installAll => '安裝所有技能';
@@ -4170,10 +4336,19 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get specificProject => '指定專案';
 
   @override
-  String get libraryGlobalScope => '全域 Skills';
+  String get libraryGlobalScope => '全域技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往新增專案';
 
   @override
   String get globalScope => '全域性安裝';
+
+  @override
+  String get globalSkills => '全球技能';
 
   @override
   String get addProject => '新增專案';
@@ -4665,6 +4840,23 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get hubConnectionTimeout => 'Hub 連線超時。請檢查網路或重試。';
 
   @override
+  String cloudHttpFailure(int status) {
+    return 'Cloud 回傳了 HTTP $status。檢查 Origin 和服務配置。';
+  }
+
+  @override
+  String get cloudInvalidProtocol => '伺服器未傳回 SkillsGo 雲端排名協定。';
+
+  @override
+  String get cloudInvalidJson => 'Cloud 傳回無效的 JSON。';
+
+  @override
+  String get cloudConnectionFailure => '無法到達雲。檢查來源、網路、代理程式和 TLS 設定。';
+
+  @override
+  String get cloudConnectionTimeout => '雲端連線逾時。檢查網路或重試。';
+
+  @override
   String get riskPolicyTitle => '個人風險策略';
 
   @override
@@ -4786,7 +4978,75 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get privacyProvenance => '隱私與來源說明';
 
   @override
+  String get privacySummary => '不記錄搜尋文字和技能內容。清理後的本地診斷資訊最多可保留 7 天，且絕不會自動上傳。';
+
+  @override
+  String get diagnosticLogsTitle => '診斷日誌';
+
+  @override
+  String diagnosticLogsDescription(String size) {
+    return '本機應用程式和 CLI 診斷使用 $size。日誌自動輪轉，最多保留 7 天，從不自動上傳。';
+  }
+
+  @override
+  String get openLogFolder => '打開資料夾';
+
+  @override
+  String get viewLiveLogs => '觀看直播';
+
+  @override
+  String get exportLogs => '匯出日誌';
+
+  @override
+  String get clearLogs => '清除日誌';
+
+  @override
+  String get logsExported => '匯出診斷日誌。';
+
+  @override
+  String get logsCleared => '診斷日誌已清除。';
+
+  @override
+  String get logActionFailed => '診斷日誌操作無法完成。';
+
+  @override
+  String get logViewerLive => '居住';
+
+  @override
+  String get logViewerPaused => '已暫停';
+
+  @override
+  String get searchLogs => '搜尋日誌';
+
+  @override
+  String get allLogLevels => '全部';
+
+  @override
+  String get warningLogs => '警告';
+
+  @override
+  String get errorLogs => '錯誤';
+
+  @override
+  String get pauseLogFollow => '暫停';
+
+  @override
+  String get resumeLogFollow => '恢復';
+
+  @override
+  String get clearViewer => '視野清晰';
+
+  @override
+  String get noDiagnosticLogs => '尚無匹配的日誌。';
+
+  @override
+  String get backToLatestLog => '最新的';
+
+  @override
   String get language => '語言';
+
+  @override
+  String get originalContent => '原來的';
 
   @override
   String get translatedContent => '已翻譯';
@@ -5536,7 +5796,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get detailUpdated => '最近更新';
 
   @override
-  String get detailArchiveSize => '包大小';
+  String get detailPackageSize => '包大小';
 
   @override
   String get pathLabel => '專案路徑';
@@ -5628,4 +5888,26 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get onboardingCliErrorDescription => '修復內建 CLI 後重試，即可繼續。';
+
+  @override
+  String get removeSkillsDescription => '以下技能將被刪除';
+
+  @override
+  String confirmRemoveSkillsInline(int count) {
+    return '刪除 $count 技能？';
+  }
+
+  @override
+  String removingSkillsProgress(int finished, int total) {
+    return '正在刪除 $finished/$total';
+  }
+
+  @override
+  String get confirmRemoveSkillsAction => '立即刪除';
+
+  @override
+  String get viewRemovalDetails => '看詳情';
+
+  @override
+  String get hideRemovalDetails => '隱藏詳細訊息';
 }
