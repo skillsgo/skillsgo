@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, macOS 14 GUI E2E isolated from Flutter's macOS 15 launch regression, architecture-specific macOS candidate artifacts on main, and blocking known-vulnerability enforcement for every maintained product boundary.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack candidate packaging plus real 0.0.1-to-0.0.2 loopback update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -182,16 +182,22 @@ jobs:
             os: macos-15
             target: macos
             architecture: arm64
+            channel: osx-arm64
           - name: macOS x64
             os: macos-15-intel
             target: macos
             architecture: x86_64
+            channel: osx-x64
           - name: Windows x64
             os: windows-2025
             target: windows
+            architecture: x64
+            channel: win-x64
           - name: Linux x64
             os: ubuntu-24.04
             target: linux
+            architecture: x64
+            channel: linux-x64
     defaults:
       run:
         working-directory: app
@@ -213,6 +219,11 @@ jobs:
           flutter-version: 3.44.6
           channel: stable
           cache: true
+
+      - name: Set up .NET for Velopack
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '8.0.x'
 
       - name: Install Linux desktop dependencies
         if: matrix.target == 'linux'
@@ -238,20 +249,151 @@ jobs:
         if: matrix.target == 'linux'
         run: xvfb-run -a flutter test -d linux integration_test/bundled_cli_smoke_test.dart
 
-      - name: Package architecture-specific macOS candidate
-        if: matrix.target == 'macos' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        run: |
-          package="SkillsGo_macos_${{ matrix.architecture }}"
-          ditto -c -k --sequesterRsrc --keepParent \
-            "build/macos-${{ matrix.architecture }}/Build/Products/Release/SkillsGo.app" \
-            "build/${package}.zip"
+      - name: Install pinned Velopack CLI
+        working-directory: .
+        run: dotnet tool install --global vpk --version 1.2.0
 
-      - name: Upload architecture-specific macOS candidate
-        if: matrix.target == 'macos' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      - name: Package unsigned Velopack candidate
+        shell: bash
+        working-directory: .
+        run: ./scripts/package-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Smoke packaged macOS or Linux candidate
+        if: matrix.target != 'windows'
+        shell: bash
+        working-directory: .
+        run: ./scripts/smoke-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Install and smoke packaged Windows candidate
+        if: matrix.target == 'windows'
+        shell: pwsh
+        working-directory: .
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidateDir = Join-Path $env:GITHUB_WORKSPACE 'app/build/velopack/win-x64'
+          $setup = Get-Item (Join-Path $candidateDir 'SkillsGo-win-x64-Setup.exe')
+          $installation = Start-Process -FilePath $setup.FullName -ArgumentList '--silent' -Wait -PassThru
+          if ($installation.ExitCode -ne 0) { throw "Velopack Setup exited with $($installation.ExitCode)" }
+
+          $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
+          $app = Join-Path $current 'skillsgo.exe'
+          $cli = Join-Path $current 'data/bin/skillsgo.exe'
+          if (-not (Test-Path $app)) { throw "Installed App is missing: $app" }
+          if (-not (Test-Path $cli)) { throw "Installed bundled CLI is missing: $cli" }
+
+          $expectedVersion = ((Select-String -Path app/pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value)
+          $cliVersion = (& $cli --version | Out-String).Trim()
+          $expectedCliVersion = "skillsgo version $expectedVersion"
+          if ($LASTEXITCODE -ne 0 -or $cliVersion -ne $expectedCliVersion) {
+            throw "Installed bundled CLI reported '$cliVersion', expected '$expectedCliVersion'"
+          }
+
+          $process = Start-Process -FilePath $app -PassThru
+          Start-Sleep -Seconds 8
+          if ($process.HasExited) { throw "Installed App exited during startup smoke with $($process.ExitCode)" }
+          Stop-Process -Id $process.Id -Force
+          Write-Host "Installed and started SkillsGo $expectedVersion from Velopack Setup."
+
+      - name: Prepare unsigned Velopack update rehearsal
+        shell: bash
+        working-directory: .
+        run: ./scripts/prepare-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Apply and verify packaged macOS or Linux update
+        if: matrix.target != 'windows'
+        shell: bash
+        working-directory: .
+        run: ./scripts/smoke-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Apply and verify packaged Windows update
+        if: matrix.target == 'windows'
+        shell: pwsh
+        working-directory: .
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $channel = 'win-x64'
+          $port = 38127
+          $updateUrl = "http://127.0.0.1:$port/"
+          $feedDir = Join-Path $env:GITHUB_WORKSPACE "app/build/velopack/$channel"
+          $runtimeDir = Join-Path $env:GITHUB_WORKSPACE "app/build/update-rehearsal/$channel/runtime"
+          New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+          $feedLog = Join-Path $runtimeDir 'feed.log'
+          $feedErrorLog = Join-Path $runtimeDir 'feed-error.log'
+          $appLog = Join-Path $runtimeDir 'app.log'
+          $server = $null
+          $appProcess = $null
+
+          try {
+            $server = Start-Process -FilePath 'dart' -ArgumentList @(
+              (Join-Path $env:GITHUB_WORKSPACE 'scripts/serve-update-feed.dart'),
+              $feedDir,
+              $port
+            ) -RedirectStandardOutput $feedLog -RedirectStandardError $feedErrorLog -PassThru
+
+            $feedReady = $false
+            for ($attempt = 0; $attempt -lt 50; $attempt++) {
+              try {
+                Invoke-WebRequest -UseBasicParsing -Uri "${updateUrl}releases.$channel.json" | Out-Null
+                $feedReady = $true
+                break
+              } catch {
+                Start-Sleep -Milliseconds 200
+              }
+            }
+            if (-not $feedReady) { throw 'The local Velopack feed did not become ready.' }
+
+            $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
+            $app = Join-Path $current 'skillsgo.exe'
+            $cli = Join-Path $current 'data/bin/skillsgo.exe'
+            $env:SKILLSGO_APP_UPDATE_REHEARSAL_URL = $updateUrl
+            $appProcess = Start-Process -FilePath $app -RedirectStandardOutput $appLog -RedirectStandardError (Join-Path $runtimeDir 'app-error.log') -PassThru
+
+            $updated = $false
+            for ($attempt = 0; $attempt -lt 180; $attempt++) {
+              if (Test-Path $cli) {
+                $cliVersion = (& $cli --version 2>$null | Out-String).Trim()
+                if ($cliVersion -eq 'skillsgo version 0.0.2') {
+                  $updated = $true
+                  break
+                }
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $updated) {
+              if (Test-Path $feedLog) { Get-Content $feedLog }
+              if (Test-Path $feedErrorLog) { Get-Content $feedErrorLog }
+              if (Test-Path $appLog) { Get-Content $appLog }
+              throw 'Timed out waiting for SkillsGo win-x64 to update to 0.0.2.'
+            }
+            $restarted = $null
+            for ($attempt = 0; $attempt -lt 20; $attempt++) {
+              $restarted = Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
+                Where-Object { $_.Id -ne $appProcess.Id -and -not $_.HasExited } |
+                Select-Object -First 1
+              if ($restarted) { break }
+              Start-Sleep -Milliseconds 250
+            }
+            if (-not $restarted) {
+              throw 'Velopack replaced win-x64 but did not restart the updated App.'
+            }
+            Write-Host 'Updated and restarted SkillsGo 0.0.1 -> 0.0.2 for win-x64.'
+          } finally {
+            Remove-Item Env:SKILLSGO_APP_UPDATE_REHEARSAL_URL -ErrorAction SilentlyContinue
+            if ($appProcess -and -not $appProcess.HasExited) {
+              Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
+            }
+            Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            if ($server -and -not $server.HasExited) {
+              Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Upload unsigned Velopack candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: app-macos-${{ matrix.architecture }}
-          path: app/build/SkillsGo_macos_${{ matrix.architecture }}.zip
+          name: app-candidate-${{ matrix.channel }}
+          path: app/build/velopack/${{ matrix.channel }}
           if-no-files-found: error
           retention-days: 7
 
