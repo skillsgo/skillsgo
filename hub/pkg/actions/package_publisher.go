@@ -56,6 +56,12 @@ type negativePublication struct {
 
 type packagePublisherOption func(*modulePublisher)
 
+func withRepositoryMaterializerCapacity(capacity int) packagePublisherOption {
+	return func(publisher *modulePublisher) {
+		publisher.upstream = make(chan struct{}, capacity)
+	}
+}
+
 func withCurrentPublicationObserver(observer func(context.Context, string)) packagePublisherOption {
 	return func(publisher *modulePublisher) {
 		publisher.afterCurrentPublication = observer
