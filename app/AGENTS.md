@@ -14,6 +14,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Version boundary: the bundled CLI reports the App product version (for example `0.0.1`); Flutter's `+build` suffix remains platform packaging metadata and must not enter the CLI version contract.
 - Installer lifecycle: `lib/main.dart` must handle Velopack's four official fast-exit arguments before logging, Flutter binding, or UI initialization; normal first-run/restart environment launches continue through the standard App path.
 - Update runtime: `velopack_flutter` is the App's thin Flutter-to-Velopack 1.2.0 bridge. Ordinary starts initialize `VelopackApp` before Flutter UI; the CI-only update source accepts loopback HTTP only and must never become a production endpoint override.
+- Production update source: release CI embeds one stable public HTTPS channel directory through `SKILLSGO_APP_UPDATE_URL`; versioned packages are immutable while the channel manifest is published last and remains mutable. Builds without that value keep App-update controls disabled and never guess a release host.
 
 ## Commands
 
@@ -41,6 +42,7 @@ make build-app-macos
 ./scripts/package-app-candidate.sh macos x86_64
 ./scripts/package-app-candidate.sh windows x64
 ./scripts/package-app-candidate.sh linux x64
+dart scripts/sync-velopack-feed.dart https://releases.example.com/app/osx-arm64/ osx-arm64 app/build/velopack/osx-arm64
 ```
 
 - `build-app-macos-arm64` produces an arm64-only App under `app/build/macos-arm64/Build/Products/Release/SkillsGo.app`.
@@ -48,6 +50,7 @@ make build-app-macos
 - `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
 - `package-app-candidate.sh` requires the corresponding native Release build and pinned Velopack CLI, then emits one unsigned architecture-specific channel under `app/build/velopack/`.
 - `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral `0.0.2` package to a `0.0.1` feed and prove check, download, apply, replacement, and restart without publishing or signing.
+- An `app/vX.Y.Z` tag drives `.github/workflows/app-release.yml`; it requires the protected `app-release` environment and publishes immutable channel assets to R2 before each mutable Velopack manifest.
 
 ## Workspace Map
 

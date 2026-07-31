@@ -33,7 +33,7 @@
 - `physics_collision_field.dart`: vendors and adapts Portal Labs' Physics Collision Card into a deterministic interaction primitive for explanatory product scenes.
 - `archive_folder/`: vendors Portal Labs' Archive Folder, ArchiveItem, and style, adding structured front copy, an arbitrary front-surface child slot, and opt-in fixed label geometry for reusable product content.
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
-- `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
+- `settings_screen.dart` and `settings/`: expose personalization, native App updates, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable exact-removal execution, progress, result, and error state through an auto-disposed Riverpod family.
 - `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, shared-WebView Mermaid-to-PNG composition, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.
 - `mermaid_webview_diagram.dart`: owns the single App-scoped official Mermaid.js 11.16.0 WebView queue, themed skeletons, PNG cache, and self-sizing block presentation.

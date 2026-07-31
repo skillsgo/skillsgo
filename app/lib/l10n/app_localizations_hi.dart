@@ -23,6 +23,48 @@ class AppLocalizationsHi extends AppLocalizations {
   String get settings => 'सेटिंग्स';
 
   @override
+  String get appUpdateTitle => 'App updates';
+
+  @override
+  String get appUpdateDescription =>
+      'Check the signed release feed for a newer version of SkillsGo.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'App updates are unavailable in this build.';
+
+  @override
+  String get appUpdateReady =>
+      'Check when you’re ready. SkillsGo will not install an update without your action.';
+
+  @override
+  String get appUpdateChecking => 'Checking for an App update…';
+
+  @override
+  String get appUpdateApplying =>
+      'Downloading the update. SkillsGo will restart when it is ready.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo could not check for an App update. Check your connection and try again.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version is available.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version is up to date.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Check for App updates';
+
+  @override
+  String get appUpdateApplyAction => 'Update and restart';
+
+  @override
   String get openSettings => 'सेटिंग्स खोलें';
 
   @override

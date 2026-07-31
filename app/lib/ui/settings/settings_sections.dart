@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset, Library refresh and App diagnostic-log state, Mermaid gallery navigation, and shared setting controls.
- * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
+ * [INPUT]: Depends on SettingsScreen state, localized headings, native App-update state, reminder values, onboarding reset, Library refresh and App diagnostic-log state, Mermaid gallery navigation, and shared setting controls.
+ * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings including App updates, Mandatory Onboarding reset UI, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
  * [POS]: Serves as the general section composition of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -103,6 +103,12 @@ extension _SettingsSections on _SettingsScreenState {
   Widget _advancedSettings() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      _appUpdateSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
       _hubSettings(),
       const SizedBox(height: 28),
       SkillsSeparator.horizontal(

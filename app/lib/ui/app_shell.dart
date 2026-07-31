@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, Mandatory Onboarding, Riverpod feature state including the App-scoped update coordinator, split feature view parts, localized copy, Flutter rendering direction and spring physics, HugeIcons, multi_dropdown, shared Agent, Added Project, and language identity components, the vendored Portal Labs subscription switch, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the first-launch gate, desktop shell composition, lifecycle-aware stale update checks, cross-destination navigation actions, and shared UI contracts consumed by split Discover, Library, Settings, and mutation-flow views.
+ * [INPUT]: Depends on SkillsGateway contracts, the native App updater/feed, Mandatory Onboarding, Riverpod feature state including the Package update coordinator, split feature view parts, localized copy, Flutter rendering direction and spring physics, HugeIcons, multi_dropdown, shared Agent, Added Project, and language identity components, the vendored Portal Labs subscription switch, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
+ * [OUTPUT]: Provides the first-launch gate, desktop shell composition, lifecycle-aware Package update checks, App-update dependency routing, cross-destination navigation actions, and shared UI contracts consumed by split Discover, Library, Settings, and mutation-flow views.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'native_components.dart';
 
 import '../domain/skills_gateway.dart';
+import '../infrastructure/app_updater.dart';
 import 'agent_catalog_controller.dart';
 import 'appearance_controller.dart';
 import 'brand.dart';
@@ -29,9 +30,16 @@ import 'update_check_controller.dart';
 enum _Destination { discover, library, settings }
 
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.gateway});
+  const AppShell({
+    super.key,
+    required this.gateway,
+    required this.appUpdater,
+    required this.appUpdateSource,
+  });
 
   final SkillsGateway gateway;
+  final AppUpdater appUpdater;
+  final Uri? appUpdateSource;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -308,6 +316,8 @@ class _AppShellState extends ConsumerState<AppShell>
                                 enabled: destination == _Destination.settings,
                                 child: SettingsScreen(
                                   gateway: widget.gateway,
+                                  appUpdater: widget.appUpdater,
+                                  appUpdateSource: widget.appUpdateSource,
                                   folderTheme: folderTheme,
                                   onFolderThemeChanged: (value) => ref
                                       .read(appearanceProvider.notifier)

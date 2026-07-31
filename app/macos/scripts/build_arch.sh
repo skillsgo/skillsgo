@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on Flutter's generated macOS workspace, one supported target architecture, optional release version overrides, and the bundled-CLI build phase.
-# [OUTPUT]: Produces one fully architecture- and version-verified Release SkillsGo.app in an isolated DerivedData directory.
-# [POS]: Serves as the canonical macOS arm64/x86_64 App build entry point for local packaging, CI candidates, and multi-version update rehearsals.
+# [INPUT]: Depends on Flutter's generated macOS workspace, one supported target architecture, optional release version/update-source overrides, and the bundled-CLI build phase.
+# [OUTPUT]: Produces one fully architecture-, version-, and update-source-specific Release SkillsGo.app in an isolated DerivedData directory.
+# [POS]: Serves as the canonical macOS arm64/x86_64 App build entry point for local packaging, CI candidates, production releases, and multi-version update rehearsals.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -27,6 +27,9 @@ if [[ -n "${SKILLSGO_APP_BUILD_NAME:-}" ]]; then
 fi
 if [[ -n "${SKILLSGO_APP_BUILD_NUMBER:-}" ]]; then
   flutter_build_args+=(--build-number "${SKILLSGO_APP_BUILD_NUMBER}")
+fi
+if [[ -n "${SKILLSGO_APP_UPDATE_URL:-}" ]]; then
+  flutter_build_args+=(--dart-define "SKILLSGO_APP_UPDATE_URL=${SKILLSGO_APP_UPDATE_URL}")
 fi
 flutter build "${flutter_build_args[@]}"
 

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, single Hub Origin operations, risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, Hub Origin persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, the native App updater/feed, appearance state, Agent and Library controllers, single Hub Origin operations, risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, native App-update state, Hub Origin persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({
     super.key,
     required this.gateway,
+    required this.appUpdater,
+    required this.appUpdateSource,
     required this.folderTheme,
     required this.onFolderThemeChanged,
     required this.themeMode,
@@ -23,6 +25,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onRestartOnboarding,
   });
   final SkillsGateway gateway;
+  final AppUpdater appUpdater;
+  final Uri? appUpdateSource;
   final String folderTheme;
   final ValueChanged<Color> onFolderThemeChanged;
   final AppThemeMode themeMode;
@@ -61,6 +65,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool restartingOnboarding = false;
   bool refreshingLibrary = false;
   bool managingDiagnosticLogs = false;
+  _AppUpdatePhase appUpdatePhase = _AppUpdatePhase.ready;
+  AppUpdateCheck? appUpdateCheck;
+  Object? appUpdateError;
   bool? libraryRefreshSucceeded;
   String? notice;
   AgentCatalog? get agentCatalog => ref.watch(agentCatalogProvider).catalog;

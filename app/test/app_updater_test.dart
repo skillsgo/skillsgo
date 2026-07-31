@@ -1,13 +1,49 @@
 /*
- * [INPUT]: Depends on the App updater's unsigned rehearsal-source parser.
- * [OUTPUT]: Proves the CI update escape hatch accepts only explicit loopback HTTP feeds and remains absent during ordinary launches.
- * [POS]: Serves as the security and configuration contract for real packaged update rehearsals before native E2E coverage.
+ * [INPUT]: Depends on the App updater's production and unsigned rehearsal source parsers.
+ * [OUTPUT]: Proves production builds accept only clean HTTPS feeds while the CI escape hatch accepts only explicit loopback HTTP feeds.
+ * [POS]: Serves as the security and configuration contract for production App updates and real packaged update rehearsals.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/infrastructure/app_updater.dart';
 
 void main() {
+  test('production update source is absent unless configured', () {
+    expect(appUpdateProductionSource(''), isNull);
+    expect(appUpdateProductionSource('   '), isNull);
+  });
+
+  test(
+    'production update source accepts HTTPS and normalizes its directory',
+    () {
+      expect(
+        appUpdateProductionSource('https://releases.example.com/app/osx-arm64'),
+        Uri.parse('https://releases.example.com/app/osx-arm64/'),
+      );
+    },
+  );
+
+  test('production update source rejects unsafe or ambiguous URLs', () {
+    for (final source in const [
+      'http://releases.example.com/app/osx-arm64/',
+      'https://user@releases.example.com/app/osx-arm64/',
+      'https://releases.example.com/app/osx-arm64/?channel=preview',
+      'https://releases.example.com/app/osx-arm64/#feed',
+      'https://localhost/app/osx-arm64/',
+      'https://10.0.0.1/app/osx-arm64/',
+      'https://192.168.1.1/app/osx-arm64/',
+      'https://192.0.2.1/app/osx-arm64/',
+      'https://198.18.0.1/app/osx-arm64/',
+      'https://198.51.100.1/app/osx-arm64/',
+      'https://203.0.113.1/app/osx-arm64/',
+      'https://[fc00::1]/app/osx-arm64/',
+      'https://[fe80::1]/app/osx-arm64/',
+      'https://[2001:db8::1]/app/osx-arm64/',
+    ]) {
+      expect(() => appUpdateProductionSource(source), throwsFormatException);
+    }
+  });
+
   test('ordinary launches have no rehearsal update source', () {
     expect(appUpdateRehearsalSource(const {}), isNull);
     expect(

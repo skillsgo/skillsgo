@@ -20,7 +20,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
-| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Separate signed and notarized macOS arm64 and x86_64 DMGs plus checksums |
+| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Signed Windows x64 Setup, Linux x64 AppImage, separate signed and notarized macOS arm64/x86_64 PKGs, Velopack feeds, and checksums |
 | CLI | `cli/` | `cli/vX.Y.Z` | tag | Deferred standalone binary matrix |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
@@ -105,18 +105,35 @@ Each platform job then preserves its packaged `0.0.1` launcher, rebuilds the sam
 
 ## App Production Release
 
-An `app/vX.Y.Z` release remains disabled until all of the following steps are available:
+An `app/vX.Y.Z` tag starts the protected `App Release` workflow. The workflow
+refuses tags whose version differs from `app/pubspec.yaml` or whose commit is
+not reachable from `main`. It then:
 
-1. Validate the tag against `pubspec.yaml`.
-2. Build separate arm64 and x86_64 Apps and matching DMGs; do not publish a Universal App.
-3. Build and embed the matching SkillsGo CLI.
-4. Sign with a Developer ID Application certificate.
-5. Submit to the Apple Notary Service.
-6. Staple the notarization ticket.
-7. Package the DMG.
-8. Verify Gatekeeper acceptance.
-9. Generate SHA-256 checksums.
-10. Create the GitHub Release.
+1. Builds independent `osx-arm64`, `osx-x64`, `win-x64`, and `linux-x64`
+   release channels with a matching bundled CLI and a stable build-time HTTPS
+   update directory.
+2. Hydrates each channel from its public static feed so the new release index
+   retains prior full packages.
+3. Signs Windows executables and Setup with the configured publisher
+   certificate.
+4. Signs the two macOS Apps and installer packages with Developer ID
+   identities, submits them to Apple Notary Service through Velopack, staples
+   the result, and validates the signed PKG.
+5. Generates provenance attestations and SHA-256 checksums.
+6. Uploads only the current version's immutable update packages to R2 before
+   publishing the mutable `releases.<channel>.json` indexes. Prior packages
+   hydrated from the public feed are never written back. This ordering prevents
+   clients from observing a release whose package is not yet available.
+7. Creates an immutable GitHub Release containing the four user-facing
+   installers and checksums.
+
+The workflow uses Velopack's native signed PKG output on macOS rather than
+inventing a separate DMG packaging layer. macOS architectures remain separate;
+there is no Universal binary.
+
+The workflow exists in source but cannot publish until the protected
+`app-release` GitHub Environment contains every credential and variable listed
+below. Missing configuration fails closed before publication.
 
 ## Permissions and Credentials
 
@@ -127,13 +144,31 @@ App release credentials live in an approval-protected `app-release` GitHub Envir
 ```text
 APPLE_DEVELOPER_ID_CERTIFICATE
 APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD
-APPLE_TEAM_ID
+APPLE_DEVELOPER_ID_APPLICATION_IDENTITY
+APPLE_DEVELOPER_ID_INSTALLER_IDENTITY
 APPLE_API_KEY_ID
 APPLE_API_ISSUER_ID
 APPLE_API_PRIVATE_KEY
+WINDOWS_SIGN_CERTIFICATE
+WINDOWS_SIGN_CERTIFICATE_PASSWORD
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_ENDPOINT
 ```
 
 Fork pull requests never receive release secrets.
+
+The same environment defines these non-secret variables:
+
+```text
+APP_UPDATE_BASE_URL
+R2_APP_BUCKET
+```
+
+`APP_UPDATE_BASE_URL` is the public HTTPS origin used by installed Apps.
+`R2_APP_BUCKET` is the private S3 API bucket name used only by release CI. R2
+credentials are restricted to reading and writing the `app/` prefix and do not
+carry bucket-administration permissions.
 
 ## Supply Chain and Traceability
 
@@ -185,10 +220,11 @@ The Hub uses a native GitHub Actions build matrix instead of GoReleaser because 
 
 ### Phase 3: App Production
 
-- Configure Apple credentials and environment approval.
-- Complete signing, notarization, DMG, and Gatekeeper verification.
-- Add a signed automatic-update manifest.
-- Enable tag-driven App production releases.
+- Configure the protected environment, R2 origin, Apple credentials, and
+  Windows publisher certificate.
+- Dry-run the protected workflow from a release-candidate tag.
+- Publish `app/v0.0.1`, verify all four public feeds and installers, then
+  exercise `0.0.1` to the next release through the Settings update action.
 
 ### Phase 4: Standalone CLI
 

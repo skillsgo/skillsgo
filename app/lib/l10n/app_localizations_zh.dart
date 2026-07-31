@@ -23,6 +23,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get appUpdateTitle => '应用更新';
+
+  @override
+  String get appUpdateDescription => '从已签名的发布源检查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此构建未配置应用更新。';
+
+  @override
+  String get appUpdateReady => '需要时手动检查；未经你确认，SkillsGo 不会安装更新。';
+
+  @override
+  String get appUpdateChecking => '正在检查应用更新…';
+
+  @override
+  String get appUpdateApplying => '正在下载更新，准备完成后 SkillsGo 将重新启动。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 无法检查应用更新，请检查网络连接后重试。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '检查应用更新';
+
+  @override
+  String get appUpdateApplyAction => '更新并重启';
+
+  @override
   String get openSettings => '打开设置';
 
   @override
