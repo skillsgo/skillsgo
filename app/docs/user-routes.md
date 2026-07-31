@@ -39,20 +39,20 @@ Hot
 ### Library
 
 ```text
-All Skills
 Global
+External Skills
 Project A
 Project B
 + Add Project
 ```
 
-- All Skills aggregates every known location and Agent.
-- Global shows only Global Scope targets.
+- Global shows only SkillsGo-managed Global Scope targets.
+- External Skills aggregates External Installations across known Global and Added Project locations.
 - Projects include only directories explicitly added by the user.
 - The content toolbar keeps search, update status, and an Agent multi-select separate from location navigation. Every Installed Agent remains available even when it has zero Skills.
 - One location route and any Agent subset may be combined. The project dropdown is removed so the rail is the only location-navigation control.
 - Long names stay on one line, truncate, and reveal the full name and path on hover.
-- Dynamic project entries may scroll, while All Skills and Global remain at the top and Add Project stays pinned at the bottom.
+- Dynamic project entries may scroll, while Global and External Skills remain at the top and Add Project stays pinned at the bottom. When there are no Added Projects, the project section shows a centered inline Add Project link without inventing a placeholder project.
 
 ### Settings
 
@@ -178,12 +178,12 @@ row actions.
 
 ### View Semantics
 
-- **All Skills**: every Library Entry.
-- **Global**: entries with at least one Global target; detail opens with Global targets as the current context.
-- **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
+- **Global**: managed entries with at least one Global target; detail opens with Global targets as the current context.
+- **External Skills**: every External Installation from the known Global and Added Project discovery roots.
+- **Project A**: every managed Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Adoption uses the selected location as its complete scope boundary. All Skills scans Global Scope and every accessible Added Project, Global scans only Global Scope, and a Project route scans only that Project. Independent planning displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
+Batch Adoption is entered from External Skills, which gathers External Installations from Global Scope and every accessible Added Project. It never expands beyond the App's known discovery roots.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -291,7 +291,7 @@ Suggested logical routes:
 | --- | --- |
 | Hub offline | Discover provides retry; Library remains available |
 | No Installed Agent | Discovery remains available; install explains the missing targets |
-| No Added Project | Keep Add Project visible without fake placeholder projects |
+| No Added Project | Keep the pinned Add Project action and show a centered inline “Go to Add Project” link without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
 | Agent with zero Skills | Keep the Agent entry and prompt discovery |
 | External Installation | Allow inspection, healthy exact-path removal, and explicit scoped Batch Adoption; disable update until managed |

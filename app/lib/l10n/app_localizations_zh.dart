@@ -399,13 +399,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get specificProject => '指定项目';
 
   @override
-  String get libraryGlobalScope => '全局 Skills';
+  String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往添加项目';
 
   @override
   String get globalScope => '全局安装';
 
   @override
-  String get globalSkills => '全局 Skills';
+  String get globalSkills => '全局技能';
 
   @override
   String get addProject => '添加项目';
@@ -2361,7 +2367,13 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get specificProject => '指定項目';
 
   @override
-  String get libraryGlobalScope => '全局 Skills';
+  String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往新增專案';
 
   @override
   String get globalScope => '全局安裝';
@@ -4324,7 +4336,13 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get specificProject => '指定專案';
 
   @override
-  String get libraryGlobalScope => '全域 Skills';
+  String get libraryGlobalScope => '全域技能';
+
+  @override
+  String get libraryExternalScope => '外部技能';
+
+  @override
+  String get libraryEmptyAddProject => '前往新增專案';
 
   @override
   String get globalScope => '全域性安裝';

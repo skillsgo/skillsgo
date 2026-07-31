@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Receives localized fixed and scrollable rail items with icon, image, or multilingual fallback identities, optional exact count badges, standard or compact density, selected values, destination content, an optional App-centered overlay, an optional destination-wide foreground, optional transition identity, and SkillsGo component tokens.
- * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, App-centered interactive overlay and destination-wide foreground layers, plus the theme-tinted glass side rail and reusable accessible navigation buttons with identity fallback, density-aware selection motion and counts, optional fixed leading destinations and labeled section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
+ * [INPUT]: Receives localized fixed and scrollable rail items with icon, image, or multilingual fallback identities, optional exact count badges, standard or compact density, selected values, destination content, optional empty-section content, an optional App-centered overlay, an optional destination-wide foreground, optional transition identity, and SkillsGo component tokens.
+ * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, App-centered interactive overlay and destination-wide foreground layers, plus the theme-tinted glass side rail and reusable accessible navigation buttons with identity fallback, density-aware selection motion and counts, optional fixed leading destinations and labeled section dividers, an independently scrollable item region or deliberate empty section, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -157,6 +157,7 @@ class SkillsSideRail<T> extends StatefulWidget {
     this.fixedItems = const [],
     this.sectionDividers = false,
     this.sectionLabel,
+    this.emptySection,
     this.header,
     this.footer,
   });
@@ -166,6 +167,7 @@ class SkillsSideRail<T> extends StatefulWidget {
   final List<SkillsRailItem<T>> items;
   final bool sectionDividers;
   final String? sectionLabel;
+  final Widget? emptySection;
   final T? selected;
   final ValueChanged<T> onSelected;
   final Widget? header;
@@ -310,30 +312,41 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
                                 label: widget.sectionLabel,
                               ),
                             Expanded(
-                              child: Scrollbar(
-                                key: const ValueKey('side-rail-scrollbar'),
-                                controller: _scrollController,
-                                thumbVisibility: widget.items.length > 10,
-                                thickness: 2,
-                                radius: const Radius.circular(999),
-                                child: ScrollConfiguration(
-                                  behavior: ScrollConfiguration.of(
-                                    context,
-                                  ).copyWith(scrollbars: false),
-                                  child: SingleChildScrollView(
-                                    key: const ValueKey('side-rail-scroll'),
-                                    controller: _scrollController,
-                                    child: SizedBox(
-                                      height: _contentHeight(widget.items),
-                                      child: _itemStack(
-                                        context,
-                                        items: widget.items,
-                                        globalOffset: widget.fixedItems.length,
+                              child:
+                                  widget.items.isEmpty &&
+                                      widget.emptySection != null
+                                  ? widget.emptySection!
+                                  : Scrollbar(
+                                      key: const ValueKey(
+                                        'side-rail-scrollbar',
+                                      ),
+                                      controller: _scrollController,
+                                      thumbVisibility: widget.items.length > 10,
+                                      thickness: 2,
+                                      radius: const Radius.circular(999),
+                                      child: ScrollConfiguration(
+                                        behavior: ScrollConfiguration.of(
+                                          context,
+                                        ).copyWith(scrollbars: false),
+                                        child: SingleChildScrollView(
+                                          key: const ValueKey(
+                                            'side-rail-scroll',
+                                          ),
+                                          controller: _scrollController,
+                                          child: SizedBox(
+                                            height: _contentHeight(
+                                              widget.items,
+                                            ),
+                                            child: _itemStack(
+                                              context,
+                                              items: widget.items,
+                                              globalOffset:
+                                                  widget.fixedItems.length,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              ),
                             ),
                           ],
                         ),

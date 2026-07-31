@@ -430,6 +430,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get libraryGlobalScope => 'वैश्विक कौशल';
 
   @override
+  String get libraryExternalScope => 'External Skills';
+
+  @override
+  String get libraryEmptyAddProject => 'Go to Add Project';
+
+  @override
   String get globalScope => 'वैश्विक';
 
   @override
