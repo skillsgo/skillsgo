@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one canonical Package input, Package metadata and Git Artifact entries, deterministic name-or-path Skill selection, explicit Agent selection, shared validated Package Scope inputs, physical Agent Adapter roots, the shared Package reconciler, and an internal reviewed-adoption replacement authorization.
- * [OUTPUT]: Provides executor-selected dry-run preview or confirmed exact Package add intent for Workspace or User scope, including natural target-version member removal, reviewed-adoption conflict replacement, idempotency, and stable machine results.
+ * [OUTPUT]: Provides executor-selected dry-run preview or confirmed exact Package add intent for Workspace or User scope, including natural target-version member removal, reviewed-adoption conflict replacement, idempotency, one post-commit batch install event, and stable machine results.
  * [POS]: Serves as the Package add intent and interaction adapter above the shared desired-state reconciler.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,6 +23,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	"github.com/skillsgo/skillsgo/protocol/cloud"
 	"github.com/spf13/cobra"
 )
 
@@ -162,13 +163,15 @@ func preparePackageAdd(cmd *cobra.Command, catalog *agent.Catalog, reference sou
 	changeSet.plan = plan
 	changeSet.afterCommit = func() error {
 		reportedPaths := make(map[string]bool, len(dependency.Skills))
+		reportedSkills := make([]cloud.InstallEventSkill, 0, len(dependency.Skills))
 		for _, selector := range dependency.Skills {
 			member, ok := hub.SelectVersionSkill(selector, resource.Members)
 			if ok && !reportedPaths[member.Info.Path] {
 				reportedPaths[member.Info.Path] = true
-				reportHubInstall(cmd.Context(), options.hubURL, hubInstallFact{PackagePath: reference.PackagePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+				reportedSkills = append(reportedSkills, cloud.InstallEventSkill{Name: member.Info.Name, Path: member.Info.Path})
 			}
 		}
+		reportHubInstall(cmd.Context(), options.hubURL, hubInstallFact{PackagePath: reference.PackagePath, Version: resource.Info.Version, Skills: reportedSkills, Agents: dependency.Agents, Scope: scope, AppVersion: options.appVersion})
 		type projectionResult struct {
 			Agents []string `json:"agents"`
 			Path   string   `json:"path"`
