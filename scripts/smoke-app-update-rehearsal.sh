@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on a two-version local Velopack feed from prepare-app-update-rehearsal.sh, its preserved macOS/Linux 0.0.1 launcher, Dart, and native process support.
-# [OUTPUT]: Serves the feed locally, launches packaged 0.0.1 with the guarded update source, and proves Velopack replaced it with runnable 0.0.2 content.
+# [OUTPUT]: Serves the feed locally, launches packaged 0.0.1 with the guarded update source, and proves Velopack replaced it with runnable 0.0.2 content and restarted the platform launcher.
 # [POS]: Serves as the real check/download/apply/restart gate for unsigned macOS and Linux App updates; Windows is verified by the workflow's native PowerShell gate.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -133,7 +133,7 @@ else
       if [[ "$("${cli}" --version)" == "skillsgo version ${update_version}" ]]; then
         restarted_pid=""
         for _ in {1..20}; do
-          restarted_pid="$(pgrep -f '/tmp/appimage_extracted_.*/usr/bin/skillsgo' | head -1 || true)"
+          restarted_pid="$(pgrep -f -x -- "${appimage}" | head -1 || true)"
           if [[ -n "${restarted_pid}" ]]; then
             break
           fi
