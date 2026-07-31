@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication and priority-gated stable/prerelease/pseudo current selection, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -362,26 +362,17 @@ type PackageVersion struct {
 	CommitTime        time.Time
 }
 
-type PublicationVisibility string
-
-const (
-	CurrentPublication    PublicationVisibility = "current"
-	HistoricalPublication PublicationVisibility = "historical"
-)
-
-// PublishPackageVersionWithVisibility atomically publishes the complete
-// member set and its structured immutable Package Version identity.
-func (c *Catalog) PublishPackageVersionWithVisibility(ctx context.Context, packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
-	if err := ValidatePackageVersion(packagePath, version, skills, visibility); err != nil {
+// PublishPackageVersion atomically publishes one effective Version and then
+// recomputes the Package's current effective Version from all effective Versions.
+func (c *Catalog) PublishPackageVersion(ctx context.Context, packagePath string, version PackageVersion, skills []Skill) error {
+	if err := ValidatePackageVersion(packagePath, version, skills); err != nil {
 		return err
 	}
-	return c.publishPackageVersionWithVisibility(ctx, packagePath, version, skills, visibility)
+	_, err := c.publishPackageVersionOn(ctx, c.pool, packagePath, version, skills)
+	return err
 }
 
-func ValidatePackageVersion(packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
-	if visibility != CurrentPublication && visibility != HistoricalPublication {
-		return fmt.Errorf("unsupported Package publication visibility %q", visibility)
-	}
+func ValidatePackageVersion(packagePath string, version PackageVersion, skills []Skill) error {
 	parsedPackage, err := skillpkg.ParsePackagePath(packagePath)
 	if err != nil || parsedPackage.String() != packagePath {
 		return fmt.Errorf("invalid canonical Package ID %q", packagePath)
@@ -406,40 +397,36 @@ func ValidatePackageVersion(packagePath string, version PackageVersion, skills [
 	return nil
 }
 
-func (c *Catalog) publishPackageVersionWithVisibility(ctx context.Context, packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
-	return c.publishPackageVersionWithVisibilityOn(ctx, c.pool, packagePath, version, skills, visibility)
-}
-
 type transactionBeginner interface {
 	Begin(context.Context) (pgx.Tx, error)
 }
 
-func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beginner transactionBeginner, packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
+func (c *Catalog) publishPackageVersionOn(ctx context.Context, beginner transactionBeginner, packagePath string, version PackageVersion, skills []Skill) (bool, error) {
 	tx, err := beginner.Begin(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	q := c.queries.WithTx(tx)
 	params := catalogsqlc.PackageVersionCountParams{PackagePath: packagePath, Version: version.Version}
 	publicationCount, err := q.PackageVersionCount(ctx, params)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if publicationCount > 0 {
 		existingVersion, err := q.PackageVersion(ctx, catalogsqlc.PackageVersionParams{PackagePath: packagePath, Version: version.Version})
 		if err != nil {
-			return err
+			return false, err
 		}
 		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
 			existingVersion.TreeSha != version.TreeSHA || existingVersion.ContentSum != version.ContentSum || textValue(existingVersion.Sum) != version.Sum ||
 			!existingVersion.CommitTime.Equal(version.CommitTime) {
-			return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
+			return false, fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
 	}
 	storedMembers, err := q.Skills(ctx, catalogsqlc.SkillsParams{PackagePath: packagePath, Version: version.Version})
 	if err != nil {
-		return err
+		return false, err
 	}
 	existing := mapVersionSkills(storedMembers)
 	byCandidatePath := make(map[string]Skill, len(skills))
@@ -452,23 +439,22 @@ func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beg
 			continue
 		}
 		if !relevant || member.Name != candidate.Name || member.Description != candidate.Description {
-			return fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
+			return false, fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
 		}
 	}
 	if publicationCount > 0 {
 		if len(existing) != len(skills) {
-			return fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
+			return false, fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
 		}
-		if visibility == CurrentPublication {
-			module, err := q.PackageByPath(ctx, packagePath)
-			if err != nil {
-				return err
-			}
-			if err := promoteCurrentPackageVersion(ctx, q, module.ID, packagePath, version.Version, time.Now().UTC()); err != nil {
-				return err
-			}
+		module, err := q.PackageByPath(ctx, packagePath)
+		if err != nil {
+			return false, err
 		}
-		return tx.Commit(ctx)
+		changed, err := recomputeCurrentPackageVersion(ctx, q, module.ID, packagePath, time.Now().UTC())
+		if err != nil {
+			return false, err
+		}
+		return changed, tx.Commit(ctx)
 	}
 	now := time.Now().UTC()
 	parts := strings.SplitN(packagePath, "/", 2)
@@ -476,17 +462,16 @@ func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beg
 		SourceHost: parts[0], SourcePath: parts[1], Path: packagePath, CreatedAt: now,
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := recordPackageVersion(ctx, q, module.ID, version, skills, now); err != nil {
-		return err
+		return false, err
 	}
-	if visibility == CurrentPublication {
-		if err := promoteCurrentPackageVersion(ctx, q, module.ID, packagePath, version.Version, now); err != nil {
-			return err
-		}
+	changed, err := recomputeCurrentPackageVersion(ctx, q, module.ID, packagePath, now)
+	if err != nil {
+		return false, err
 	}
-	return tx.Commit(ctx)
+	return changed, tx.Commit(ctx)
 }
 
 // WithPackagePublicationLock serializes one Package across Hub instances and
@@ -494,8 +479,8 @@ func (c *Catalog) publishPackageVersionWithVisibilityOn(ctx context.Context, beg
 // connection. This prevents lock ownership from competing with its own write.
 type PackagePublicationWriter struct {
 	CurrentEffective func() (PackageVersion, bool, error)
-	Publish          func(PackageVersion, []Skill, PublicationVisibility) error
-	RecordEquivalent func(PackageVersion, string) error
+	Publish          func(PackageVersion, []Skill) (bool, error)
+	RecordEquivalent func(PackageVersion, string) (bool, error)
 }
 
 func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath string, fn func(PackagePublicationWriter) error) error {
@@ -513,11 +498,11 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 	defer func() {
 		_, _ = connection.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock(hashtextextended($1, 0))", packagePath)
 	}()
-	publish := func(version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
-		if err := ValidatePackageVersion(packagePath, version, skills, visibility); err != nil {
-			return err
+	publish := func(version PackageVersion, skills []Skill) (bool, error) {
+		if err := ValidatePackageVersion(packagePath, version, skills); err != nil {
+			return false, err
 		}
-		return c.publishPackageVersionWithVisibilityOn(ctx, connection, packagePath, version, skills, visibility)
+		return c.publishPackageVersionOn(ctx, connection, packagePath, version, skills)
 	}
 	current := func() (PackageVersion, bool, error) {
 		row, queryErr := catalogsqlc.New(connection).CurrentEffectiveVersion(ctx, packagePath)
@@ -528,7 +513,7 @@ func (c *Catalog) WithPackagePublicationLock(ctx context.Context, packagePath st
 		}
 		return PackageVersion{Version: row.Version, ContentSum: row.ContentSum}, true, nil
 	}
-	recordEquivalent := func(version PackageVersion, equivalent string) error {
+	recordEquivalent := func(version PackageVersion, equivalent string) (bool, error) {
 		return c.recordEquivalentVersionOn(ctx, connection, packagePath, version, equivalent)
 	}
 	return fn(PackagePublicationWriter{CurrentEffective: current, Publish: publish, RecordEquivalent: recordEquivalent})
@@ -556,13 +541,13 @@ func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRow
 	return nil
 }
 
-func (c *Catalog) recordEquivalentVersionOn(ctx context.Context, beginner transactionBeginner, packagePath string, version PackageVersion, equivalent string) error {
+func (c *Catalog) recordEquivalentVersionOn(ctx context.Context, beginner transactionBeginner, packagePath string, version PackageVersion, equivalent string) (bool, error) {
 	if !protocolversion.IsImmutable(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" || !protocolartifact.ValidSum(version.ContentSum) || equivalent == "" || equivalent == version.Version || version.CommitTime.IsZero() {
-		return fmt.Errorf("equivalent Package Version requires immutable source and content identity")
+		return false, fmt.Errorf("equivalent Package Version requires immutable source and content identity")
 	}
 	tx, err := beginner.Begin(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	q := c.queries.WithTx(tx)
@@ -570,45 +555,61 @@ func (c *Catalog) recordEquivalentVersionOn(ctx context.Context, beginner transa
 	now := time.Now().UTC()
 	module, err := q.UpsertPackage(ctx, catalogsqlc.UpsertPackageParams{SourceHost: parts[0], SourcePath: parts[1], Path: packagePath, CreatedAt: now})
 	if err != nil {
-		return err
+		return false, err
 	}
 	target, err := q.ObservedPackageVersion(ctx, catalogsqlc.ObservedPackageVersionParams{PackagePath: packagePath, Version: equivalent})
 	if err != nil {
-		return err
+		return false, err
 	}
 	if target.EquivalentVersion.Valid || target.ContentSum != version.ContentSum {
-		return fmt.Errorf("equivalent Package Version %s@%s has no matching effective target %s", packagePath, version.Version, equivalent)
+		return false, fmt.Errorf("equivalent Package Version %s@%s has no matching effective target %s", packagePath, version.Version, equivalent)
 	}
 	existing, err := q.ObservedPackageVersion(ctx, catalogsqlc.ObservedPackageVersionParams{PackagePath: packagePath, Version: version.Version})
 	if err == nil {
 		if existing.CommitSha != version.CommitSHA || existing.ContentSum != version.ContentSum || textValue(existing.EquivalentVersion) != equivalent {
-			return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
+			return false, fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
-		return tx.Commit(ctx)
+		changed, err := recomputeCurrentPackageVersion(ctx, q, module.ID, packagePath, now)
+		if err != nil {
+			return false, err
+		}
+		return changed, tx.Commit(ctx)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return err
+		return false, err
 	}
 	_, err = q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: module.ID, Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA, ContentSum: version.ContentSum, EquivalentVersion: nullableText(equivalent), CommitTime: version.CommitTime, CreatedAt: now})
 	if err != nil {
-		return err
+		return false, err
 	}
-	return tx.Commit(ctx)
+	changed, err := recomputeCurrentPackageVersion(ctx, q, module.ID, packagePath, now)
+	if err != nil {
+		return false, err
+	}
+	return changed, tx.Commit(ctx)
 }
 
-func promoteCurrentPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, packagePath, candidateVersion string, updatedAt time.Time) error {
+func recomputeCurrentPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, packagePath string, updatedAt time.Time) (bool, error) {
 	currentVersion, err := q.CurrentPackageVersionForUpdate(ctx, moduleRowID)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if !protocolversion.HasHigherPriority(candidateVersion, currentVersion) {
-		return nil
+	versions, err := q.PackagePublishedVersions(ctx, packagePath)
+	if err != nil {
+		return false, err
 	}
-	return q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{
+	highest := protocolversion.HighestPriority(versions)
+	if highest == "" || highest == currentVersion {
+		return false, nil
+	}
+	if err := q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{
 		PackagePath: packagePath,
-		Version:     candidateVersion,
+		Version:     highest,
 		UpdatedAt:   updatedAt,
-	})
+	}); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // PackageVersionInfo deterministically builds one standalone Package Info document.

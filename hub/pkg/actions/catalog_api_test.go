@@ -159,10 +159,10 @@ func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
 func TestCatalogAPIListAndFind(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	skill := &catalog.Skill{PackagePath: "github.com/mattpocock/skills", Path: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", SourceRepository: "mattpocock/skills", LatestVersion: "main"}
-	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
+	require.NoError(t, c.PublishPackageVersion(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
 		Version: "v0.0.0-test", Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree",
 		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
-	}, []catalog.Skill{*skill}, catalog.CurrentPublication))
+	}, []catalog.Skill{*skill}))
 	const packageDescription = "Skills for Real Engineers."
 	require.NoError(t, c.UpdatePackageSourceMetadata(
 		t.Context(), "github.com/mattpocock/skills", packageDescription, 0, "", nil, nil,
@@ -216,14 +216,14 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.NoError(t, json.NewDecoder(localizedPackageFind.Body).Decode(&localizedPackageResponse))
 	require.Equal(t, "真实工程师的技能。", localizedPackageResponse.Package.Description)
 
-	historicalVersion := "v1.0.0"
-	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
-		Version: historicalVersion, Ref: "refs/tags/v1.0.0", CommitSHA: "commit-historical", TreeSHA: "historical-tree",
+	historicalVersion := "v0.0.0-20240102000000-abcdef123456"
+	require.NoError(t, c.PublishPackageVersion(t.Context(), "github.com/mattpocock/skills", catalog.PackageVersion{
+		Version: historicalVersion, Ref: "refs/heads/main", CommitSHA: "commit-historical", TreeSHA: "historical-tree",
 		ContentSum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", Sum: "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CommitTime: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
-	}, []catalog.Skill{{PackagePath: "github.com/mattpocock/skills", Path: "skills/retired", Name: "retired", Description: "Historical member"}}, catalog.HistoricalPublication))
+	}, []catalog.Skill{{PackagePath: "github.com/mattpocock/skills", Path: "skills/retired", Name: "retired", Description: "Historical member"}}))
 	versionedFind := httptest.NewRecorder()
 	serveFiber(t, r, versionedFind, httptest.NewRequest(http.MethodGet,
-		"/api/v1/skills/find?q=github.com%2Fmattpocock%2Fskills&packagePath=github.com%2Fmattpocock%2Fskills&version=v1.0.0&lang=zh-Hans-CN", nil))
+		"/api/v1/skills/find?q=github.com%2Fmattpocock%2Fskills&packagePath=github.com%2Fmattpocock%2Fskills&version="+historicalVersion+"&lang=zh-Hans-CN", nil))
 	require.Equal(t, http.StatusOK, versionedFind.Code)
 	var versionedResponse skillsResponse
 	require.NoError(t, json.NewDecoder(versionedFind.Body).Decode(&versionedResponse))
@@ -235,7 +235,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Equal(t, historicalVersion, versionedResponse.Skills[0].LatestVersion)
 
 	invalidVersionedFind := httptest.NewRecorder()
-	serveFiber(t, r, invalidVersionedFind, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired&version=v1.0.0", nil))
+	serveFiber(t, r, invalidVersionedFind, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired&version="+historicalVersion, nil))
 	require.Equal(t, http.StatusBadRequest, invalidVersionedFind.Code)
 
 	findBatch := httptest.NewRecorder()
@@ -284,7 +284,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, invalidBatch.Code)
 }
 
-func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
+func TestPublishedEffectiveVersionEntersDiscovery(t *testing.T) {
 	router, metadata := testCatalogAPI(t)
 	packagePath := "github.com/example/history"
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -295,27 +295,28 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree",
 		ContentSum: digest, Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	require.NoError(t, metadata.PublishPackageVersionWithVisibility(t.Context(), packagePath, identity, candidates, catalog.HistoricalPublication))
+	require.NoError(t, metadata.PublishPackageVersion(t.Context(), packagePath, identity, candidates))
 
 	search := httptest.NewRecorder()
 	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired", nil))
 	require.Equal(t, http.StatusOK, search.Code)
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(search.Body).Decode(&searchBody))
-	require.Empty(t, searchBody.Skills)
+	require.Len(t, searchBody.Skills, 1)
+	require.Equal(t, "retired", searchBody.Skills[0].Name)
 
 }
 
 func TestCurrentPackagesReadsPublishedCatalogAndPreservesRequestOrder(t *testing.T) {
 	c := openActionTestCatalog(t)
 	packagePath := "github.com/example/skills"
-	require.NoError(t, c.PublishPackageVersionWithVisibility(t.Context(), packagePath, catalog.PackageVersion{
+	require.NoError(t, c.PublishPackageVersion(t.Context(), packagePath, catalog.PackageVersion{
 		Version: "v1.3.0", Ref: "refs/tags/v1.3.0", CommitSHA: "commit-v1.3.0", TreeSHA: "tree-v1.3.0",
 		ContentSum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CommitTime: time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC),
 	}, []catalog.Skill{
 		{PackagePath: packagePath, Path: "skills/review", Name: "review", Description: "Review changes"},
 		{PackagePath: packagePath, Path: "skills/test", Name: "test", Description: "Test changes"},
-	}, catalog.CurrentPublication))
+	}))
 	r := newFiberApp()
 	registerCatalogAPIRoutes(r, c, &catalogArtifactStub{infoErr: errors.New("artifact access must not occur")})
 	body := `{"schemaVersion":1,"packages":[{"packagePath":"github.com/missing/skills"},{"packagePath":"github.com/example/skills"}]}`

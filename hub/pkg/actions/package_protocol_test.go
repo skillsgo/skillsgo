@@ -23,7 +23,7 @@ func (m *recordingRepositoryMaterializer) Materialize(_ context.Context, _, _ st
 	return "v9.9.9", nil
 }
 
-func TestLatestPackageInfoUsesCurrentPublicationWithoutMaterializingSource(t *testing.T) {
+func TestLatestPackageInfoUsesCurrentEffectiveVersionWithoutMaterializingSource(t *testing.T) {
 	metadata := openActionTestCatalog(t)
 	packagePath := "github.com/lobehub/lobehub"
 	require.NoError(t, publishActionTestSkills(t.Context(), metadata, &catalog.Skill{
