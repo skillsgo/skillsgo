@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, SharedPreferences, secure randomness, CLI user-config project commands, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance with one-time randomized wallpaper initialization, language, reminder, onboarding, CLI-owned Added Project access, single Hub Origin configuration, risk policy, and App-version persistence operations.
+ * [OUTPUT]: Provides appearance with one-time randomized theme-color and wallpaper initialization, language, reminder, onboarding, CLI-owned Added Project access, single Hub Origin configuration, risk policy, and App-version persistence operations.
  * [POS]: Serves as the local preference and CLI-backed project-reference capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -85,8 +85,13 @@ mixin _DesktopSkillsGatewayPreferences on _DesktopSkillsGatewayCore {
 
   @override
   Future<String> loadFolderTheme() async {
-    return (await SharedPreferences.getInstance()).getString(_folderThemeKey) ??
-        '#FFFFFF';
+    final preferences = await SharedPreferences.getInstance();
+    final saved = preferences.getString(_folderThemeKey);
+    if (saved != null) return saved;
+    final color =
+        '#${Random.secure().nextInt(0x1000000).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+    await preferences.setString(_folderThemeKey, color);
+    return color;
   }
 
   @override
