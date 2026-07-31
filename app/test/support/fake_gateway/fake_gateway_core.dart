@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses domain gateway models and shared async controls from the FakeSkillsGateway library.
- * [OUTPUT]: Provides shared scenario state, discovery and Adoption candidates, installation history, preferences, onboarding, project behavior, and controllable fixtures for capability mixins.
+ * [OUTPUT]: Provides shared scenario state, captured discovery and Adoption queries, candidates, installation history, preferences, onboarding, project behavior, and controllable fixtures for capability mixins.
  * [POS]: Serves as the state-bearing core of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -179,6 +179,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final diagnosticLogEvents = StreamController<DiagnosticLogEntry>.broadcast();
   bool installed;
   final queries = <String>[];
+  final sourceQueries = <PackageFindQuery>[];
   final collections = <DiscoveryCollection>[];
   final requestedPages = <int>[];
   int installCalls = 0;

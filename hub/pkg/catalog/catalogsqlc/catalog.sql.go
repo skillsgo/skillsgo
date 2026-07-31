@@ -416,14 +416,14 @@ ranked AS (
                 ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' THEN 0 ELSE 1 END,
+               ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
                         CASE WHEN input.description='' THEN 0::double precision
                              ELSE similarity(mvs.description,input.description)::double precision END DESC,
-                        CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
+                        CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
-    JOIN packages m ON input.package_path='' OR m.path=input.package_path
+    JOIN packages m ON true
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
       ON mvs.version_id=mv.id AND mvs.name=input.query
@@ -433,7 +433,7 @@ ranked AS (
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
        source_host,source_repository,path,latest_version,stars,created_at,updated_at,match_score
 FROM ranked
-WHERE result_ordinal<=CASE WHEN requested_package_path<>'' THEN 1 ELSE $1::bigint END
+WHERE result_ordinal<=$1::bigint
 ORDER BY ordinal,result_ordinal
 `
 
@@ -2034,7 +2034,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

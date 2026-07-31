@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library loading, icon-only local refresh, all-provenance Global inventory, inventory resilience, location navigation, filtering, project recovery, reviewed external-Skill Source matching, and Batch Adoption console geometry.
+ * [OUTPUT]: Specifies Library loading, icon-only local refresh, all-provenance Global inventory, inventory resilience, location navigation, filtering, project recovery, lock-restricted or manual reviewed External-Skill Source matching, and Batch Adoption console geometry.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,6 +45,7 @@ void main() {
           inventoryKey: 'external:second',
           name: 'ask-matt',
           description: 'Route a request to the best matching skill.',
+          adoptionPackagePath: 'github.com/example/skills',
           path: '/tmp/second/ask-matt',
           agents: ['claude'],
           targetCount: 1,
@@ -125,7 +126,11 @@ void main() {
       await tester.tap(find.byKey(const Key('library-adoption-review-enter')));
       await tester.pumpAndSettle();
 
-      expect(gateway.queries, ['ask-matt']);
+      expect(gateway.queries, ['ask-matt', 'ask-matt']);
+      expect(gateway.sourceQueries.map((query) => query.packagePath), [
+        '',
+        'github.com/example/skills',
+      ]);
       expect(find.text('example/skills'), findsNWidgets(2));
       expect(
         find.byKey(

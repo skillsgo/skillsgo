@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Find reads, an injected portable HTTP client with an independently configured Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find, platform-HTTP-independent Cloud ranking contracts, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory, Agent catalog, visibility, and schema validation.
+ * [OUTPUT]: Specifies current-language single Find with local installed versions, source-language bounded candidate Find with optional Package restriction, platform-HTTP-independent Cloud ranking contracts, CLI-owned unified explicit-source discovery, empty-input semantics, unified inventory with External Adoption hints, Agent catalog, visibility, and schema validation.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -190,7 +190,11 @@ void main() {
       );
 
       final results = await gateway.findSources(const [
-        PackageFindQuery(name: 'ask-matt', description: 'Route requests.'),
+        PackageFindQuery(
+          name: 'ask-matt',
+          packagePath: 'github.com/example/skills',
+          description: 'Route requests.',
+        ),
       ]);
 
       expect(runner.calls, hasLength(1));
@@ -205,7 +209,11 @@ void main() {
         'json',
       ]);
       expect(jsonDecode(runner.lastStdin!)['queries'], [
-        {'name': 'ask-matt', 'description': 'Route requests.'},
+        {
+          'name': 'ask-matt',
+          'description': 'Route requests.',
+          'packagePath': 'github.com/example/skills',
+        },
       ]);
       expect(results.single.single.versions, ['v1.2.3', 'v1.1.0']);
       expect(results.single.single.matchScore, 1);
@@ -614,7 +622,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
+            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","adoptionPackagePath":"github.com/source/skills","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = DesktopSkillsGateway(
@@ -631,6 +639,7 @@ void main() {
     );
     expect(external.inventoryKey, 'external:abc');
     expect(external.packagePath, isEmpty);
+    expect(external.adoptionPackagePath, 'github.com/source/skills');
     expect(external.versions, isEmpty);
     expect(external.targets.single.version, isEmpty);
   });

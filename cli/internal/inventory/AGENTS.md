@@ -3,10 +3,11 @@
 
 ## Members
 
-- `inventory.go`: composes Package-managed and External state, target health, and Discovery-Root-derived visibility into the mode-free inventory v7 Library report.
+- `inventory.go`: composes Package-managed and External state, optional lock-backed Adoption hints, target health, and Discovery-Root-derived visibility into the backward-compatible mode-free inventory v7 Library report.
 - `package_reconciliation.go`: resolves exact locked metadata through the read-through Provider, verifies Scope Package Trees and member-symlink Projections, and optionally reacquires content for explicit verification commands.
 - `visibility_test.go`: specifies Discovery-Root-derived Agent visibility without introducing managed targets or persisted visibility state.
 - `external.go`: discovers path-identified External Installations and safe physical aliases through read-only scans of installed Agents' known Discovery Roots and explicit project roots.
+- `external_adoption.go`: reads bounded supported skills.sh global and Workspace locks and attaches a canonical Package hint for Adoption candidate restriction without changing External ownership.
 
 ## Architectural Boundary
 

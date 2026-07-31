@@ -69,7 +69,7 @@ The user's reviewed conversion of selected External Installations into ordinary 
 _Avoid_: automatic identity inference, content-authenticated adoption, separate adoption installation path, implicit import, unmatched Local import
 
 **Adoption Review**:
-The temporary Library mode in which complete Package and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; ordinary Library inventory never waits for Hub matching.
+The temporary Library mode in which complete Package and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; a supported skills.sh Package hint restricts that row to one Package while unhinted rows retain exact-name candidate matching across the Hub. Ordinary Library inventory never waits for Hub matching.
 _Avoid_: permanent installation table, background adoption, second Library
 
 **Target Result**:

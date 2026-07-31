@@ -61,7 +61,7 @@ type Querier interface {
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
+ * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, lock-backed External Adoption Package hints, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -238,6 +238,7 @@ class InstalledSkill {
     this.projects = const [],
     this.versions = const [],
     this.versionDivergence = false,
+    this.adoptionPackagePath = '',
   });
 
   final String name;
@@ -254,6 +255,7 @@ class InstalledSkill {
   final List<String> projects;
   final List<String> versions;
   final bool versionDivergence;
+  final String adoptionPackagePath;
 
   bool get isLinkedToCodex =>
       agents.any((agent) => agent.toLowerCase() == 'codex');
@@ -299,6 +301,7 @@ class InstalledSkill {
       projects: (selectedProjects.toList()..sort()),
       versions: versionList,
       versionDivergence: versionList.length > 1,
+      adoptionPackagePath: adoptionPackagePath,
     );
   }
 }
