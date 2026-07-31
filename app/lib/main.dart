@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, platform-aware native window integration, Marionette debug instrumentation, build mode, App logging, and DesktopSkillsGateway with an optional preconfigured process-isolated instance.
- * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with App-wide failure/lifecycle capture, content-ready first-frame presentation, one-time macOS/Windows/Linux window initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
- * [POS]: Serves as the Flutter workspace process entry point, global observability bootstrap, and native-window presentation boundary.
+ * [INPUT]: Depends on native-runner-forwarded arguments including Windows Velopack fast-exit hooks, the Velopack-backed App updater and guarded rehearsal source, Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, native window integration, Marionette instrumentation, App logging, and DesktopSkillsGateway.
+ * [OUTPUT]: Initializes Velopack at the earliest process boundary, exits before UI initialization for official lifecycle hooks, optionally executes a loopback-only unsigned update rehearsal, otherwise starts or replaces SkillsGo through main or runSkillsGoApp with failure/lifecycle capture, first-frame presentation, native window initialization, Hub defaults, Gateway injection, and debug measurements.
+ * [POS]: Serves as the earliest desktop lifecycle boundary, Flutter process entry point, observability bootstrap, and native-window presentation boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
@@ -15,6 +15,7 @@ import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'infrastructure/app_updater.dart';
 import 'infrastructure/logging/app_logger.dart';
 import 'infrastructure/desktop_skills_gateway.dart';
 import 'ui/brand.dart';
@@ -28,7 +29,30 @@ Future<void>? _desktopInitialization;
 Future<void>? _firstFrameRasterized;
 _AppLifecycleLogger? _lifecycleLogger;
 
-Future<void> main() async {
+const _velopackFastExitHooks = {
+  '--veloapp-install',
+  '--veloapp-obsolete',
+  '--veloapp-updated',
+  '--veloapp-uninstall',
+};
+
+@visibleForTesting
+bool isVelopackFastExitInvocation(List<String> arguments) =>
+    arguments.length == 2 && _velopackFastExitHooks.contains(arguments.first);
+
+Future<void> main(List<String> arguments) async {
+  final updater = VelopackAppUpdater();
+  final rehearsalSource = appUpdateRehearsalSource(Platform.environment);
+  var updaterInitialized = false;
+  if (rehearsalSource != null) {
+    final applying = await updater.applyAvailableUpdateAndRestart(
+      rehearsalSource,
+    );
+    if (applying) return;
+    updaterInitialized = true;
+  }
+  if (!updaterInitialized) await updater.initializeRuntime();
+  if (isVelopackFastExitInvocation(arguments)) return;
   await appLogger.initialize();
   appLogger.info('app.lifecycle', 'launch_started');
   final launch = runZonedGuarded(

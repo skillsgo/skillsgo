@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on Flutter desktop support for the host platform, Go, native or Docker PostgreSQL, Xvfb on Linux, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
-# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation, a compact Windows sandbox root, and one Linux Flutter protocol retry in a fresh suite runtime.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one host-native Hub binary, and executes all selected App Journeys through one Flutter desktop test build with Journey-scoped runtime isolation, a compact Windows sandbox root, and one Linux Flutter protocol retry through the absolute script entry in a fresh suite runtime.
 # [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -8,6 +8,7 @@ set -euo pipefail
 
 readonly workspace_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly repository_root="$(cd "${workspace_dir}/../.." && pwd)"
+readonly script_path="${workspace_dir}/run.sh"
 
 case "$(uname -s)" in
   Darwin)
@@ -140,6 +141,6 @@ if [[ "${flutter_device}" == "linux" && "${test_status}" -eq 79 && "${SKILLSGO_E
   echo "Flutter Linux test protocol exited 79; retrying once with a fresh suite runtime." >&2
   cleanup
   trap - EXIT INT TERM
-  SKILLSGO_E2E_LINUX_PROTOCOL_RETRY=1 exec "$0" "$@"
+  SKILLSGO_E2E_LINUX_PROTOCOL_RETRY=1 exec "${script_path}" "$@"
 fi
 exit "${test_status}"

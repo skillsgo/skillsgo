@@ -3,7 +3,7 @@
 
 ## Members
 
-- `CMakeLists.txt`: configures the Linux Flutter bundle, native CLI build, plugin compatibility, and runtime resource installation.
+- `CMakeLists.txt`: configures the Linux Flutter bundle, product-version-aligned native CLI build, plugin compatibility, and runtime resource installation.
 - `runner/CMakeLists.txt`: builds the GTK runner executable and declares its native dependencies.
 - `runner/main.cc`: starts the GTK application.
 - `runner/my_application.h`: exposes the native application type and constructor.

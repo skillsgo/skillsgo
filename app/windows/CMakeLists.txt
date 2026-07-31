@@ -1,5 +1,5 @@
-# [INPUT]: Depends on Flutter Windows tooling, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
-# [OUTPUT]: Builds the Windows desktop runner and packages a matching native SkillsGo CLI executable in data/bin.
+# [INPUT]: Depends on Flutter Windows tooling and product/build version metadata, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
+# [OUTPUT]: Builds the Windows desktop runner and packages a native SkillsGo CLI aligned to the App product version, excluding the Flutter build number.
 # [POS]: Serves as the Windows desktop build and runnable bundle entry point.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 cmake_minimum_required(VERSION 3.14)
@@ -57,6 +57,7 @@ add_subdirectory("runner")
 
 # Build the CLI for the supported Windows x64 desktop target.
 find_program(GO_EXECUTABLE go REQUIRED)
+string(REGEX REPLACE "\\+.*$" "" SKILLSGO_APP_VERSION "${FLUTTER_VERSION}")
 set(SKILLSGO_CLI_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../cli")
 set(SKILLSGO_CLI_BINARY "${CMAKE_BINARY_DIR}/bundled_cli/skillsgo.exe")
 file(GLOB_RECURSE SKILLSGO_CLI_SOURCES CONFIGURE_DEPENDS
@@ -70,7 +71,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bundled_cli"
   COMMAND ${CMAKE_COMMAND} -E env CGO_ENABLED=0 GOOS=windows GOARCH=amd64
     ${GO_EXECUTABLE} build -trimpath
-    "-ldflags=-s -w -X github.com/skillsgo/skillsgo/cli/internal/command.version=${FLUTTER_VERSION}"
+    "-ldflags=-s -w -X github.com/skillsgo/skillsgo/cli/internal/command.version=${SKILLSGO_APP_VERSION}"
     -o "${SKILLSGO_CLI_BINARY}" ./cmd/skillsgo
   WORKING_DIRECTORY "${SKILLSGO_CLI_SOURCE_DIR}"
   DEPENDS ${SKILLSGO_CLI_SOURCES}

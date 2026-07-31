@@ -1,5 +1,5 @@
-# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, structured logging, Markdown, CDN Mermaid.js download/integrity/cache-backed WebView rendering, localization, persistence, natural ordering, process-backed integration, and platform services.
-# [OUTPUT]: Defines the skillsgo package identity, build version, dependency graph including platform-native macOS HTTP, bundled assets, and Flutter generation settings.
+# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, structured logging, Markdown, CDN Mermaid.js download/integrity/cache-backed WebView rendering, localization, persistence, natural ordering, process-backed integration, Velopack's Rust-backed Flutter bridge, and platform services.
+# [OUTPUT]: Defines the skillsgo package identity, build version, dependency graph including platform-native macOS HTTP and Velopack 1.2.0 update integration, bundled assets, and Flutter generation settings.
 # [POS]: Serves as the F2 build manifest and package boundary for the SkillsGo desktop App workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: skillsgo
@@ -20,7 +20,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 0.0.1+1
 
 environment:
   sdk: ^3.12.2
@@ -61,6 +61,7 @@ dependencies:
   multi_dropdown: ^3.2.1
   url_launcher: ^6.3.2
   portal_labs: ^0.34.0
+  velopack_flutter: 0.3.2
 
 dev_dependencies:
   flutter_test:
