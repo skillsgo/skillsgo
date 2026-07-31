@@ -41,10 +41,19 @@ mkdir -p "${runtime_dir}"
 
 server_pid=""
 app_pid=""
+xvfb_pid=""
 cleanup() {
   if [[ -n "${app_pid}" ]]; then
-    kill "${app_pid}" >/dev/null 2>&1 || true
+    if [[ "${target}" == "linux" ]]; then
+      kill -- "-${app_pid}" >/dev/null 2>&1 || true
+    else
+      kill "${app_pid}" >/dev/null 2>&1 || true
+    fi
     wait "${app_pid}" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${xvfb_pid}" ]]; then
+    kill "${xvfb_pid}" >/dev/null 2>&1 || true
+    wait "${xvfb_pid}" >/dev/null 2>&1 || true
   fi
   if [[ -n "${server_pid}" ]]; then
     kill "${server_pid}" >/dev/null 2>&1 || true
@@ -99,9 +108,21 @@ else
   cp "${baseline}" "${appimage}"
   chmod 0755 "${appimage}"
   readonly baseline_sha="$(sha256sum "${appimage}" | awk '{print $1}')"
-  SKILLSGO_APP_UPDATE_REHEARSAL_URL="${update_url}" \
+  readonly display_number=99
+  Xvfb ":${display_number}" -screen 0 1280x720x24 -nolisten tcp \
+    >"${runtime_dir}/xvfb.log" 2>&1 &
+  xvfb_pid=$!
+  sleep 0.5
+  if ! kill -0 "${xvfb_pid}" >/dev/null 2>&1; then
+    cat "${runtime_dir}/xvfb.log" >&2 || true
+    echo "Xvfb failed to start for the Linux update rehearsal." >&2
+    exit 1
+  fi
+  setsid env \
+    DISPLAY=":${display_number}" \
+    SKILLSGO_APP_UPDATE_REHEARSAL_URL="${update_url}" \
     APPIMAGE_EXTRACT_AND_RUN=1 \
-    xvfb-run -a "${appimage}" >"${runtime_dir}/app.log" 2>&1 &
+    "${appimage}" >"${runtime_dir}/app.log" 2>&1 &
   app_pid=$!
   for _ in {1..180}; do
     current_sha="$(sha256sum "${appimage}" 2>/dev/null | awk '{print $1}' || true)"
@@ -112,7 +133,7 @@ else
       if [[ "$("${cli}" --version)" == "skillsgo version ${update_version}" ]]; then
         restarted_pid=""
         for _ in {1..20}; do
-          restarted_pid="$(pgrep -f -x "${appimage}" | head -1 || true)"
+          restarted_pid="$(pgrep -f '/tmp/appimage_extracted_.*/usr/bin/skillsgo' | head -1 || true)"
           if [[ -n "${restarted_pid}" ]]; then
             break
           fi
@@ -123,7 +144,6 @@ else
           echo "Velopack replaced ${channel} but did not restart the updated AppImage." >&2
           exit 1
         fi
-        app_pid="${restarted_pid}"
         echo "Updated and restarted SkillsGo 0.0.1 -> ${update_version} for ${channel}."
         exit 0
       fi
