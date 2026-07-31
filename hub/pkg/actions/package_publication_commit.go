@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated immutable Package releases, a local Git Artifact repository root, repository-file storage, digest-addressed Skill content, and the Catalog publication lock.
- * [OUTPUT]: Provides retry-safe content-transition publication, artifact-free equivalent Version recording, one-hydration chunk-flushed Backfill sessions, precise stage failure codes, and independently atomic Catalog visibility.
+ * [OUTPUT]: Provides retry-safe content-transition publication, artifact-free equivalent Version recording, adjacent-content Backfill deduplication, one-hydration chunk-flushed sessions, precise stage failure codes, and independently atomic Catalog current recomputation.
  * [POS]: Serves as the Package Publication commit state machine used by demand materialization and batched Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,7 +40,7 @@ type modulePublicationInput struct {
 	entries       []protocolartifact.Entry
 	members       []catalog.Skill
 	skillContents []moduleSkillContent
-	visibility    catalog.PublicationVisibility
+	adjacentDedup bool
 }
 
 type modulePublicationOutcome struct {
@@ -48,6 +48,7 @@ type modulePublicationOutcome struct {
 	resolvedVersion string
 	equivalent      bool
 	created         bool
+	currentChanged  bool
 	err             error
 }
 
@@ -70,18 +71,17 @@ func (commit *modulePublicationCommit) Publish(
 	entries []protocolartifact.Entry,
 	members []catalog.Skill,
 	skillContents []moduleSkillContent,
-	visibility catalog.PublicationVisibility,
-) (bool, string, error) {
+) (bool, string, bool, error) {
 	var outcome modulePublicationOutcome
 	err := commit.WithSession(ctx, packagePath, func(session *modulePublicationSession) error {
-		if err := session.Stage(modulePublicationInput{key: version.Version, version: version, entries: entries, members: members, skillContents: skillContents, visibility: visibility}); err != nil {
+		if err := session.Stage(modulePublicationInput{key: version.Version, version: version, entries: entries, members: members, skillContents: skillContents}); err != nil {
 			return err
 		}
 		outcomes := session.Flush()
 		outcome = outcomes[0]
 		return outcome.err
 	})
-	return outcome.created, outcome.resolvedVersion, err
+	return outcome.created, outcome.resolvedVersion, outcome.currentChanged, err
 }
 
 // WithSession serializes a Package across Hub instances and hydrates its local
@@ -120,10 +120,10 @@ func (commit *modulePublicationCommit) WithSession(ctx context.Context, packageP
 }
 
 func (session *modulePublicationSession) Stage(input modulePublicationInput) error {
-	if err := catalog.ValidatePackageVersion(session.packagePath, input.version, input.members, input.visibility); err != nil {
+	if err := catalog.ValidatePackageVersion(session.packagePath, input.version, input.members); err != nil {
 		return withPublicationFailure(publicationFailureVersionValidation, err)
 	}
-	if input.visibility == catalog.CurrentPublication {
+	if !input.adjacentDedup {
 		current, exists, err := session.writer.CurrentEffective()
 		if err != nil {
 			return withPublicationFailure(publicationFailureCatalogCheck, err)
@@ -161,7 +161,7 @@ func (session *modulePublicationSession) Stage(input modulePublicationInput) err
 	input.entries = nil
 	session.inputs = append(session.inputs, input)
 	session.pending = append(session.pending, modulePublicationOutcome{key: input.key, resolvedVersion: input.version.Version, created: created})
-	if input.visibility == catalog.HistoricalPublication {
+	if input.adjacentDedup {
 		session.lastVersion = input.version.Version
 		session.lastContentSum = input.version.ContentSum
 	}
@@ -194,8 +194,11 @@ func (session *modulePublicationSession) Flush() []modulePublicationOutcome {
 	}
 	for index, input := range inputs {
 		if input.version.EquivalentVersion != "" {
-			if err := session.writer.RecordEquivalent(input.version, input.version.EquivalentVersion); err != nil {
+			changed, err := session.writer.RecordEquivalent(input.version, input.version.EquivalentVersion)
+			if err != nil {
 				outcomes[index].err = withPublicationFailure(publicationFailureCatalogCommit, err)
+			} else {
+				outcomes[index].currentChanged = changed
 			}
 			continue
 		}
@@ -208,9 +211,12 @@ func (session *modulePublicationSession) Flush() []modulePublicationOutcome {
 		if outcomes[index].err != nil {
 			continue
 		}
-		if err := session.writer.Publish(input.version, input.members, input.visibility); err != nil {
+		changed, err := session.writer.Publish(input.version, input.members)
+		if err != nil {
 			// The immutable Git tag is deliberately retained; a retry commits the same facts.
 			outcomes[index].err = withPublicationFailure(publicationFailureCatalogCommit, err)
+		} else {
+			outcomes[index].currentChanged = changed
 		}
 	}
 	return outcomes

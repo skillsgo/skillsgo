@@ -204,6 +204,7 @@ Database:
 # Env override: SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS
 TaskQueue:
   MaxWorkers: 10
+  RepositoryMaterializerCapacity: 8
 
 # ShutdownTimeout sets the timeout (in seconds) for open connections when shutting down
 # (via SIGINT or SIGTERM). Connections still open after the timeout will be dropped.

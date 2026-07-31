@@ -94,7 +94,7 @@ func addProxyRoutesWithCatalog(
 			s,
 			metadata,
 			withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
-			withCurrentPublicationObserver(backgroundMetadataRefresher.RefreshInitial),
+			withCurrentChangeObserver(backgroundMetadataRefresher.RefreshInitial),
 		)
 		registerPackageSkillRoute(r, metadata, publisher, s)
 		dp = withPackageInfo(dp, metadata, publisher, c.ArtifactOrigin)
@@ -107,6 +107,7 @@ func addProxyRoutesWithCatalog(
 				s,
 				backgroundMetadata,
 				withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
+				withRepositoryMaterializerCapacity(c.TaskQueue.RepositoryMaterializerCapacity),
 			)
 			backfills := newRepositoryBackfillService(backgroundMetadata, taskRuntime, lister, backgroundPublisher, l)
 			if err := backfills.Register(); err != nil {

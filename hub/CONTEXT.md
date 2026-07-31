@@ -60,9 +60,9 @@ _Avoid_: Backfill Run, atomic multi-repository import, combined repository statu
 One durable, deduplicated attempt to publish at most the twenty highest unprocessed or previously failed semantic-version Tags for a Source Repository, or pseudo-versions for up to its twenty most recent default-branch commits when no canonical Tags exist. Its business status is queued, running, complete, or complete with errors and is independent of River's transport state.
 _Avoid_: River job, atomic repository import, installation request
 
-**Historical Publication**:
-An immutable Package Publication created by Package History Backfill that remains exactly downloadable without making a Skill absent from the current publication visible in discovery or rankings.
-_Avoid_: current catalog entry, archived metadata, resurrected Skill
+**Backfill Publication**:
+An immutable observed Package Version created by Package History Backfill through the same Catalog write invariant as demand publication. Effective Versions participate in current recomputation; equivalent observed Versions retain source identity but own no Artifact or membership and cannot become current.
+_Avoid_: hidden historical entry, secondary visibility policy, archived metadata
 
 **Package Version**:
 An immutable snapshot of one Package at one source commit, including its canonical version, source ref, commit and root tree identities, Sum, archive size, commit time, and complete Skill membership. `latest` selects the highest stable canonical semantic-version Tag, falls back to the highest canonical pre-release, then falls back to the default-branch tip when no canonical Tags exist. An untagged revision derives its pseudo-version base from the highest canonical semantic-version Tag among its ancestors. A canonical semantic-version Tag resolves to one commit permanently; moving a published Tag is a conflict.

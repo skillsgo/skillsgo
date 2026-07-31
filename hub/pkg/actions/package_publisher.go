@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-publication observer.
- * [OUTPUT]: Materializes single or chunked historical Package content transitions with precise stage failures, computes version-independent Package content sums plus source digests and languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after current visibility commits.
+ * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-change observer.
+ * [OUTPUT]: Materializes single or chunked Package content transitions with precise stage failures, computes version-independent Package content sums plus source digests and languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after effective current changes.
  * [POS]: Serves as the observable cold-publication and bounded Backfill-session coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,17 +36,17 @@ type historicalRepositoryMaterializer interface {
 }
 
 type modulePublisher struct {
-	fetcher                 skill.RepositoryFetcher
-	publication             *modulePublicationCommit
-	afterCurrentPublication func(context.Context, string)
-	work                    singleflight.Group
-	commit                  singleflight.Group
-	upstream                chan struct{}
-	mu                      sync.Mutex
-	negative                map[string]negativePublication
-	now                     func() time.Time
-	negativeTTL             time.Duration
-	languageAnalyzer        *translation.LanguageAnalyzer
+	fetcher            skill.RepositoryFetcher
+	publication        *modulePublicationCommit
+	afterCurrentChange func(context.Context, string)
+	work               singleflight.Group
+	commit             singleflight.Group
+	upstream           chan struct{}
+	mu                 sync.Mutex
+	negative           map[string]negativePublication
+	now                func() time.Time
+	negativeTTL        time.Duration
+	languageAnalyzer   *translation.LanguageAnalyzer
 }
 
 type negativePublication struct {
@@ -56,9 +56,15 @@ type negativePublication struct {
 
 type packagePublisherOption func(*modulePublisher)
 
-func withCurrentPublicationObserver(observer func(context.Context, string)) packagePublisherOption {
+func withRepositoryMaterializerCapacity(capacity int) packagePublisherOption {
 	return func(publisher *modulePublisher) {
-		publisher.afterCurrentPublication = observer
+		publisher.upstream = make(chan struct{}, capacity)
+	}
+}
+
+func withCurrentChangeObserver(observer func(context.Context, string)) packagePublisherOption {
+	return func(publisher *modulePublisher) {
+		publisher.afterCurrentChange = observer
 	}
 }
 
@@ -78,7 +84,7 @@ func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backen
 }
 
 func (p *modulePublisher) Materialize(ctx context.Context, packagePath, query string) (string, error) {
-	return p.materializePublication(ctx, packagePath, query, catalog.CurrentPublication)
+	return p.materializePublication(ctx, packagePath, query)
 }
 
 const historicalPublicationChunkSize = 5
@@ -105,8 +111,10 @@ func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source
 	}
 	err := p.publication.WithSession(workCtx, packagePath, func(session *modulePublicationSession) error {
 		staged := 0
+		currentChanged := false
 		flush := func() {
 			for _, outcome := range session.Flush() {
+				currentChanged = currentChanged || outcome.currentChanged
 				if outcome.err == nil && outcome.equivalent {
 					results[outcome.key] = errEquivalentPackageContent
 				} else {
@@ -120,12 +128,13 @@ func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source
 				results[query] = discoveryErr
 				return nil
 			}
-			input, prepareErr := p.prepareSnapshot(packagePath, query, snapshot, catalog.HistoricalPublication)
+			input, prepareErr := p.prepareSnapshot(packagePath, query, snapshot)
 			if prepareErr != nil {
 				results[query] = prepareErr
 				return nil
 			}
 			input.key = query
+			input.adjacentDedup = true
 			if stageErr := session.Stage(input); stageErr != nil {
 				results[query] = stageErr
 				return nil
@@ -137,6 +146,9 @@ func (p *modulePublisher) MaterializeHistoricalBatch(ctx context.Context, source
 			return nil
 		})
 		flush()
+		if currentChanged && p.afterCurrentChange != nil {
+			p.afterCurrentChange(workCtx, packagePath)
+		}
 		return visitErr
 	})
 	if err != nil {
@@ -164,9 +176,9 @@ func (p *modulePublisher) VerifyHistorical(ctx context.Context, packagePath, que
 	return nil
 }
 
-func (p *modulePublisher) materializePublication(ctx context.Context, packagePath, query string, visibility catalog.PublicationVisibility) (string, error) {
+func (p *modulePublisher) materializePublication(ctx context.Context, packagePath, query string) (string, error) {
 	started := time.Now()
-	key := "publish:" + string(visibility) + ":" + packagePath + "@" + query
+	key := "publish:" + packagePath + "@" + query
 	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
 		"component":     "package_publisher",
 		"package_path":  packagePath,
@@ -198,7 +210,7 @@ func (p *modulePublisher) materializePublication(ctx context.Context, packagePat
 			entry.Warnf("repository publication upstream capacity exhausted")
 			return "", huberrors.E("modulePublisher.Materialize", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
 		}
-		version, materializeErr := p.materialize(workCtx, packagePath, query, visibility)
+		version, materializeErr := p.materialize(workCtx, packagePath, query)
 		if materializeErr != nil && huberrors.IsNotFoundErr(materializeErr) {
 			p.mu.Lock()
 			p.negative[key] = negativePublication{expires: p.now().Add(p.negativeTTL), err: materializeErr}
@@ -235,7 +247,7 @@ func (p *modulePublisher) materializePublication(ctx context.Context, packagePat
 	}
 }
 
-func (p *modulePublisher) materialize(ctx context.Context, packagePath, query string, visibility catalog.PublicationVisibility) (string, error) {
+func (p *modulePublisher) materialize(ctx context.Context, packagePath, query string) (string, error) {
 	started := time.Now()
 	snapshot, err := p.fetcher.DiscoverRepository(ctx, packagePath, query)
 	if err != nil {
@@ -253,9 +265,9 @@ func (p *modulePublisher) materialize(ctx context.Context, packagePath, query st
 		"version":      snapshot.Version,
 	}).Debugf("repository snapshot discovered")
 	invoked := false
-	result, err, _ := p.commit.Do("commit:"+string(visibility)+":"+packagePath+"@"+snapshot.Version, func() (any, error) {
+	result, err, _ := p.commit.Do("commit:"+packagePath+"@"+snapshot.Version, func() (any, error) {
 		invoked = true
-		return p.publishSnapshot(ctx, packagePath, query, snapshot, visibility)
+		return p.publishSnapshot(ctx, packagePath, query, snapshot)
 	})
 	if !invoked {
 		closeRepositorySnapshot(snapshot)
@@ -266,12 +278,12 @@ func (p *modulePublisher) materialize(ctx context.Context, packagePath, query st
 	return result.(string), nil
 }
 
-func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
-	input, err := p.prepareSnapshot(packagePath, query, snapshot, visibility)
+func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, query string, snapshot *skill.RepositorySnapshot) (string, error) {
+	input, err := p.prepareSnapshot(packagePath, query, snapshot)
 	if err != nil {
 		return "", err
 	}
-	created, resolvedVersion, err := p.publication.Publish(ctx, packagePath, input.version, input.entries, input.members, input.skillContents, visibility)
+	created, resolvedVersion, currentChanged, err := p.publication.Publish(ctx, packagePath, input.version, input.entries, input.members, input.skillContents)
 	if err != nil {
 		return "", err
 	}
@@ -281,13 +293,13 @@ func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, quer
 		"package_path":       packagePath,
 		"version":            snapshot.Version,
 	}).Debugf("repository publication committed")
-	if visibility == catalog.CurrentPublication && p.afterCurrentPublication != nil {
-		p.afterCurrentPublication(ctx, packagePath)
+	if currentChanged && p.afterCurrentChange != nil {
+		p.afterCurrentChange(ctx, packagePath)
 	}
 	return resolvedVersion, nil
 }
 
-func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (modulePublicationInput, error) {
+func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *skill.RepositorySnapshot) (modulePublicationInput, error) {
 	if len(snapshot.Entries) == 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
 		return modulePublicationInput{}, withPublicationFailure(publicationFailureSnapshotIncomplete, fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query))
 	}
@@ -327,7 +339,7 @@ func (p *modulePublisher) prepareSnapshot(packagePath, query string, snapshot *s
 		return modulePublicationInput{}, withPublicationFailure(artifactValidationPublicationCode(contentSumErr), contentSumErr)
 	}
 	version.ContentSum = contentSum
-	return modulePublicationInput{version: version, entries: snapshot.Entries, members: published, skillContents: skillContents, visibility: visibility}, nil
+	return modulePublicationInput{version: version, entries: snapshot.Entries, members: published, skillContents: skillContents}, nil
 }
 
 func closeRepositorySnapshot(snapshot *skill.RepositorySnapshot) {

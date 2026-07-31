@@ -21,7 +21,7 @@ Every observed Version is one of two states:
 
 The database enforces this exclusive ownership shape. `equivalent_version` is a same-Package self-reference to an effective Version string; SkillsGo does not create a separate alias table or chains of aliases.
 
-Publication for one Package runs under one advisory lock. Current publication compares the candidate with the current effective Version. Historical Backfill processes canonical revisions in ascending order and compares adjacent content states, retaining this state across bounded flushes. Equal adjacent content records only an equivalent observed Version. Changed content publishes a new effective Version.
+Publication for one Package runs under one advisory lock. Historical Backfill processes canonical revisions in ascending order and compares adjacent content states, retaining this state across bounded flushes. Equal adjacent content records only an equivalent observed Version. Changed content publishes a new effective Version. After every effective or equivalent observed-Version write, Catalog recomputes the Package's current pointer from all effective Versions using the shared stable, prerelease, and pseudo-version priority rule.
 
 Equivalence represents transitions, not global content deduplication. For the sequence A, B, A, all three Versions are effective: the third Version is a real update from B even though its bytes appeared earlier. For A, A, B, the second Version is equivalent to the first and the third is effective.
 
