@@ -267,7 +267,11 @@ func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (Cur
 }
 
 const documentTranslationCandidates = `-- name: DocumentTranslationCandidates :many
-WITH documents AS (
+WITH target_languages AS (
+  SELECT requested.lang::text AS lang,requested.lang_order::bigint AS lang_order
+  FROM unnest($2::text[]) WITH ORDINALITY AS requested(lang,lang_order)
+),
+documents AS (
   SELECT mvs.document_digest,
          bool_or(m.current_version_id=mvs.version_id) AS is_current
   FROM skills mvs
@@ -275,31 +279,46 @@ WITH documents AS (
   JOIN packages m ON m.id=mv.package_id
   WHERE mvs.document_digest<>''
   GROUP BY mvs.document_digest
+),
+candidates AS (
+  SELECT documents.document_digest,target_languages.lang,target_languages.lang_order,
+         COALESCE(l.source_digest,'') AS source_digest,
+         COALESCE(l.prompt_version,'') AS stored_prompt_version,
+         row_number() OVER (
+           PARTITION BY target_languages.lang
+           ORDER BY documents.is_current DESC,documents.document_digest
+         ) AS language_position
+  FROM target_languages
+  CROSS JOIN documents
+  LEFT JOIN localizations l
+    ON l.resource_kind='skill_document'
+   AND l.source_digest=documents.document_digest
+   AND l.lang=target_languages.lang
+  WHERE l.source_digest IS NULL
+     OR l.prompt_version<>$3
+     OR (l.result_kind='failed' AND NOT l.failure_terminal AND l.retry_at<=CURRENT_TIMESTAMP)
 )
-SELECT documents.document_digest,
-       COALESCE(l.source_digest,'') AS source_digest,COALESCE(l.prompt_version,'') AS stored_prompt_version
-FROM documents
-LEFT JOIN localizations l
-  ON l.resource_kind='skill_document' AND l.source_digest=documents.document_digest AND l.lang=$1
-WHERE l.source_digest IS NULL OR l.prompt_version<>$2
-ORDER BY documents.is_current DESC,documents.document_digest
-LIMIT $3
+SELECT document_digest,lang,source_digest,stored_prompt_version
+FROM candidates
+ORDER BY language_position,lang_order
+LIMIT $1
 `
 
 type DocumentTranslationCandidatesParams struct {
-	Lang                string `json:"lang"`
-	TargetPromptVersion string `json:"target_prompt_version"`
-	PageLimit           int32  `json:"page_limit"`
+	PageLimit           int32    `json:"page_limit"`
+	Langs               []string `json:"langs"`
+	TargetPromptVersion string   `json:"target_prompt_version"`
 }
 
 type DocumentTranslationCandidatesRow struct {
 	DocumentDigest      string `json:"document_digest"`
+	Lang                string `json:"lang"`
 	SourceDigest        string `json:"source_digest"`
 	StoredPromptVersion string `json:"stored_prompt_version"`
 }
 
 func (q *Queries) DocumentTranslationCandidates(ctx context.Context, arg DocumentTranslationCandidatesParams) ([]DocumentTranslationCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, documentTranslationCandidates, arg.Lang, arg.TargetPromptVersion, arg.PageLimit)
+	rows, err := q.db.Query(ctx, documentTranslationCandidates, arg.PageLimit, arg.Langs, arg.TargetPromptVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +326,12 @@ func (q *Queries) DocumentTranslationCandidates(ctx context.Context, arg Documen
 	items := []DocumentTranslationCandidatesRow{}
 	for rows.Next() {
 		var i DocumentTranslationCandidatesRow
-		if err := rows.Scan(&i.DocumentDigest, &i.SourceDigest, &i.StoredPromptVersion); err != nil {
+		if err := rows.Scan(
+			&i.DocumentDigest,
+			&i.Lang,
+			&i.SourceDigest,
+			&i.StoredPromptVersion,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1724,38 +1748,67 @@ func (q *Queries) TouchBackfillRun(ctx context.Context, arg TouchBackfillRunPara
 }
 
 const translationCandidates = `-- name: TranslationCandidates :many
-SELECT DISTINCT ON (m.description_digest) 'package_description'::text AS resource_kind,
-       m.path AS resource_id, m.description, m.description_digest AS content_digest,
-       COALESCE(ld.source_digest, '') AS source_digest,
-       COALESCE(ld.prompt_version, '') AS prompt_version
-FROM packages m
-LEFT JOIN localizations ld
-  ON ld.resource_kind='package_description' AND ld.source_digest=m.description_digest AND ld.lang=$1
-WHERE trim(m.description)<>''
-UNION ALL
-SELECT DISTINCT ON (mvs.description_digest) 'skill_description'::text,
-       m.path || '@' || mv.version || ':' || mvs.path, mvs.description, mvs.description_digest,
-       COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-FROM packages m
-JOIN versions mv ON mv.id=m.current_version_id
-JOIN skills mvs ON mvs.version_id=mv.id
-LEFT JOIN localizations ld
-  ON ld.resource_kind='skill_description' AND ld.source_digest=mvs.description_digest AND ld.lang=$1
-WHERE trim(mvs.description)<>''
-ORDER BY resource_kind, resource_id
+WITH target_languages AS (
+  SELECT requested.lang::text AS lang,requested.lang_order::bigint AS lang_order
+  FROM unnest($2::text[]) WITH ORDINALITY AS requested(lang,lang_order)
+),
+descriptions AS (
+  SELECT DISTINCT ON (m.description_digest)
+         'package_description'::text AS resource_kind,
+         m.path AS resource_id,m.description,m.description_digest AS content_digest
+  FROM packages m
+  WHERE trim(m.description)<>''
+  UNION ALL
+  SELECT DISTINCT ON (mvs.description_digest)
+         'skill_description'::text,
+         m.path || '@' || mv.version || ':' || mvs.path,mvs.description,mvs.description_digest
+  FROM packages m
+  JOIN versions mv ON mv.id=m.current_version_id
+  JOIN skills mvs ON mvs.version_id=mv.id
+  WHERE trim(mvs.description)<>''
+),
+candidates AS (
+  SELECT descriptions.resource_kind, descriptions.resource_id, descriptions.description, descriptions.content_digest,target_languages.lang,target_languages.lang_order,
+         COALESCE(l.source_digest,'') AS source_digest,
+         COALESCE(l.prompt_version,'') AS stored_prompt_version,
+         row_number() OVER (
+           PARTITION BY target_languages.lang
+           ORDER BY descriptions.resource_kind,descriptions.resource_id
+         ) AS language_position
+  FROM target_languages
+  CROSS JOIN descriptions
+  LEFT JOIN localizations l
+    ON l.resource_kind=descriptions.resource_kind
+   AND l.source_digest=descriptions.content_digest
+   AND l.lang=target_languages.lang
+  WHERE l.source_digest IS NULL
+     OR l.prompt_version<>$3
+     OR (l.result_kind='failed' AND NOT l.failure_terminal AND l.retry_at<=CURRENT_TIMESTAMP)
+)
+SELECT resource_kind,resource_id,description,content_digest,lang,source_digest,stored_prompt_version
+FROM candidates
+ORDER BY language_position,lang_order
+LIMIT $1
 `
 
-type TranslationCandidatesRow struct {
-	ResourceKind  string `json:"resource_kind"`
-	ResourceID    string `json:"resource_id"`
-	Description   string `json:"description"`
-	ContentDigest string `json:"content_digest"`
-	SourceDigest  string `json:"source_digest"`
-	PromptVersion string `json:"prompt_version"`
+type TranslationCandidatesParams struct {
+	PageLimit           int32    `json:"page_limit"`
+	Langs               []string `json:"langs"`
+	TargetPromptVersion string   `json:"target_prompt_version"`
 }
 
-func (q *Queries) TranslationCandidates(ctx context.Context, lang string) ([]TranslationCandidatesRow, error) {
-	rows, err := q.db.Query(ctx, translationCandidates, lang)
+type TranslationCandidatesRow struct {
+	ResourceKind        string `json:"resource_kind"`
+	ResourceID          string `json:"resource_id"`
+	Description         string `json:"description"`
+	ContentDigest       string `json:"content_digest"`
+	Lang                string `json:"lang"`
+	SourceDigest        string `json:"source_digest"`
+	StoredPromptVersion string `json:"stored_prompt_version"`
+}
+
+func (q *Queries) TranslationCandidates(ctx context.Context, arg TranslationCandidatesParams) ([]TranslationCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, translationCandidates, arg.PageLimit, arg.Langs, arg.TargetPromptVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -1768,8 +1821,9 @@ func (q *Queries) TranslationCandidates(ctx context.Context, lang string) ([]Tra
 			&i.ResourceID,
 			&i.Description,
 			&i.ContentDigest,
+			&i.Lang,
 			&i.SourceDigest,
-			&i.PromptVersion,
+			&i.StoredPromptVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -1850,7 +1904,8 @@ INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,text_con
 VALUES ($1,$2,$3,$4,$5,$6,$7)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind=excluded.result_kind,text_content=excluded.text_content,
-prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,updated_at=excluded.updated_at
+prompt_version=excluded.prompt_version,error_kind=NULL,error_message=NULL,
+failure_count=0,retry_at=NULL,failure_terminal=FALSE,updated_at=excluded.updated_at
 `
 
 type UpsertLocalizationParams struct {
@@ -1877,21 +1932,34 @@ func (q *Queries) UpsertLocalization(ctx context.Context, arg UpsertLocalization
 }
 
 const upsertLocalizationFailure = `-- name: UpsertLocalizationFailure :exec
-INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,updated_at)
-VALUES ($1,$2,$3,'failed',$4,$5,$6,$7)
+INSERT INTO localizations (resource_kind,source_digest,lang,result_kind,prompt_version,error_kind,error_message,failure_count,retry_at,failure_terminal,updated_at)
+VALUES ($1,$2,$3,'failed',$4,$5,$6,1,$7,$8,$9)
 ON CONFLICT(resource_kind,source_digest,lang) DO UPDATE SET
 result_kind='failed',text_content=NULL,prompt_version=excluded.prompt_version,
-error_kind=excluded.error_kind,error_message=excluded.error_message,updated_at=excluded.updated_at
+error_kind=excluded.error_kind,error_message=excluded.error_message,
+failure_count=CASE WHEN localizations.prompt_version=excluded.prompt_version THEN localizations.failure_count+1 ELSE 1 END,
+retry_at=CASE
+  WHEN excluded.failure_terminal THEN NULL
+  WHEN localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4 THEN NULL
+  WHEN localizations.prompt_version=excluded.prompt_version
+    THEN excluded.updated_at + LEAST(INTERVAL '7 days', INTERVAL '6 hours' * power(2,localizations.failure_count))
+  ELSE excluded.retry_at
+END,
+failure_terminal=excluded.failure_terminal
+  OR (localizations.prompt_version=excluded.prompt_version AND localizations.failure_count>=4),
+updated_at=excluded.updated_at
 `
 
 type UpsertLocalizationFailureParams struct {
-	ResourceKind  string      `json:"resource_kind"`
-	SourceDigest  string      `json:"source_digest"`
-	Lang          string      `json:"lang"`
-	PromptVersion string      `json:"prompt_version"`
-	ErrorKind     pgtype.Text `json:"error_kind"`
-	ErrorMessage  pgtype.Text `json:"error_message"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	ResourceKind    string      `json:"resource_kind"`
+	SourceDigest    string      `json:"source_digest"`
+	Lang            string      `json:"lang"`
+	PromptVersion   string      `json:"prompt_version"`
+	ErrorKind       pgtype.Text `json:"error_kind"`
+	ErrorMessage    pgtype.Text `json:"error_message"`
+	RetryAt         *time.Time  `json:"retry_at"`
+	FailureTerminal bool        `json:"failure_terminal"`
+	UpdatedAt       time.Time   `json:"updated_at"`
 }
 
 func (q *Queries) UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error {
@@ -1902,6 +1970,8 @@ func (q *Queries) UpsertLocalizationFailure(ctx context.Context, arg UpsertLocal
 		arg.PromptVersion,
 		arg.ErrorKind,
 		arg.ErrorMessage,
+		arg.RetryAt,
+		arg.FailureTerminal,
 		arg.UpdatedAt,
 	)
 	return err

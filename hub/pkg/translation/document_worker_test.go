@@ -22,7 +22,7 @@ type documentStoreFake struct {
 }
 type documentSaved struct{ lang, digest, resultKind, prompt string }
 
-func (s *documentStoreFake) DocumentTranslationCandidates(context.Context, string, string, int) ([]catalog.DocumentTranslationCandidate, error) {
+func (s *documentStoreFake) DocumentTranslationCandidates(context.Context, []string, string, int) ([]catalog.DocumentTranslationCandidate, error) {
 	return s.candidates, nil
 }
 func (s *documentStoreFake) UpsertDocumentLocalization(_ context.Context, lang, digest, resultKind, prompt string) error {
@@ -69,11 +69,17 @@ func (f documentTranslatorFunc) TranslateDocument(ctx context.Context, source []
 }
 
 func TestDocumentWorkerPlanBoundsTranslationIdentities(t *testing.T) {
-	store := &documentStoreFake{candidates: []catalog.DocumentTranslationCandidate{{DocumentDigest: "one"}, {DocumentDigest: "two"}}}
-	worker := NewDocumentWorker(store, &skillContentsFake{}, documentTranslatorFunc(nil), NewLanguageAnalyzer(), []string{"zh-Hans-CN", "ja"}, "document-v1", 1)
+	store := &documentStoreFake{candidates: []catalog.DocumentTranslationCandidate{
+		{DocumentDigest: "one", Lang: "zh-Hans-CN"},
+		{DocumentDigest: "two", Lang: "ja"},
+	}}
+	worker := NewDocumentWorker(store, &skillContentsFake{}, documentTranslatorFunc(nil), NewLanguageAnalyzer(), []string{"zh-Hans-CN", "ja"}, "document-v1", 2)
 	work, err := worker.Plan(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, []DocumentWork{{SourceDigest: "one", Lang: "zh-Hans-CN", PromptVersion: "document-v1"}}, work)
+	require.Equal(t, []DocumentWork{
+		{SourceDigest: "one", Lang: "zh-Hans-CN", PromptVersion: "document-v1"},
+		{SourceDigest: "two", Lang: "ja", PromptVersion: "document-v1"},
+	}, work)
 }
 
 func TestDocumentWorkerRunOneReusesCompletedSidecar(t *testing.T) {

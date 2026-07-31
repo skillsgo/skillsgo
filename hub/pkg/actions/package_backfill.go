@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, chunked Package Publisher sessions, upstream Tag or bounded no-Tag default-branch revision catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker that prewarms selected canonical revisions through one source and Artifact session, records duplicate-content revisions as skipped equivalences, persists explicit per-Version outcomes, retries transient failures, and reconciles abandoned Runs.
+ * [OUTPUT]: Provides validated HTTP batches and an embedding prewarm interface plus an idempotent per-Package River worker that prewarms selected canonical revisions through one source and Artifact session, records duplicate-content revisions as skipped equivalences, persists explicit per-Version outcomes, retries transient failures, and reconciles abandoned Runs.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and batched Backfill Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -309,6 +309,70 @@ type backfillResult struct {
 type packageBackfillAdministration interface {
 	Submit(context.Context, string) (catalog.BackfillRun, bool, error)
 	Latest(context.Context, string) (catalog.BackfillRun, error)
+}
+
+// PackagePrewarmer is the embedding seam for durably scheduling Package
+// materialization. Each accepted Package owns an independently deduplicated
+// Backfill Run; callers may safely submit the same canonical paths again.
+type PackagePrewarmer interface {
+	PrewarmPackages(context.Context, []string) (PackagePrewarmResult, error)
+}
+
+type PackagePrewarmResult struct {
+	Accepted int
+	Existing int
+	Failed   int
+}
+
+type packagePrewarmSubmitter interface {
+	Submit(context.Context, string) (catalog.BackfillRun, bool, error)
+	Latest(context.Context, string) (catalog.BackfillRun, error)
+}
+
+type packagePrewarmService struct {
+	submitter packagePrewarmSubmitter
+}
+
+func (s packagePrewarmService) PrewarmPackages(ctx context.Context, packagePaths []string) (PackagePrewarmResult, error) {
+	seen := make(map[string]struct{}, len(packagePaths))
+	result := PackagePrewarmResult{}
+	failures := make([]error, 0)
+	for _, packagePath := range packagePaths {
+		parsed, err := skill.ParsePackagePath(packagePath)
+		if err != nil || parsed.String() != packagePath {
+			result.Failed++
+			failures = append(failures, fmt.Errorf("invalid canonical Package Path %q", packagePath))
+			continue
+		}
+		if _, duplicate := seen[packagePath]; duplicate {
+			continue
+		}
+		seen[packagePath] = struct{}{}
+		latest, latestErr := s.submitter.Latest(ctx, packagePath)
+		if latestErr == nil {
+			retryFailed := latest.Status == catalog.BackfillFailed && latest.UpdatedAt.Before(time.Now().UTC().Add(-24*time.Hour))
+			if !retryFailed {
+				result.Existing++
+				continue
+			}
+		} else if !errors.Is(latestErr, pgx.ErrNoRows) {
+			result.Failed++
+			failures = append(failures, fmt.Errorf("inspect Package %q prewarm state: %w", packagePath, latestErr))
+			continue
+		}
+		_, created, err := s.submitter.Submit(ctx, packagePath)
+		if err != nil {
+			result.Failed++
+			failures = append(failures, fmt.Errorf("submit Package %q for prewarm: %w", packagePath, err))
+			continue
+		}
+		if created {
+			result.Accepted++
+		} else {
+			result.Existing++
+		}
+	}
+	return result, errors.Join(failures...)
 }
 
 func registerPackageBackfillRoutes(router fiber.Router, service packageBackfillAdministration) {

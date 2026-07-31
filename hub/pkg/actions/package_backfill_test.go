@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -164,6 +165,56 @@ func TestCanonicalBackfillVersionsAreDeterministic(t *testing.T) {
 		{Version: "v1.1.0-0.20260722000000-deadbeefdead", CommitSHA: "pseudo"},
 		{Version: "v2.0.0", CommitSHA: "two"},
 	}, actual)
+}
+
+func TestPackagePrewarmCampaignDeduplicatesInputAndExistingRuns(t *testing.T) {
+	submitter := &prewarmSubmitterStub{created: map[string]bool{
+		"github.com/acme/one": true,
+		"github.com/acme/two": false,
+	}, latest: map[string]catalog.BackfillRun{
+		"github.com/acme/two": {PackagePath: "github.com/acme/two", Status: catalog.BackfillComplete, UpdatedAt: time.Now().UTC()},
+	}}
+	service := packagePrewarmService{submitter: submitter}
+
+	first, err := service.PrewarmPackages(t.Context(), []string{
+		"github.com/acme/one", "github.com/acme/one", "github.com/acme/two",
+	})
+	require.NoError(t, err)
+	require.Equal(t, PackagePrewarmResult{Accepted: 1, Existing: 1}, first)
+	require.Equal(t, []string{"github.com/acme/one"}, submitter.paths)
+}
+
+func TestPackagePrewarmCampaignContinuesAfterOneSubmissionFails(t *testing.T) {
+	submitter := &prewarmSubmitterStub{
+		created:  map[string]bool{"github.com/acme/two": true},
+		failures: map[string]error{"github.com/acme/one": errors.New("temporary queue failure")},
+	}
+	service := packagePrewarmService{submitter: submitter}
+
+	result, err := service.PrewarmPackages(t.Context(), []string{"github.com/acme/one", "invalid", "github.com/acme/two"})
+	require.Error(t, err)
+	require.Equal(t, PackagePrewarmResult{Accepted: 1, Failed: 2}, result)
+	require.Equal(t, []string{"github.com/acme/one", "github.com/acme/two"}, submitter.paths)
+}
+
+type prewarmSubmitterStub struct {
+	created  map[string]bool
+	latest   map[string]catalog.BackfillRun
+	failures map[string]error
+	paths    []string
+}
+
+func (stub *prewarmSubmitterStub) Latest(_ context.Context, path string) (catalog.BackfillRun, error) {
+	run, ok := stub.latest[path]
+	if !ok {
+		return catalog.BackfillRun{}, pgx.ErrNoRows
+	}
+	return run, nil
+}
+
+func (stub *prewarmSubmitterStub) Submit(_ context.Context, path string) (catalog.BackfillRun, bool, error) {
+	stub.paths = append(stub.paths, path)
+	return catalog.BackfillRun{PackagePath: path}, stub.created[path], stub.failures[path]
 }
 
 func TestPackageBackfillPersistsPublishedSkippedAndRejectedOutcomes(t *testing.T) {

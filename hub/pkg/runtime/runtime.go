@@ -40,6 +40,7 @@ type Runtime struct {
 	backgroundCatalog *catalog.Catalog
 	storage           storage.Backend
 	community         community.Store
+	packagePrewarmer  actions.PackagePrewarmer
 }
 
 func Mount(app *fiber.App, logger *log.Logger, conf *config.Config, suppliedOptions ...Option) (*Runtime, error) {
@@ -53,6 +54,7 @@ func Mount(app *fiber.App, logger *log.Logger, conf *config.Config, suppliedOpti
 		runtime.backgroundCatalog = assembly.BackgroundCatalog
 		runtime.storage = assembly.Storage
 		runtime.community = assembly.Community
+		runtime.packagePrewarmer = assembly.PackagePrewarmer
 	})}
 	if selected.communityFactory != nil {
 		actionOptions = append(actionOptions, actions.WithCommunityFactory(actions.CommunityFactory(selected.communityFactory)))
@@ -87,6 +89,20 @@ func Migrate(ctx context.Context, conf *config.Config) error {
 }
 
 func (r *Runtime) Catalog() community.Catalog { return r.catalog }
+
+type PackagePrewarmResult struct {
+	Accepted int
+	Existing int
+	Failed   int
+}
+
+func (r *Runtime) PrewarmPackages(ctx context.Context, packagePaths []string) (PackagePrewarmResult, error) {
+	if r == nil || r.packagePrewarmer == nil {
+		return PackagePrewarmResult{}, fmt.Errorf("Hub Runtime Package prewarmer is unavailable")
+	}
+	result, err := r.packagePrewarmer.PrewarmPackages(ctx, packagePaths)
+	return PackagePrewarmResult{Accepted: result.Accepted, Existing: result.Existing, Failed: result.Failed}, err
+}
 
 func (r *Runtime) Ready(ctx context.Context) error {
 	if r == nil || r.catalog == nil || r.backgroundCatalog == nil || r.storage == nil {
