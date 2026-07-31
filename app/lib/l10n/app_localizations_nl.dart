@@ -209,26 +209,26 @@ class AppLocalizationsNl extends AppLocalizations {
   String get install => 'Installeren';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Upgraden';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Downgraden';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Vaardigheden uit dit pakket wisselen samen van versie.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Van versie wisselen';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'Upgrade naar $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'Downgraden naar $version';
   }
 
   @override
@@ -429,13 +429,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get specificProject => 'Project';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Mondiale vaardigheden';
 
   @override
   String get globalScope => 'Globaal';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Mondiale vaardigheden';
 
   @override
   String get addProject => 'Project toevoegen';
@@ -468,14 +468,14 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'De map is mogelijk verplaatst of het volume ervan is mogelijk offline. Controleer het pad of verwijder de app-referentie ervan.';
 
   @override
   String get projectPermissionTitle => 'Projectvergunning is vereist';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo kan deze projectroot niet inspecteren. Controleer de bestandssysteemrechten of verwijder de app-referentie.';
 
   @override
   String get projectInaccessibleTitle =>
@@ -483,7 +483,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo heeft deze projectreferentie behouden. Controleer het pad of volume of verwijder de app-referentie ervan.';
 
   @override
   String get checking => 'Controleren…';
@@ -964,23 +964,23 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Cloud heeft HTTP $status geretourneerd. Controleer de Origin- en serviceconfiguratie.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'De server heeft het SkillsGo Cloud ranking-protocol niet geretourneerd.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Cloud heeft ongeldige JSON geretourneerd.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Kan Cloud niet bereiken. Controleer de configuratie van Origin, netwerk, proxy en TLS.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Er is een time-out opgetreden bij de cloudverbinding. Controleer het netwerk of probeer het opnieuw.';
 
   @override
   String get riskPolicyTitle => 'Persoonlijk risicobeleid';
@@ -1112,76 +1112,76 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Zoektekst en vaardigheidsinhoud worden niet vastgelegd. Opgeschoonde lokale diagnostische gegevens worden maximaal 7 dagen bewaard en worden nooit automatisch geüpload.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Diagnostische logboeken';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Lokale app- en CLI-diagnostiek gebruiken $size. Logboeken roteren automatisch, worden maximaal zeven dagen bewaard en worden nooit automatisch geüpload.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Map openen';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Live bekijken';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Logboeken exporteren';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Logboeken wissen';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Diagnostische logboeken geëxporteerd.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Diagnostische logboeken gewist.';
 
   @override
   String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+      'De diagnostische logboekactie kan niet worden voltooid.';
 
   @override
   String get logViewerLive => 'Live';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Gepauzeerd';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Zoek logboeken';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'Alle';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Waarschuwingen';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Fouten';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Pauze';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'Cv';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Duidelijk zicht';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Nog geen overeenkomende logbestanden.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'Nieuwste';
 
   @override
   String get language => 'Taal';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'Origineel';
 
   @override
   String get translatedContent => 'Vertaald';
@@ -1726,39 +1726,39 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'Laat SkillsGo $count externe vaardigheden beheren';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'Bevestig SkillsGo beheer ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Vaardigheid';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Bron';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'Versie';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Overeenkomende bronnen…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Bronmatching niet beschikbaar';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Geen overeenkomende bron';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% overeenkomst';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Selecteer eerst een bron';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1966,15 +1966,15 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted vaardigheden toegevoegd aan beheer, $failed mislukt.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Mislukt';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name mislukt';
   }
 
   @override
@@ -2098,24 +2098,25 @@ class AppLocalizationsNl extends AppLocalizations {
       'Repareer de gebundelde CLI en probeer opnieuw door te gaan.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription =>
+      'De volgende vaardigheden worden verwijderd';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return '$count vaardigheden verwijderen?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return '$finished/$total verwijderen';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Verwijder nu';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Bekijk details';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Details verbergen';
 }

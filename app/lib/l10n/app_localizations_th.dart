@@ -210,26 +210,26 @@ class AppLocalizationsTh extends AppLocalizations {
   String get install => 'ติดตั้ง';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'อัพเกรด';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'ดาวน์เกรด';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'สกิลจากแพ็คเกจนี้จะสลับเวอร์ชั่นกัน';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'สลับเวอร์ชัน';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'อัปเกรดเป็น $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'ดาวน์เกรดเป็น $version';
   }
 
   @override
@@ -430,13 +430,13 @@ class AppLocalizationsTh extends AppLocalizations {
   String get specificProject => 'โครงการ';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'ทักษะระดับโลก';
 
   @override
   String get globalScope => 'ทั่วโลก';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'ทักษะระดับโลก';
 
   @override
   String get addProject => 'เพิ่มโครงการ';
@@ -469,21 +469,21 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'ไดเร็กทอรีอาจถูกย้ายหรือโวลุ่มของไดเร็กทอรีอาจออฟไลน์ ตรวจสอบเส้นทางหรือลบการอ้างอิงแอป';
 
   @override
   String get projectPermissionTitle => 'ต้องได้รับอนุญาตจากโครงการ';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo ไม่สามารถตรวจสอบรูทโปรเจ็กต์นี้ได้ ตรวจสอบสิทธิ์ของระบบไฟล์หรือลบการอ้างอิงแอป';
 
   @override
   String get projectInaccessibleTitle => 'ไม่สามารถเข้าถึงไดเรกทอรีโครงการได้';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo เก็บการอ้างอิงโครงการนี้ไว้ ตรวจสอบเส้นทางหรือโวลุ่ม หรือลบการอ้างอิงแอพ';
 
   @override
   String get checking => 'กำลังตรวจสอบ...';
@@ -959,23 +959,23 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'คลาวด์ส่งคืน HTTP $status ตรวจสอบการกำหนดค่าต้นทางและการบริการ';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'เซิร์ฟเวอร์ไม่ได้ส่งคืนโปรโตคอลการจัดอันดับระบบคลาวด์ SkillsGo';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'คลาวด์ส่งคืนไม่ถูกต้อง JSON';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'ไม่สามารถเข้าถึงคลาวด์ได้ ตรวจสอบแหล่งกำเนิด เครือข่าย พร็อกซี และการกำหนดค่า TLS';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'การเชื่อมต่อคลาวด์หมดเวลา ตรวจสอบเครือข่ายหรือลองอีกครั้ง';
 
   @override
   String get riskPolicyTitle => 'นโยบายความเสี่ยงส่วนบุคคล';
@@ -1106,76 +1106,76 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'ข้อความค้นหาและเนื้อหาทักษะจะไม่ถูกบันทึก การวินิจฉัยในท้องถิ่นที่ผ่านการฆ่าเชื้อแล้วจะถูกเก็บไว้สูงสุด 7 วันและจะไม่อัปโหลดโดยอัตโนมัติ';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'บันทึกการวินิจฉัย';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'แอปในเครื่องและการวินิจฉัย CLI ใช้ $size บันทึกจะหมุนเวียนโดยอัตโนมัติ โดยจะเก็บรักษาไว้สูงสุด 7 วัน และจะไม่มีการอัปโหลดโดยอัตโนมัติ';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'เปิดโฟลเดอร์';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'ดูสด';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'ส่งออกบันทึก';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'ล้างบันทึก';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'ส่งออกบันทึกการวินิจฉัยแล้ว';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'ล้างบันทึกการวินิจฉัยแล้ว';
 
   @override
   String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+      'ไม่สามารถดำเนินการบันทึกการวินิจฉัยให้เสร็จสิ้นได้';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'สด';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'หยุดชั่วคราว';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'บันทึกการค้นหา';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'ทั้งหมด';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'คำเตือน';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'ข้อผิดพลาด';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'หยุดชั่วคราว';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'ประวัติย่อ';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'มุมมองที่ชัดเจน';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'ยังไม่มีบันทึกที่ตรงกัน';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'ล่าสุด';
 
   @override
   String get language => 'ภาษา';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'ต้นฉบับ';
 
   @override
   String get translatedContent => 'แปลแล้ว';
@@ -1717,39 +1717,39 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'ให้ SkillsGo จัดการ $count ทักษะภายนอก';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'ยืนยันการจัดการ SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'ทักษะ';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'แหล่งที่มา';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'เวอร์ชัน';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'แหล่งที่มาที่ตรงกัน...';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'การจับคู่แหล่งที่มาไม่พร้อมใช้งาน';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'ไม่มีแหล่งที่มาที่ตรงกัน';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return 'ตรงกัน $percent%';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'เลือกแหล่งที่มาก่อน';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1957,15 +1957,15 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return 'เพิ่มทักษะ $adopted ในการจัดการแล้ว $failed ล้มเหลว';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'ล้มเหลว';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name ล้มเหลว';
   }
 
   @override
@@ -2088,24 +2088,24 @@ class AppLocalizationsTh extends AppLocalizations {
       'ซ่อมแซม CLI ที่ให้มา จากนั้นลองดำเนินการต่ออีกครั้ง';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'ทักษะต่อไปนี้จะถูกลบออก';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'ลบทักษะ $count ใช่ไหม';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'กำลังลบ $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'ลบตอนนี้';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'ดูรายละเอียด';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'ซ่อนรายละเอียด';
 }

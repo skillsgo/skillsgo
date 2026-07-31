@@ -215,26 +215,26 @@ class AppLocalizationsAr extends AppLocalizations {
   String get install => 'تثبيت';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'يرقي';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'الرجوع إلى إصدار سابق';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'المهارات من هذه الحزمة سوف تقوم بتبديل الإصدار معًا.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'تبديل الإصدار';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'الترقية إلى $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'الرجوع إلى $version';
   }
 
   @override
@@ -433,13 +433,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get specificProject => 'مشروع';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'المهارات العالمية';
 
   @override
   String get globalScope => 'عام';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'المهارات العالمية';
 
   @override
   String get addProject => 'أضف المشروع';
@@ -472,21 +472,21 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'ربما تم نقل الدليل أو قد يكون حجمه غير متصل. تحقق من المسار أو قم بإزالة مرجع التطبيق الخاص به.';
 
   @override
   String get projectPermissionTitle => 'يلزم إذن للوصول إلى مجلد المشروع';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'لا يمكن لـ SkillsGo فحص جذر المشروع هذا. تحقق من أذونات نظام الملفات الخاص به أو قم بإزالة مرجع التطبيق الخاص به.';
 
   @override
   String get projectInaccessibleTitle => 'دليل المشروع غير قابل للوصول';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo احتفظ بمرجع المشروع هذا. تحقق من المسار أو وحدة التخزين، أو قم بإزالة مرجع التطبيق الخاص به.';
 
   @override
   String get checking => 'جارٍ التحقق…';
@@ -963,23 +963,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'عادت السحابة HTTP $status. تحقق من الأصل وتكوين الخدمة.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'لم يُرجع الخادم بروتوكول التصنيف السحابي SkillsGo.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'أعادت السحابة JSON غير صالحة.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'لا يمكن الوصول إلى السحابة. تحقق من تكوين الأصل، والشبكة، والوكيل، وTLS.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'انتهت مهلة الاتصال السحابي. تحقق من الشبكة أو حاول مرة أخرى.';
 
   @override
   String get riskPolicyTitle => 'سياسة المخاطر الشخصية';
@@ -1109,76 +1109,75 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'لا يتم تسجيل نص البحث ومحتوى المهارات. يتم الاحتفاظ بالتشخيصات المحلية المعقمة لمدة تصل إلى 7 أيام ولا يتم تحميلها تلقائيًا أبدًا.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'سجلات التشخيص';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'يستخدم التطبيق المحلي وتشخيصات CLI $size. يتم تدوير السجلات تلقائيًا، ويتم الاحتفاظ بها لمدة تصل إلى 7 أيام، ولا يتم تحميلها تلقائيًا أبدًا.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'افتح المجلد';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'عرض مباشر';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'سجلات التصدير';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'مسح السجلات';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'تم تصدير سجلات التشخيص.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'تم مسح سجلات التشخيص.';
 
   @override
-  String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+  String get logActionFailed => 'تعذر إكمال إجراء سجل التشخيص.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'يعيش';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'متوقف مؤقتًا';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'سجلات البحث';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'الجميع';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'تحذيرات';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'أخطاء';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'يوقف';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'سيرة ذاتية';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'رؤية واضحة';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'لا توجد سجلات مطابقة حتى الآن.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'أحدث';
 
   @override
   String get language => 'اللغة';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'إبداعي';
 
   @override
   String get translatedContent => 'مترجم';
@@ -1723,39 +1722,39 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'اسمح لـ SkillsGo بإدارة $count المهارات الخارجية';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'تأكيد إدارة SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'مهارة';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'مصدر';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'إصدار';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'مطابقة المصادر...';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'مطابقة المصدر غير متاحة';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'لا يوجد مصدر مطابق';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% مطابقة';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'حدد مصدرًا أولاً';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1973,15 +1972,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return 'تمت إضافة مهارات $adopted إلى الإدارة، وفشلت $failed.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'فشل';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name فشل';
   }
 
   @override
@@ -2105,24 +2104,24 @@ class AppLocalizationsAr extends AppLocalizations {
       'أصلح CLI المرفق، ثم حاول مجددًا للمتابعة.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'ستتم إزالة المهارات التالية';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'هل تريد إزالة $count المهارات؟';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'إزالة $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'إزالة الآن';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'عرض التفاصيل';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'إخفاء التفاصيل';
 }

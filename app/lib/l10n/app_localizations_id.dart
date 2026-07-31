@@ -211,26 +211,26 @@ class AppLocalizationsId extends AppLocalizations {
   String get install => 'Instal';
 
   @override
-  String get upgrade => 'Upgrade';
+  String get upgrade => 'Meningkatkan';
 
   @override
-  String get downgrade => 'Downgrade';
+  String get downgrade => 'Turunkan versi';
 
   @override
   String get packageSkillsSwitchTogether =>
-      'Skills from this package will switch version together.';
+      'Keterampilan dari paket ini akan berganti versi secara bersamaan.';
 
   @override
-  String get switchVersion => 'Switch version';
+  String get switchVersion => 'Ganti versi';
 
   @override
   String upgradeToVersion(String version) {
-    return 'Upgrade to $version';
+    return 'Tingkatkan ke $version';
   }
 
   @override
   String downgradeToVersion(String version) {
-    return 'Downgrade to $version';
+    return 'Turunkan versi ke $version';
   }
 
   @override
@@ -430,13 +430,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get specificProject => 'Proyek';
 
   @override
-  String get libraryGlobalScope => 'Global Skills';
+  String get libraryGlobalScope => 'Keterampilan Global';
 
   @override
   String get globalScope => 'Global';
 
   @override
-  String get globalSkills => 'Global Skills';
+  String get globalSkills => 'Keterampilan Global';
 
   @override
   String get addProject => 'Tambahkan Proyek';
@@ -469,21 +469,21 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get projectMissingMessage =>
-      'The directory may have moved or its volume may be offline. Check the path or remove its App reference.';
+      'Direktori mungkin telah berpindah atau volumenya mungkin offline. Periksa jalurnya atau hapus referensi Aplikasinya.';
 
   @override
   String get projectPermissionTitle => 'Izin proyek diperlukan';
 
   @override
   String get projectPermissionMessage =>
-      'SkillsGo cannot inspect this project root. Check its filesystem permissions or remove its App reference.';
+      'SkillsGo tidak dapat memeriksa akar proyek ini. Periksa izin sistem filenya atau hapus referensi Aplikasinya.';
 
   @override
   String get projectInaccessibleTitle => 'Direktori proyek tidak dapat diakses';
 
   @override
   String get projectInaccessibleMessage =>
-      'SkillsGo kept this project reference. Check the path or volume, or remove its App reference.';
+      'SkillsGo menyimpan referensi proyek ini. Periksa jalur atau volume, atau hapus referensi Aplikasinya.';
 
   @override
   String get checking => 'Memeriksa…';
@@ -968,23 +968,23 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String cloudHttpFailure(int status) {
-    return 'Cloud returned HTTP $status. Check the Origin and service configuration.';
+    return 'Cloud mengembalikan HTTP $status. Periksa Asal dan konfigurasi layanan.';
   }
 
   @override
   String get cloudInvalidProtocol =>
-      'The server did not return the SkillsGo Cloud ranking protocol.';
+      'Server tidak mengembalikan protokol peringkat Cloud SkillsGo.';
 
   @override
-  String get cloudInvalidJson => 'Cloud returned invalid JSON.';
+  String get cloudInvalidJson => 'Cloud mengembalikan JSON yang tidak valid.';
 
   @override
   String get cloudConnectionFailure =>
-      'Could not reach Cloud. Check the Origin, network, proxy, and TLS configuration.';
+      'Tidak dapat menjangkau Cloud. Periksa konfigurasi Asal, jaringan, proksi, dan TLS.';
 
   @override
   String get cloudConnectionTimeout =>
-      'The Cloud connection timed out. Check the network or try again.';
+      'Waktu koneksi Cloud habis. Periksa jaringan atau coba lagi.';
 
   @override
   String get riskPolicyTitle => 'Kebijakan risiko pribadi';
@@ -1116,76 +1116,76 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'Search text and Skill content aren’t logged. Sanitized local diagnostics are retained for up to 7 days and never uploaded automatically.';
+      'Teks pencarian dan konten Keterampilan tidak dicatat. Diagnostik lokal yang telah disanitasi disimpan hingga 7 hari dan tidak pernah diunggah secara otomatis.';
 
   @override
-  String get diagnosticLogsTitle => 'Diagnostic logs';
+  String get diagnosticLogsTitle => 'Log diagnostik';
 
   @override
   String diagnosticLogsDescription(String size) {
-    return 'Local App and CLI diagnostics use $size. Logs rotate automatically, are retained for up to 7 days, and are never uploaded automatically.';
+    return 'Aplikasi Lokal dan diagnostik CLI menggunakan $size. Log dirotasi secara otomatis, disimpan hingga 7 hari, dan tidak pernah diunggah secara otomatis.';
   }
 
   @override
-  String get openLogFolder => 'Open folder';
+  String get openLogFolder => 'Buka map';
 
   @override
-  String get viewLiveLogs => 'View live';
+  String get viewLiveLogs => 'Lihat langsung';
 
   @override
-  String get exportLogs => 'Export logs';
+  String get exportLogs => 'Ekspor log';
 
   @override
-  String get clearLogs => 'Clear logs';
+  String get clearLogs => 'Hapus log';
 
   @override
-  String get logsExported => 'Diagnostic logs exported.';
+  String get logsExported => 'Log diagnostik diekspor.';
 
   @override
-  String get logsCleared => 'Diagnostic logs cleared.';
+  String get logsCleared => 'Log diagnostik dihapus.';
 
   @override
   String get logActionFailed =>
-      'The diagnostic log action could not be completed.';
+      'Tindakan log diagnostik tidak dapat diselesaikan.';
 
   @override
-  String get logViewerLive => 'Live';
+  String get logViewerLive => 'Hidup';
 
   @override
-  String get logViewerPaused => 'Paused';
+  String get logViewerPaused => 'Dijeda';
 
   @override
-  String get searchLogs => 'Search logs';
+  String get searchLogs => 'Log pencarian';
 
   @override
-  String get allLogLevels => 'All';
+  String get allLogLevels => 'Semua';
 
   @override
-  String get warningLogs => 'Warnings';
+  String get warningLogs => 'Peringatan';
 
   @override
-  String get errorLogs => 'Errors';
+  String get errorLogs => 'Kesalahan';
 
   @override
-  String get pauseLogFollow => 'Pause';
+  String get pauseLogFollow => 'Berhenti sebentar';
 
   @override
-  String get resumeLogFollow => 'Resume';
+  String get resumeLogFollow => 'Melanjutkan';
 
   @override
-  String get clearViewer => 'Clear view';
+  String get clearViewer => 'Pandangan yang jelas';
 
   @override
-  String get noDiagnosticLogs => 'No matching logs yet.';
+  String get noDiagnosticLogs => 'Belum ada log yang cocok.';
 
   @override
-  String get backToLatestLog => 'Latest';
+  String get backToLatestLog => 'Terbaru';
 
   @override
   String get language => 'Bahasa';
 
   @override
-  String get originalContent => 'Original';
+  String get originalContent => 'Asli';
 
   @override
   String get translatedContent => 'Diterjemahkan';
@@ -1728,39 +1728,39 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
-    return 'Let SkillsGo manage $count external skills';
+    return 'Biarkan SkillsGo mengelola $count keterampilan eksternal';
   }
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return 'Confirm SkillsGo management ($selected/$total)';
+    return 'Konfirmasi manajemen SkillsGo ($selected/$total)';
   }
 
   @override
-  String get skillColumnLabel => 'Skill';
+  String get skillColumnLabel => 'Keahlian';
 
   @override
-  String get packageSourceColumnLabel => 'Source';
+  String get packageSourceColumnLabel => 'Sumber';
 
   @override
-  String get versionColumnLabel => 'Version';
+  String get versionColumnLabel => 'Versi';
 
   @override
-  String get packageMatching => 'Matching sources…';
+  String get packageMatching => 'Sumber yang cocok…';
 
   @override
-  String get sourceMatchUnavailable => 'Source matching unavailable';
+  String get sourceMatchUnavailable => 'Pencocokan sumber tidak tersedia';
 
   @override
-  String get noSourceMatches => 'No matching source';
+  String get noSourceMatches => 'Tidak ada sumber yang cocok';
 
   @override
   String sourceMatchPercent(int percent) {
-    return '$percent% match';
+    return '$percent% cocok';
   }
 
   @override
-  String get versionPendingSelection => 'Select a source first';
+  String get versionPendingSelection => 'Pilih sumber terlebih dahulu';
 
   @override
   String batchAdoptionActionCount(int count) {
@@ -1971,15 +1971,15 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String batchAdoptionFailureSummary(int adopted, int failed) {
-    return '$adopted skills added to management, $failed failed.';
+    return '$adopted keterampilan ditambahkan ke manajemen, $failed gagal.';
   }
 
   @override
-  String get batchAdoptionStatusFailed => 'Failed';
+  String get batchAdoptionStatusFailed => 'Gagal';
 
   @override
   String batchAdoptionItemFailed(String name) {
-    return '$name failed';
+    return '$name gagal';
   }
 
   @override
@@ -2103,24 +2103,24 @@ class AppLocalizationsId extends AppLocalizations {
       'Perbaiki CLI yang dibundel, lalu coba lagi untuk melanjutkan.';
 
   @override
-  String get removeSkillsDescription => 'The following Skills will be removed';
+  String get removeSkillsDescription => 'Keterampilan berikut akan dihapus';
 
   @override
   String confirmRemoveSkillsInline(int count) {
-    return 'Remove $count Skills?';
+    return 'Hapus Keterampilan $count?';
   }
 
   @override
   String removingSkillsProgress(int finished, int total) {
-    return 'Removing $finished/$total';
+    return 'Menghapus $finished/$total';
   }
 
   @override
-  String get confirmRemoveSkillsAction => 'Remove now';
+  String get confirmRemoveSkillsAction => 'Hapus sekarang';
 
   @override
-  String get viewRemovalDetails => 'View details';
+  String get viewRemovalDetails => 'Lihat detailnya';
 
   @override
-  String get hideRemovalDetails => 'Hide details';
+  String get hideRemovalDetails => 'Sembunyikan detailnya';
 }

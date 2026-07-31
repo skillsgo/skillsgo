@@ -718,5 +718,6 @@
   "@removingSkillsProgress": {"placeholders": {"finished": {"type": "int"}, "total": {"type": "int"}}},
   "confirmRemoveSkillsAction": "确认移除",
   "viewRemovalDetails": "查看详情",
-  "hideRemovalDetails": "收起详情"
+  "hideRemovalDetails": "收起详情",
+  "originalContent": "原来的"
 }
