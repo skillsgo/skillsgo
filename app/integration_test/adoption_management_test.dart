@@ -185,13 +185,8 @@ void _writeJson(File file, Object value) {
 }
 
 Finder _adoptionCount(int count) => find.descendant(
-  of: find.byKey(const Key('library-adoption-review-enter')),
-  matching: find.byWidgetPredicate(
-    (widget) =>
-        widget is Text &&
-        (widget.data == 'Let SkillsGo manage $count external skills' ||
-            widget.data == '将 $count 个外部技能交给 SkillsGo 管理'),
-  ),
+  of: find.byKey(const Key('library-external-skills-count')),
+  matching: find.text('$count'),
 );
 
 Finder _globalRailLabel() => find.byWidgetPredicate(
