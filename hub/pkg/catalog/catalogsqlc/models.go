@@ -93,6 +93,13 @@ type Skill struct {
 	SourceLanguage string `json:"source_language"`
 }
 
+type TranslationProviderAdmission struct {
+	Provider     string    `json:"provider"`
+	FailureKind  string    `json:"failure_kind"`
+	BlockedUntil time.Time `json:"blocked_until"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
 // Immutable published versions owned by Packages.
 type Version struct {
 	ID        int64 `json:"id"`

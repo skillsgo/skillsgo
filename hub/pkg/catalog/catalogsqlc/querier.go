@@ -6,6 +6,7 @@ package catalogsqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -56,6 +57,8 @@ type Querier interface {
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
 	TranslationCandidates(ctx context.Context, arg TranslationCandidatesParams) ([]TranslationCandidatesRow, error)
+	TranslationProviderBlockedUntil(ctx context.Context, arg TranslationProviderBlockedUntilParams) (time.Time, error)
+	TripTranslationProvider(ctx context.Context, arg TripTranslationProviderParams) (time.Time, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
 	UpsertBackfillVersionOutcome(ctx context.Context, arg UpsertBackfillVersionOutcomeParams) error
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error

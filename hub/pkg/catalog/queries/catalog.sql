@@ -195,6 +195,20 @@ failure_terminal=excluded.failure_terminal
     AND localizations.error_kind=excluded.error_kind AND localizations.failure_count>=4),
 updated_at=excluded.updated_at;
 
+-- name: TranslationProviderBlockedUntil :one
+SELECT blocked_until
+FROM translation_provider_admissions
+WHERE provider=$1 AND blocked_until>$2;
+
+-- name: TripTranslationProvider :one
+INSERT INTO translation_provider_admissions (provider,failure_kind,blocked_until,updated_at)
+VALUES ($1,$2,$3,$4)
+ON CONFLICT(provider) DO UPDATE SET
+failure_kind=excluded.failure_kind,
+blocked_until=GREATEST(translation_provider_admissions.blocked_until,excluded.blocked_until),
+updated_at=excluded.updated_at
+RETURNING blocked_until;
+
 -- name: PackageLocalizedDescription :one
 SELECT l.text_content
 FROM packages m JOIN localizations l ON l.source_digest=m.description_digest

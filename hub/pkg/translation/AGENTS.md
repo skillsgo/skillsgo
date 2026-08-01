@@ -9,8 +9,7 @@
 - `document.go`, `document_test.go`: display-only Markdown-body translation and structural validation.
 - `document_worker.go`, `document_worker_test.go`: consume one Catalog-fair, current-first cross-locale batch of missing/stale document-localization identities and execute one idempotent document-plus-locale operation with content validation and sidecar reuse.
 - `worker.go`, `worker_test.go`: discover bounded missing/stale description-localization identities and execute one idempotent description-plus-locale operation.
-- `error.go`, `error_test.go`: classify deterministic document validation and non-retryable provider failures as permanent, while preserving retryable model-format and provider-payment failure kinds without importing task transport.
-- `circuit.go`: provide a process-shared payment-failure admission circuit that prevents queued translation work from repeatedly calling an unfunded provider.
+- `error.go`, `error_test.go`: classify deterministic document validation, exhausted model-format correction, and non-retryable provider failures as permanent, while preserving provider-payment and transient infrastructure failures as retryable without importing task transport.
 - `schedule.go`, `schedule_test.go`: parse operator-defined time-zone-aware provider-cost admission windows and calculate the next allowed translation instant without owning task persistence or execution.
 
 ## Architectural Boundary

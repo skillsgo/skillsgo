@@ -1865,6 +1865,53 @@ func (q *Queries) TranslationCandidates(ctx context.Context, arg TranslationCand
 	return items, nil
 }
 
+const translationProviderBlockedUntil = `-- name: TranslationProviderBlockedUntil :one
+SELECT blocked_until
+FROM translation_provider_admissions
+WHERE provider=$1 AND blocked_until>$2
+`
+
+type TranslationProviderBlockedUntilParams struct {
+	Provider     string    `json:"provider"`
+	BlockedUntil time.Time `json:"blocked_until"`
+}
+
+func (q *Queries) TranslationProviderBlockedUntil(ctx context.Context, arg TranslationProviderBlockedUntilParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, translationProviderBlockedUntil, arg.Provider, arg.BlockedUntil)
+	var blocked_until time.Time
+	err := row.Scan(&blocked_until)
+	return blocked_until, err
+}
+
+const tripTranslationProvider = `-- name: TripTranslationProvider :one
+INSERT INTO translation_provider_admissions (provider,failure_kind,blocked_until,updated_at)
+VALUES ($1,$2,$3,$4)
+ON CONFLICT(provider) DO UPDATE SET
+failure_kind=excluded.failure_kind,
+blocked_until=GREATEST(translation_provider_admissions.blocked_until,excluded.blocked_until),
+updated_at=excluded.updated_at
+RETURNING blocked_until
+`
+
+type TripTranslationProviderParams struct {
+	Provider     string    `json:"provider"`
+	FailureKind  string    `json:"failure_kind"`
+	BlockedUntil time.Time `json:"blocked_until"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+func (q *Queries) TripTranslationProvider(ctx context.Context, arg TripTranslationProviderParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, tripTranslationProvider,
+		arg.Provider,
+		arg.FailureKind,
+		arg.BlockedUntil,
+		arg.UpdatedAt,
+	)
+	var blocked_until time.Time
+	err := row.Scan(&blocked_until)
+	return blocked_until, err
+}
+
 const updatePackageSourceMetadata = `-- name: UpdatePackageSourceMetadata :execrows
 UPDATE packages SET description = $1, description_digest = $2, stars = $3, source_etag = $4,
 source_checked_at = COALESCE($5, source_checked_at), source_retry_at = $6,

@@ -21,6 +21,11 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 )
 
+const (
+	translationProviderAdmissionKey = "llm_translation"
+	translationPaymentCooldown      = 6 * time.Hour
+)
+
 func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadata *catalog.Catalog, store storage.Backend, tasks *taskqueue.Runtime) error {
 	if !conf.Enabled() {
 		return nil
@@ -29,8 +34,6 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	if err != nil {
 		return fmt.Errorf("configure translation execution schedule: %w", err)
 	}
-	providerCircuit := translation.NewProviderCircuit(6 * time.Hour)
-
 	translator := translation.NewOpenAITranslator(conf.BaseURL, conf.APIKey, conf.Model)
 	languageAnalyzer := translation.NewLanguageAnalyzer()
 	descriptionWorker := translation.NewWorker(metadata, translator, languageAnalyzer, conf.TranslationLangs, conf.DescriptionPromptVersion, conf.TranslationBatch)
@@ -48,7 +51,11 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	}
 
 	if err := taskqueue.Register(tasks, func(ctx context.Context, _ descriptionTranslationDispatchArgs) error {
-		if schedule.Delay(time.Now()) > 0 || translationJobAdmissionDelay(providerCircuit, time.Now()) > 0 {
+		providerDelay, err := translationJobAdmissionDelay(ctx, metadata, time.Now())
+		if err != nil {
+			return err
+		}
+		if schedule.Delay(time.Now()) > 0 || providerDelay > 0 {
 			return nil
 		}
 		work, err := descriptionWorker.Plan(ctx)
@@ -72,7 +79,10 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		if delay := schedule.Delay(time.Now()); delay > 0 {
 			return river.JobSnooze(delay)
 		}
-		if delay := translationJobAdmissionDelay(providerCircuit, time.Now()); delay > 0 {
+		if delay, err := translationJobAdmissionDelay(ctx, metadata, time.Now()); err != nil {
+			return err
+		} else if delay > 0 {
+			logger.Warnf("translation provider payment circuit blocked description job for %s", delay.Round(time.Second))
 			return river.JobSnooze(delay)
 		}
 		err := descriptionWorker.RunOne(ctx, translation.DescriptionWork{
@@ -88,9 +98,9 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		}
 		if err != nil {
 			logger.Warnf("description translation attempt failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-			result, tripped := translationJobResult(providerCircuit, time.Now(), err)
+			result, tripped := translationJobResult(ctx, metadata, time.Now(), err)
 			if tripped {
-				logger.Errorf("translation provider payment circuit opened for 6 hours: %v", err)
+				logger.Errorf("translation provider payment circuit opened for %s: %v", translationPaymentCooldown, err)
 			}
 			return result
 		}
@@ -104,7 +114,11 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		return fmt.Errorf("register description translation failure handler: %w", err)
 	}
 	if err := taskqueue.Register(tasks, func(ctx context.Context, _ documentTranslationDispatchArgs) error {
-		if schedule.Delay(time.Now()) > 0 || translationJobAdmissionDelay(providerCircuit, time.Now()) > 0 {
+		providerDelay, err := translationJobAdmissionDelay(ctx, metadata, time.Now())
+		if err != nil {
+			return err
+		}
+		if schedule.Delay(time.Now()) > 0 || providerDelay > 0 {
 			return nil
 		}
 		work, err := documentWorker.Plan(ctx)
@@ -127,7 +141,10 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		if delay := schedule.Delay(time.Now()); delay > 0 {
 			return river.JobSnooze(delay)
 		}
-		if delay := translationJobAdmissionDelay(providerCircuit, time.Now()); delay > 0 {
+		if delay, err := translationJobAdmissionDelay(ctx, metadata, time.Now()); err != nil {
+			return err
+		} else if delay > 0 {
+			logger.Warnf("translation provider payment circuit blocked document job for %s", delay.Round(time.Second))
 			return river.JobSnooze(delay)
 		}
 		err := documentWorker.RunOne(ctx, translation.DocumentWork{SourceDigest: args.SourceDigest, Lang: args.Lang, PromptVersion: args.PromptVersion})
@@ -140,9 +157,9 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 		}
 		if err != nil {
 			logger.Warnf("document translation attempt failed for %s to %s: %v", args.SourceDigest, args.Lang, err)
-			result, tripped := translationJobResult(providerCircuit, time.Now(), err)
+			result, tripped := translationJobResult(ctx, metadata, time.Now(), err)
 			if tripped {
-				logger.Errorf("translation provider payment circuit opened for 6 hours: %v", err)
+				logger.Errorf("translation provider payment circuit opened for %s: %v", translationPaymentCooldown, err)
 			}
 			return result
 		}
@@ -165,13 +182,17 @@ func registerTranslationJobs(logger *log.Logger, conf *config.LLMConfig, metadat
 	return nil
 }
 
-func translationJobAdmissionDelay(circuit *translation.ProviderCircuit, now time.Time) time.Duration {
-	return circuit.Delay(now)
+func translationJobAdmissionDelay(ctx context.Context, metadata *catalog.Catalog, now time.Time) (time.Duration, error) {
+	return metadata.TranslationProviderDelay(ctx, translationProviderAdmissionKey, now)
 }
 
-func translationJobResult(circuit *translation.ProviderCircuit, now time.Time, err error) (error, bool) {
-	if delay, tripped := circuit.Observe(err, now); delay > 0 {
-		return river.JobSnooze(delay), tripped
+func translationJobResult(ctx context.Context, metadata *catalog.Catalog, now time.Time, err error) (error, bool) {
+	if translation.FailureKind(err) != "provider_payment_required" {
+		return err, false
 	}
-	return err, false
+	delay, admissionErr := metadata.TripTranslationProvider(ctx, translationProviderAdmissionKey, translation.FailureKind(err), now, translationPaymentCooldown)
+	if admissionErr != nil {
+		return admissionErr, false
+	}
+	return river.JobSnooze(delay), true
 }
