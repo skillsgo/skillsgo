@@ -274,10 +274,18 @@ void main() {
       description: 'settings side rail',
     );
     await tester.tap(
-      find.descendant(of: settingsRail, matching: find.text('Managed backups')),
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'Backups, .*recoverable backup')),
+      findsNothing,
+    );
     expect(find.byKey(const Key('managed-backup-backup-1')), findsOneWidget);
     expect(find.text('action-demo'), findsOneWidget);
     expect(
@@ -296,6 +304,19 @@ void main() {
 
     expect(gateway.adoptionBackups, isEmpty);
     expect(find.byKey(const Key('managed-backups-empty')), findsOneWidget);
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: settingsRail,
+        matching: find.bySemanticsLabel(
+          RegExp(r'Backups, .*recoverable backup'),
+        ),
+      ),
+      findsNothing,
+    );
     expect(find.text('Original install restored.'), findsOneWidget);
   });
 

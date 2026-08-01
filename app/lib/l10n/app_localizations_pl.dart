@@ -677,7 +677,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get agents => 'Agents';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => 'Backups';
 
   @override
   String get hub => 'Hub';

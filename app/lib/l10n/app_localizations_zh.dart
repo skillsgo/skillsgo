@@ -2671,7 +2671,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get agents => '智能體';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => '託管備份';
 
   @override
   String get hub => 'Hub';
@@ -4713,7 +4713,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get agents => '智慧體';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => '託管備份';
 
   @override
   String get hub => 'Hub';

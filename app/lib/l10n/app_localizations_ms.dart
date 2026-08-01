@@ -675,7 +675,7 @@ class AppLocalizationsMs extends AppLocalizations {
   String get agents => 'ejen';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => 'Backups';
 
   @override
   String get hub => 'Hab';

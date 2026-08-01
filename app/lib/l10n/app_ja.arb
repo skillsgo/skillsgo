@@ -1136,7 +1136,7 @@
   "confirmRemoveSkillsAction": "今すぐ削除",
   "viewRemovalDetails": "詳細を見る",
   "hideRemovalDetails": "詳細を隠す",
-  "managedBackups": "Managed backups",
+  "managedBackups": "Backups",
   "adoptionBackupAvailable": "Original install backed up",
   "adoptionBackupRetention": "Available to restore for 30 days",
   "adoptionBackupRestore": "Restore original install",

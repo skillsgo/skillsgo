@@ -148,8 +148,8 @@ void registerAdoptionManagementJourney() {
 
 Future<void> _restoreOneManagedBackupFromSettings(WidgetTester tester) async {
   await tester.tap(find.byKey(const Key('primary-destination-settings')));
-  await _pumpUntil(tester, find.text('Managed backups'));
-  await tester.tap(find.text('Managed backups'));
+  await _pumpUntil(tester, find.text('Backups'));
+  await tester.tap(find.text('Backups'));
   await _pumpUntil(tester, find.byKey(const Key('managed-backups-count')));
 
   final restore = find.text('Restore original install').first;

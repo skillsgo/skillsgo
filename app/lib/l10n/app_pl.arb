@@ -1136,7 +1136,7 @@
   "confirmRemoveSkillsAction": "Usuń teraz",
   "viewRemovalDetails": "Zobacz szczegóły",
   "hideRemovalDetails": "Ukryj szczegóły",
-  "managedBackups": "Managed backups",
+  "managedBackups": "Backups",
   "adoptionBackupAvailable": "Original install backed up",
   "adoptionBackupRetention": "Available to restore for 30 days",
   "adoptionBackupRestore": "Restore original install",

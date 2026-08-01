@@ -1284,7 +1284,7 @@ abstract class AppLocalizations {
   /// No description provided for @managedBackups.
   ///
   /// In en, this message translates to:
-  /// **'Managed backups'**
+  /// **'Backups'**
   String get managedBackups;
 
   /// No description provided for @hub.

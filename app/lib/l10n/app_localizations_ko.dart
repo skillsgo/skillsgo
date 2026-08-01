@@ -660,7 +660,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get agents => '에이전트';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => 'Backups';
 
   @override
   String get hub => '허브';

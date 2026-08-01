@@ -1136,7 +1136,7 @@
   "confirmRemoveSkillsAction": "Ta bort nu",
   "viewRemovalDetails": "Visa detaljer",
   "hideRemovalDetails": "Dölj detaljer",
-  "managedBackups": "Managed backups",
+  "managedBackups": "Backups",
   "adoptionBackupAvailable": "Original install backed up",
   "adoptionBackupRetention": "Available to restore for 30 days",
   "adoptionBackupRestore": "Restore original install",

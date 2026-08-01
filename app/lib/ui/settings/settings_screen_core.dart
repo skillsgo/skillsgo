@@ -350,14 +350,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           value: _SettingsRoute.backups,
           label: context.l10n.managedBackups,
           icon: HugeIcons.strokeRoundedArchiveRestore,
-          count: managedBackups == null
-              ? null
-              : _recoverableManagedBackups.length,
-          countLabel: managedBackups == null
-              ? null
-              : context.l10n.managedBackupsCount(
-                  _recoverableManagedBackups.length,
-                ),
         ),
         SkillsRailItem(
           value: _SettingsRoute.advanced,

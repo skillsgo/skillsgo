@@ -1136,7 +1136,7 @@
   "confirmRemoveSkillsAction": "지금 삭제",
   "viewRemovalDetails": "세부정보 보기",
   "hideRemovalDetails": "세부정보 숨기기",
-  "managedBackups": "Managed backups",
+  "managedBackups": "Backups",
   "adoptionBackupAvailable": "Original install backed up",
   "adoptionBackupRetention": "Available to restore for 30 days",
   "adoptionBackupRestore": "Restore original install",

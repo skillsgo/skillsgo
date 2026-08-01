@@ -677,7 +677,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get agents => 'Agen';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => 'Backups';
 
   @override
   String get hub => 'Pusat';

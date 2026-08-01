@@ -1100,7 +1100,7 @@
   "confirmRemoveSkillsAction": "立即刪除",
   "viewRemovalDetails": "看詳情",
   "hideRemovalDetails": "隱藏詳細訊息",
-  "managedBackups": "Managed backups",
+  "managedBackups": "託管備份",
   "adoptionBackupAvailable": "Original install backed up",
   "adoptionBackupRetention": "Available to restore for 30 days",
   "adoptionBackupRestore": "Restore original install",

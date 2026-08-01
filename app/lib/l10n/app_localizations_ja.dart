@@ -661,7 +661,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get agents => 'エージェント';
 
   @override
-  String get managedBackups => 'Managed backups';
+  String get managedBackups => 'Backups';
 
   @override
   String get hub => 'ハブ';
