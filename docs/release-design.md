@@ -132,8 +132,17 @@ inventing a separate DMG packaging layer. macOS architectures remain separate;
 there is no Universal binary.
 
 The workflow exists in source but cannot publish until the protected
-`app-release` GitHub Environment contains every credential and variable listed
-below. Missing configuration fails closed before publication.
+`app-release` GitHub Environment contains the R2 configuration and public URL
+listed below, plus publisher credentials unless the explicit bootstrap switch
+is active. Missing required configuration fails closed before publication.
+
+The protected environment may set `APP_RELEASE_UNSIGNED=1` only for an explicit
+bootstrap release while publisher identities are unavailable. That opt-in skips
+Apple notarization and Windows Authenticode signing, records the release
+metadata as unsigned, and omits the macOS PKG because Velopack does not treat an
+unsigned PKG as distributable. The default remains signed and fails closed when
+publisher credentials are absent. Once signing is configured, remove the
+bootstrap variable; it must not become a permanent release mode.
 
 ## Permissions and Credentials
 
@@ -162,10 +171,13 @@ The same environment defines these non-secret variables:
 
 ```text
 APP_UPDATE_BASE_URL
+APP_RELEASE_UNSIGNED
 R2_APP_BUCKET
 ```
 
 `APP_UPDATE_BASE_URL` is the public HTTPS origin used by installed Apps.
+`APP_RELEASE_UNSIGNED` is an exceptional protected bootstrap switch and is
+normally absent.
 `R2_APP_BUCKET` is the private S3 API bucket name used only by release CI. R2
 credentials are restricted to reading and writing the `app/` prefix and do not
 carry bucket-administration permissions.
