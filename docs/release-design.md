@@ -10,7 +10,7 @@ SkillsGo maintains the Flutter desktop App and Go Hub in one repository while pr
 - `main` may produce temporary artifacts but never overwrite a release.
 - Every production artifact resolves to one commit.
 - Prefer GitHub-native permissions and GHCR over long-lived credentials.
-- Do not present an unsigned and unnotarized App as a distributable production release.
+- Label unsigned and unnotarized App downloads explicitly rather than presenting them as signed installers.
 
 The standalone CLI now exists as a third release unit. Its final public release automation is intentionally deferred until the bundled-App contract stabilizes; production App builds compile a matching CLI from the same commit.
 
@@ -20,7 +20,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
-| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Signed Windows x64 Setup, Linux x64 AppImage, separate signed and notarized macOS arm64/x86_64 PKGs, Velopack feeds, and checksums |
+| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Windows x64 Setup, Linux x64 AppImage, separate macOS arm64/x86_64 downloads, Velopack feeds, and checksums; signing credentials upgrade Windows Setup and macOS PKGs, while unsigned downloads are labeled explicitly |
 | CLI | `cli/` | `cli/vX.Y.Z` | tag | Deferred standalone binary matrix |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
@@ -119,14 +119,16 @@ not reachable from `main`. It then:
 4. Signs the two macOS Apps and installer packages when Developer ID
    identities are configured, submits them to Apple Notary Service through
    Velopack, staples the result, and validates the signed PKG. Without those
-   identities, it publishes the unsigned macOS update channel without a PKG.
+   identities, it publishes the unsigned macOS update channel without a PKG
+   and exposes the portable App ZIP as the user-facing download.
 5. Generates provenance attestations and SHA-256 checksums.
 6. Uploads only the current version's immutable update packages to R2 before
    publishing the mutable `releases.<channel>.json` indexes. Prior packages
    hydrated from the public feed are never written back. This ordering prevents
    clients from observing a release whose package is not yet available.
-7. Creates an immutable GitHub Release containing the four user-facing
-   installers and checksums.
+7. Creates an immutable GitHub Release containing one user-facing download per
+   architecture and checksums. Signed macOS channels contribute PKGs; unsigned
+   macOS channels contribute archives named with an `unsigned` suffix.
 
 The workflow uses Velopack's native signed PKG output on macOS rather than
 inventing a separate DMG packaging layer. macOS architectures remain separate;
