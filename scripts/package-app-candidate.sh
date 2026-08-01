@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, a workspace or explicit App version, Velopack CLI 1.2.0, optional prior channel packages, release-mode signing/notarization credentials, and unzip-compatible package inspection.
-# [OUTPUT]: Produces and verifies one platform-layout-aware Velopack candidate or signed production channel for Windows x64, Linux x64, macOS arm64, or macOS x64, optionally appending a version to an existing feed.
+# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, a workspace or explicit App version, Velopack CLI 1.2.0, optional prior channel packages, release-mode signing/notarization credentials unless an explicit unsigned bootstrap is enabled, and unzip-compatible package inspection.
+# [OUTPUT]: Produces and verifies one platform-layout-aware Velopack candidate, protected unsigned-bootstrap channel, or signed production channel for Windows x64, Linux x64, macOS arm64, or macOS x64, optionally appending a version to an existing feed.
 # [POS]: Serves as the deterministic native-build-to-Velopack boundary shared by local rehearsals, candidate CI, and protected production release automation.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -14,6 +14,7 @@ readonly workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*
 readonly version="${SKILLSGO_APP_PACKAGE_VERSION:-${workspace_version}}"
 readonly append_to_feed="${SKILLSGO_APP_PACKAGE_APPEND:-0}"
 readonly package_mode="${SKILLSGO_APP_PACKAGE_MODE:-candidate}"
+readonly release_unsigned="${SKILLSGO_APP_RELEASE_UNSIGNED:-0}"
 
 if [[ -z "${version}" ]]; then
   echo "Unable to read the App version from app/pubspec.yaml." >&2
@@ -21,6 +22,14 @@ if [[ -z "${version}" ]]; then
 fi
 if [[ "${package_mode}" != "candidate" && "${package_mode}" != "release" ]]; then
   echo "SKILLSGO_APP_PACKAGE_MODE must be candidate or release." >&2
+  exit 64
+fi
+if [[ "${release_unsigned}" != "0" && "${release_unsigned}" != "1" ]]; then
+  echo "SKILLSGO_APP_RELEASE_UNSIGNED must be 0 or 1." >&2
+  exit 64
+fi
+if [[ "${package_mode}" != "release" && "${release_unsigned}" == "1" ]]; then
+  echo "SKILLSGO_APP_RELEASE_UNSIGNED is valid only in release mode." >&2
   exit 64
 fi
 
@@ -108,7 +117,7 @@ pack_args=(
 case "${target}" in
   windows)
     pack_args+=(--icon "${app_root}/windows/runner/resources/app_icon.ico")
-    if [[ "${package_mode}" == "release" ]]; then
+    if [[ "${package_mode}" == "release" && "${release_unsigned}" != "1" ]]; then
       : "${SKILLSGO_WINDOWS_SIGN_PARAMS:?SKILLSGO_WINDOWS_SIGN_PARAMS is required for a Windows release}"
       pack_args+=(--signParams "${SKILLSGO_WINDOWS_SIGN_PARAMS}")
     fi
@@ -117,7 +126,7 @@ case "${target}" in
     pack_args+=(--icon "${app_root}/linux/runner/resources/skillsgo.png")
     ;;
   macos)
-    if [[ "${package_mode}" == "release" ]]; then
+    if [[ "${package_mode}" == "release" && "${release_unsigned}" != "1" ]]; then
       : "${SKILLSGO_MACOS_SIGN_APP_IDENTITY:?SKILLSGO_MACOS_SIGN_APP_IDENTITY is required for a macOS release}"
       : "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY:?SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY is required for a macOS release}"
       : "${SKILLSGO_MACOS_NOTARY_PROFILE:?SKILLSGO_MACOS_NOTARY_PROFILE is required for a macOS release}"
@@ -171,7 +180,7 @@ if [[ -n "${installer_name}" && ! -s "${output_dir}/${installer_name}" ]]; then
   echo "Velopack installer is missing or empty: ${output_dir}/${installer_name}" >&2
   exit 1
 fi
-if [[ "${target}" == "macos" && "${package_mode}" == "release" ]]; then
+if [[ "${target}" == "macos" && "${package_mode}" == "release" && "${release_unsigned}" != "1" ]]; then
   shopt -s nullglob
   macos_installers=("${output_dir}"/*.pkg)
   shopt -u nullglob
@@ -184,7 +193,7 @@ if [[ "${target}" == "macos" && "${package_mode}" == "release" ]]; then
 fi
 
 readonly metadata_name="$([[ "${package_mode}" == "release" ]] && echo "release-${version}" || echo candidate)"
-readonly signed="$([[ "${package_mode}" == "release" && "${target}" != "linux" ]] && echo true || echo false)"
+readonly signed="$([[ "${package_mode}" == "release" && "${release_unsigned}" != "1" && "${target}" != "linux" ]] && echo true || echo false)"
 cat >"${output_dir}/${metadata_name}.json" <<EOF
 {"schemaVersion":1,"appId":"SkillsGo","version":"${version}","channel":"${channel}","runtime":"${runtime}","mode":"${package_mode}","signed":${signed}}
 EOF
