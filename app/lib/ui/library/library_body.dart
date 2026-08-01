@@ -52,7 +52,7 @@ extension _LibraryBody on _LibraryScreenState {
         );
       }
     }
-    if (updatesOnly) {
+    if (libraryFilter == _LibraryFilter.updates) {
       final packages = _packageUpdateCards;
       if (packages.isEmpty) {
         return EmptyState(

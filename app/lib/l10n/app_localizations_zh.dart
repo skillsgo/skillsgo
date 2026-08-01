@@ -439,6 +439,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryGlobalScope => '全局技能';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安装';
+
+  @override
+  String get libraryFilterTooltip => '当前范围内的全部已安装 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和删除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '通过 skill.sh、手动复制或 git clone 等方式安装的技能，需先纳入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '仅显示有可用更新的托管 Skills';
+
+  @override
   String get libraryExternalScope => '外部技能';
 
   @override
@@ -2010,6 +2029,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hideRemovalDetails => '收起详情';
+
+  @override
+  String get managedBackups => '托管备份';
+
+  @override
+  String get adoptionBackupAvailable => '原安装已自动备份';
+
+  @override
+  String get adoptionBackupRetention => '30 天内可恢复';
+
+  @override
+  String get adoptionBackupRestore => '恢复原安装';
+
+  @override
+  String get adoptionBackupRestoreTitle => '恢复原安装？';
+
+  @override
+  String get adoptionBackupRestoreMessage => '这会移除当前托管版本，恢复托管前的安装和本地修改。';
+
+  @override
+  String get managedBackupsTitle => '托管备份';
+
+  @override
+  String get managedBackupsDescription => '接管 Skill 时自动保存的原安装，可在 30 天内恢复。';
+
+  @override
+  String managedBackupsCount(int count) {
+    return '$count 个可恢复备份';
+  }
+
+  @override
+  String get managedBackupsEmpty => '暂无可恢复备份';
+
+  @override
+  String get managedBackupsLoadFailed => '暂时无法读取托管备份';
+
+  @override
+  String get managedBackupRestoreFailed => '恢复失败，可以重试';
+
+  @override
+  String get managedBackupRestored => '原安装已恢复。';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return '可恢复至 $date';
+  }
 }
 
 /// The translations for Chinese, as used in Hong Kong, using the Han script (`zh_Hant_HK`).
@@ -2442,6 +2507,25 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安裝';
+
+  @override
+  String get libraryFilterTooltip => '目前範圍內的全部已安裝 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和刪除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '透過 skill.sh、手動複製或 git clone 等方式安裝的技能，需先納入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '僅顯示有可用更新的託管 Skills';
 
   @override
   String get libraryExternalScope => '外部技能';
@@ -4015,6 +4099,60 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get hideRemovalDetails => '隱藏詳細訊息';
+
+  @override
+  String get managedBackups => '託管備份';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }
 
 /// The translations for Chinese, as used in Taiwan, using the Han script (`zh_Hant_TW`).
@@ -4448,6 +4586,25 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get libraryGlobalScope => '全域技能';
+
+  @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安裝';
+
+  @override
+  String get libraryFilterTooltip => '目前範圍內的全部已安裝 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和刪除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '透過 skill.sh、手動複製或 git clone 等方式安裝的技能，需先納入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '僅顯示有可用更新的託管 Skills';
 
   @override
   String get libraryExternalScope => '外部技能';
@@ -6021,4 +6178,58 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get hideRemovalDetails => '隱藏詳細訊息';
+
+  @override
+  String get managedBackups => '託管備份';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }

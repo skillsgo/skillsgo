@@ -65,11 +65,11 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Adoption**:
-The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. The App sends each chosen Package Path, immutable Version, Skill Path, and original Installation Targets once; the CLI stages the External copy, runs the ordinary Package installation transaction, and moves the superseded copy to Trash only after success.
+The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. The App sends each chosen Package Path, immutable Version, Skill Path, and original Installation Targets once; the CLI stages the External copy, runs the ordinary Package installation transaction, and publishes a per-Skill recovery record for 30 days after success. The managed Skill detail exposes an explicit restore flow.
 _Avoid_: automatic identity inference, content-authenticated adoption, separate adoption installation path, implicit import, unmatched Local import
 
 **Adoption Review**:
-The temporary Library mode in which complete Package and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; ordinary Library inventory never waits for Hub matching.
+The temporary Library mode in which complete Package and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; a supported skills.sh Package hint restricts that row to one Package while unhinted rows retain exact-name candidate matching across the Hub. Ordinary Library inventory never waits for Hub matching.
 _Avoid_: permanent installation table, background adoption, second Library
 
 **Target Result**:

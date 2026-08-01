@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
- * [OUTPUT]: Verifies unified External Skills adoption counts, cross-scope Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
- * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
+ * [OUTPUT]: Verifies the unified External Skills route, location-scoped existing-Skill adoption, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, post-success rescans, and Settings-managed backup restoration using stable rendered keys rather than copy that changes with localization.
+ * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management and recovery journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:convert';
@@ -13,7 +13,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
-import 'package:skillsgo/ui/native_components.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'support/journey_runtime.dart';
@@ -135,9 +134,39 @@ void registerAdoptionManagementJourney() {
         tester,
         find.byKey(const Key('library-adoption-review-enter')),
       );
+      await _restoreOneManagedBackupFromSettings(tester);
+      final restoredTargets = [
+        globalTarget,
+        projectTarget,
+      ].where((target) => target.existsSync()).toList();
+      expect(restoredTargets, hasLength(1));
+      expect(
+        File('${restoredTargets.single.path}/SKILL.md').readAsBytesSync(),
+        userSkillBytes,
+      );
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
+}
+
+Future<void> _restoreOneManagedBackupFromSettings(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('primary-destination-settings')));
+  await _pumpUntil(tester, find.text('Backups'));
+  await tester.tap(find.text('Backups'));
+  await _pumpUntil(tester, find.byKey(const Key('managed-backups-count')));
+
+  final restore = find.text('Restore original install').first;
+  await _pumpUntil(tester, restore);
+  await tester.tap(restore);
+  final dialog = find.byType(AlertDialog);
+  await _pumpUntil(tester, dialog);
+  await tester.tap(
+    find.descendant(
+      of: dialog,
+      matching: find.text('Restore original install'),
+    ),
+  );
+  await _pumpUntil(tester, find.text('Original install restored.'));
 }
 
 Map<String, Object> _lockRecord(String skillPath) => {
@@ -156,13 +185,8 @@ void _writeJson(File file, Object value) {
 }
 
 Finder _adoptionCount(int count) => find.descendant(
-  of: find.byKey(const Key('library-adoption-review-enter')),
-  matching: find.byWidgetPredicate(
-    (widget) =>
-        widget is Text &&
-        (widget.data == 'Let SkillsGo manage $count external skills' ||
-            widget.data == '将 $count 个外部技能交给 SkillsGo 管理'),
-  ),
+  of: find.byKey(const Key('library-external-skills-count')),
+  matching: find.text('$count'),
 );
 
 Finder _globalRailLabel() => find.byWidgetPredicate(
@@ -185,6 +209,13 @@ Future<void> _executeAdoption(
   );
   await _pumpUntilEnabledPrimaryButton(tester, confirmSelection);
   await tester.tap(confirmSelection);
+  final adoptionConfirmation = find.byKey(
+    const Key('library-adoption-confirmation-dialog'),
+  );
+  await _pumpUntil(tester, adoptionConfirmation);
+  await tester.tap(
+    find.byKey(const Key('library-adoption-confirmation-confirm')),
+  );
   await _pumpUntil(tester, find.byKey(const Key('batch-adoption-dialog')));
   await tester.pumpAndSettle();
   expect(find.byKey(const Key('batch-adoption-tetris-story')), findsOneWidget);
@@ -225,11 +256,11 @@ Future<void> _pumpUntilEnabledPrimaryButton(
 ) async {
   final deadline = DateTime.now().add(const Duration(seconds: 45));
   while (DateTime.now().isBefore(deadline)) {
-    final buttons = tester.widgetList<PrimaryCapsuleButton>(finder);
-    if (buttons.isNotEmpty && buttons.first.onPressed != null) return;
+    final buttons = tester.widgetList<Semantics>(finder);
+    if (buttons.any((button) => button.properties.enabled == true)) return;
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(tester.widget<PrimaryCapsuleButton>(finder).onPressed, isNotNull);
+  expect(tester.widget<Semantics>(finder).properties.enabled, isTrue);
 }
 
 Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
@@ -247,9 +278,11 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
   }
   final adoptionLabels = tester
       .widgetList<Text>(
-        find.descendant(
-          of: find.byKey(const Key('library-adoption-review-enter')),
-          matching: find.byType(Text),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data?.contains('SkillsGo manage') == true ||
+                  widget.data?.contains('技能交给 SkillsGo 管理') == true),
         ),
       )
       .map((widget) => widget.data)

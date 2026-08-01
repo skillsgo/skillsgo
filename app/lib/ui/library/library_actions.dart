@@ -410,9 +410,18 @@ extension _LibraryActions on _LibraryScreenState {
   List<InstalledSkill> get _visibleSkills {
     final visible = <InstalledSkill>[];
     for (final visibleSkill in _locationAndAgentProjectedSkills) {
-      if (updatesOnly &&
-          updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
-              UpdateState.available) {
+      if (libraryFilter == _LibraryFilter.updates &&
+          (visibleSkill.provenance == LibraryProvenance.external ||
+              updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
+                  UpdateState.available)) {
+        continue;
+      }
+      if (libraryFilter == _LibraryFilter.managed &&
+          visibleSkill.provenance == LibraryProvenance.external) {
+        continue;
+      }
+      if (libraryFilter == _LibraryFilter.otherInstallation &&
+          visibleSkill.provenance != LibraryProvenance.external) {
         continue;
       }
       final query = librarySearchController.text.trim().toLowerCase();
@@ -430,5 +439,30 @@ extension _LibraryActions on _LibraryScreenState {
       visible.add(visibleSkill);
     }
     return visible;
+  }
+
+  int get _availableUpdatePackageCount {
+    final query = librarySearchController.text.trim().toLowerCase();
+    final packages = <String>{};
+    for (final skill in _locationAndAgentProjectedSkills) {
+      if (skill.provenance == LibraryProvenance.external ||
+          updates[libraryScopeUpdateKey(skill)]?.state !=
+              UpdateState.available) {
+        continue;
+      }
+      if (query.isNotEmpty) {
+        final searchable = [
+          skill.name,
+          skill.description,
+          skill.packagePath,
+          ...skill.agents,
+          ...skill.projects,
+          ...skill.versions,
+        ].join('\n').toLowerCase();
+        if (!searchable.contains(query)) continue;
+      }
+      packages.add(skill.packagePath);
+    }
+    return packages.length;
   }
 }

@@ -61,6 +61,8 @@ Future<void> openUpdates(WidgetTester tester, FakeSkillsGateway gateway) async {
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('primary-destination-library')));
   await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('library-update-filter')));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Updates'));
   await tester.pumpAndSettle();
 }

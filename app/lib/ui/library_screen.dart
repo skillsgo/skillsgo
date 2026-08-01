@@ -18,6 +18,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:just_tooltip/just_tooltip.dart';
 import 'package:multi_dropdown/multi_dropdown.dart';
 import 'package:path/path.dart' as p;
+import 'package:portal_labs/portal_labs.dart' as portal;
 
 import '../domain/skills_gateway.dart';
 import 'agent_catalog_controller.dart';
@@ -33,7 +34,6 @@ import 'native_components.dart';
 import 'nested_navigation.dart';
 import 'project_identity_icon.dart';
 import 'skill_markdown_view.dart';
-import 'subscription_segmented_switch.dart';
 import 'ui_support.dart';
 import 'update_check_controller.dart';
 

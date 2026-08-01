@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on a verified 0.0.1 Velopack candidate, Flutter/Go native build tools, Velopack CLI 1.2.0, and one supported target architecture.
-# [OUTPUT]: Preserves the 0.0.1 launcher, builds 0.0.2 from the same source, and appends its full package to the target's local Velopack feed.
+# [INPUT]: Depends on a verified Velopack candidate matching app/pubspec.yaml, Flutter/Go native build tools, Velopack CLI 1.2.0, and one supported target architecture.
+# [OUTPUT]: Preserves the current launcher, builds the next patch version from the same source, and appends its full package to the target's local Velopack feed.
 # [POS]: Serves as the deterministic two-version preparation half of the zero-cost App update E2E.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -10,8 +10,21 @@ readonly target="${1:-}"
 readonly architecture="${2:-}"
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly app_root="${repository_root}/app"
-readonly baseline_version="0.0.1"
-readonly update_version="0.0.2"
+readonly workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' "${app_root}/pubspec.yaml")"
+
+next_patch_version() {
+  local base_version="${1%%-*}"
+  local major minor patch
+  IFS=. read -r major minor patch <<<"${base_version}"
+  if [[ ! "${major:-}" =~ ^[0-9]+$ || ! "${minor:-}" =~ ^[0-9]+$ || ! "${patch:-}" =~ ^[0-9]+$ ]]; then
+    echo "Unsupported App version for update rehearsal: ${1}" >&2
+    exit 1
+  fi
+  printf '%s.%s.%s' "${major}" "${minor}" "$((patch + 1))"
+}
+
+readonly baseline_version="${SKILLSGO_APP_BASELINE_VERSION:-${workspace_version}}"
+readonly update_version="${SKILLSGO_APP_UPDATE_VERSION:-$(next_patch_version "${baseline_version}")}"
 
 case "${target}:${architecture}" in
   windows:x64)

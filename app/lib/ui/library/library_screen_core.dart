@@ -8,6 +8,8 @@ part of '../library_screen.dart';
 
 enum _LibraryLocationKind { global, external, project }
 
+enum _LibraryFilter { all, managed, otherInstallation, updates }
+
 class _LibraryLocationRoute {
   const _LibraryLocationRoute._(this.kind, [this.projectId]);
 
@@ -57,7 +59,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool removalConfirming = false;
   int removalFinishedTargets = 0;
   int removalTotalTargets = 0;
-  bool updatesOnly = false;
+  _LibraryFilter libraryFilter = _LibraryFilter.all;
   final selectedAgents = <String>{};
   _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.global;
   bool addingProject = false;
@@ -276,7 +278,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                       : context.l10n.selectCurrentResults,
                                   child: adoptionReviewVisible
                                       ? const SizedBox.shrink()
-                                      : updatesOnly
+                                      : libraryFilter == _LibraryFilter.updates
                                       ? const SizedBox.shrink()
                                       : SkillsCheckbox(
                                           key: const Key(
@@ -313,11 +315,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         ),
                         const SizedBox(width: 4),
                         _LibraryScopeToggle(
-                          updatesOnly: updatesOnly,
-                          updateCount: _packageUpdateCards.length,
-                          onChanged: (value) {
-                            setState(() => updatesOnly = value);
-                            if (value) {
+                          filter: libraryFilter,
+                          updateCount: _availableUpdatePackageCount,
+                          onChanged: (filter) {
+                            setState(() => libraryFilter = filter);
+                            if (filter == _LibraryFilter.updates) {
                               unawaited(
                                 checkUpdates(
                                   trigger: UpdateCheckTrigger.updatesView,

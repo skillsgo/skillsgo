@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with pgxpool configuration, Testcontainers PostgreSQL, and deterministic Skill metadata.
- * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, monotonic and concurrency-safe current-Version selection, explicit Backfill Run/Version outcomes, complete member history, localization failure recovery, name-first/exact set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
+ * [OUTPUT]: Specifies independently bounded zero-minimum foreground/background pool policy, migrations, shared native transactions, immutable Package Release persistence, monotonic and concurrency-safe current-Version selection, explicit Backfill Run/Version outcomes, complete member history, localization failure recovery, Package-hint-prioritized exact candidate sets, name-first set-based Card projections, due Repository metadata ID-keyset and retry-window selection, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -354,8 +354,9 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	})
 	require.Equal(t, "本地化一", results[0].Skills[0].Description)
 	require.Equal(t, "module", results[1].ID)
-	require.Len(t, results[1].Skills, 1)
+	require.Len(t, results[1].Skills, 2)
 	require.Equal(t, "github.com/acme/two", results[1].Skills[0].PackagePath)
+	require.Equal(t, "github.com/acme/one", results[1].Skills[1].PackagePath)
 	require.Equal(t, "missing", results[2].ID)
 	require.Empty(t, results[2].Skills)
 
@@ -368,12 +369,40 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	require.Equal(t, "github.com/acme/two", ranked[0].Skills[0].PackagePath)
 	require.Equal(t, 1.0, ranked[0].Skills[0].MatchScore)
 
+	missingHint, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{{
+		ID: "missing-hint", Query: "shared", PackagePath: "github.com/acme/missing", Description: "Canonical two", ExactName: true,
+	}}, "", 10)
+	require.NoError(t, err)
+	require.Len(t, missingHint, 1)
+	require.Len(t, missingHint[0].Skills, 2)
+	require.Equal(t, "github.com/acme/two", missingHint[0].Skills[0].PackagePath)
+	require.Equal(t, "github.com/acme/one", missingHint[0].Skills[1].PackagePath)
 	caseSensitive, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{{
 		ID: "uppercase", Query: "Shared", Description: "Canonical one", ExactName: true,
 	}}, "", 10)
 	require.NoError(t, err)
 	require.Len(t, caseSensitive, 1)
 	require.Empty(t, caseSensitive[0].Skills)
+	for index := range 11 {
+		require.NoError(t, upsertTestSkill(t, c, &Skill{
+			PackagePath: fmt.Sprintf("github.com/crowded/%02d", index),
+			Path:        "skills/crowded",
+			Name:        "crowded",
+			Description: fmt.Sprintf("Candidate %02d", index),
+		}))
+	}
+	crowded, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{{
+		ID: "crowded", Query: "crowded", PackagePath: "github.com/crowded/00", Description: "Candidate 10", ExactName: true,
+	}}, "", 10)
+	require.NoError(t, err)
+	require.Len(t, crowded, 1)
+	require.Len(t, crowded[0].Skills, 10)
+	require.Equal(t, "github.com/crowded/00", crowded[0].Skills[0].PackagePath)
+	seenPackages := make(map[string]bool, len(crowded[0].Skills))
+	for _, candidate := range crowded[0].Skills {
+		require.False(t, seenPackages[candidate.PackagePath], "a prioritized candidate must not be duplicated")
+		seenPackages[candidate.PackagePath] = true
+	}
 }
 
 func TestPostgresCatalogPackagesDueForSourceMetadataRefreshUsesStableIDCursorAndRetryWindows(t *testing.T) {
@@ -952,7 +981,7 @@ func TestPostgresMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := openTestCatalog(t)
 	var version string
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
-	require.Equal(t, "202607310004", version)
+	require.Equal(t, "202608020005", version)
 	require.NoError(t, c.Migrate(ctx))
 	require.NoError(t, c.pool.QueryRow(ctx, "SELECT version FROM atlas_schema_revisions ORDER BY version DESC LIMIT 1").Scan(&version))
 }

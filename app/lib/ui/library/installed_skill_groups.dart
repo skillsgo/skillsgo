@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on unified InstalledSkill entries, Package identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
+ * [INPUT]: Depends on unified InstalledSkill entries, Package identity, the provenance icon, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
  * [OUTPUT]: Provides grouping data, deterministic Package grouping, one-scope Package update cards with CLI-owned removed-Skill names, size-aware GitHub Package avatars, compact Package Path identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and bounded idle guidance.
  * [POS]: Serves as the Package grouping segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -293,17 +293,12 @@ class _InstalledSkillGroup extends StatelessWidget {
                       SizedBox(
                         width: 44,
                         child: Center(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(13),
-                            child: Image.asset(
-                              'assets/branding/skillsgo-logo.webp',
-                              key: const Key('library-external-skills-logo'),
-                              width: 42,
-                              height: 42,
-                              fit: BoxFit.cover,
-                              filterQuality: FilterQuality.high,
-                              excludeFromSemantics: true,
-                            ),
+                          child: HugeIcon(
+                            key: const Key('library-external-skills-icon'),
+                            icon: HugeIcons.strokeRoundedFolderOpen,
+                            size: 26,
+                            strokeWidth: 1.8,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -312,17 +307,11 @@ class _InstalledSkillGroup extends StatelessWidget {
                         height: 42,
                         child: PrimaryCapsuleButton(
                           key: const Key('library-adoption-review-enter'),
-                          label: context.l10n
-                              .handExternalSkillsToSkillsGoManagementCount(
-                                group.skills.length,
-                              ),
+                          label: context.l10n.batchAdoptionAction,
                           height: 42,
                           horizontalPadding: 18,
                           labelWidget: ShimmerText(
-                            text: context.l10n
-                                .handExternalSkillsToSkillsGoManagementCount(
-                                  group.skills.length,
-                                ),
+                            text: context.l10n.batchAdoptionAction,
                             style: context.skillsTypography.label.copyWith(
                               color: buttonForeground,
                               fontWeight: FontWeight.w600,

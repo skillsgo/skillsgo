@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on a two-version local Velopack feed from prepare-app-update-rehearsal.sh, its preserved macOS/Linux 0.0.1 launcher, an explicit portable-App channel, Dart, and native process support.
-# [OUTPUT]: Serves the feed locally, launches packaged 0.0.1 with the guarded update source, and proves Velopack replaced it with runnable 0.0.2 content and restarted the platform launcher.
+# [INPUT]: Depends on a two-version local Velopack feed from prepare-app-update-rehearsal.sh, its preserved launcher, an explicit portable-App channel, Dart, and native process support.
+# [OUTPUT]: Serves the feed locally, launches the current packaged App with the guarded update source, and proves Velopack replaced it with the next patch and restarted the platform launcher.
 # [POS]: Serves as the real check/download/apply/restart gate for unsigned macOS and Linux App updates; Windows is verified by the workflow's native PowerShell gate.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -10,7 +10,15 @@ readonly target="${1:-}"
 readonly architecture="${2:-}"
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly app_root="${repository_root}/app"
-readonly update_version="0.0.2"
+readonly workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' "${app_root}/pubspec.yaml")"
+readonly baseline_version="${SKILLSGO_APP_BASELINE_VERSION:-${workspace_version}}"
+readonly base_version="${baseline_version%%-*}"
+IFS=. read -r major minor patch <<<"${base_version}"
+if [[ ! "${major:-}" =~ ^[0-9]+$ || ! "${minor:-}" =~ ^[0-9]+$ || ! "${patch:-}" =~ ^[0-9]+$ ]]; then
+  echo "Unsupported App version for update rehearsal: ${baseline_version}" >&2
+  exit 1
+fi
+readonly update_version="${SKILLSGO_APP_UPDATE_VERSION:-${major}.${minor}.$((patch + 1))}"
 readonly port="38127"
 readonly update_url="http://127.0.0.1:${port}/"
 
@@ -99,7 +107,7 @@ if [[ "${target}" == "macos" ]]; then
         exit 1
       fi
       app_pid="${restarted_pid}"
-      echo "Updated and restarted SkillsGo 0.0.1 -> ${update_version} for ${channel}."
+      echo "Updated and restarted SkillsGo ${baseline_version} -> ${update_version} for ${channel}."
       exit 0
     fi
     sleep 1
@@ -146,7 +154,7 @@ else
           echo "Velopack replaced ${channel} but did not restart the updated AppImage." >&2
           exit 1
         fi
-        echo "Updated and restarted SkillsGo 0.0.1 -> ${update_version} for ${channel}."
+        echo "Updated and restarted SkillsGo ${baseline_version} -> ${update_version} for ${channel}."
         exit 0
       fi
     fi

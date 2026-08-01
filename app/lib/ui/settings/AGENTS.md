@@ -3,13 +3,12 @@
 
 ## Members
 
-- `settings_screen_core.dart`: owns settings-route state, lifecycle, explicit App-update phase/result/error state, local Library refresh and diagnostic-log feedback, and secondary-body composition.
-- `settings_sections.dart`: renders the General, Reminders, Agents, and Advanced route structure, including App updates, Onboarding re-entry, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
-- `app_update_settings.dart`: renders the production App-binary update status and explicit check/apply-and-restart actions independently from Package updates.
+- `settings_screen_core.dart`: owns settings-route state, lifecycle, local Library refresh and diagnostic-log feedback, and secondary-body composition.
+- `settings_sections.dart`: renders the General, Reminders, Agents, Managed Backups, and Advanced route structure, including Onboarding re-entry, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
 - `diagnostic_log_viewer.dart`: renders the bounded newest-first human-readable live diagnostic stream with filtering, search, pause/follow, local clear, mutation-safe per-entry copying, and latest-entry recovery.
 - `mermaid_gallery.dart`: renders a 32-type official Mermaid.js 11.16.0 audit gallery backed by the App's single shared WebView queue.
 - `appearance_settings.dart`: renders folder theme, appearance mode, wallpaper, and related controls.
-- `integration_settings.dart`: renders CLI, the single Hub Origin, storage, reminders, and recovery controls.
+- `integration_settings.dart`: renders CLI, the single Hub Origin, managed-backup listing and restore controls, storage, reminders, and recovery controls.
 - `language_selector.dart`: renders and persists Presentation Locale selection.
 - `agent_status_row.dart`: renders one detected or supported Agent state.
 

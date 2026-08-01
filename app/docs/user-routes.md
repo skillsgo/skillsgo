@@ -60,12 +60,14 @@ Project B
 General
 Reminders
 Agents
+Managed Backups
 Advanced
 ```
 
 - **General**: language, appearance, folder theme, and wallpaper.
 - **Reminders**: update and high-risk notification preferences.
 - **Agents**: detection state, paths, re-detection, and adapter guidance.
+- **Managed Backups**: original installs saved when SkillsGo takes over a Skill, with expiry and an explicit restore action.
 - **Advanced**: official or self-hosted Hub Origin health, bundled CLI recovery and developer override, storage status, Critical-risk policy, restarting Onboarding without deleting data, and an explicit local Library refresh as the final action.
 
 ## First Launch

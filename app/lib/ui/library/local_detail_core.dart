@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, local/remote Skill identity, gateway mutations, the App-scoped update coordinator, and detail navigation.
- * [OUTPUT]: Provides the public LocalDetailScreen plus package-avatar identity, loading, cached update state, post-mutation update refresh, exact removal, install-more, and root rendering behavior.
+ * [OUTPUT]: Provides the public LocalDetailScreen plus package-avatar identity, loading, adoption-backup recovery, cached update state, post-mutation update refresh, exact removal, install-more, and root rendering behavior.
  * [POS]: Serves as the state-owning core of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,6 +31,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   late InstalledSkill skill;
   SkillDetail? detail;
   SkillDetail? remoteIdentity;
+  List<AdoptionBackup> adoptionBackups = const [];
   late UpdateAvailability updateAvailability;
   UpdateState get updateState => updateAvailability.state;
   Object? error;
@@ -106,11 +107,75 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     try {
       detail = await widget.gateway.loadLocalDetail(skill);
       if (mounted) setState(() {});
+      unawaited(_loadAdoptionBackups());
       unawaited(_loadRemoteIdentity());
     } catch (caught) {
       error = caught;
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadAdoptionBackups() async {
+    if (skill.provenance != LibraryProvenance.hub ||
+        skill.packagePath.isEmpty) {
+      if (mounted && adoptionBackups.isNotEmpty) {
+        setState(() => adoptionBackups = const []);
+      }
+      return;
+    }
+    try {
+      final backups = await widget.gateway.listAdoptionBackups();
+      if (!mounted) return;
+      final matching =
+          backups
+              .where(
+                (backup) =>
+                    backup.canRestore &&
+                    backup.packagePath == skill.packagePath &&
+                    backup.name == skill.name &&
+                    backup.expiresAt.isAfter(DateTime.now()),
+              )
+              .toList()
+            ..sort((left, right) => right.createdAt.compareTo(left.createdAt));
+      setState(() => adoptionBackups = List.unmodifiable(matching));
+    } on Object {
+      // Recovery is an optional enrichment; local Skill detail stays usable.
+    }
+  }
+
+  Future<void> restoreAdoptionBackup(AdoptionBackup backup) async {
+    if (managing) return;
+    final confirmed = await showSkillsDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.adoptionBackupRestoreTitle),
+        content: Text(context.l10n.adoptionBackupRestoreMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            key: const Key('installed-detail-adoption-recovery-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.l10n.adoptionBackupRestore),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      managing = true;
+      result = null;
+    });
+    try {
+      await widget.gateway.restoreAdoptionBackup(backup.id);
+      await _refreshManagedSkill(removeWhenMissing: true);
+    } catch (caught) {
+      if (mounted) setState(() => result = exceptionResult(caught));
+    }
+    if (mounted) setState(() => managing = false);
   }
 
   Future<void> _loadRemoteIdentity() async {
@@ -330,6 +395,10 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
               children: [
                 if (result != null) ...[
                   OperationPanel(result: result!),
+                  const SizedBox(height: 14),
+                ],
+                if (adoptionBackups.isNotEmpty) ...[
+                  _adoptionRecoveryPanel(),
                   const SizedBox(height: 14),
                 ],
                 InstallationScopePanel(

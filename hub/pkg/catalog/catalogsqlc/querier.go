@@ -6,6 +6,7 @@ package catalogsqlc
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -56,12 +57,14 @@ type Querier interface {
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
 	TranslationCandidates(ctx context.Context, arg TranslationCandidatesParams) ([]TranslationCandidatesRow, error)
+	TranslationProviderBlockedUntil(ctx context.Context, arg TranslationProviderBlockedUntilParams) (time.Time, error)
+	TripTranslationProvider(ctx context.Context, arg TripTranslationProviderParams) (time.Time, error)
 	UpdatePackageSourceMetadata(ctx context.Context, arg UpdatePackageSourceMetadataParams) (int64, error)
 	UpsertBackfillVersionOutcome(ctx context.Context, arg UpsertBackfillVersionOutcomeParams) error
 	UpsertLocalization(ctx context.Context, arg UpsertLocalizationParams) error
 	UpsertLocalizationFailure(ctx context.Context, arg UpsertLocalizationFailureParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error)

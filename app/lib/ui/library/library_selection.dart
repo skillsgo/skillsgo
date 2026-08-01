@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Library selection identity, selected entries, removal/update callbacks, motion preferences, and scope toggle state.
- * [OUTPUT]: Provides scope grouping, a removal-only stable selection bar, source labels, and an All/Updates toggle with Package update count.
+ * [OUTPUT]: Provides scope grouping, a removal-only stable selection bar, source labels, and the All/SkillsGo Managed/Other Installation/Updates filter dropdown with Package update count.
  * [POS]: Serves as the multi-selection and scope-control segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -327,34 +327,404 @@ String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
   return skill.packagePath;
 }
 
-class _LibraryScopeToggle extends StatelessWidget {
+class _LibraryScopeToggle extends StatefulWidget {
   const _LibraryScopeToggle({
-    required this.updatesOnly,
+    required this.filter,
     required this.updateCount,
     required this.onChanged,
   });
 
-  final bool updatesOnly;
+  final _LibraryFilter filter;
   final int updateCount;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<_LibraryFilter> onChanged;
+
+  @override
+  State<_LibraryScopeToggle> createState() => _LibraryScopeToggleState();
+}
+
+class _LibraryScopeToggleState extends State<_LibraryScopeToggle> {
+  final controller = MultiSelectController<_LibraryFilter>();
+  bool syncing = false;
+
+  List<DropdownItem<_LibraryFilter>> get items => [
+    DropdownItem(
+      label: context.l10n.all,
+      value: _LibraryFilter.all,
+      selected: widget.filter == _LibraryFilter.all,
+    ),
+    DropdownItem(
+      label: context.l10n.libraryImportedSkills,
+      value: _LibraryFilter.managed,
+      selected: widget.filter == _LibraryFilter.managed,
+    ),
+    DropdownItem(
+      label: context.l10n.libraryLocalSkills,
+      value: _LibraryFilter.otherInstallation,
+      selected: widget.filter == _LibraryFilter.otherInstallation,
+    ),
+    DropdownItem(
+      label: context.l10n.updatesOnly,
+      value: _LibraryFilter.updates,
+      selected: widget.filter == _LibraryFilter.updates,
+    ),
+  ];
+
+  String _label(_LibraryFilter filter) => switch (filter) {
+    _LibraryFilter.all => context.l10n.all,
+    _LibraryFilter.managed => context.l10n.libraryImportedSkills,
+    _LibraryFilter.otherInstallation => context.l10n.libraryLocalSkills,
+    _LibraryFilter.updates => context.l10n.updatesOnly,
+  };
+
+  String _tooltip(_LibraryFilter filter) => switch (filter) {
+    _LibraryFilter.all => context.l10n.libraryFilterTooltip,
+    _LibraryFilter.managed => context.l10n.libraryFilterManagedTooltip,
+    _LibraryFilter.otherInstallation => context.l10n.libraryFilterOtherTooltip,
+    _LibraryFilter.updates => context.l10n.libraryFilterUpdatesTooltip,
+  };
+
+  List<List<dynamic>> _icon(_LibraryFilter filter) => switch (filter) {
+    _LibraryFilter.all => HugeIcons.strokeRoundedLayers01,
+    _LibraryFilter.managed => HugeIcons.strokeRoundedCheckmarkCircle02,
+    _LibraryFilter.otherInstallation => HugeIcons.strokeRoundedFolderOpen,
+    _LibraryFilter.updates => HugeIcons.strokeRoundedArrowReloadVertical,
+  };
+
+  @override
+  void didUpdateWidget(covariant _LibraryScopeToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.filter != widget.filter ||
+        oldWidget.updateCount != widget.updateCount) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || controller.isDisposed) return;
+        syncing = true;
+        controller.setItems(items);
+        syncing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SubscriptionSegmentedSwitch(
-      key: const Key('library-update-filter'),
-      options: [
-        SubscriptionSwitchOption(
-          label: context.l10n.all,
-          icon: HugeIcons.strokeRoundedLayers01,
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.skillsColors;
+    final selected = widget.filter;
+    return _LibraryFilterHoverDescription(
+      message: _tooltip(selected),
+      child: Semantics(
+        key: const Key('library-update-filter'),
+        label: _label(selected),
+        button: true,
+        excludeSemantics: true,
+        child: SizedBox(
+          width: 192,
+          height: 36,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRect(
+                child: OverflowBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  minWidth: 252,
+                  maxWidth: 252,
+                  child: MultiDropdown<_LibraryFilter>(
+                    controller: controller,
+                    items: items,
+                    singleSelect: true,
+                    closeOnBackButton: false,
+                    fieldDecoration: FieldDecoration(
+                      hintText: '',
+                      showClearIcon: false,
+                      animateSuffixIcon: false,
+                      padding: EdgeInsets.zero,
+                      backgroundColor: Colors.transparent,
+                      border: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      suffixIcon: null,
+                    ),
+                    dropdownDecoration: DropdownDecoration(
+                      backgroundColor: colors.surfaceMuted,
+                      elevation: 5,
+                      maxHeight: 240,
+                      marginTop: 6,
+                      borderRadius: BorderRadius.circular(14),
+                      listPadding: const EdgeInsets.symmetric(vertical: 6),
+                      animationDuration: const Duration(milliseconds: 180),
+                      animationCurve: Curves.easeOutCubic,
+                    ),
+                    itemBuilder: (item, index, onTap) =>
+                        _LibraryFilterHoverDescription(
+                          message: _tooltip(item.value),
+                          child: Semantics(
+                            label: item.label,
+                            button: true,
+                            selected: item.selected,
+                            child: ExcludeSemantics(
+                              child: InkWell(
+                                onTap: onTap,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 9,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      HugeIcon(
+                                        icon: _icon(item.value),
+                                        size: 17,
+                                        strokeWidth: 1.8,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          item.label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (item.value ==
+                                              _LibraryFilter.updates &&
+                                          widget.updateCount > 0) ...[
+                                        const SizedBox(width: 10),
+                                        _LibraryFilterCountBadge(
+                                          count: widget.updateCount,
+                                        ),
+                                      ],
+                                      const SizedBox(width: 12),
+                                      AnimatedOpacity(
+                                        opacity: item.selected ? 1 : 0,
+                                        duration: const Duration(
+                                          milliseconds: 120,
+                                        ),
+                                        child: const HugeIcon(
+                                          icon: HugeIcons.strokeRoundedTick01,
+                                          size: 18,
+                                          strokeWidth: 1.8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    selectedItemBuilder: (_) => const SizedBox.shrink(),
+                    chipDecoration: const ChipDecoration(
+                      padding: EdgeInsets.zero,
+                      spacing: 0,
+                      runSpacing: 0,
+                    ),
+                    onSelectionChange: (values) {
+                      if (syncing || values.isEmpty) return;
+                      widget.onChanged(values.first);
+                    },
+                  ),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: colors.borderMuted),
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                start: 0,
+                top: 0,
+                bottom: 0,
+                end: 28,
+                child: IgnorePointer(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 12),
+                    child: Row(
+                      children: [
+                        HugeIcon(
+                          icon: _icon(selected),
+                          size: 16,
+                          strokeWidth: 1.8,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            _label(selected),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (selected == _LibraryFilter.updates &&
+                            widget.updateCount > 0) ...[
+                          const SizedBox(width: 6),
+                          _LibraryFilterCountBadge(
+                            key: ValueKey(
+                              'subscription-switch-badge-${_label(selected)}',
+                            ),
+                            count: widget.updateCount,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              PositionedDirectional(
+                end: 10,
+                top: 11.5,
+                child: IgnorePointer(
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedArrowDown01,
+                    size: 13,
+                    strokeWidth: 1.4,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        SubscriptionSwitchOption(
-          label: context.l10n.updatesOnly,
-          icon: HugeIcons.strokeRoundedArrowReloadVertical,
-          showBadge: updateCount > 0,
+      ),
+    );
+  }
+}
+
+class _LibraryFilterHoverDescription extends StatefulWidget {
+  const _LibraryFilterHoverDescription({
+    required this.message,
+    required this.child,
+  });
+
+  final String message;
+  final Widget child;
+
+  @override
+  State<_LibraryFilterHoverDescription> createState() =>
+      _LibraryFilterHoverDescriptionState();
+}
+
+class _LibraryFilterHoverDescriptionState
+    extends State<_LibraryFilterHoverDescription> {
+  OverlayEntry? _entry;
+  Offset _position = Offset.zero;
+
+  OverlayState? get _overlay => Overlay.maybeOf(context, rootOverlay: true);
+
+  void _updatePosition(Offset globalPosition) {
+    final overlay = _overlay;
+    if (overlay == null) return;
+    final renderObject = overlay.context.findRenderObject();
+    _position = renderObject is RenderBox
+        ? renderObject.globalToLocal(globalPosition)
+        : globalPosition;
+    if (_entry == null) {
+      _entry = OverlayEntry(builder: _buildOverlay);
+      overlay.insert(_entry!);
+    } else {
+      _entry!.markNeedsBuild();
+    }
+  }
+
+  void _handleEnter(PointerEnterEvent event) => _updatePosition(event.position);
+
+  void _handleHover(PointerHoverEvent event) => _updatePosition(event.position);
+
+  void _handleExit(PointerExitEvent event) => _removeEntry();
+
+  void _removeEntry() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  Widget _buildOverlay(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    const width = 320.0;
+    final maxLeft = math.max(8.0, size.width - width - 8);
+    final left = (_position.dx + 14).clamp(8.0, maxLeft).toDouble();
+    final top = (_position.dy + 18)
+        .clamp(8.0, math.max(8.0, size.height - 80))
+        .toDouble();
+    final scheme = Theme.of(context).colorScheme;
+    return Positioned(
+      left: left,
+      top: top,
+      child: IgnorePointer(
+        child: Material(
+          color: scheme.inverseSurface,
+          elevation: 8,
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: width),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              child: Text(
+                widget.message,
+                style: TextStyle(
+                  color: scheme.onInverseSurface,
+                  fontSize: 12,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ),
         ),
-      ],
-      selectedIndex: updatesOnly ? 1 : 0,
-      onChanged: (index) => onChanged(index == 1),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _removeEntry();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: _handleEnter,
+    onHover: _handleHover,
+    onExit: _handleExit,
+    child: widget.child,
+  );
+}
+
+class _LibraryFilterCountBadge extends StatelessWidget {
+  const _LibraryFilterCountBadge({super.key, required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = count > 99 ? '99+' : '$count';
+    return Container(
+      constraints: const BoxConstraints(minWidth: 17),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: scheme.error,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: scheme.onError,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+      ),
     );
   }
 }

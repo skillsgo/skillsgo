@@ -1,12 +1,64 @@
 /*
  * [INPUT]: Depends on LocalDetailScreen state, shared detail primitives, InstallationScopePanel, localized action controls, and Markdown presentation.
- * [OUTPUT]: Provides local detail action bar, package-avatar-aware toolbar, artifact context, installation scope, operation feedback, and document rendering.
+ * [OUTPUT]: Provides local detail action bar, package-avatar-aware toolbar, adoption-backup recovery status, artifact context, installation scope, operation feedback, and document rendering.
  * [POS]: Serves as the private rendering implementation of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
 
 extension _LocalDetailRendering on _LocalDetailScreenState {
+  Widget _adoptionRecoveryPanel() {
+    final scheme = Theme.of(context).colorScheme;
+    final backup = adoptionBackups.first;
+    return DecoratedBox(
+      key: const Key('installed-detail-adoption-recovery'),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: .42),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.primary.withValues(alpha: .32)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedShield02,
+              size: 21,
+              strokeWidth: 1.8,
+              color: scheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.adoptionBackupAvailable,
+                    style: context.skillsTypography.bodySecondary.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    context.l10n.adoptionBackupRetention,
+                    style: context.skillsTypography.caption,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            SecondaryCapsuleButton(
+              label: context.l10n.adoptionBackupRestore,
+              icon: HugeIcons.strokeRoundedArrowTurnBackward,
+              onPressed: managing ? null : () => restoreAdoptionBackup(backup),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _actions() => Row(
     mainAxisSize: MainAxisSize.min,
     children: [

@@ -122,8 +122,8 @@ func TestOpenAITranslatorBoundsInvalidModelFormatAttempts(t *testing.T) {
 
 	_, err := NewOpenAITranslator(server.URL, "secret", "test-model").Translate(t.Context(), "Review", "en", "zh-Hans-CN")
 	require.ErrorContains(t, err, "exactly one result envelope")
-	require.False(t, IsPermanent(err))
-	require.Equal(t, "retry_exhausted", FailureKind(err))
+	require.True(t, IsPermanent(err))
+	require.Equal(t, "model_format", FailureKind(err))
 	require.Equal(t, translationValidationAttempts, attempts)
 }
 

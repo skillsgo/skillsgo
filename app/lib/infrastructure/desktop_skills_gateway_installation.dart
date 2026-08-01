@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
- * [OUTPUT]: Provides single-Skill and atomic multi-Skill exact-path Package Store installation using minimal CLI success receipts, reviewed External adoption through the CLI, and explicit protocol-decode failure telemetry.
+ * [OUTPUT]: Provides single-Skill and atomic multi-Skill exact-path Package Store installation, reviewed External adoption with durable recovery receipts, adoption-backup listing/restoration, and explicit protocol-decode failure telemetry.
  * [POS]: Serves as the Installation Request capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -73,12 +73,21 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
         final inventoryKey = value['inventoryKey'] as String;
         final status = value['status'] as String;
         final reason = value['reason'];
+        final backupId = value['backupId'];
+        final backupExpiresAt = value['backupExpiresAt'];
         final item = byInventoryKey[inventoryKey];
         if (item == null ||
             !seenInventoryKeys.add(inventoryKey) ||
             (status != 'adopted' && status != 'failed') ||
-            (reason != null && reason is! String)) {
+            (reason != null && reason is! String) ||
+            (backupId != null && backupId is! String) ||
+            (backupExpiresAt != null && backupExpiresAt is! String)) {
           throw const FormatException();
+        }
+        DateTime? expiresAt;
+        if (backupExpiresAt != null) {
+          expiresAt = DateTime.tryParse(backupExpiresAt as String);
+          if (expiresAt == null) throw const FormatException();
         }
         results.add(
           BatchAdoptionItemResult(
@@ -88,6 +97,8 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
                 ? BatchAdoptionItemStatus.adopted
                 : BatchAdoptionItemStatus.failed,
             reason: reason as String? ?? '',
+            backupId: backupId as String? ?? '',
+            backupExpiresAt: expiresAt,
           ),
         );
       }
@@ -105,6 +116,127 @@ mixin _DesktopSkillsGatewayInstallation on _DesktopSkillsGatewayCore {
       throw _invalidCliResponse(
         'adopt',
         'The SkillsGo CLI returned invalid Adoption JSON.',
+        command,
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<List<AdoptionBackup>> listAdoptionBackups() async {
+    final command = await _runCli(['recovery', 'list', '--output', 'json']);
+    if (!command.succeeded) throw _commandFailure(command);
+    try {
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['backups'] is! List) {
+        throw const FormatException();
+      }
+      final backups = <AdoptionBackup>[];
+      for (final value in raw['backups'] as List) {
+        if (value is! Map<String, dynamic> ||
+            value['id'] is! String ||
+            value['name'] is! String ||
+            value['packagePath'] is! String ||
+            value['version'] is! String ||
+            value['skillPath'] is! String ||
+            value['scope'] is! String ||
+            value['createdAt'] is! String ||
+            value['expiresAt'] is! String ||
+            value['status'] is! String ||
+            (value['projectRoot'] != null && value['projectRoot'] is! String) ||
+            (value['targets'] != null &&
+                (value['targets'] is! List ||
+                    (value['targets'] as List).any(
+                      (target) => target is! String,
+                    )))) {
+          throw const FormatException();
+        }
+        final scope = switch (value['scope']) {
+          'global' => InstallationScope.global,
+          'project' => InstallationScope.project,
+          _ => throw const FormatException(),
+        };
+        final createdAt = DateTime.tryParse(value['createdAt'] as String);
+        final expiresAt = DateTime.tryParse(value['expiresAt'] as String);
+        if (createdAt == null || expiresAt == null) {
+          throw const FormatException();
+        }
+        final status = value['status'] as String;
+        if (status != 'ready' &&
+            status != 'restore-failed' &&
+            status != 'restored') {
+          throw const FormatException();
+        }
+        backups.add(
+          AdoptionBackup(
+            id: value['id'] as String,
+            name: value['name'] as String,
+            packagePath: value['packagePath'] as String,
+            version: value['version'] as String,
+            skillPath: value['skillPath'] as String,
+            scope: scope,
+            projectRoot: value['projectRoot'] as String? ?? '',
+            targets: [
+              for (final target in value['targets'] as List? ?? const [])
+                target as String,
+            ],
+            createdAt: createdAt,
+            expiresAt: expiresAt,
+            status: status,
+          ),
+        );
+      }
+      return List.unmodifiable(backups);
+    } on Object catch (error, stackTrace) {
+      if (error is! FormatException && error is! TypeError) rethrow;
+      throw _invalidCliResponse(
+        'recovery.list',
+        'The SkillsGo CLI returned invalid adoption recovery JSON.',
+        command,
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  @override
+  Future<void> restoreAdoptionBackup(String backupId) async {
+    if (backupId.trim().isEmpty) {
+      throw const SkillsException(
+        'An adoption backup is required.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    await _ensureHubOrigin();
+    final command = await _runCli([
+      'recovery',
+      'restore',
+      '--backup-id',
+      backupId,
+      '--yes',
+      '--output',
+      'json',
+      '--hub',
+      _hubOrigin,
+    ]);
+    if (!command.succeeded) throw _commandFailure(command);
+    try {
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['phase'] != 'adoption-recovery-restore' ||
+          raw['backupId'] != backupId ||
+          raw['status'] != 'restored') {
+        throw const FormatException();
+      }
+    } on Object catch (error, stackTrace) {
+      if (error is! FormatException && error is! TypeError) rethrow;
+      throw _invalidCliResponse(
+        'recovery.restore',
+        'The SkillsGo CLI returned invalid adoption recovery JSON.',
         command,
         error,
         stackTrace,

@@ -309,7 +309,7 @@ void main() {
     );
     expect(
       find.descendant(of: settingsRail, matching: find.byType(HugeIcon)),
-      findsNWidgets(4),
+      findsNWidgets(5),
     );
     await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
@@ -341,6 +341,80 @@ void main() {
     expect(find.text('Storage'), findsNothing);
     expect(find.text('Color Scheme'), findsNothing);
     expect(find.text('About'), findsNothing);
+  });
+
+  testWidgets('Managed backups lists and restores an original install', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 820));
+    final gateway = FakeSkillsGateway(
+      adoptionBackups: [
+        AdoptionBackup(
+          id: 'backup-1',
+          name: 'action-demo',
+          packagePath: 'github.com/test/skills',
+          version: 'v1.2.3',
+          skillPath: 'skills/action-demo',
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          expiresAt: DateTime.now().add(const Duration(days: 10)),
+          status: 'ready',
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    final settingsRail = find.byWidgetPredicate(
+      (widget) => widget is SkillsSideRail,
+      description: 'settings side rail',
+    );
+    await tester.tap(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'Backups, .*recoverable backup')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('managed-backup-backup-1')), findsOneWidget);
+    expect(find.text('action-demo'), findsOneWidget);
+    expect(
+      find.textContaining('github.com/test/skills@v1.2.3'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-backups-count')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('managed-backup-restore-backup-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Restore original install?'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('managed-backup-restore-confirm-backup-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(gateway.adoptionBackups, isEmpty);
+    expect(find.byKey(const Key('managed-backups-empty')), findsOneWidget);
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: settingsRail,
+        matching: find.bySemanticsLabel(
+          RegExp(r'Backups, .*recoverable backup'),
+        ),
+      ),
+      findsNothing,
+    );
+    expect(find.text('Original install restored.'), findsOneWidget);
   });
 
   testWidgets(

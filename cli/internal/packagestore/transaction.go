@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, destination roots supplied by Agent Adapters, platform-native Projection links, and an optional caller-owned authorization to replace conflicting Package paths.
- * [OUTPUT]: Prepares, commits, finalizes, and rolls back complete Scope Package Stores plus direct canonical-name Agent Skill links, safely restoring Package-contained symlinks, migrating baseline-proven legacy coordinate projections, transactionally replacing authorized conflicts, and allowing callers to choose post-commit disposal for exact replaced targets.
+ * [OUTPUT]: Prepares, commits, finalizes, and rolls back complete Scope Package Stores plus direct canonical-name Agent Skill links, safely restoring Package-contained symlinks, migrating baseline-proven legacy coordinate projections, transactionally replacing authorized conflicts, and allowing callers to choose target-aware post-commit disposal for exact replaced targets.
  * [POS]: Serves as the filesystem transaction membrane between Package downloads and portable dependency-state persistence.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -354,6 +354,16 @@ func (transaction *Transaction) Finalize() error {
 // SetReplacedPathDisposer assigns post-commit disposal to exact replacement
 // targets and returns the targets owned by this transaction.
 func (transaction *Transaction) SetReplacedPathDisposer(targets []string, dispose func(string) error) map[string]bool {
+	return transaction.SetReplacedPathDisposerWithTarget(targets, func(_ string, backup string) error {
+		return dispose(backup)
+	})
+}
+
+// SetReplacedPathDisposerWithTarget assigns a post-commit disposer that also
+// receives the replaced target. Adoption uses this to route the transaction's
+// temporary backup into the per-Skill recovery vault without exposing internal
+// prepared-path state to the command layer.
+func (transaction *Transaction) SetReplacedPathDisposerWithTarget(targets []string, dispose func(target, backup string) error) map[string]bool {
 	owned := make(map[string]bool)
 	wanted := make(map[string]bool, len(targets))
 	for _, target := range targets {
@@ -363,7 +373,10 @@ func (transaction *Transaction) SetReplacedPathDisposer(targets []string, dispos
 		path := &transaction.paths[index]
 		clean := transactionPathIdentity(path.target)
 		if wanted[clean] && path.action == pathReplace {
-			path.dispose = dispose
+			target := path.target
+			path.dispose = func(backup string) error {
+				return dispose(target, backup)
+			}
 			owned[clean] = true
 		}
 	}

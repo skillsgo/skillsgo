@@ -74,6 +74,8 @@ abstract interface class SkillsGateway {
     int limit = 10,
   });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
+  Future<List<AdoptionBackup>> listAdoptionBackups();
+  Future<void> restoreAdoptionBackup(String backupId);
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,

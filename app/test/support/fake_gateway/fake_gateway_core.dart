@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses domain gateway models and shared async controls from the FakeSkillsGateway library.
- * [OUTPUT]: Provides shared scenario state, discovery and Adoption candidates, installation history, preferences, onboarding, project behavior, and controllable fixtures for capability mixins.
+ * [OUTPUT]: Provides shared scenario state, captured discovery and Adoption queries, candidates, installation history, preferences, onboarding, project behavior, and controllable fixtures for capability mixins.
  * [POS]: Serves as the state-bearing core of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -58,6 +58,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.agentInspectionError,
     this.libraryError,
     List<AddedProject> addedProjects = const [],
+    List<AdoptionBackup> adoptionBackups = const [],
     this.projectLoadCompleter,
     AddedProject? projectToAdd,
     List<AddedProject>? projectsToAdd,
@@ -121,7 +122,8 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
          projectsToAdd ??
              (projectToAdd == null ? const [] : <AddedProject>[projectToAdd]),
        ),
-       projects = List.of(addedProjects);
+       projects = List.of(addedProjects),
+       adoptionBackups = List.of(adoptionBackups);
   OnboardingState onboardingState;
   final List<Object> onboardingLoadErrors;
   final Completer<void>? onboardingStepSaveCompleter;
@@ -143,6 +145,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final SkillsException? localDetailError;
   final SkillDetail? localDetail;
   final List<AddedProject> projects;
+  List<AdoptionBackup> adoptionBackups;
   int projectLoads = 0;
   String hubOrigin;
   String folderTheme;
@@ -179,6 +182,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final diagnosticLogEvents = StreamController<DiagnosticLogEntry>.broadcast();
   bool installed;
   final queries = <String>[];
+  final sourceQueries = <PackageFindQuery>[];
   final collections = <DiscoveryCollection>[];
   final requestedPages = <int>[];
   int installCalls = 0;

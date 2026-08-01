@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, strict inventory codecs, local filesystem inspection, and Library domain models.
- * [OUTPUT]: Provides Agent catalogs, unified local inventory, local Skill detail, and shared structured CLI invocation.
+ * [OUTPUT]: Provides Agent catalogs, unified local inventory with lock-backed External Adoption hints, local Skill detail, and shared structured CLI invocation.
  * [POS]: Serves as the offline-capable local inventory capability inside the DesktopSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -147,6 +147,8 @@ mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
                 (raw['name'] as String).isEmpty ||
                 (raw['description'] != null && raw['description'] is! String) ||
                 (raw['packagePath'] != null && raw['packagePath'] is! String) ||
+                (raw['adoptionPackagePath'] != null &&
+                    raw['adoptionPackagePath'] is! String) ||
                 raw['versionDivergence'] is! bool ||
                 raw['targets'] is! List ||
                 raw['visibility'] is! List) {
@@ -252,6 +254,7 @@ mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
             }
             if (provenance == LibraryProvenance.hub &&
                 ((raw['packagePath'] as String? ?? '').isEmpty ||
+                    (raw['adoptionPackagePath'] as String? ?? '').isNotEmpty ||
                     raw['inventoryKey'] !=
                         'hub:${raw['packagePath']}:${raw['name']}')) {
               throw const FormatException();
@@ -277,6 +280,7 @@ mixin _DesktopSkillsGatewayInventory on _DesktopSkillsGatewayCore {
               projects: projectRoots,
               versions: versions,
               versionDivergence: raw['versionDivergence'] as bool,
+              adoptionPackagePath: raw['adoptionPackagePath'] as String? ?? '',
             );
           })
           .toList(growable: false);

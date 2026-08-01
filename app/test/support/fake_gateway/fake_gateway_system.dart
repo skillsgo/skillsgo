@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses shared controls and state from FakeSkillsGatewayCore plus domain gateway models.
- * [OUTPUT]: Provides CLI detection, single/batch Find discovery, remote detail, and system status behavior.
+ * [OUTPUT]: Provides CLI detection, captured single/batch Find discovery including Package restrictions, remote detail, and system status behavior.
  * [POS]: Serves as one capability facet of the composable SkillsGateway test double.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -115,6 +115,7 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
     int limit = 10,
   }) async {
     queries.addAll(requests.map((request) => request.name));
+    sourceQueries.addAll(requests);
     if (discoveryError != null) throw discoveryError!;
     return requests
         .map(

@@ -443,6 +443,30 @@ The valid group publishes Global YAML, Lock, Store, and Projection state. The un
 
 Status: implemented through the released CLI, Hub, stdin JSON protocol, and filesystem evidence by `j57_adopt_multi_package_isolation_test.go`.
 
+### J58 — Preserve and restore a Git-backed External Skill
+
+As a user who installed a Skill by cloning a Git repository into an Agent directory, I want adoption to treat the repository as user data and make recovery restore its Git metadata and uncommitted files exactly.
+
+The journey adopts a real `.git` directory, verifies the managed Projection replaces only the selected target, restores through the public recovery command, and checks `SKILL.md`, uncommitted notes, and Git metadata byte-for-byte.
+
+Status: implemented through the released CLI and durable recovery by `j58_adoption_git_topology_test.go`.
+
+### J59 — Refuse recovery over a newly occupied target
+
+As a user who creates a new directory at the old Skill path before restoring, I want recovery to stop before overwriting it while keeping both the managed declaration and the backup available for a later retry.
+
+The journey replaces the managed link with a user directory, requests recovery, verifies the Local Modification failure and preserved user bytes, and confirms the backup remains `ready`.
+
+Status: implemented through the released CLI and recovery listing by `j59_adoption_recovery_safety_test.go`.
+
+### J60 — Reject a tampered recovery manifest
+
+As a user whose recovery metadata is incomplete or manually edited, I want the CLI to reject relative original paths rather than interpreting them against its working directory or moving a backup unexpectedly.
+
+The journey submits a durable manifest with a relative original path, verifies the public recovery listing fails, and confirms the vault contents remain untouched.
+
+Status: implemented through the released CLI by `j60_recovery_manifest_validation_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:

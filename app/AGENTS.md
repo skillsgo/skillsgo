@@ -49,8 +49,38 @@ dart scripts/sync-velopack-feed.dart https://releases.example.com/app/osx-arm64/
 - `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
 - `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
 - `package-app-candidate.sh` requires the corresponding native Release build and pinned Velopack CLI, then emits one unsigned architecture-specific channel under `app/build/velopack/`.
-- `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral `0.0.2` package to a `0.0.1` feed and prove check, download, apply, replacement, and restart without publishing or signing.
+- `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral next-patch package to the current App feed and prove check, download, apply, replacement, and restart without publishing or signing.
 - An `app/vX.Y.Z` tag drives `.github/workflows/app-release.yml`; it requires the protected `app-release` environment and publishes immutable channel assets to R2 before each mutable Velopack manifest.
+
+## Agent-Driven Runtime Interaction
+
+- Prefer Marionette for tasks whose evidence depends on interacting with the rendered debug App: inspect interactive elements, navigate flows, tap or scroll controls, enter text, capture screenshots, read runtime logs, hot reload, reproduce UI defects, and run focused smoke or semantics checks.
+- Connect Marionette to the VM service URI printed by the active `flutter run` process. The App already initializes `MarionetteBinding` in debug mode; never enable this instrumentation in profile or release builds.
+- Use Marionette to verify the real runtime behavior after UI or interaction changes when the environment can launch the App. Exercise the smallest relevant journey and inspect logs for exceptions instead of relying only on source inspection.
+- Prefer stable semantics, visible labels, and standard Material interaction surfaces so Marionette can discover and operate controls. When a custom control is not discoverable, improve its Flutter semantics rather than adding test-only coordinate knowledge.
+- Marionette complements but does not replace `flutter analyze`, widget tests, integration tests, or the cross-platform Journey suite. Use the narrowest deterministic automated test seam for regression coverage, and use Marionette for live interaction evidence.
+
+Common Marionette workflow:
+
+1. Start the debug App from `app/` with `flutter run -d macos` or the appropriate desktop device, and retain the printed VM service URI such as `ws://127.0.0.1:8181/ws`.
+2. Prefer the Marionette MCP server: install it with `dart pub global activate marionette_mcp`, register it for Codex with `codex mcp add marionette -- marionette_mcp`, then call `connect` with the VM service URI before using any other Marionette tool.
+3. Begin with `get_interactive_elements` to inspect the current surface. Target actions by `key` first, then Semantics `identifier`, then visible `text`; use coordinates only as a last resort.
+4. Use `tap`, `secondary_tap`, `double_tap`, `long_press`, `enter_text`, `press_key`, `scroll_to`, `swipe`, and `press_back_button` to exercise the journey. Re-run `get_interactive_elements` after navigation or a material state change.
+5. Use `take_screenshots` for visual evidence and `get_logs` to check runtime failures. Use `hot_reload` for ordinary code iteration and `hot_restart` when startup or reset state must be exercised.
+6. Disconnect when the live verification is complete.
+
+When MCP tools are unavailable, use the CLI fallback:
+
+```bash
+dart pub global activate marionette_cli
+marionette help-ai
+marionette --uri ws://127.0.0.1:8181/ws get-interactive-elements
+marionette --uri ws://127.0.0.1:8181/ws tap --text "Settings"
+marionette --uri ws://127.0.0.1:8181/ws take-screenshots --output ./marionette.png
+marionette --uri ws://127.0.0.1:8181/ws get-logs
+```
+
+For repeated CLI interactions, register the URI once with `marionette register skillsgo <uri>`, use `marionette -i skillsgo ...`, verify connectivity with `marionette doctor`, and remove the stale registration with `marionette unregister skillsgo` when finished.
 
 ## Workspace Map
 

@@ -475,6 +475,27 @@ class AppLocalizationsId extends AppLocalizations {
   String get libraryGlobalScope => 'Keterampilan Global';
 
   @override
+  String get libraryImportedSkills => 'Dikelola SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Dipasang dengan cara lain';
+
+  @override
+  String get libraryFilterTooltip => 'Semua Skills terinstal dalam cakupan ini';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Dapat diperbarui dan dihapus oleh SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Harus dikelola SkillsGo sebelum diperbarui';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Skills terkelola dengan pembaruan tersedia';
+
+  @override
   String get libraryExternalScope => 'Keterampilan Eksternal';
 
   @override
@@ -2171,4 +2192,58 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get hideRemovalDetails => 'Sembunyikan detailnya';
+
+  @override
+  String get managedBackups => 'Backups';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }

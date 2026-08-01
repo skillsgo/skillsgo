@@ -566,4 +566,45 @@ void main() {
       ),
     );
   });
+
+  test('Adoption recovery lists and restores through the CLI boundary', () async {
+    final runner = FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '{"schemaVersion":1,"backups":[{"id":"123-000","name":"demo","packagePath":"github.com/acme/skills","version":"v1.2.3","skillPath":"skills/demo","scope":"global","targets":["/tmp/demo"],"createdAt":"2026-08-01T00:00:00Z","expiresAt":"2026-08-31T00:00:00Z","status":"ready"}]}',
+        stderr: '',
+      );
+    final gateway = DesktopSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+      hubBaseUrl: 'https://must-not-be-used.example',
+      appVersion: 'test',
+    );
+
+    final backups = await gateway.listAdoptionBackups();
+    expect(backups, hasLength(1));
+    expect(backups.single.id, '123-000');
+    expect(backups.single.isReady, isTrue);
+    expect(runner.lastArguments, ['recovery', 'list', '--output', 'json']);
+
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout:
+          '{"schemaVersion":1,"phase":"adoption-recovery-restore","backupId":"123-000","status":"restored"}',
+      stderr: '',
+    );
+    await gateway.restoreAdoptionBackup('123-000');
+    expect(runner.lastArguments, [
+      'recovery',
+      'restore',
+      '--backup-id',
+      '123-000',
+      '--yes',
+      '--output',
+      'json',
+      '--hub',
+      'https://must-not-be-used.example',
+    ]);
+  });
 }
