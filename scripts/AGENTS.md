@@ -6,7 +6,7 @@
 - `dev.sh`: validates the macOS development toolchain, removes stale repository-owned development processes, and starts either the complete Process Compose topology or a named dependency-closed subset such as Hub plus PostgreSQL.
 - `cleanup-dev.sh`: discovers and terminates stale SkillsGo development process trees without affecting unrelated processes.
 - `watch-flutter.sh`: watches maintained App sources and assets and requests Flutter Hot Reload through its PID file.
-- `package-app-candidate.sh`: converts one native Flutter Release bundle into a versioned, architecture-isolated unsigned Velopack candidate, can append a later version to the same rehearsal feed, and verifies its release manifest, full package, portable package, and platform installer where applicable.
+- `package-app-candidate.sh`: converts one native Flutter Release bundle into a versioned, architecture-isolated Velopack candidate or production channel, supports an explicit protected unsigned bootstrap when publisher identities are unavailable, can append a later version to the same rehearsal feed, and verifies its release manifest, full package, portable package, and platform installer where applicable.
 - `smoke-app-candidate.sh`: extracts and starts packaged macOS/Linux candidates and verifies the packaged bundled CLI reports the App version; Windows installation smoke remains native PowerShell in CI.
 - `prepare-app-update-rehearsal.sh`: preserves the packaged 0.0.1 launcher, rebuilds the same source as 0.0.2, and appends the later full package to one local Velopack feed.
 - `serve-update-feed.dart`: exposes one exact Velopack release directory through a traversal-safe loopback-only HTTP origin for update E2E.
