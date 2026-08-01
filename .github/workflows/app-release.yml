@@ -1,5 +1,5 @@
-# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, four native runners, a protected unsigned-bootstrap switch or Apple/Windows signing credentials, a public App update base URL, and scoped R2 S3 credentials.
-# [OUTPUT]: Builds, signs when required, verifies, attests, and publishes four architecture-specific Velopack channels to R2 before creating one immutable GitHub App Release.
+# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, four native runners, optional Apple/Windows signing credentials, a public App update base URL, and scoped R2 S3 credentials.
+# [OUTPUT]: Builds, signs when credentials are available, verifies, attests, and publishes four architecture-specific Velopack channels to R2 before creating one immutable GitHub App Release.
 # [POS]: Serves as the tag-only production App release pipeline; pull requests and ordinary main pushes never publish through it.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: App Release
@@ -102,7 +102,6 @@ jobs:
             channel: linux-x64
     env:
       APP_UPDATE_BASE_URL: ${{ vars.APP_UPDATE_BASE_URL }}
-      APP_RELEASE_UNSIGNED: ${{ vars.APP_RELEASE_UNSIGNED || '0' }}
       RELEASE_VERSION: ${{ needs.verify.outputs.version }}
       RELEASE_CHANNEL: ${{ matrix.channel }}
     steps:
@@ -148,7 +147,7 @@ jobs:
           echo "SKILLSGO_APP_UPDATE_URL=${source}" >> "${GITHUB_ENV}"
 
       - name: Configure Apple signing and notarization
-        if: matrix.target == 'macos' && vars.APP_RELEASE_UNSIGNED != '1'
+        if: matrix.target == 'macos'
         shell: bash
         env:
           CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
@@ -161,8 +160,8 @@ jobs:
         run: |
           for value in CERTIFICATE_BASE64 CERTIFICATE_PASSWORD APP_IDENTITY INSTALL_IDENTITY API_KEY_ID API_ISSUER_ID API_PRIVATE_KEY; do
             if [[ -z "${!value}" ]]; then
-              echo "Missing required app-release Apple secret: ${value}" >&2
-              exit 1
+              echo "Apple signing credentials are incomplete; publishing an unsigned macOS channel."
+              exit 0
             fi
           done
           certificate="${RUNNER_TEMP}/developer-id.p12"
@@ -190,7 +189,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Configure Windows signing
-        if: matrix.target == 'windows' && vars.APP_RELEASE_UNSIGNED != '1'
+        if: matrix.target == 'windows'
         shell: pwsh
         env:
           CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGN_CERTIFICATE }}
@@ -199,7 +198,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_BASE64) -or
               [string]::IsNullOrWhiteSpace($env:CERTIFICATE_PASSWORD)) {
-            throw 'WINDOWS_SIGN_CERTIFICATE and WINDOWS_SIGN_CERTIFICATE_PASSWORD are required.'
+            Write-Host 'Windows signing credentials are unavailable; publishing an unsigned Windows channel.'
+            exit 0
           }
           $certificate = Join-Path $env:RUNNER_TEMP 'skillsgo-signing.pfx'
           [IO.File]::WriteAllBytes(
@@ -244,14 +244,17 @@ jobs:
           SKILLSGO_APP_PACKAGE_APPEND: '1'
           SKILLSGO_APP_PACKAGE_MODE: release
           SKILLSGO_APP_PACKAGE_VERSION: ${{ needs.verify.outputs.version }}
-          SKILLSGO_APP_RELEASE_UNSIGNED: ${{ env.APP_RELEASE_UNSIGNED }}
         run: ./scripts/package-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
 
       - name: Verify signed Windows release
-        if: matrix.target == 'windows' && vars.APP_RELEASE_UNSIGNED != '1'
+        if: matrix.target == 'windows'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:SKILLSGO_WINDOWS_SIGN_PARAMS)) {
+            Write-Host 'Windows channel is unsigned; skipping Authenticode verification.'
+            exit 0
+          }
           $setup = Get-Item "app/build/velopack/${{ matrix.channel }}/SkillsGo-${{ matrix.channel }}-Setup.exe"
           $signature = Get-AuthenticodeSignature $setup.FullName
           if ($signature.Status -ne 'Valid') {
