@@ -1,5 +1,5 @@
 # [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, four native runners, optional Apple/Windows signing credentials, a public App update base URL, and scoped R2 S3 credentials.
-# [OUTPUT]: Builds, signs when credentials are available, verifies, attests, and publishes four architecture-specific Velopack channels to R2 before creating one immutable GitHub App Release.
+# [OUTPUT]: Builds, signs when credentials are available, verifies, attests, and publishes four architecture-specific Velopack channels to R2 before creating one immutable GitHub App Release with one download per architecture.
 # [POS]: Serves as the tag-only production App release pipeline; pull requests and ordinary main pushes never publish through it.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: App Release
@@ -406,16 +406,9 @@ jobs:
       - name: Collect installer downloads
         shell: bash
         run: |
-          mkdir release-downloads
-          find release-assets -mindepth 2 -maxdepth 2 -type f \
-            \( -name '*.pkg' -o -name '*-Setup.exe' -o -name '*.AppImage' \) \
-            -exec cp '{}' release-downloads/ \;
-          (
-            cd release-downloads
-            find . -maxdepth 1 -type f ! -name checksums.txt -printf '%f\0' \
-              | sort -z \
-              | xargs -0 sha256sum > checksums.txt
-          )
+          scripts/collect-app-release-downloads.sh \
+            release-assets \
+            release-downloads
 
       - name: Attest release checksums
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3

@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, pinned-stable Velopack candidate packaging plus real 0.0.1-to-0.0.2 loopback update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
+# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real 0.0.1-to-0.0.2 loopback update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -229,6 +229,11 @@ jobs:
         if: matrix.target == 'linux'
         working-directory: .
         run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb
+
+      - name: Test App release download collection
+        if: matrix.target == 'linux'
+        working-directory: .
+        run: ./scripts/test-collect-app-release-downloads.sh
 
       - name: Install App dependencies
         run: flutter pub get
