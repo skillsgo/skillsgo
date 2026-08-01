@@ -3138,8 +3138,38 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo will replace the current install with your selected version.\nThe old copy will move to Trash.\nLocal changes will not be kept.\nSkillsGo will handle future updates and removals.\nBack up anything you need.'**
+  /// **'SkillsGo will track version updates; updates and removals need your confirmation.\nYour selected version replaces the current install.\nThe original install is backed up for 30 days and can be restored.'**
   String get batchAdoptionDescription;
+
+  /// No description provided for @adoptionBackupAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Original install backed up'**
+  String get adoptionBackupAvailable;
+
+  /// No description provided for @adoptionBackupRetention.
+  ///
+  /// In en, this message translates to:
+  /// **'Available to restore for 30 days'**
+  String get adoptionBackupRetention;
+
+  /// No description provided for @adoptionBackupRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original install'**
+  String get adoptionBackupRestore;
+
+  /// No description provided for @adoptionBackupRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original install?'**
+  String get adoptionBackupRestoreTitle;
+
+  /// No description provided for @adoptionBackupRestoreMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the managed version and restores the install and local changes from before management.'**
+  String get adoptionBackupRestoreMessage;
 
   /// No description provided for @batchAdoptionStoryTitle.
   ///
@@ -3372,7 +3402,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionPreservation.
   ///
   /// In en, this message translates to:
-  /// **'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.'**
+  /// **'The original install is backed up automatically and can be restored from the Skill detail.'**
   String get batchAdoptionPreservation;
 
   /// No description provided for @batchAdoptionLaterHint.

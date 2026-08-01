@@ -58,6 +58,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.agentInspectionError,
     this.libraryError,
     List<AddedProject> addedProjects = const [],
+    List<AdoptionBackup> adoptionBackups = const [],
     this.projectLoadCompleter,
     AddedProject? projectToAdd,
     List<AddedProject>? projectsToAdd,
@@ -121,7 +122,8 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
          projectsToAdd ??
              (projectToAdd == null ? const [] : <AddedProject>[projectToAdd]),
        ),
-       projects = List.of(addedProjects);
+       projects = List.of(addedProjects),
+       adoptionBackups = List.of(adoptionBackups);
   OnboardingState onboardingState;
   final List<Object> onboardingLoadErrors;
   final Completer<void>? onboardingStepSaveCompleter;
@@ -143,6 +145,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final SkillsException? localDetailError;
   final SkillDetail? localDetail;
   final List<AddedProject> projects;
+  List<AdoptionBackup> adoptionBackups;
   int projectLoads = 0;
   String hubOrigin;
   String folderTheme;

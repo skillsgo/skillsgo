@@ -166,6 +166,75 @@ void main() {
     expect(find.text('CHECK FAILED'), findsNothing);
   });
 
+  testWidgets('installed detail exposes an adoption backup restore action', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1500, 900));
+    const target = SkillInstallationTarget(
+      agent: 'codex',
+      scope: InstallationScope.global,
+      path: '/Users/test/.codex/skills/action-demo',
+      version: 'v1',
+    );
+    const hub = InstalledSkill(
+      inventoryKey: 'hub:github.com/test/skills:action-demo',
+      name: 'action-demo',
+      path: '/Users/test/.codex/skills/action-demo',
+      agents: ['codex'],
+      targetCount: 1,
+      packagePath: 'github.com/test/skills',
+      versions: ['v1'],
+      targets: [target],
+    );
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      libraryEntries: [hub],
+      adoptionBackups: [
+        AdoptionBackup(
+          id: 'backup-1',
+          name: 'action-demo',
+          packagePath: 'github.com/test/skills',
+          version: 'v1',
+          skillPath: 'skills/action-demo',
+          createdAt: DateTime.utc(2026, 8, 1),
+          expiresAt: DateTime.utc(2026, 9, 1),
+          status: 'ready',
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('action-demo').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('installed-detail-adoption-recovery')),
+      findsOneWidget,
+    );
+    expect(find.text('Original install backed up'), findsOneWidget);
+    await tester.tap(find.text('Restore original install'));
+    await tester.pumpAndSettle();
+    expect(find.text('Restore original install?'), findsOneWidget);
+    expect(
+      find.text(
+        'This removes the managed version and restores the install and local changes from before management.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(gateway.adoptionBackups, hasLength(1));
+    await tester.tap(find.text('Restore original install'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('installed-detail-adoption-recovery-confirm')),
+    );
+    await tester.pumpAndSettle();
+    expect(gateway.adoptionBackups, isEmpty);
+  });
+
   testWidgets('Hub enrichment preserves installed-detail geometry', (
     tester,
   ) async {

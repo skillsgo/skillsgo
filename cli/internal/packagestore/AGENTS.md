@@ -3,7 +3,7 @@
 
 ## Members
 
-- `transaction.go`: verifies and prepares one complete Package Artifact as a symlink-safe Scope Package Store plus stable canonical-name Agent Skill links, migrates legacy coordinate projections, baseline-checks replacements/removals, accepts narrowly explicit reviewed-conflict replacement authorization, then commits, finalizes, or rolls back owned paths.
+- `transaction.go`: verifies and prepares one complete Package Artifact as a symlink-safe Scope Package Store plus stable canonical-name Agent Skill links, migrates legacy coordinate projections, baseline-checks replacements/removals, accepts narrowly explicit reviewed-conflict replacement authorization, and exposes target-aware post-commit disposal for callers that own durable recovery before finalizing or rolling back paths.
 - `projection_link_unix.go`: creates and verifies relative symbolic-link Projections on macOS and Linux.
 - `projection_link_windows.go`: creates and verifies unprivileged absolute directory-junction Projections on Windows.
 - `package.go`: verifies an authoritative coordinate Package Store including safe internal symlinks against its locked Package Sum, reconstructs the canonical Package ZIP, and verifies direct Agent Skill links against immutable members.

@@ -101,7 +101,7 @@ The state-bound execution of App-reviewed External Skill mappings. Before review
 _Avoid_: Tree-SHA authority, automatic candidate choice, separate adoption Store, subprocess recursion, pre-download External movement, implicit local import
 
 **Recovery Area**:
-The CLI-owned rollback location used only for External paths that are not direct Package Projection replacements during adoption. Its durable mapping preserves original directory and symlink paths across process interruption. A retry restores unfinished retirement before new adoption; a failed mutation restores the original topology; successful commit moves the recovery directory to the operating-system Trash during final cleanup.
+The CLI-owned vault for External paths retired during adoption. Its durable per-Skill mapping preserves original directory and symlink paths across process interruption and remains available for 30 days after a successful commit. A retry restores unfinished retirement before new adoption; a failed mutation restores the original topology; an explicit restore first removes the managed Skill through the ordinary Package flow, refuses later occupants, and then restores the original path. Expired or explicitly deleted records may be cleaned automatically.
 _Avoid_: permanent backup, Package Store, cache, installation source, post-commit Package compensation
 
 **External Removal**:

@@ -1808,6 +1808,22 @@ class AppLocalizationsTr extends AppLocalizations {
       'SkillsGo, beceri dosyalarını taşımadan, üzerine yazmadan veya yüklemeden yerel yönetim kayıtlarını ekleyecektir. Desteklenmeyen veya değiştirilen öğeler atlanacaktır.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Dağınık becerileri tek bir temiz Kitaplığa dönüştürün';
 

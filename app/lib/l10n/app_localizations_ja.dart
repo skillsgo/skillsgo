@@ -1751,6 +1751,22 @@ class AppLocalizationsJa extends AppLocalizations {
       'SkillsGo は、スキル ファイルの移動、上書き、アップロードを行わずに、ローカル管理レコードを追加します。サポートされていない項目や変更された項目はスキップされます。';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle => '分散したスキルを 1 つの明確なライブラリにまとめる';
 
   @override

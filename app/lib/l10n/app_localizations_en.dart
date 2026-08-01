@@ -1805,7 +1805,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo will replace the current install with your selected version.\nThe old copy will move to Trash.\nLocal changes will not be kept.\nSkillsGo will handle future updates and removals.\nBack up anything you need.';
+      'SkillsGo will track version updates; updates and removals need your confirmation.\nYour selected version replaces the current install.\nThe original install is backed up for 30 days and can be restored.';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
 
   @override
   String get batchAdoptionStoryTitle =>
@@ -1962,7 +1978,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get batchAdoptionPreservation =>
-      'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.';
+      'The original install is backed up automatically and can be restored from the Skill detail.';
 
   @override
   String get batchAdoptionLaterHint =>

@@ -13,8 +13,8 @@
 - `portal_split_button.dart`: adapts Portal Labs 0.34.0 `SplitButtonInteraction` into the controlled persistent management action, preserving localized review callbacks and stable hit regions for Confirm and Cancel.
 - `installed_skill_groups.dart`: groups logical Skills and their location-aware targets and renders Scope-specific Package update cards with preview impact.
 - `installed_skill_rows.dart`: renders installed entries, provenance, diagnostics, and row actions.
-- `local_detail_core.dart`: owns local-detail loading, cached update consumption, post-mutation refresh, retry, target operations, and enrichment lifecycle.
-- `local_detail_rendering.dart`: renders local detail, metadata, targets, and failure recovery.
+- `local_detail_core.dart`: owns local-detail loading, adoption-backup discovery and restore confirmation, cached update consumption, post-mutation refresh, retry, target operations, and enrichment lifecycle.
+- `local_detail_rendering.dart`: renders local detail, metadata, adoption-backup recovery status, targets, and failure recovery.
 
 ## Architectural Boundary
 

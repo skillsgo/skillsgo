@@ -1805,6 +1805,22 @@ class AppLocalizationsHi extends AppLocalizations {
       'SkillsGo कौशल फ़ाइलों को स्थानांतरित किए बिना, ओवरराइट किए या अपलोड किए बिना स्थानीय प्रबंधन रिकॉर्ड जोड़ देगा। असमर्थित या परिवर्तित आइटम छोड़ दिए जाएंगे.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'बिखरे हुए कौशल को एक स्पष्ट पुस्तकालय में बदलें';
 

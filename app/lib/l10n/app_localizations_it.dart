@@ -1824,6 +1824,22 @@ class AppLocalizationsIt extends AppLocalizations {
       'SkillsGo aggiungerà record di gestione locale senza spostare, sovrascrivere o caricare file skill. Gli elementi non supportati o modificati verranno ignorati.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Trasforma skills sparsi in un\'unica libreria libera';
 

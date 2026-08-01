@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses the stdin-JSON adopt command with isolated External roots, exact Package metadata/ZIP fixtures, and controllable Trash failure.
- * [OUTPUT]: Specifies successful ordinary reinstallation for directory and symlink topologies, reviewed replacement of conflicting Package paths, same-Package batching, independent multi-Package outcomes, External disposal, shared-Plan rollback, committed cleanup failure semantics, and strict request validation.
+ * [INPUT]: Uses the stdin-JSON adopt command with isolated External roots, exact Package metadata/ZIP fixtures, and durable recovery records.
+ * [OUTPUT]: Specifies successful ordinary reinstallation for directory and symlink topologies, reviewed replacement of conflicting Package paths, same-Package batching, independent multi-Package outcomes, recoverable External retirement, shared-Plan rollback, and strict request validation.
  * [POS]: Serves as the executable contract for reviewed External-to-Package adoption.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,6 @@ package command
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -375,7 +374,7 @@ func TestAdoptRestoresExternalWhenInstallFails(t *testing.T) {
 	require.FileExists(t, filepath.Join(external, "SKILL.md"))
 }
 
-func TestAdoptKeepsCommittedManagedInstallWhenTrashFails(t *testing.T) {
+func TestAdoptKeepsCommittedManagedInstallWithDurableRecovery(t *testing.T) {
 	packagePath, version, skill, _, server := adoptionPackageFixture(t)
 	defer server.Close()
 	home := t.TempDir()
@@ -383,28 +382,74 @@ func TestAdoptKeepsCommittedManagedInstallWhenTrashFails(t *testing.T) {
 	external := filepath.Join(home, ".codex", "skills", "alpha")
 	require.NoError(t, os.MkdirAll(external, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(external, "SKILL.md"), skill, 0o644))
-	previousMover := moveAdoptionBackupToTrash
-	moveAdoptionBackupToTrash = func(string) error { return fmt.Errorf("trash unavailable") }
-	t.Cleanup(func() { moveAdoptionBackupToTrash = previousMover })
-
 	report, err := executeAdoptInput(t, adoptionRequest{SchemaVersion: 1, Items: []adoptionItem{{
 		InventoryKey: "external:alpha", Name: "alpha", PackagePath: packagePath, Version: version, SkillPath: "skills/alpha",
 		Targets: []adoptionTarget{{Agent: "codex", Scope: "global", Path: external}},
 	}}}, server.URL)
 
 	require.NoError(t, err)
-	require.Equal(t, "failed", report.Results[0].Status)
-	require.Contains(t, report.Results[0].Reason, "committed but transaction cleanup failed")
+	require.Equal(t, "adopted", report.Results[0].Status)
+	require.NotEmpty(t, report.Results[0].BackupID)
 	info, statErr := os.Lstat(external)
 	require.NoError(t, statErr)
 	require.NotZero(t, info.Mode()&os.ModeSymlink)
-	require.FileExists(t, filepath.Join(external, "SKILL.md"))
+	require.DirExists(t, filepath.Join(home, ".skillsgo", "recovery", "adopt"))
 	manifest, _, loadErr := loadWorkspaceState(filepath.Join(home, ".agents"))
 	require.NoError(t, loadErr)
 	require.Contains(t, manifest.Dependencies, packagePath)
 }
 
-func TestAdoptTrashFailurePreservesPreexistingManagedPackage(t *testing.T) {
+func TestAdoptionRecoveryListsAndRestoresOriginalSkill(t *testing.T) {
+	packagePath, version, _, _, server := adoptionPackageFixture(t)
+	defer server.Close()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	external := filepath.Join(home, ".codex", "skills", "alpha")
+	require.NoError(t, os.MkdirAll(external, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(external, "SKILL.md"), []byte("local change"), 0o644))
+
+	report, err := executeAdoptInput(t, adoptionRequest{SchemaVersion: 1, Items: []adoptionItem{{
+		InventoryKey: "external:alpha", Name: "alpha", PackagePath: packagePath, Version: version, SkillPath: "skills/alpha",
+		Targets: []adoptionTarget{{Agent: "codex", Scope: "global", Path: external}},
+	}}}, server.URL)
+	require.NoError(t, err)
+	require.Equal(t, "adopted", report.Results[0].Status)
+	require.NotEmpty(t, report.Results[0].BackupID)
+
+	var output bytes.Buffer
+	require.NoError(t, Execute([]string{"recovery", "list", "--output", "json"}, &output, &output), output.String())
+	var listing struct {
+		Backups []adoptionRecoveryBackup `json:"backups"`
+	}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &listing))
+	require.Len(t, listing.Backups, 1)
+	require.Equal(t, report.Results[0].BackupID, listing.Backups[0].ID)
+	require.Equal(t, "ready", listing.Backups[0].Status)
+
+	output.Reset()
+	require.NoError(t, Execute([]string{
+		"recovery", "restore", "--backup-id", report.Results[0].BackupID,
+		"--yes", "--output", "json", "--hub", server.URL,
+	}, &output, &output), output.String())
+	var restored struct {
+		Status string `json:"status"`
+	}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &restored))
+	require.Equal(t, "restored", restored.Status)
+	require.Equal(t, []byte("local change"), func() []byte {
+		contents, readErr := os.ReadFile(filepath.Join(external, "SKILL.md"))
+		require.NoError(t, readErr)
+		return contents
+	}())
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"recovery", "list", "--output", "json"}, &output, &output), output.String())
+	require.NoError(t, json.Unmarshal(output.Bytes(), &listing))
+	require.Len(t, listing.Backups, 1)
+	require.Equal(t, "restored", listing.Backups[0].Status)
+}
+
+func TestAdoptRecoveryPreservesPreexistingManagedPackage(t *testing.T) {
 	packagePath, version, skill, _, server := adoptionPackageFixture(t)
 	defer server.Close()
 	home := t.TempDir()
@@ -417,17 +462,14 @@ func TestAdoptTrashFailurePreservesPreexistingManagedPackage(t *testing.T) {
 	external := filepath.Join(home, ".external", "skills", "alpha")
 	require.NoError(t, os.MkdirAll(external, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(external, "SKILL.md"), skill, 0o644))
-	previousMover := moveAdoptionBackupToTrash
-	moveAdoptionBackupToTrash = func(string) error { return fmt.Errorf("trash unavailable") }
-	t.Cleanup(func() { moveAdoptionBackupToTrash = previousMover })
-
 	report, err := executeAdoptInput(t, adoptionRequest{SchemaVersion: 1, Items: []adoptionItem{{
 		InventoryKey: "external:duplicate-alpha", Name: "alpha", PackagePath: packagePath, Version: version, SkillPath: "skills/alpha",
 		Targets: []adoptionTarget{{Agent: "codex", Scope: "global", Path: external}},
 	}}}, server.URL)
 
 	require.NoError(t, err)
-	require.Equal(t, "failed", report.Results[0].Status)
+	require.Equal(t, "adopted", report.Results[0].Status)
+	require.NotEmpty(t, report.Results[0].BackupID)
 	require.NoFileExists(t, filepath.Join(external, "SKILL.md"))
 	recoveryManifests, globErr := filepath.Glob(filepath.Join(home, ".skillsgo", "recovery", "adopt", "*", "recovery.json"))
 	require.NoError(t, globErr)

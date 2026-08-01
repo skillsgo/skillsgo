@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, lock-backed External Adoption Package hints, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
+ * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, lock-backed External Adoption Package hints, durable Adoption backup records, Agent catalogs, Added Projects, onboarding state, unified Library entries, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,12 +79,48 @@ class BatchAdoptionItemResult {
     required this.skillId,
     required this.status,
     this.reason = '',
+    this.backupId = '',
+    this.backupExpiresAt,
   });
 
   final String name;
   final String skillId;
   final BatchAdoptionItemStatus status;
   final String reason;
+  final String backupId;
+  final DateTime? backupExpiresAt;
+}
+
+class AdoptionBackup {
+  const AdoptionBackup({
+    required this.id,
+    required this.name,
+    required this.packagePath,
+    required this.version,
+    required this.skillPath,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.status,
+    this.scope = InstallationScope.global,
+    this.projectRoot = '',
+    this.targets = const [],
+  });
+
+  final String id;
+  final String name;
+  final String packagePath;
+  final String version;
+  final String skillPath;
+  final InstallationScope scope;
+  final String projectRoot;
+  final List<String> targets;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final String status;
+
+  bool get isReady => status == 'ready';
+
+  bool get canRestore => status == 'ready' || status == 'restore-failed';
 }
 
 class BatchAdoptionPreview {

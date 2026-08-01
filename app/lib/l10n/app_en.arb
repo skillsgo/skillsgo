@@ -604,7 +604,12 @@
   },
   "batchAdoptionPending": "Importing…",
   "batchAdoptionTitle": "Manage existing skills with SkillsGo?",
-  "batchAdoptionDescription": "SkillsGo will replace the current install with your selected version.\nThe old copy will move to Trash.\nLocal changes will not be kept.\nSkillsGo will handle future updates and removals.\nBack up anything you need.",
+  "batchAdoptionDescription": "SkillsGo will track version updates; updates and removals need your confirmation.\nYour selected version replaces the current install.\nThe original install is backed up for 30 days and can be restored.",
+  "adoptionBackupAvailable": "Original install backed up",
+  "adoptionBackupRetention": "Available to restore for 30 days",
+  "adoptionBackupRestore": "Restore original install",
+  "adoptionBackupRestoreTitle": "Restore original install?",
+  "adoptionBackupRestoreMessage": "This removes the managed version and restores the install and local changes from before management.",
   "batchAdoptionStoryTitle": "Turn scattered skills into one clear Library",
   "batchAdoptionStoryDescription": "SkillsGo found {count, plural, =1{1 existing skill} other{{count} existing skills}} it can manage in this location.",
   "@batchAdoptionStoryDescription": {
@@ -666,7 +671,7 @@
       "count": {"type": "int"}
     }
   },
-  "batchAdoptionPreservation": "Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.",
+  "batchAdoptionPreservation": "The original install is backed up automatically and can be restored from the Skill detail.",
   "batchAdoptionLaterHint": "If you skip, you can use Manage existing skills from Library anytime.",
   "batchAdoptionSkip": "Not now",
   "batchAdoptionConfirm": "Confirm management",

@@ -25,6 +25,14 @@ import (
 )
 
 func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool, hubURL string) (bool, error) {
+	return tryRemoveVersionSkillsInPackage(cmd, catalog, selectors, selectedAgents, globalScope, projectRoot, all, hubURL, "")
+}
+
+func tryRemoveVersionSkillInPackage(cmd *cobra.Command, catalog *agent.Catalog, selector, packagePath string, globalScope bool, projectRoot, hubURL string) (bool, error) {
+	return tryRemoveVersionSkillsInPackage(cmd, catalog, []string{selector}, nil, globalScope, projectRoot, false, hubURL, packagePath)
+}
+
+func tryRemoveVersionSkillsInPackage(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool, hubURL, packagePathFilter string) (bool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return true, err
@@ -60,7 +68,11 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 			}
 		}
 	} else {
-		removals, err = resolveVersionSkillRemovals(manifest, selectors)
+		if packagePathFilter == "" {
+			removals, err = resolveVersionSkillRemovals(manifest, selectors)
+		} else {
+			removals, err = resolveVersionSkillRemovalsInPackage(manifest, packagePathFilter, selectors)
+		}
 		if err != nil {
 			return true, err
 		}
@@ -186,6 +198,29 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ removed %d Package Skill selection(s)\n", len(selectors))
 	return true, nil
+}
+
+func resolveVersionSkillRemovalsInPackage(manifest project.WorkspaceManifest, packagePath string, selectors []string) (map[string]map[string]bool, error) {
+	dependency, exists := manifest.Dependencies[packagePath]
+	if !exists {
+		return nil, fmt.Errorf("Package dependency %q is no longer managed", packagePath)
+	}
+	removals := map[string]map[string]bool{packagePath: {}}
+	for _, raw := range selectors {
+		raw = strings.TrimSpace(raw)
+		matched := false
+		for _, selector := range dependency.Skills {
+			if raw == selector {
+				removals[packagePath][selector] = true
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("no selected Package Skill matches %q in %s", raw, packagePath)
+		}
+	}
+	return removals, nil
 }
 
 func resolveVersionSkillRemovals(manifest project.WorkspaceManifest, selectors []string) (map[string]map[string]bool, error) {

@@ -1815,6 +1815,22 @@ class AppLocalizationsVi extends AppLocalizations {
       'SkillsGo sẽ thêm hồ sơ quản lý cục bộ mà không cần di chuyển, ghi đè hoặc tải lên tệp kỹ năng. Các mục không được hỗ trợ hoặc thay đổi sẽ bị bỏ qua.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Biến các kỹ năng rải rác thành một Thư viện rõ ràng';
 

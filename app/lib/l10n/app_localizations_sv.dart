@@ -1812,6 +1812,22 @@ class AppLocalizationsSv extends AppLocalizations {
       'SkillsGo kommer att lägga till lokala hanteringsposter utan att flytta, skriva över eller ladda upp skill-filer. Objekt som inte stöds eller ändras kommer att hoppas över.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Förvandla spridda skills till ett enkelt bibliotek';
 

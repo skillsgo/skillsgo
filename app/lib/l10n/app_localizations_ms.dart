@@ -1813,6 +1813,22 @@ class AppLocalizationsMs extends AppLocalizations {
       'SkillsGo akan menambah rekod pengurusan tempatan tanpa mengalihkan, menulis ganti atau memuat naik fail kemahiran. Item yang tidak disokong atau ditukar akan dilangkau.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Ubah kemahiran bertaburan menjadi satu Perpustakaan yang jelas';
 

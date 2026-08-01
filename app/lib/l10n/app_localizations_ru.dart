@@ -1827,6 +1827,22 @@ class AppLocalizationsRu extends AppLocalizations {
       'SkillsGo добавит локальные записи управления без перемещения, перезаписи или загрузки файлов навыков. Неподдерживаемые или измененные элементы будут пропущены.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Превратите разбросанные навыки в одну понятную библиотеку';
 

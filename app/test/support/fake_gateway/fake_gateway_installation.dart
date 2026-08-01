@@ -57,6 +57,22 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   }
 
   @override
+  Future<List<AdoptionBackup>> listAdoptionBackups() async =>
+      List.unmodifiable(adoptionBackups);
+
+  @override
+  Future<void> restoreAdoptionBackup(String backupId) async {
+    final index = adoptionBackups.indexWhere((backup) => backup.id == backupId);
+    if (index < 0) {
+      throw const SkillsException(
+        'Adoption backup not found.',
+        kind: SkillsFailureKind.invalidLocalData,
+      );
+    }
+    adoptionBackups.removeAt(index);
+  }
+
+  @override
   Future<List<InstallationExecution>> installPackageTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {

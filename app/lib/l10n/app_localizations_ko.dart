@@ -1745,6 +1745,22 @@ class AppLocalizationsKo extends AppLocalizations {
       'SkillsGo는 스킬 파일을 이동하거나 덮어쓰거나 업로드하지 않고 로컬 관리 기록을 추가합니다. 지원되지 않거나 변경된 항목은 건너뜁니다.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle => '흩어져 있는 스킬을 하나의 명확한 라이브러리로 전환';
 
   @override

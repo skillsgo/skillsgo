@@ -1818,6 +1818,22 @@ class AppLocalizationsId extends AppLocalizations {
       'SkillsGo akan menambahkan catatan manajemen lokal tanpa memindahkan, menimpa, atau mengunggah file keterampilan. Item yang tidak didukung atau diubah akan dilewati.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Ubah keterampilan yang tersebar menjadi satu Perpustakaan yang jelas';
 

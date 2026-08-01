@@ -1693,7 +1693,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 会用你选的版本替换当前安装。\n原 Skill 会移到废纸篓。\n本地修改不会保留。\n之后更新和删除由 SkillsGo 负责。\n请先备份需要保留的修改。';
+      'SkillsGo 会追踪版本更新，更新和删除需要你确认。\n替换为你选择的版本。\n原安装自动备份，30 天内可恢复。';
+
+  @override
+  String get adoptionBackupAvailable => '原安装已自动备份';
+
+  @override
+  String get adoptionBackupRetention => '30 天内可恢复';
+
+  @override
+  String get adoptionBackupRestore => '恢复原安装';
+
+  @override
+  String get adoptionBackupRestoreTitle => '恢复原安装？';
+
+  @override
+  String get adoptionBackupRestoreMessage => '这会移除当前托管版本，恢复托管前的安装和本地修改。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一个清晰的 Library';
@@ -1826,8 +1841,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchAdoptionPreservation =>
-      '原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。';
+  String get batchAdoptionPreservation => '原安装会自动备份，托管后可在 Skill 详情中恢复。';
 
   @override
   String get batchAdoptionLaterHint => '暂时跳过后，仍可随时在 Library 点击「纳入管理」。';

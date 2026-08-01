@@ -1804,6 +1804,22 @@ class AppLocalizationsTh extends AppLocalizations {
       'SkillsGo จะเพิ่มบันทึกการจัดการในพื้นที่โดยไม่ต้องย้าย เขียนทับ หรืออัปโหลดไฟล์ทักษะ รายการที่ไม่รองรับหรือเปลี่ยนแปลงจะถูกข้ามไป';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'เปลี่ยนทักษะที่กระจัดกระจายให้เป็นห้องสมุดที่ชัดเจน';
 

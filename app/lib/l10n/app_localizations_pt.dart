@@ -1819,6 +1819,22 @@ class AppLocalizationsPt extends AppLocalizations {
       'SkillsGo adicionará registros de gerenciamento local sem mover, substituir ou fazer upload de arquivos de habilidades. Itens não suportados ou alterados serão ignorados.';
 
   @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
   String get batchAdoptionStoryTitle =>
       'Transforme habilidades dispersas em uma biblioteca clara';
 
