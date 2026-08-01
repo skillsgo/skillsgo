@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies that a user installs the older Repository release, sees one Catalog-derived Package card, updates that exact Package, persists v1.3.0 global YAML/Lock and Scope Package Store state, and observes no update card on the next check.
+ * [OUTPUT]: Verifies that a user installs the older Repository release, opens the rendered update dropdown, sees one Catalog-derived Package card, updates that exact Package, persists v1.3.0 global YAML/Lock and Scope Package Store state, and observes no update card on the next check.
  * [POS]: Serves as the black-box macOS App update lifecycle journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -116,6 +116,12 @@ void registerPackageUpdatePreviewJourney() {
         tester,
         find.byKey(const Key('library-update-filter')),
         timeout: const Duration(seconds: 45),
+      );
+      await tester.tap(find.byKey(const Key('library-update-filter')));
+      await _pumpUntil(
+        tester,
+        _textEither('Updates', '更新'),
+        timeout: const Duration(seconds: 10),
       );
       await tester.tap(_textEither('Updates', '更新'));
       const packagePath = 'github.com/skillsgo/e2e-versioned-skills';

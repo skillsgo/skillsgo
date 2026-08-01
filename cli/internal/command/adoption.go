@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on App-confirmed exact External-to-Package mappings, the prepared ordinary Package add change set, Agent adapters, and the durable SkillsGo recovery vault.
- * [OUTPUT]: Exposes the stdin-JSON `adopt` command that prepares and verifies Package state before touching External Skills, then commits External retirement and ordinary Package installation through one shared mutation Plan with rollback and durable per-Skill recovery records.
+ * [OUTPUT]: Exposes the stdin-JSON `adopt` command that prepares and verifies Package state before touching External Skills, then commits External retirement and ordinary Package installation through one shared mutation Plan with rollback, durable per-Skill recovery records, and startup recovery validation.
  * [POS]: Serves as the adoption intent adapter above the same Package mutation state machine used by add, update, and install.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -631,6 +631,12 @@ func recoverInterruptedAdoptions() error {
 			}
 			staged := make([]stagedExternal, 0, len(legacy.Entries))
 			for _, entry := range legacy.Entries {
+				if err := validateRecoveryOriginal(root, entry.Original); err != nil {
+					return err
+				}
+				if err := validateRecoveryBackup(root, entry.Backup); err != nil {
+					return err
+				}
 				staged = append(staged, stagedExternal{original: entry.Original, backup: entry.Backup})
 			}
 			if err := restoreStaged(staged, true); err != nil {
@@ -643,6 +649,9 @@ func recoverInterruptedAdoptions() error {
 		}
 		if manifest.SchemaVersion != adoptionRecoverySchemaVersion || len(manifest.Items) == 0 {
 			return fmt.Errorf("invalid adoption recovery manifest: %s", root)
+		}
+		if err := validateRecoveryManifest(root, manifest); err != nil {
+			return err
 		}
 		if manifest.Status == "ready" || manifest.Status == "restored" {
 			if manifest.Status == "ready" && !manifest.ExpiresAt.IsZero() && time.Now().UTC().After(manifest.ExpiresAt) {

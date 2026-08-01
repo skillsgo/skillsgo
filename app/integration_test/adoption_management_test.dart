@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
- * [OUTPUT]: Verifies location-scoped existing-Skill adoption counts, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies location-scoped existing-Skill adoption actions, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans using stable rendered keys rather than copy that changes with localization.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,7 +79,7 @@ void registerAdoptionManagementJourney() {
       );
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
-      final externalAdoption = _adoptionCount(1);
+      final externalAdoption = _adoptionAction();
       final retry = find.text('Retry');
       await _pumpUntilEither(tester, externalAdoption, retry);
       if (retry.evaluate().isNotEmpty) {
@@ -152,11 +152,8 @@ void _writeJson(File file, Object value) {
   file.writeAsStringSync(jsonEncode(value));
 }
 
-Finder _adoptionCount(int count) => find.byWidgetPredicate(
-  (widget) =>
-      widget is Text &&
-      (widget.data == 'Let SkillsGo manage $count external skills' ||
-          widget.data == '将 $count 个外部技能交给 SkillsGo 管理'),
+Finder _adoptionAction() => find.byKey(
+  const Key('library-adoption-review-enter'),
 );
 
 Finder _globalRailLabel() => find.byWidgetPredicate(

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on durable adoption manifests in the SkillsGo recovery vault, the ordinary managed-removal transaction, Agent catalog state, and Hub-backed Package metadata.
- * [OUTPUT]: Provides `skillsgo recovery list`, `skillsgo recovery restore`, and `skillsgo recovery delete` machine commands for reviewing and safely reverting adopted Skills.
+ * [OUTPUT]: Provides `skillsgo recovery list`, `skillsgo recovery restore`, and `skillsgo recovery delete` machine commands for reviewing and safely reverting adopted Skills, with strict durable-manifest path validation.
  * [POS]: Serves as the user-facing recovery adapter around adoption's durable per-Skill records; it never mutates the filesystem outside CLI-owned transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -178,7 +178,7 @@ func loadRecoveryBackups() ([]adoptionRecoveryBackup, error) {
 		if manifest.SchemaVersion != adoptionRecoverySchemaVersion {
 			continue
 		}
-		if err := validateRecoveryManifestBackups(filepath.Join(root, directory.Name()), manifest); err != nil {
+		if err := validateRecoveryManifest(filepath.Join(root, directory.Name()), manifest); err != nil {
 			return nil, err
 		}
 		if manifest.Status == "ready" && !manifest.ExpiresAt.IsZero() && now.After(manifest.ExpiresAt) {
@@ -223,16 +223,60 @@ func readAdoptionRecoveryManifest(root string) (adoptionRecoveryManifest, error)
 	return manifest, nil
 }
 
-func validateRecoveryManifestBackups(root string, manifest adoptionRecoveryManifest) error {
+func validateRecoveryManifest(root string, manifest adoptionRecoveryManifest) error {
 	for _, item := range manifest.Items {
 		for _, target := range item.Targets {
-			relative, err := filepath.Rel(root, target.Backup)
-			if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-				return fmt.Errorf("adoption recovery backup escapes its vault: %s", target.Backup)
+			if err := validateRecoveryOriginal(root, target.Original); err != nil {
+				return err
+			}
+			if err := validateRecoveryBackup(root, target.Backup); err != nil {
+				return err
 			}
 		}
 	}
 	return nil
+}
+
+func validateRecoveryOriginal(root, original string) error {
+	clean := filepath.Clean(strings.TrimSpace(original))
+	if clean == "." || !filepath.IsAbs(clean) {
+		return fmt.Errorf("adoption recovery original must be an absolute path: %s", original)
+	}
+	if isPathInside(root, clean) {
+		return fmt.Errorf("adoption recovery original cannot be inside its vault: %s", original)
+	}
+	return nil
+}
+
+func validateRecoveryBackup(root, backup string) error {
+	clean := filepath.Clean(strings.TrimSpace(backup))
+	if clean == "." || !filepath.IsAbs(clean) {
+		return fmt.Errorf("adoption recovery backup must be an absolute path: %s", backup)
+	}
+	if !isPathInside(root, clean) || clean == filepath.Clean(root) {
+		return fmt.Errorf("adoption recovery backup escapes its vault: %s", backup)
+	}
+	rootResolved, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return fmt.Errorf("adoption recovery vault is unavailable: %w", err)
+	}
+	parentResolved, err := filepath.EvalSymlinks(filepath.Dir(clean))
+	if err != nil || !isPathInside(rootResolved, parentResolved) {
+		return fmt.Errorf("adoption recovery backup escapes its vault: %s", backup)
+	}
+	relative, err := filepath.Rel(filepath.Clean(root), clean)
+	if err != nil || relative == "recovery.json" || relative == "recovery.json.tmp" {
+		return fmt.Errorf("adoption recovery backup cannot replace its manifest: %s", backup)
+	}
+	return nil
+}
+
+func isPathInside(root, candidate string) bool {
+	relative, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
+	if err != nil || filepath.IsAbs(relative) {
+		return false
+	}
+	return relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)))
 }
 
 func findAdoptionRecoveryBackup(backupID string) (string, adoptionRecoveryManifest, int, error) {
@@ -280,7 +324,7 @@ func restoreAdoptionBackup(cmd *cobra.Command, catalog *agent.Catalog, backupID,
 		return err
 	}
 	item := manifest.Items[index]
-	if err := validateRecoveryManifestBackups(root, manifest); err != nil {
+	if err := validateRecoveryManifest(root, manifest); err != nil {
 		return err
 	}
 	if item.Status != "ready" && item.Status != "restore-failed" {
