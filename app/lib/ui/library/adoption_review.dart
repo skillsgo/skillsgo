@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Depends on visible External Library entries with optional lock-backed Package hints, CLI-mediated batch Find, localized provenance and management copy, HugeIcons, PackageAvatar, Portal Labs SplitButtonInteraction, single-select MultiDropdown controls, and semantic theme roles.
  * [OUTPUT]: Provides the feature-gated inline Adoption Review with lock-restricted or manual server-ranked exact-name bounded batch matching, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, a side-effect confirmation dialog, reviewed handoff records, and group-bounded sticky morphing actions.
+ * [OUTPUT]: Also supports the current External Skills route and native split interaction while leaving Hub transport and filesystem mutation to the Gateway and CLI.
  * [POS]: Serves as the user-reviewed matching presentation inside the Library journey while leaving Hub transport and filesystem mutation to the Gateway and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

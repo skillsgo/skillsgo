@@ -171,6 +171,72 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settings;
 
+  /// No description provided for @appUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App updates'**
+  String get appUpdateTitle;
+
+  /// No description provided for @appUpdateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the release feed for a newer version of SkillsGo.'**
+  String get appUpdateDescription;
+
+  /// No description provided for @appUpdateNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'App updates are unavailable in this build.'**
+  String get appUpdateNotConfigured;
+
+  /// No description provided for @appUpdateReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Check when you’re ready. SkillsGo will not install an update without your action.'**
+  String get appUpdateReady;
+
+  /// No description provided for @appUpdateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for an App update…'**
+  String get appUpdateChecking;
+
+  /// No description provided for @appUpdateApplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading the update. SkillsGo will restart when it is ready.'**
+  String get appUpdateApplying;
+
+  /// No description provided for @appUpdateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not check for an App update. Check your connection and try again.'**
+  String get appUpdateCheckFailed;
+
+  /// No description provided for @appUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo {version} is available.'**
+  String appUpdateAvailable(String version);
+
+  /// No description provided for @appUpdateCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo {version} is up to date.'**
+  String appUpdateCurrent(String version);
+
+  /// No description provided for @appUpdateCheckAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for App updates'**
+  String get appUpdateCheckAction;
+
+  /// No description provided for @appUpdateApplyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update and restart'**
+  String get appUpdateApplyAction;
+
   /// No description provided for @openSettings.
   ///
   /// In en, this message translates to:
@@ -1280,12 +1346,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Agents'**
   String get agents;
-
-  /// No description provided for @managedBackups.
-  ///
-  /// In en, this message translates to:
-  /// **'Backups'**
-  String get managedBackups;
 
   /// No description provided for @hub.
   ///
@@ -3042,7 +3102,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionAction.
   ///
   /// In en, this message translates to:
-  /// **'Manage & track updates'**
+  /// **'Manage existing skills'**
   String get batchAdoptionAction;
 
   /// No description provided for @handExternalSkillsToSkillsGoManagementCount.
@@ -3144,86 +3204,8 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo will track version updates; updates and removals need your confirmation.\nYour selected version replaces the current install.\nThe original install is backed up for 30 days and can be restored.'**
+  /// **'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.'**
   String get batchAdoptionDescription;
-
-  /// No description provided for @adoptionBackupAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Original install backed up'**
-  String get adoptionBackupAvailable;
-
-  /// No description provided for @adoptionBackupRetention.
-  ///
-  /// In en, this message translates to:
-  /// **'Available to restore for 30 days'**
-  String get adoptionBackupRetention;
-
-  /// No description provided for @adoptionBackupRestore.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore original install'**
-  String get adoptionBackupRestore;
-
-  /// No description provided for @adoptionBackupRestoreTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore original install?'**
-  String get adoptionBackupRestoreTitle;
-
-  /// No description provided for @adoptionBackupRestoreMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'This removes the managed version and restores the install and local changes from before management.'**
-  String get adoptionBackupRestoreMessage;
-
-  /// No description provided for @managedBackupsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Managed backups'**
-  String get managedBackupsTitle;
-
-  /// No description provided for @managedBackupsDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.'**
-  String get managedBackupsDescription;
-
-  /// No description provided for @managedBackupsCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}'**
-  String managedBackupsCount(int count);
-
-  /// No description provided for @managedBackupsEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No recoverable backups'**
-  String get managedBackupsEmpty;
-
-  /// No description provided for @managedBackupsLoadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Managed backups are unavailable'**
-  String get managedBackupsLoadFailed;
-
-  /// No description provided for @managedBackupRestoreFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Restore failed — try again'**
-  String get managedBackupRestoreFailed;
-
-  /// No description provided for @managedBackupRestored.
-  ///
-  /// In en, this message translates to:
-  /// **'Original install restored.'**
-  String get managedBackupRestored;
-
-  /// No description provided for @managedBackupExpiresAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Available until {date}'**
-  String managedBackupExpiresAt(String date);
 
   /// No description provided for @batchAdoptionStoryTitle.
   ///
@@ -3456,7 +3438,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionPreservation.
   ///
   /// In en, this message translates to:
-  /// **'The original install is backed up automatically and can be restored from the Skill detail.'**
+  /// **'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.'**
   String get batchAdoptionPreservation;
 
   /// No description provided for @batchAdoptionLaterHint.
@@ -3474,7 +3456,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Confirm management'**
+  /// **'Add to management'**
   String get batchAdoptionConfirm;
 
   /// No description provided for @batchAdoptionExecutionRetry.
@@ -3764,6 +3746,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide details'**
   String get hideRemovalDetails;
+
+  /// No description provided for @managedBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get managedBackups;
+
+  /// No description provided for @adoptionBackupAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Original install backed up'**
+  String get adoptionBackupAvailable;
+
+  /// No description provided for @adoptionBackupRetention.
+  ///
+  /// In en, this message translates to:
+  /// **'Available to restore for 30 days'**
+  String get adoptionBackupRetention;
+
+  /// No description provided for @adoptionBackupRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original install'**
+  String get adoptionBackupRestore;
+
+  /// No description provided for @adoptionBackupRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original install?'**
+  String get adoptionBackupRestoreTitle;
+
+  /// No description provided for @adoptionBackupRestoreMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the managed version and restores the install and local changes from before management.'**
+  String get adoptionBackupRestoreMessage;
+
+  /// No description provided for @managedBackupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed backups'**
+  String get managedBackupsTitle;
+
+  /// No description provided for @managedBackupsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.'**
+  String get managedBackupsDescription;
+
+  /// No description provided for @managedBackupsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}'**
+  String managedBackupsCount(int count);
+
+  /// No description provided for @managedBackupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recoverable backups'**
+  String get managedBackupsEmpty;
+
+  /// No description provided for @managedBackupsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed backups are unavailable'**
+  String get managedBackupsLoadFailed;
+
+  /// No description provided for @managedBackupRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed — try again'**
+  String get managedBackupRestoreFailed;
+
+  /// No description provided for @managedBackupRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Original install restored.'**
+  String get managedBackupRestored;
+
+  /// No description provided for @managedBackupExpiresAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Available until {date}'**
+  String managedBackupExpiresAt(String date);
 }
 
 class _AppLocalizationsDelegate

@@ -1,0 +1,431 @@
+# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, four native runners, a protected unsigned-bootstrap switch or Apple/Windows signing credentials, a public App update base URL, and scoped R2 S3 credentials.
+# [OUTPUT]: Builds, signs when required, verifies, attests, and publishes four architecture-specific Velopack channels to R2 before creating one immutable GitHub App Release.
+# [POS]: Serves as the tag-only production App release pipeline; pull requests and ordinary main pushes never publish through it.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+name: App Release
+
+on:
+  push:
+    tags:
+      - app/v*
+
+concurrency:
+  group: app-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify App release tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag, version, and main ancestry
+        id: version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "${TAG}" =~ ^app/v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?)$ ]]; then
+            echo "Invalid App release tag: ${TAG}" >&2
+            exit 1
+          fi
+          version="${TAG#app/v}"
+          workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' app/pubspec.yaml)"
+          if [[ "${version}" != "${workspace_version}" ]]; then
+            echo "Tag version ${version} does not match app/pubspec.yaml ${workspace_version}." >&2
+            exit 1
+          fi
+          git fetch origin main
+          release_commit="$(git rev-list -n 1 "${TAG}")"
+          if ! git merge-base --is-ancestor "${release_commit}" origin/main; then
+            echo "App release tag must reference a commit reachable from main." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+          cache: true
+
+      - name: Analyze and test App
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    environment: app-release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-15
+            target: macos
+            architecture: arm64
+            channel: osx-arm64
+          - name: macOS x64
+            os: macos-15-intel
+            target: macos
+            architecture: x86_64
+            channel: osx-x64
+          - name: Windows x64
+            os: windows-2025
+            target: windows
+            architecture: x64
+            channel: win-x64
+          - name: Linux x64
+            os: ubuntu-24.04
+            target: linux
+            architecture: x64
+            channel: linux-x64
+    env:
+      APP_UPDATE_BASE_URL: ${{ vars.APP_UPDATE_BASE_URL }}
+      APP_RELEASE_UNSIGNED: ${{ vars.APP_RELEASE_UNSIGNED || '0' }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      RELEASE_CHANNEL: ${{ matrix.channel }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: |
+            cli/go.sum
+            protocol/go.sum
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+          cache: true
+
+      - name: Set up .NET for Velopack
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Linux desktop dependencies
+        if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Install App dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Validate public update URL
+        working-directory: app
+        shell: bash
+        run: |
+          source="$(dart run ../scripts/validate-app-update-url.dart \
+            "${APP_UPDATE_BASE_URL%/}/app/${RELEASE_CHANNEL}/")"
+          echo "SKILLSGO_APP_UPDATE_URL=${source}" >> "${GITHUB_ENV}"
+
+      - name: Configure Apple signing and notarization
+        if: matrix.target == 'macos' && vars.APP_RELEASE_UNSIGNED != '1'
+        shell: bash
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APP_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_IDENTITY }}
+          INSTALL_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_IDENTITY }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+        run: |
+          for value in CERTIFICATE_BASE64 CERTIFICATE_PASSWORD APP_IDENTITY INSTALL_IDENTITY API_KEY_ID API_ISSUER_ID API_PRIVATE_KEY; do
+            if [[ -z "${!value}" ]]; then
+              echo "Missing required app-release Apple secret: ${value}" >&2
+              exit 1
+            fi
+          done
+          certificate="${RUNNER_TEMP}/developer-id.p12"
+          keychain="${RUNNER_TEMP}/app-signing.keychain-db"
+          api_key="${RUNNER_TEMP}/AuthKey_${API_KEY_ID}.p8"
+          keychain_password="$(openssl rand -hex 24)"
+          printf '%s' "${CERTIFICATE_BASE64}" | base64 --decode > "${certificate}"
+          printf '%s' "${API_PRIVATE_KEY}" > "${api_key}"
+          security create-keychain -p "${keychain_password}" "${keychain}"
+          security set-keychain-settings -lut 21600 "${keychain}"
+          security unlock-keychain -p "${keychain_password}" "${keychain}"
+          security import "${certificate}" -k "${keychain}" -P "${CERTIFICATE_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${keychain_password}" "${keychain}"
+          security list-keychains -d user -s "${keychain}"
+          xcrun notarytool store-credentials skillsgo-notary \
+            --key "${api_key}" \
+            --key-id "${API_KEY_ID}" \
+            --issuer "${API_ISSUER_ID}" \
+            --keychain "${keychain}"
+          {
+            echo "SKILLSGO_MACOS_SIGN_APP_IDENTITY=${APP_IDENTITY}"
+            echo "SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY=${INSTALL_IDENTITY}"
+            echo "SKILLSGO_MACOS_NOTARY_PROFILE=skillsgo-notary"
+            echo "SKILLSGO_MACOS_KEYCHAIN=${keychain}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Configure Windows signing
+        if: matrix.target == 'windows' && vars.APP_RELEASE_UNSIGNED != '1'
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGN_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGN_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:CERTIFICATE_PASSWORD)) {
+            throw 'WINDOWS_SIGN_CERTIFICATE and WINDOWS_SIGN_CERTIFICATE_PASSWORD are required.'
+          }
+          $certificate = Join-Path $env:RUNNER_TEMP 'skillsgo-signing.pfx'
+          [IO.File]::WriteAllBytes(
+            $certificate,
+            [Convert]::FromBase64String($env:CERTIFICATE_BASE64)
+          )
+          $params = "/td sha256 /fd sha256 /f `"$certificate`" /p `"$env:CERTIFICATE_PASSWORD`" /tr http://timestamp.digicert.com"
+          "SKILLSGO_WINDOWS_SIGN_PARAMS=$params" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build architecture-specific macOS App
+        if: matrix.target == 'macos'
+        env:
+          SKILLSGO_APP_BUILD_NAME: ${{ needs.verify.outputs.version }}
+          SKILLSGO_APP_BUILD_NUMBER: ${{ github.run_number }}
+        run: make build-app-macos-${{ matrix.architecture }}
+
+      - name: Build Windows or Linux App
+        if: matrix.target != 'macos'
+        working-directory: app
+        shell: bash
+        run: |
+          flutter build "${{ matrix.target }}" --release \
+            --build-name "${RELEASE_VERSION}" \
+            --build-number "${{ github.run_number }}" \
+            --dart-define "SKILLSGO_APP_UPDATE_URL=${SKILLSGO_APP_UPDATE_URL}"
+
+      - name: Install pinned Velopack CLI
+        shell: bash
+        run: dotnet tool install --global vpk --version 1.2.0
+
+      - name: Hydrate prior public feed
+        shell: bash
+        run: |
+          dart scripts/sync-velopack-feed.dart \
+            "${SKILLSGO_APP_UPDATE_URL}" \
+            "${RELEASE_CHANNEL}" \
+            "app/build/velopack/${RELEASE_CHANNEL}"
+
+      - name: Package protected Velopack release
+        shell: bash
+        env:
+          SKILLSGO_APP_PACKAGE_APPEND: '1'
+          SKILLSGO_APP_PACKAGE_MODE: release
+          SKILLSGO_APP_PACKAGE_VERSION: ${{ needs.verify.outputs.version }}
+          SKILLSGO_APP_RELEASE_UNSIGNED: ${{ env.APP_RELEASE_UNSIGNED }}
+        run: ./scripts/package-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Verify signed Windows release
+        if: matrix.target == 'windows' && vars.APP_RELEASE_UNSIGNED != '1'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Get-Item "app/build/velopack/${{ matrix.channel }}/SkillsGo-${{ matrix.channel }}-Setup.exe"
+          $signature = Get-AuthenticodeSignature $setup.FullName
+          if ($signature.Status -ne 'Valid') {
+            throw "Windows installer signature is $($signature.Status)."
+          }
+
+      - name: Attest release channel
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: app/build/velopack/${{ matrix.channel }}/SkillsGo-${{ needs.verify.outputs.version }}-${{ matrix.channel }}-full.nupkg
+
+      - name: Upload protected release channel
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: app-release-${{ matrix.channel }}
+          path: app/build/velopack/${{ matrix.channel }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Clean up Apple signing material
+        if: always() && matrix.target == 'macos'
+        shell: bash
+        run: |
+          security delete-keychain "${SKILLSGO_MACOS_KEYCHAIN:-${RUNNER_TEMP}/app-signing.keychain-db}" || true
+          rm -f "${RUNNER_TEMP}/developer-id.p12" "${RUNNER_TEMP}"/AuthKey_*.p8
+
+  publish:
+    name: Publish App release
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: app-release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BUCKET: ${{ vars.R2_APP_BUCKET }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - name: Download macOS arm64 channel
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: app-release-osx-arm64
+          path: release-assets/osx-arm64
+
+      - name: Download macOS x64 channel
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: app-release-osx-x64
+          path: release-assets/osx-x64
+
+      - name: Download Windows x64 channel
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: app-release-win-x64
+          path: release-assets/win-x64
+
+      - name: Download Linux x64 channel
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: app-release-linux-x64
+          path: release-assets/linux-x64
+
+      - name: Validate R2 publication configuration
+        shell: bash
+        run: |
+          for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_ENDPOINT R2_BUCKET; do
+            if [[ -z "${!value}" ]]; then
+              echo "Missing required app-release R2 configuration: ${value}" >&2
+              exit 1
+            fi
+          done
+          aws --version
+
+      - name: Upload immutable R2 objects
+        shell: bash
+        run: |
+          for channel in osx-arm64 osx-x64 win-x64 linux-x64; do
+            for name in \
+              "SkillsGo-${RELEASE_VERSION}-${channel}-full.nupkg" \
+              "release-${RELEASE_VERSION}.json"; do
+              file="release-assets/${channel}/${name}"
+              if [[ ! -s "${file}" ]]; then
+                echo "Missing current immutable release object: ${file}" >&2
+                exit 1
+              fi
+              digest="$(sha256sum "${file}" | cut -d ' ' -f 1)"
+              head_error="${RUNNER_TEMP}/r2-head-error"
+              set +e
+              existing_digest="$(
+                aws s3api head-object \
+                  --bucket "${R2_BUCKET}" \
+                  --key "app/${channel}/${name}" \
+                  --endpoint-url "${R2_ENDPOINT}" \
+                  --query 'Metadata.sha256' \
+                  --output text 2>"${head_error}"
+              )"
+              head_status=$?
+              set -e
+              if [[ "${head_status}" -ne 0 ]]; then
+                if ! grep -Eq '(404|Not Found|NoSuchKey)' "${head_error}"; then
+                  cat "${head_error}" >&2
+                  exit "${head_status}"
+                fi
+                existing_digest=""
+              fi
+              if [[ -n "${existing_digest}" ]]; then
+                if [[ "${existing_digest}" == "None" ]]; then
+                  echo "Refusing to overwrite immutable R2 object without checksum metadata: ${channel}/${name}" >&2
+                  exit 1
+                fi
+                if [[ "${existing_digest}" != "${digest}" ]]; then
+                  echo "Refusing to overwrite immutable R2 object with different content: ${channel}/${name}" >&2
+                  exit 1
+                fi
+                echo "Immutable R2 object already matches: ${channel}/${name}"
+                continue
+              fi
+              aws s3 cp "${file}" "s3://${R2_BUCKET}/app/${channel}/${name}" \
+                --endpoint-url "${R2_ENDPOINT}" \
+                --cache-control 'public,max-age=31536000,immutable' \
+                --metadata "sha256=${digest}" \
+                --only-show-errors
+            done
+          done
+
+      - name: Publish R2 feed manifests last
+        shell: bash
+        run: |
+          for channel in osx-arm64 osx-x64 win-x64 linux-x64; do
+            while IFS= read -r -d '' file; do
+              name="$(basename "${file}")"
+              aws s3 cp "${file}" "s3://${R2_BUCKET}/app/${channel}/${name}" \
+                --endpoint-url "${R2_ENDPOINT}" \
+                --cache-control 'no-cache' \
+                --only-show-errors
+            done < <(
+              find "release-assets/${channel}" -maxdepth 1 -type f \
+                \( -name 'releases.*.json' -o -name 'assets.*.json' -o -name 'RELEASES*' \) \
+                -print0
+            )
+          done
+
+      - name: Collect installer downloads
+        shell: bash
+        run: |
+          mkdir release-downloads
+          find release-assets -mindepth 2 -maxdepth 2 -type f \
+            \( -name '*.pkg' -o -name '*-Setup.exe' -o -name '*.AppImage' \) \
+            -exec cp '{}' release-downloads/ \;
+          (
+            cd release-downloads
+            find . -maxdepth 1 -type f ! -name checksums.txt -printf '%f\0' \
+              | sort -z \
+              | xargs -0 sha256sum > checksums.txt
+          )
+
+      - name: Attest release checksums
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release-downloads/checksums.txt
+
+      - name: Publish immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "${TAG}" release-downloads/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --title "SkillsGo App v${RELEASE_VERSION}" \
+            --generate-notes

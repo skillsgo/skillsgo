@@ -379,10 +379,20 @@ extension _LibraryActions on _LibraryScreenState {
     final current = skills ?? const <InstalledSkill>[];
     final projected = <InstalledSkill>[];
     for (final skill in current) {
+      final external = skill.provenance == LibraryProvenance.external;
+      if (selectedLocation.kind == _LibraryLocationKind.external) {
+        if (!external) continue;
+      } else if (selectedLocation.kind == _LibraryLocationKind.project &&
+          external) {
+        continue;
+      }
       final project = _selectedProject;
       final visibleTargets = skill.targets
           .where((target) {
-            final matchesLocation = project == null
+            final matchesLocation =
+                selectedLocation.kind == _LibraryLocationKind.external
+                ? true
+                : project == null
                 ? target.scope == InstallationScope.global
                 : target.scope == InstallationScope.project &&
                       target.projectRoot == project.path;

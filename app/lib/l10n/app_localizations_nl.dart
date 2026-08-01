@@ -23,6 +23,48 @@ class AppLocalizationsNl extends AppLocalizations {
   String get settings => 'Instellingen';
 
   @override
+  String get appUpdateTitle => 'App-updates';
+
+  @override
+  String get appUpdateDescription =>
+      'Controleer de releasefeed op een nieuwere versie van SkillsGo.';
+
+  @override
+  String get appUpdateNotConfigured =>
+      'App-updates zijn niet beschikbaar in deze build.';
+
+  @override
+  String get appUpdateReady =>
+      'Controleer wanneer je wilt. SkillsGo installeert niets zonder jouw actie.';
+
+  @override
+  String get appUpdateChecking => 'Controleren op een app-update…';
+
+  @override
+  String get appUpdateApplying =>
+      'De update wordt gedownload. SkillsGo start opnieuw wanneer deze gereed is.';
+
+  @override
+  String get appUpdateCheckFailed =>
+      'SkillsGo kon niet op updates controleren. Controleer je verbinding en probeer opnieuw.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version is beschikbaar.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version is up-to-date.';
+  }
+
+  @override
+  String get appUpdateCheckAction => 'Controleren op app-updates';
+
+  @override
+  String get appUpdateApplyAction => 'Bijwerken en opnieuw starten';
+
+  @override
   String get openSettings => 'Instellingen openen';
 
   @override
@@ -673,9 +715,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get agents => 'Agents';
-
-  @override
-  String get managedBackups => 'Backups';
 
   @override
   String get hub => 'Hub';
@@ -1817,57 +1856,6 @@ class AppLocalizationsNl extends AppLocalizations {
       'SkillsGo voegt lokale beheerrecords toe zonder skill-bestanden te verplaatsen, overschrijven of uploaden. Niet-ondersteunde of gewijzigde items worden overgeslagen.';
 
   @override
-  String get adoptionBackupAvailable => 'Original install backed up';
-
-  @override
-  String get adoptionBackupRetention => 'Available to restore for 30 days';
-
-  @override
-  String get adoptionBackupRestore => 'Restore original install';
-
-  @override
-  String get adoptionBackupRestoreTitle => 'Restore original install?';
-
-  @override
-  String get adoptionBackupRestoreMessage =>
-      'This removes the managed version and restores the install and local changes from before management.';
-
-  @override
-  String get managedBackupsTitle => 'Managed backups';
-
-  @override
-  String get managedBackupsDescription =>
-      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
-
-  @override
-  String managedBackupsCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count recoverable backups',
-      one: '1 recoverable backup',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get managedBackupsEmpty => 'No recoverable backups';
-
-  @override
-  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
-
-  @override
-  String get managedBackupRestoreFailed => 'Restore failed — try again';
-
-  @override
-  String get managedBackupRestored => 'Original install restored.';
-
-  @override
-  String managedBackupExpiresAt(String date) {
-    return 'Available until $date';
-  }
-
-  @override
   String get batchAdoptionStoryTitle =>
       'Verander verspreide skills in één overzichtelijke bibliotheek';
 
@@ -2200,4 +2188,58 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get hideRemovalDetails => 'Details verbergen';
+
+  @override
+  String get managedBackups => 'Backups';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }

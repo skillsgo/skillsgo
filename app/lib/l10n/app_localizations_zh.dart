@@ -23,6 +23,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get appUpdateTitle => '应用更新';
+
+  @override
+  String get appUpdateDescription => '从发布源检查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此构建未配置应用更新。';
+
+  @override
+  String get appUpdateReady => '需要时手动检查；未经你确认，SkillsGo 不会安装更新。';
+
+  @override
+  String get appUpdateChecking => '正在检查应用更新…';
+
+  @override
+  String get appUpdateApplying => '正在下载更新，准备完成后 SkillsGo 将重新启动。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 无法检查应用更新，请检查网络连接后重试。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '检查应用更新';
+
+  @override
+  String get appUpdateApplyAction => '更新并重启';
+
+  @override
   String get openSettings => '打开设置';
 
   @override
@@ -637,9 +674,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get agents => '智能体';
-
-  @override
-  String get managedBackups => '托管备份';
 
   @override
   String get hub => 'Hub';
@@ -1634,7 +1668,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchAdoptionAction => '托管并追踪更新';
+  String get batchAdoptionAction => '纳入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -1643,7 +1677,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '确认托管（$selected/$total）';
+    return '确认由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
@@ -1696,50 +1730,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 会追踪版本更新，更新和删除需要你确认。\n替换为你选择的版本。\n原安装自动备份，30 天内可恢复。';
-
-  @override
-  String get adoptionBackupAvailable => '原安装已自动备份';
-
-  @override
-  String get adoptionBackupRetention => '30 天内可恢复';
-
-  @override
-  String get adoptionBackupRestore => '恢复原安装';
-
-  @override
-  String get adoptionBackupRestoreTitle => '恢复原安装？';
-
-  @override
-  String get adoptionBackupRestoreMessage => '这会移除当前托管版本，恢复托管前的安装和本地修改。';
-
-  @override
-  String get managedBackupsTitle => '托管备份';
-
-  @override
-  String get managedBackupsDescription => '接管 Skill 时自动保存的原安装，可在 30 天内恢复。';
-
-  @override
-  String managedBackupsCount(int count) {
-    return '$count 个可恢复备份';
-  }
-
-  @override
-  String get managedBackupsEmpty => '暂无可恢复备份';
-
-  @override
-  String get managedBackupsLoadFailed => '暂时无法读取托管备份';
-
-  @override
-  String get managedBackupRestoreFailed => '恢复失败，可以重试';
-
-  @override
-  String get managedBackupRestored => '原安装已恢复。';
-
-  @override
-  String managedBackupExpiresAt(String date) {
-    return '可恢复至 $date';
-  }
+      'SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一个清晰的 Library';
@@ -1872,7 +1863,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchAdoptionPreservation => '原安装会自动备份，托管后可在 Skill 详情中恢复。';
+  String get batchAdoptionPreservation =>
+      '原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。';
 
   @override
   String get batchAdoptionLaterHint => '暂时跳过后，仍可随时在 Library 点击「纳入管理」。';
@@ -1881,7 +1873,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchAdoptionSkip => '暂时跳过';
 
   @override
-  String get batchAdoptionConfirm => '确认托管';
+  String get batchAdoptionConfirm => '纳入管理';
 
   @override
   String get batchAdoptionExecutionRetry => '重试纳入';
@@ -2037,6 +2029,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hideRemovalDetails => '收起详情';
+
+  @override
+  String get managedBackups => '托管备份';
+
+  @override
+  String get adoptionBackupAvailable => '原安装已自动备份';
+
+  @override
+  String get adoptionBackupRetention => '30 天内可恢复';
+
+  @override
+  String get adoptionBackupRestore => '恢复原安装';
+
+  @override
+  String get adoptionBackupRestoreTitle => '恢复原安装？';
+
+  @override
+  String get adoptionBackupRestoreMessage => '这会移除当前托管版本，恢复托管前的安装和本地修改。';
+
+  @override
+  String get managedBackupsTitle => '托管备份';
+
+  @override
+  String get managedBackupsDescription => '接管 Skill 时自动保存的原安装，可在 30 天内恢复。';
+
+  @override
+  String managedBackupsCount(int count) {
+    return '$count 个可恢复备份';
+  }
+
+  @override
+  String get managedBackupsEmpty => '暂无可恢复备份';
+
+  @override
+  String get managedBackupsLoadFailed => '暂时无法读取托管备份';
+
+  @override
+  String get managedBackupRestoreFailed => '恢复失败，可以重试';
+
+  @override
+  String get managedBackupRestored => '原安装已恢复。';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return '可恢复至 $date';
+  }
 }
 
 /// The translations for Chinese, as used in Hong Kong, using the Han script (`zh_Hant_HK`).
@@ -2054,6 +2092,43 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get settings => '設置';
+
+  @override
+  String get appUpdateTitle => '應用程式更新';
+
+  @override
+  String get appUpdateDescription => '從發佈來源檢查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此版本未提供應用程式更新。';
+
+  @override
+  String get appUpdateReady => '需要時手動檢查；未經你的操作，SkillsGo 不會安裝更新。';
+
+  @override
+  String get appUpdateChecking => '正在檢查應用程式更新…';
+
+  @override
+  String get appUpdateApplying => '正在下載更新，準備完成後 SkillsGo 將重新啟動。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 無法檢查更新，請檢查網絡連線後再試。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可供使用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '檢查應用程式更新';
+
+  @override
+  String get appUpdateApplyAction => '更新並重新啟動';
 
   @override
   String get openSettings => '打開設置';
@@ -2669,9 +2744,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get agents => '智能體';
-
-  @override
-  String get managedBackups => '託管備份';
 
   @override
   String get hub => 'Hub';
@@ -3666,7 +3738,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   }
 
   @override
-  String get batchAdoptionAction => '託管並追蹤更新';
+  String get batchAdoptionAction => '納入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -3675,7 +3747,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '確認託管（$selected/$total）';
+    return '確認由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
@@ -3728,58 +3800,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。';
-
-  @override
-  String get adoptionBackupAvailable => 'Original install backed up';
-
-  @override
-  String get adoptionBackupRetention => 'Available to restore for 30 days';
-
-  @override
-  String get adoptionBackupRestore => 'Restore original install';
-
-  @override
-  String get adoptionBackupRestoreTitle => 'Restore original install?';
-
-  @override
-  String get adoptionBackupRestoreMessage =>
-      'This removes the managed version and restores the install and local changes from before management.';
-
-  @override
-  String get managedBackupsTitle => 'Managed backups';
-
-  @override
-  String get managedBackupsDescription =>
-      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
-
-  @override
-  String managedBackupsCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count recoverable backups',
-      one: '1 recoverable backup',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get managedBackupsEmpty => 'No recoverable backups';
-
-  @override
-  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
-
-  @override
-  String get managedBackupRestoreFailed => 'Restore failed — try again';
-
-  @override
-  String get managedBackupRestored => 'Original install restored.';
-
-  @override
-  String managedBackupExpiresAt(String date) {
-    return 'Available until $date';
-  }
+      'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
@@ -3922,7 +3943,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchAdoptionConfirm => '確認託管';
+  String get batchAdoptionConfirm => '納入管理';
 
   @override
   String get batchAdoptionExecutionRetry => '重試納入';
@@ -4078,6 +4099,60 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get hideRemovalDetails => '隱藏詳細訊息';
+
+  @override
+  String get managedBackups => '託管備份';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }
 
 /// The translations for Chinese, as used in Taiwan, using the Han script (`zh_Hant_TW`).
@@ -4095,6 +4170,43 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get settings => '設定';
+
+  @override
+  String get appUpdateTitle => '應用程式更新';
+
+  @override
+  String get appUpdateDescription => '從發布來源檢查 SkillsGo 新版本。';
+
+  @override
+  String get appUpdateNotConfigured => '此版本未提供應用程式更新。';
+
+  @override
+  String get appUpdateReady => '需要時手動檢查；未經你的操作，SkillsGo 不會安裝更新。';
+
+  @override
+  String get appUpdateChecking => '正在檢查應用程式更新…';
+
+  @override
+  String get appUpdateApplying => '正在下載更新，準備完成後 SkillsGo 將重新啟動。';
+
+  @override
+  String get appUpdateCheckFailed => 'SkillsGo 無法檢查更新，請檢查網路連線後再試一次。';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version 可供使用。';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version 已是最新版本。';
+  }
+
+  @override
+  String get appUpdateCheckAction => '檢查應用程式更新';
+
+  @override
+  String get appUpdateApplyAction => '更新並重新啟動';
 
   @override
   String get openSettings => '開啟設定';
@@ -4711,9 +4823,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get agents => '智慧體';
-
-  @override
-  String get managedBackups => '託管備份';
 
   @override
   String get hub => 'Hub';
@@ -5708,7 +5817,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   }
 
   @override
-  String get batchAdoptionAction => '託管並追蹤更新';
+  String get batchAdoptionAction => '納入 SkillsGo 管理';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -5717,7 +5826,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '確認託管（$selected/$total）';
+    return '確認由 SkillsGo 管理（$selected/$total）';
   }
 
   @override
@@ -5770,58 +5879,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。';
-
-  @override
-  String get adoptionBackupAvailable => 'Original install backed up';
-
-  @override
-  String get adoptionBackupRetention => 'Available to restore for 30 days';
-
-  @override
-  String get adoptionBackupRestore => 'Restore original install';
-
-  @override
-  String get adoptionBackupRestoreTitle => 'Restore original install?';
-
-  @override
-  String get adoptionBackupRestoreMessage =>
-      'This removes the managed version and restores the install and local changes from before management.';
-
-  @override
-  String get managedBackupsTitle => 'Managed backups';
-
-  @override
-  String get managedBackupsDescription =>
-      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
-
-  @override
-  String managedBackupsCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count recoverable backups',
-      one: '1 recoverable backup',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get managedBackupsEmpty => 'No recoverable backups';
-
-  @override
-  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
-
-  @override
-  String get managedBackupRestoreFailed => 'Restore failed — try again';
-
-  @override
-  String get managedBackupRestored => 'Original install restored.';
-
-  @override
-  String managedBackupExpiresAt(String date) {
-    return 'Available until $date';
-  }
+      'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
@@ -5964,7 +6022,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchAdoptionConfirm => '確認託管';
+  String get batchAdoptionConfirm => '納入管理';
 
   @override
   String get batchAdoptionExecutionRetry => '重試納入';
@@ -6120,4 +6178,58 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get hideRemovalDetails => '隱藏詳細訊息';
+
+  @override
+  String get managedBackups => '託管備份';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }

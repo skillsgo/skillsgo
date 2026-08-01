@@ -377,14 +377,12 @@ func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *tes
 	require.Len(t, missingHint[0].Skills, 2)
 	require.Equal(t, "github.com/acme/two", missingHint[0].Skills[0].PackagePath)
 	require.Equal(t, "github.com/acme/one", missingHint[0].Skills[1].PackagePath)
-
 	caseSensitive, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{{
 		ID: "uppercase", Query: "Shared", Description: "Canonical one", ExactName: true,
 	}}, "", 10)
 	require.NoError(t, err)
 	require.Len(t, caseSensitive, 1)
 	require.Empty(t, caseSensitive[0].Skills)
-
 	for index := range 11 {
 		require.NoError(t, upsertTestSkill(t, c, &Skill{
 			PackagePath: fmt.Sprintf("github.com/crowded/%02d", index),

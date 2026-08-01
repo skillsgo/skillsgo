@@ -12,6 +12,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({
     super.key,
     required this.gateway,
+    required this.appUpdater,
+    required this.appUpdateSource,
     required this.folderTheme,
     required this.onFolderThemeChanged,
     required this.themeMode,
@@ -23,6 +25,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
     required this.onRestartOnboarding,
   });
   final SkillsGateway gateway;
+  final AppUpdater appUpdater;
+  final Uri? appUpdateSource;
   final String folderTheme;
   final ValueChanged<Color> onFolderThemeChanged;
   final AppThemeMode themeMode;
@@ -61,6 +65,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool restartingOnboarding = false;
   bool refreshingLibrary = false;
   bool managingDiagnosticLogs = false;
+  _AppUpdatePhase appUpdatePhase = _AppUpdatePhase.ready;
+  AppUpdateCheck? appUpdateCheck;
+  Object? appUpdateError;
   bool? libraryRefreshSucceeded;
   List<AdoptionBackup>? managedBackups;
   Object? managedBackupsError;

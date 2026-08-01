@@ -23,6 +23,43 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settings => '설정';
 
   @override
+  String get appUpdateTitle => '앱 업데이트';
+
+  @override
+  String get appUpdateDescription => '릴리스 피드에서 최신 SkillsGo 버전을 확인합니다.';
+
+  @override
+  String get appUpdateNotConfigured => '이 빌드에서는 앱 업데이트를 사용할 수 없습니다.';
+
+  @override
+  String get appUpdateReady => '준비되면 확인하세요. 사용자의 동작 없이 업데이트를 설치하지 않습니다.';
+
+  @override
+  String get appUpdateChecking => '앱 업데이트를 확인하는 중…';
+
+  @override
+  String get appUpdateApplying => '업데이트를 다운로드하는 중입니다. 준비되면 SkillsGo가 다시 시작됩니다.';
+
+  @override
+  String get appUpdateCheckFailed => '업데이트를 확인하지 못했습니다. 연결을 확인하고 다시 시도하세요.';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'SkillsGo $version을 사용할 수 있습니다.';
+  }
+
+  @override
+  String appUpdateCurrent(String version) {
+    return 'SkillsGo $version이 최신 상태입니다.';
+  }
+
+  @override
+  String get appUpdateCheckAction => '앱 업데이트 확인';
+
+  @override
+  String get appUpdateApplyAction => '업데이트 후 다시 시작';
+
+  @override
   String get openSettings => '설정 열기';
 
   @override
@@ -658,9 +695,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get agents => '에이전트';
-
-  @override
-  String get managedBackups => 'Backups';
 
   @override
   String get hub => '허브';
@@ -1748,57 +1782,6 @@ class AppLocalizationsKo extends AppLocalizations {
       'SkillsGo는 스킬 파일을 이동하거나 덮어쓰거나 업로드하지 않고 로컬 관리 기록을 추가합니다. 지원되지 않거나 변경된 항목은 건너뜁니다.';
 
   @override
-  String get adoptionBackupAvailable => 'Original install backed up';
-
-  @override
-  String get adoptionBackupRetention => 'Available to restore for 30 days';
-
-  @override
-  String get adoptionBackupRestore => 'Restore original install';
-
-  @override
-  String get adoptionBackupRestoreTitle => 'Restore original install?';
-
-  @override
-  String get adoptionBackupRestoreMessage =>
-      'This removes the managed version and restores the install and local changes from before management.';
-
-  @override
-  String get managedBackupsTitle => 'Managed backups';
-
-  @override
-  String get managedBackupsDescription =>
-      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
-
-  @override
-  String managedBackupsCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count recoverable backups',
-      one: '1 recoverable backup',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get managedBackupsEmpty => 'No recoverable backups';
-
-  @override
-  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
-
-  @override
-  String get managedBackupRestoreFailed => 'Restore failed — try again';
-
-  @override
-  String get managedBackupRestored => 'Original install restored.';
-
-  @override
-  String managedBackupExpiresAt(String date) {
-    return 'Available until $date';
-  }
-
-  @override
   String get batchAdoptionStoryTitle => '흩어져 있는 스킬을 하나의 명확한 라이브러리로 전환';
 
   @override
@@ -2119,4 +2102,58 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get hideRemovalDetails => '세부정보 숨기기';
+
+  @override
+  String get managedBackups => 'Backups';
+
+  @override
+  String get adoptionBackupAvailable => 'Original install backed up';
+
+  @override
+  String get adoptionBackupRetention => 'Available to restore for 30 days';
+
+  @override
+  String get adoptionBackupRestore => 'Restore original install';
+
+  @override
+  String get adoptionBackupRestoreTitle => 'Restore original install?';
+
+  @override
+  String get adoptionBackupRestoreMessage =>
+      'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 }

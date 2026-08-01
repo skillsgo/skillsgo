@@ -513,10 +513,10 @@ ranked AS (
                 ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
-                        CASE WHEN input.description='' THEN 0::double precision
-                             ELSE similarity(mvs.description,input.description)::double precision END DESC,
-                        CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
+                ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
+                         CASE WHEN input.description='' THEN 0::double precision
+                              ELSE similarity(mvs.description,input.description)::double precision END DESC,
+                         CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input

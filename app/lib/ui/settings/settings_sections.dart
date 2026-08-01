@@ -104,6 +104,12 @@ extension _SettingsSections on _SettingsScreenState {
   Widget _advancedSettings() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      _appUpdateSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
       _hubSettings(),
       const SizedBox(height: 28),
       SkillsSeparator.horizontal(

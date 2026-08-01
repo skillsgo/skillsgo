@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on native-runner-forwarded arguments including Windows Velopack fast-exit hooks, the Velopack-backed App updater and guarded rehearsal source, Dart Zones/UI dispatch, Flutter desktop bindings, the SkillsGo semantic theme, native window integration, Marionette instrumentation, App logging, and DesktopSkillsGateway.
- * [OUTPUT]: Initializes Velopack at the earliest process boundary, exits before UI initialization for official lifecycle hooks, optionally executes a loopback-only unsigned update rehearsal, otherwise starts or replaces SkillsGo through main or runSkillsGoApp with failure/lifecycle capture, first-frame presentation, native window initialization, Hub defaults, Gateway injection, and debug measurements.
+ * [OUTPUT]: Initializes Velopack at the earliest process boundary, exits before UI initialization for official lifecycle hooks, optionally executes a loopback-only unsigned update rehearsal, otherwise starts or replaces SkillsGo through main or runSkillsGoApp with the shared production updater/feed, failure/lifecycle capture, first-frame presentation, native window initialization, Hub defaults, Gateway injection, and debug measurements.
  * [POS]: Serves as the earliest desktop lifecycle boundary, Flutter process entry point, observability bootstrap, and native-window presentation boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,11 +43,18 @@ bool isVelopackFastExitInvocation(List<String> arguments) =>
 Future<void> main(List<String> arguments) async {
   final updater = VelopackAppUpdater();
   final rehearsalSource = appUpdateRehearsalSource(Platform.environment);
+  final rehearsalChannel = appUpdateRehearsalChannel(Platform.environment);
   var updaterInitialized = false;
   if (rehearsalSource != null) {
+    stderr.writeln(
+      'Starting Velopack rehearsal from $rehearsalSource '
+      'on channel ${rehearsalChannel ?? '(installed default)'}.',
+    );
     final applying = await updater.applyAvailableUpdateAndRestart(
       rehearsalSource,
+      channel: rehearsalChannel,
     );
+    stderr.writeln('Velopack rehearsal update available: $applying.');
     if (applying) return;
     updaterInitialized = true;
   }
@@ -57,6 +64,8 @@ Future<void> main(List<String> arguments) async {
   appLogger.info('app.lifecycle', 'launch_started');
   final launch = runZonedGuarded(
     () => runSkillsGoApp(
+      appUpdater: updater,
+      appUpdateSource: appUpdateProductionSource(),
       installGlobalErrorHandlers: true,
       manageInitialWindowVisibility: true,
     ),
@@ -70,6 +79,8 @@ Future<void> main(List<String> arguments) async {
 Future<void> runSkillsGoApp({
   bool initializeBinding = true,
   DesktopSkillsGateway? gateway,
+  AppUpdater? appUpdater,
+  Uri? appUpdateSource,
   bool installGlobalErrorHandlers = false,
   bool manageInitialWindowVisibility = false,
 }) async {
@@ -95,6 +106,8 @@ Future<void> runSkillsGoApp({
 
   runApp(
     SkillsGoApp(
+      appUpdater: appUpdater,
+      appUpdateSource: appUpdateSource,
       gateway:
           gateway ??
           DesktopSkillsGateway(

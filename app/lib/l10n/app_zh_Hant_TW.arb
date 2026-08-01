@@ -4,6 +4,19 @@
   "discoverSkills": "多會一點，總是好的。",
   "library": "已安裝",
   "settings": "設定",
+  "appUpdateTitle": "應用程式更新",
+  "appUpdateDescription": "從發布來源檢查 SkillsGo 新版本。",
+  "appUpdateNotConfigured": "此版本未提供應用程式更新。",
+  "appUpdateReady": "需要時手動檢查；未經你的操作，SkillsGo 不會安裝更新。",
+  "appUpdateChecking": "正在檢查應用程式更新…",
+  "appUpdateApplying": "正在下載更新，準備完成後 SkillsGo 將重新啟動。",
+  "appUpdateCheckFailed": "SkillsGo 無法檢查更新，請檢查網路連線後再試一次。",
+  "appUpdateAvailable": "SkillsGo {version} 可供使用。",
+  "@appUpdateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCurrent": "SkillsGo {version} 已是最新版本。",
+  "@appUpdateCurrent": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCheckAction": "檢查應用程式更新",
+  "appUpdateApplyAction": "更新並重新啟動",
   "openSettings": "開啟設定",
   "cliNeedsAttention": "SkillsGo 的必要元件需要處理。",
   "cliMissingBundled": "SkillsGo 的必要元件缺失或無法啟動。請重新安裝 SkillsGo 以恢復該元件。",
@@ -869,14 +882,14 @@
       }
     }
   },
-  "batchAdoptionAction": "託管並追蹤更新",
+  "batchAdoptionAction": "納入 SkillsGo 管理",
   "handExternalSkillsToSkillsGoManagementCount": "將 {count} 個外部技能交給 SkillsGo 管理",
   "@handExternalSkillsToSkillsGoManagementCount": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "confirmSkillsGoManagementCount": "確認託管（{selected}/{total}）",
+  "confirmSkillsGoManagementCount": "確認由 SkillsGo 管理（{selected}/{total}）",
   "@confirmSkillsGoManagementCount": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
   "skillColumnLabel": "技能",
   "packageSourceColumnLabel": "來源",
@@ -907,7 +920,7 @@
   },
   "batchAdoptionPending": "匯入中…",
   "batchAdoptionTitle": "將現有技能納入 SkillsGo 管理？",
-  "batchAdoptionDescription": "SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。",
+  "batchAdoptionDescription": "SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。",
   "batchAdoptionStoryTitle": "把散落的技能，整理成一個清晰的 Library",
   "batchAdoptionStoryDescription": "SkillsGo 在當前位置發現 {count} 個可以納入管理的現有技能。",
   "@batchAdoptionStoryDescription": {
@@ -1003,7 +1016,7 @@
   "batchAdoptionPreservation": "原檔案、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。",
   "batchAdoptionLaterHint": "暫時跳過後，仍可隨時在 Library 點選「納入管理」。",
   "batchAdoptionSkip": "暫時跳過",
-  "batchAdoptionConfirm": "確認託管",
+  "batchAdoptionConfirm": "納入管理",
   "batchAdoptionExecutionRetry": "重試納入",
   "batchAdoptionResultTitle": "已納入管理",
   "batchAdoptionSummary": "已納入管理 {adopted} 個技能，跳過 {skipped} 個。",

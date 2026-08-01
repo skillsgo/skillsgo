@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, the single Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, the controllable SkillsGateway test double, and a fake native App updater.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, App updates, reminders, Agent, the single Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,15 +10,112 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/infrastructure/app_updater.dart';
 import 'package:skillsgo/ui/agent_logo.dart';
 import 'package:skillsgo/ui/nested_navigation.dart';
 import 'package:skillsgo/ui/mermaid_webview_diagram.dart';
+import 'package:skillsgo/ui/native_components.dart';
 import 'package:skillsgo/ui/settings_screen.dart';
 
 import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  testWidgets('Advanced Settings checks and applies an App update', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final updater = _FakeAppUpdater();
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    await tester.tap(check);
+    await tester.pumpAndSettle();
+
+    expect(updater.checkedSources, [
+      Uri.parse('https://releases.example.com/app/osx-arm64/'),
+    ]);
+    expect(find.text('SkillsGo 0.0.2 is available.'), findsOneWidget);
+    final apply = find.byKey(const Key('apply-app-update'));
+    expect(apply, findsOneWidget);
+    await tester.ensureVisible(apply);
+    await tester.pumpAndSettle();
+    await tester.tap(apply);
+    await tester.pump();
+    expect(find.textContaining('Downloading the update'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(updater.appliedSources, updater.checkedSources);
+  });
+
+  testWidgets('Advanced Settings disables App updates without a feed', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    expect(
+      find.text('App updates are unavailable in this build.'),
+      findsOneWidget,
+    );
+    expect(tester.widget<SkillsButton>(check).enabled, isFalse);
+  });
+
+  testWidgets('App update controls recover when no update is applied', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final updater = _FakeAppUpdater(applyResult: false);
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    await tester.tap(check);
+    await tester.pumpAndSettle();
+    final apply = find.byKey(const Key('apply-app-update'));
+    await tester.ensureVisible(apply);
+    await tester.pumpAndSettle();
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+
+    expect(find.text('SkillsGo 0.0.2 is available.'), findsOneWidget);
+    expect(tester.widget<SkillsButton>(check).enabled, isTrue);
+    expect(tester.widget<SkillsButton>(apply).enabled, isTrue);
+  });
+
   testWidgets('Advanced Settings shows and filters live readable logs', (
     tester,
   ) async {
@@ -650,4 +747,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('open-mermaid-gallery')), findsOneWidget);
   });
+}
+
+final class _FakeAppUpdater implements AppUpdater {
+  _FakeAppUpdater({this.applyResult = true});
+
+  final bool applyResult;
+  final checkedSources = <Uri>[];
+  final appliedSources = <Uri>[];
+
+  @override
+  Future<void> initializeRuntime() async {}
+
+  @override
+  Future<AppUpdateCheck> checkForUpdate(Uri source) async {
+    checkedSources.add(source);
+    return const AppUpdateCheck(
+      currentVersion: '0.0.1',
+      availableVersion: '0.0.2',
+    );
+  }
+
+  @override
+  Future<bool> applyAvailableUpdateAndRestart(
+    Uri source, {
+    String? channel,
+  }) async {
+    appliedSources.add(source);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    return applyResult;
+  }
 }

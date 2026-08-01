@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on a two-version local Velopack feed from prepare-app-update-rehearsal.sh, its preserved macOS/Linux 0.0.1 launcher, Dart, and native process support.
+# [INPUT]: Depends on a two-version local Velopack feed from prepare-app-update-rehearsal.sh, its preserved macOS/Linux 0.0.1 launcher, an explicit portable-App channel, Dart, and native process support.
 # [OUTPUT]: Serves the feed locally, launches packaged 0.0.1 with the guarded update source, and proves Velopack replaced it with runnable 0.0.2 content and restarted the platform launcher.
 # [POS]: Serves as the real check/download/apply/restart gate for unsigned macOS and Linux App updates; Windows is verified by the workflow's native PowerShell gate.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -79,6 +79,7 @@ if [[ "${target}" == "macos" ]]; then
   readonly executable="${app_bundle}/Contents/MacOS/SkillsGo"
   readonly cli="${app_bundle}/Contents/Resources/bin/skillsgo"
   SKILLSGO_APP_UPDATE_REHEARSAL_URL="${update_url}" \
+    SKILLSGO_APP_UPDATE_REHEARSAL_CHANNEL="${channel}" \
     "${executable}" >"${runtime_dir}/app.log" 2>&1 &
   app_pid=$!
   for _ in {1..180}; do
@@ -121,6 +122,7 @@ else
   setsid env \
     DISPLAY=":${display_number}" \
     SKILLSGO_APP_UPDATE_REHEARSAL_URL="${update_url}" \
+    SKILLSGO_APP_UPDATE_REHEARSAL_CHANNEL="${channel}" \
     APPIMAGE_EXTRACT_AND_RUN=1 \
     "${appimage}" >"${runtime_dir}/app.log" 2>&1 &
   app_pid=$!

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
- * [OUTPUT]: Verifies location-scoped existing-Skill adoption actions, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, post-success rescans, and Settings-managed backup restoration using stable rendered keys rather than copy that changes with localization.
+ * [OUTPUT]: Verifies the unified External Skills route, location-scoped existing-Skill adoption, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, post-success rescans, and Settings-managed backup restoration using stable rendered keys rather than copy that changes with localization.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management and recovery journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,19 +79,18 @@ void registerAdoptionManagementJourney() {
       );
       await _pumpUntil(tester, libraryDestination);
       await tester.tap(libraryDestination);
-      final externalAdoption = _adoptionAction();
+      final externalSkills = find.text('External Skills');
+      await _pumpUntil(tester, externalSkills);
+      await tester.tap(externalSkills);
+      await tester.pumpAndSettle();
+      final externalAdoption = _adoptionCount(2);
       final retry = find.text('Retry');
       await _pumpUntilEither(tester, externalAdoption, retry);
       if (retry.evaluate().isNotEmpty) {
         await tester.tap(retry);
       }
       await _pumpUntil(tester, externalAdoption);
-      await _executeAdoption(tester, adopted: 1, failed: 0);
-      await _pumpUntil(tester, find.text('adoption-project'));
-      await tester.tap(find.text('adoption-project'));
-      await tester.pumpAndSettle();
-      await _pumpUntil(tester, externalAdoption);
-      await _executeAdoption(tester, adopted: 1, failed: 0);
+      await _executeAdoption(tester, adopted: 2, failed: 0);
       expect(File('${projectRoot.path}/skills.yaml').existsSync(), isTrue);
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
@@ -122,6 +121,9 @@ void registerAdoptionManagementJourney() {
         find.byKey(const Key('library-adoption-review-enter')),
       );
 
+      await _pumpUntil(tester, find.text('adoption-project'));
+      await tester.tap(find.text('adoption-project'));
+      await tester.pumpAndSettle();
       await _pumpUntilGone(
         tester,
         find.byKey(const Key('library-adoption-review-enter')),
@@ -133,9 +135,10 @@ void registerAdoptionManagementJourney() {
         find.byKey(const Key('library-adoption-review-enter')),
       );
       await _restoreOneManagedBackupFromSettings(tester);
-      final restoredTargets = [globalTarget, projectTarget]
-          .where((target) => target.existsSync())
-          .toList();
+      final restoredTargets = [
+        globalTarget,
+        projectTarget,
+      ].where((target) => target.existsSync()).toList();
       expect(restoredTargets, hasLength(1));
       expect(
         File('${restoredTargets.single.path}/SKILL.md').readAsBytesSync(),
@@ -181,8 +184,15 @@ void _writeJson(File file, Object value) {
   file.writeAsStringSync(jsonEncode(value));
 }
 
-Finder _adoptionAction() =>
-    find.byKey(const Key('library-adoption-review-enter'));
+Finder _adoptionCount(int count) => find.descendant(
+  of: find.byKey(const Key('library-adoption-review-enter')),
+  matching: find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        (widget.data == 'Let SkillsGo manage $count external skills' ||
+            widget.data == '将 $count 个外部技能交给 SkillsGo 管理'),
+  ),
+);
 
 Finder _globalRailLabel() => find.byWidgetPredicate(
   (widget) =>
