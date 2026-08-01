@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation and CLI-backed Project registration, supported skills.sh locks, and the public versioned Repository fixture.
- * [OUTPUT]: Verifies location-scoped existing-Skill adoption actions, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans using stable rendered keys rather than copy that changes with localization.
- * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
+ * [OUTPUT]: Verifies location-scoped existing-Skill adoption actions, Global and Project Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, post-success rescans, and Settings-managed backup restoration using stable rendered keys rather than copy that changes with localization.
+ * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management and recovery journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:convert';
@@ -132,9 +132,38 @@ void registerAdoptionManagementJourney() {
         tester,
         find.byKey(const Key('library-adoption-review-enter')),
       );
+      await _restoreOneManagedBackupFromSettings(tester);
+      final restoredTargets = [globalTarget, projectTarget]
+          .where((target) => target.existsSync())
+          .toList();
+      expect(restoredTargets, hasLength(1));
+      expect(
+        File('${restoredTargets.single.path}/SKILL.md').readAsBytesSync(),
+        userSkillBytes,
+      );
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
+}
+
+Future<void> _restoreOneManagedBackupFromSettings(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('primary-destination-settings')));
+  await _pumpUntil(tester, find.text('Managed backups'));
+  await tester.tap(find.text('Managed backups'));
+  await _pumpUntil(tester, find.byKey(const Key('managed-backups-count')));
+
+  final restore = find.text('Restore original install').first;
+  await _pumpUntil(tester, restore);
+  await tester.tap(restore);
+  final dialog = find.byType(AlertDialog);
+  await _pumpUntil(tester, dialog);
+  await tester.tap(
+    find.descendant(
+      of: dialog,
+      matching: find.text('Restore original install'),
+    ),
+  );
+  await _pumpUntil(tester, find.text('Original install restored.'));
 }
 
 Map<String, Object> _lockRecord(String skillPath) => {
@@ -152,9 +181,8 @@ void _writeJson(File file, Object value) {
   file.writeAsStringSync(jsonEncode(value));
 }
 
-Finder _adoptionAction() => find.byKey(
-  const Key('library-adoption-review-enter'),
-);
+Finder _adoptionAction() =>
+    find.byKey(const Key('library-adoption-review-enter'));
 
 Finder _globalRailLabel() => find.byWidgetPredicate(
   (widget) =>
