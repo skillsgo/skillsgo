@@ -49,7 +49,7 @@ dart scripts/sync-velopack-feed.dart https://releases.example.com/app/osx-arm64/
 - `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
 - `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
 - `package-app-candidate.sh` requires the corresponding native Release build and pinned Velopack CLI, then emits one unsigned architecture-specific channel under `app/build/velopack/`.
-- `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral `0.0.2` package to a `0.0.1` feed and prove check, download, apply, replacement, and restart without publishing or signing.
+- `prepare-app-update-rehearsal.sh` and `smoke-app-update-rehearsal.sh` append an ephemeral next-patch package to the current App feed and prove check, download, apply, replacement, and restart without publishing or signing.
 - An `app/vX.Y.Z` tag drives `.github/workflows/app-release.yml`; it requires the protected `app-release` environment and publishes immutable channel assets to R2 before each mutable Velopack manifest.
 
 ## Agent-Driven Runtime Interaction
