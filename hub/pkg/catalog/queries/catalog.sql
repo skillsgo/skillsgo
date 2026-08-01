@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -194,6 +194,20 @@ failure_terminal=excluded.failure_terminal
     AND localizations.prompt_version=excluded.prompt_version
     AND localizations.error_kind=excluded.error_kind AND localizations.failure_count>=4),
 updated_at=excluded.updated_at;
+
+-- name: TranslationProviderBlockedUntil :one
+SELECT blocked_until
+FROM translation_provider_admissions
+WHERE provider=$1 AND blocked_until>$2;
+
+-- name: TripTranslationProvider :one
+INSERT INTO translation_provider_admissions (provider,failure_kind,blocked_until,updated_at)
+VALUES ($1,$2,$3,$4)
+ON CONFLICT(provider) DO UPDATE SET
+failure_kind=excluded.failure_kind,
+blocked_until=GREATEST(translation_provider_admissions.blocked_until,excluded.blocked_until),
+updated_at=excluded.updated_at
+RETURNING blocked_until;
 
 -- name: PackageLocalizedDescription :one
 SELECT l.text_content
@@ -499,14 +513,14 @@ ranked AS (
                 ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' THEN 0 ELSE 1 END,
-                        CASE WHEN input.description='' THEN 0::double precision
-                             ELSE similarity(mvs.description,input.description)::double precision END DESC,
-                        CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
+                ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
+                         CASE WHEN input.description='' THEN 0::double precision
+                              ELSE similarity(mvs.description,input.description)::double precision END DESC,
+                         CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
-    JOIN packages m ON input.package_path='' OR m.path=input.package_path
+    JOIN packages m ON true
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
       ON mvs.version_id=mv.id AND mvs.name=input.query
@@ -516,7 +530,7 @@ ranked AS (
 SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
        source_host,source_repository,path,latest_version,stars,created_at,updated_at,match_score
 FROM ranked
-WHERE result_ordinal<=CASE WHEN requested_package_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
+WHERE result_ordinal<=sqlc.arg(page_limit)::bigint
 ORDER BY ordinal,result_ordinal;
 
 -- name: ActiveBackfillRun :one

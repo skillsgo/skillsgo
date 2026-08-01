@@ -1,5 +1,6 @@
-h1:h4RAoUAHsDK0pOAaSe+qE5TLGNNb1mW18QtpDGUyIOk=
+h1:0WM3UPp+uY7JBxLm+wCkusAhCcNWRVhTX1ML9SAGqpA=
 202607230001_initial.sql h1:cGsR4+D51PHQ4PtmVd0Vn3gwmnZ4uuvGptyPRnirtGU=
 202607310002_localization_retry.sql h1:Bv2w2wgbPzUIl43y2cbBoCnqdg+Gma5HhfNQpMAVhC4=
 202607310003_package_size.sql h1:rOlfEccuAEO3cdGUzKKyRF98f3qvii4tTzytolvVrlI=
 202607310004_exact_skill_name_index.sql h1:s320Nqs9YzHWNFCS9ia2hkXcvOrSylMQQEHkwYknPRg=
+202608020005_translation_provider_admission.sql h1:ND7dAfbUGfT+AndSk8Qk6Jp356UCBFjO/zkBAeoVwJc=

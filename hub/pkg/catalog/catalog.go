@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, server-ranked exact-name candidate confidence, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, durable translation-provider admission, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, server-ranked exact-name candidate confidence, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -325,6 +325,27 @@ func (c *Catalog) UpsertLocalizationFailure(ctx context.Context, item Localizati
 		ErrorMessage: pgtype.Text{String: item.ErrorMessage, Valid: true},
 		RetryAt:      retryAt, FailureTerminal: !item.Retryable, UpdatedAt: time.Now().UTC(),
 	})
+}
+
+func (c *Catalog) TranslationProviderDelay(ctx context.Context, provider string, now time.Time) (time.Duration, error) {
+	blockedUntil, err := c.queries.TranslationProviderBlockedUntil(ctx, catalogsqlc.TranslationProviderBlockedUntilParams{Provider: provider, BlockedUntil: now.UTC()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("read translation provider admission: %w", err)
+	}
+	return blockedUntil.Sub(now.UTC()), nil
+}
+
+func (c *Catalog) TripTranslationProvider(ctx context.Context, provider, failureKind string, now time.Time, delay time.Duration) (time.Duration, error) {
+	blockedUntil, err := c.queries.TripTranslationProvider(ctx, catalogsqlc.TripTranslationProviderParams{
+		Provider: provider, FailureKind: failureKind, BlockedUntil: now.UTC().Add(delay), UpdatedAt: now.UTC(),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("trip translation provider admission: %w", err)
+	}
+	return blockedUntil.Sub(now.UTC()), nil
 }
 
 func (c *Catalog) UpsertDocumentLocalization(ctx context.Context, lang, sourceDigest, resultKind, promptVersion string) error {

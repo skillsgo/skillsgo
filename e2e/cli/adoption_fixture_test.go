@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the released CLI process, scenario-local filesystem paths, and the public stdin JSON adoption protocol.
- * [OUTPUT]: Provides typed adoption requests/reports and a black-box CLI runner shared by External adoption journeys.
+ * [OUTPUT]: Provides typed adoption requests/reports, including durable backup receipts, and a black-box CLI runner shared by External adoption journeys.
  * [POS]: Serves as the adoption protocol fixture module in the CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -41,12 +41,14 @@ type adoptionTargetJSON struct {
 type adoptionReportJSON struct {
 	SchemaVersion int `json:"schemaVersion"`
 	Results       []struct {
-		InventoryKey string `json:"inventoryKey"`
-		PackagePath  string `json:"packagePath"`
-		Version      string `json:"version"`
-		SkillPath    string `json:"skillPath"`
-		Status       string `json:"status"`
-		Reason       string `json:"reason"`
+		InventoryKey    string `json:"inventoryKey"`
+		PackagePath     string `json:"packagePath"`
+		Version         string `json:"version"`
+		SkillPath       string `json:"skillPath"`
+		Status          string `json:"status"`
+		Reason          string `json:"reason"`
+		BackupID        string `json:"backupId"`
+		BackupExpiresAt string `json:"backupExpiresAt"`
 	} `json:"results"`
 }
 
