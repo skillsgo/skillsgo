@@ -678,6 +678,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get agents => 'Agent';
 
   @override
+  String get managedBackups => 'Managed backups';
+
+  @override
   String get hub => 'trung tâm';
 
   @override
@@ -1829,6 +1832,41 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get adoptionBackupRestoreMessage =>
       'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 
   @override
   String get batchAdoptionStoryTitle =>

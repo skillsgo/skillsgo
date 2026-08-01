@@ -1135,5 +1135,21 @@
   "removingSkillsProgress": "Entfernen von {finished}/{total}",
   "confirmRemoveSkillsAction": "Jetzt entfernen",
   "viewRemovalDetails": "Details anzeigen",
-  "hideRemovalDetails": "Details ausblenden"
+  "hideRemovalDetails": "Details ausblenden",
+  "managedBackups": "Managed backups",
+  "adoptionBackupAvailable": "Original install backed up",
+  "adoptionBackupRetention": "Available to restore for 30 days",
+  "adoptionBackupRestore": "Restore original install",
+  "adoptionBackupRestoreTitle": "Restore original install?",
+  "adoptionBackupRestoreMessage": "This removes the managed version and restores the install and local changes from before management.",
+  "managedBackupsTitle": "Managed backups",
+  "managedBackupsDescription": "Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.",
+  "managedBackupsCount": "{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}",
+  "@managedBackupsCount": {"placeholders": {"count": {"type": "int"}}},
+  "managedBackupsEmpty": "No recoverable backups",
+  "managedBackupsLoadFailed": "Managed backups are unavailable",
+  "managedBackupRestoreFailed": "Restore failed — try again",
+  "managedBackupRestored": "Original install restored.",
+  "managedBackupExpiresAt": "Available until {date}",
+  "@managedBackupExpiresAt": {"placeholders": {"date": {"type": "String"}}}
 }

@@ -569,7 +569,12 @@ class _LibraryScopeToggleState extends State<_LibraryScopeToggle> {
                         if (selected == _LibraryFilter.updates &&
                             widget.updateCount > 0) ...[
                           const SizedBox(width: 6),
-                          _LibraryFilterCountBadge(count: widget.updateCount),
+                          _LibraryFilterCountBadge(
+                            key: ValueKey(
+                              'subscription-switch-badge-${_label(selected)}',
+                            ),
+                            count: widget.updateCount,
+                          ),
                         ],
                       ],
                     ),
@@ -695,7 +700,7 @@ class _LibraryFilterHoverDescriptionState
 }
 
 class _LibraryFilterCountBadge extends StatelessWidget {
-  const _LibraryFilterCountBadge({required this.count});
+  const _LibraryFilterCountBadge({super.key, required this.count});
 
   final int count;
 

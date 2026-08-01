@@ -1281,6 +1281,12 @@ abstract class AppLocalizations {
   /// **'Agents'**
   String get agents;
 
+  /// No description provided for @managedBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed backups'**
+  String get managedBackups;
+
   /// No description provided for @hub.
   ///
   /// In en, this message translates to:
@@ -3170,6 +3176,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This removes the managed version and restores the install and local changes from before management.'**
   String get adoptionBackupRestoreMessage;
+
+  /// No description provided for @managedBackupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed backups'**
+  String get managedBackupsTitle;
+
+  /// No description provided for @managedBackupsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.'**
+  String get managedBackupsDescription;
+
+  /// No description provided for @managedBackupsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}'**
+  String managedBackupsCount(int count);
+
+  /// No description provided for @managedBackupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recoverable backups'**
+  String get managedBackupsEmpty;
+
+  /// No description provided for @managedBackupsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed backups are unavailable'**
+  String get managedBackupsLoadFailed;
+
+  /// No description provided for @managedBackupRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed — try again'**
+  String get managedBackupRestoreFailed;
+
+  /// No description provided for @managedBackupRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Original install restored.'**
+  String get managedBackupRestored;
+
+  /// No description provided for @managedBackupExpiresAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Available until {date}'**
+  String managedBackupExpiresAt(String date);
 
   /// No description provided for @batchAdoptionStoryTitle.
   ///

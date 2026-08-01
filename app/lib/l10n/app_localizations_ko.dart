@@ -660,6 +660,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get agents => '에이전트';
 
   @override
+  String get managedBackups => 'Managed backups';
+
+  @override
   String get hub => '허브';
 
   @override
@@ -1759,6 +1762,41 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get adoptionBackupRestoreMessage =>
       'This removes the managed version and restores the install and local changes from before management.';
+
+  @override
+  String get managedBackupsTitle => 'Managed backups';
+
+  @override
+  String get managedBackupsDescription =>
+      'Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.';
+
+  @override
+  String managedBackupsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recoverable backups',
+      one: '1 recoverable backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get managedBackupsEmpty => 'No recoverable backups';
+
+  @override
+  String get managedBackupsLoadFailed => 'Managed backups are unavailable';
+
+  @override
+  String get managedBackupRestoreFailed => 'Restore failed — try again';
+
+  @override
+  String get managedBackupRestored => 'Original install restored.';
+
+  @override
+  String managedBackupExpiresAt(String date) {
+    return 'Available until $date';
+  }
 
   @override
   String get batchAdoptionStoryTitle => '흩어져 있는 스킬을 하나의 명확한 라이브러리로 전환';

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset, Library refresh and App diagnostic-log state, Mermaid gallery navigation, and shared setting controls.
- * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
+ * [OUTPUT]: Provides route content selection, reminder controls, managed-backup route content, reusable headings, Advanced settings, Mandatory Onboarding reset UI, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
  * [POS]: Serves as the general section composition of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,6 +22,7 @@ extension _SettingsSections on _SettingsScreenState {
         _SettingsRoute.general => _generalSettings(),
         _SettingsRoute.reminders => _reminderSettings(),
         _SettingsRoute.agents => _agentSettings(),
+        _SettingsRoute.backups => _managedBackupsSettings(),
         _SettingsRoute.advanced => _advancedSettings(),
       },
     ],

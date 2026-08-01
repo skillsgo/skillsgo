@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, single Hub Origin operations, risk/onboarding/diagnostic-log operations, Mermaid child-page state, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, Hub Origin persistence actions, Library-refresh and diagnostic-log feedback state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, single Hub Origin operations, risk/onboarding/diagnostic-log operations, adoption-backup recovery, Mermaid child-page state, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, Hub Origin persistence actions, Library-refresh and diagnostic-log feedback state, adoption-backup loading and restore state, settings and Mermaid child-page routing, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../settings_screen.dart';
 
-enum _SettingsRoute { general, reminders, agents, advanced }
+enum _SettingsRoute { general, reminders, agents, backups, advanced }
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({
@@ -62,9 +62,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool refreshingLibrary = false;
   bool managingDiagnosticLogs = false;
   bool? libraryRefreshSucceeded;
+  List<AdoptionBackup>? managedBackups;
+  Object? managedBackupsError;
+  bool loadingManagedBackups = false;
+  final Set<String> restoringManagedBackupIds = <String>{};
   String? notice;
   AgentCatalog? get agentCatalog => ref.watch(agentCatalogProvider).catalog;
   Object? get agentInspectionError => ref.watch(agentCatalogProvider).error;
+
+  List<AdoptionBackup> get _recoverableManagedBackups {
+    final now = DateTime.now();
+    return [
+      for (final backup in managedBackups ?? const <AdoptionBackup>[])
+        if (backup.canRestore && backup.expiresAt.isAfter(now)) backup,
+    ];
+  }
 
   @override
   void initState() {
@@ -264,9 +276,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       showingMermaidGallery = false;
       showingDiagnosticLogs = false;
     });
+    if (route == _SettingsRoute.backups) {
+      unawaited(_loadManagedBackups());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scrollController.hasClients) scrollController.jumpTo(0);
     });
+  }
+
+  Future<void> _loadManagedBackups() async {
+    if (loadingManagedBackups) return;
+    if (mounted) {
+      setState(() {
+        loadingManagedBackups = true;
+        managedBackupsError = null;
+      });
+    }
+    try {
+      final backups = await widget.gateway.listAdoptionBackups();
+      if (!mounted) return;
+      setState(() {
+        managedBackups = List.unmodifiable(backups);
+        loadingManagedBackups = false;
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      setState(() {
+        managedBackupsError = error;
+        loadingManagedBackups = false;
+      });
+    }
   }
 
   @override
@@ -306,6 +345,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           value: _SettingsRoute.agents,
           label: context.l10n.agents,
           icon: HugeIcons.strokeRoundedRobot01,
+        ),
+        SkillsRailItem(
+          value: _SettingsRoute.backups,
+          label: context.l10n.managedBackups,
+          icon: HugeIcons.strokeRoundedArchiveRestore,
+          count: managedBackups == null
+              ? null
+              : _recoverableManagedBackups.length,
+          countLabel: managedBackups == null
+              ? null
+              : context.l10n.managedBackupsCount(
+                  _recoverableManagedBackups.length,
+                ),
         ),
         SkillsRailItem(
           value: _SettingsRoute.advanced,
