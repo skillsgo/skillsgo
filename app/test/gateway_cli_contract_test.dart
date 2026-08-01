@@ -145,6 +145,7 @@ void main() {
       processRunner: runner,
       bundledCliPath: '/bundle/skillsgo',
       allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
     );
 
     final status = await gateway.detectCli();
