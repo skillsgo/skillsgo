@@ -849,6 +849,42 @@ abstract class AppLocalizations {
   /// **'Global Skills'**
   String get libraryGlobalScope;
 
+  /// No description provided for @libraryImportedSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo Managed'**
+  String get libraryImportedSkills;
+
+  /// No description provided for @libraryLocalSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Other Installation'**
+  String get libraryLocalSkills;
+
+  /// No description provided for @libraryFilterTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'All installed Skills in this scope'**
+  String get libraryFilterTooltip;
+
+  /// No description provided for @libraryFilterManagedTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Can be updated and removed by SkillsGo'**
+  String get libraryFilterManagedTooltip;
+
+  /// No description provided for @libraryFilterOtherTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills installed via skill.sh, manual copy, or git clone must be managed by SkillsGo before updating'**
+  String get libraryFilterOtherTooltip;
+
+  /// No description provided for @libraryFilterUpdatesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed Skills with updates available'**
+  String get libraryFilterUpdatesTooltip;
+
   /// No description provided for @libraryExternalScope.
   ///
   /// In en, this message translates to:
@@ -3000,7 +3036,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionAction.
   ///
   /// In en, this message translates to:
-  /// **'Manage existing skills'**
+  /// **'Manage & track updates'**
   String get batchAdoptionAction;
 
   /// No description provided for @handExternalSkillsToSkillsGoManagementCount.
@@ -3102,7 +3138,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.'**
+  /// **'SkillsGo will replace the current install with your selected version.\nThe old copy will move to Trash.\nLocal changes will not be kept.\nSkillsGo will handle future updates and removals.\nBack up anything you need.'**
   String get batchAdoptionDescription;
 
   /// No description provided for @batchAdoptionStoryTitle.
@@ -3354,7 +3390,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchAdoptionConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Add to management'**
+  /// **'Confirm management'**
   String get batchAdoptionConfirm;
 
   /// No description provided for @batchAdoptionExecutionRetry.

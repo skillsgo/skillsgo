@@ -436,6 +436,26 @@ class AppLocalizationsAr extends AppLocalizations {
   String get libraryGlobalScope => 'المهارات العالمية';
 
   @override
+  String get libraryImportedSkills => 'تديرها SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'مثبتة بطريقة أخرى';
+
+  @override
+  String get libraryFilterTooltip => 'كل المهارات المثبتة في هذا النطاق';
+
+  @override
+  String get libraryFilterManagedTooltip => 'يمكن لـ SkillsGo تحديثها وإزالتها';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'يجب أن تدير SkillsGo هذه المهارات قبل تحديثها';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'المهارات المُدارة ذات التحديثات المتاحة';
+
+  @override
   String get libraryExternalScope => 'المهارات الخارجية';
 
   @override

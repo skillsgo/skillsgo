@@ -12,7 +12,6 @@ import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/ui/brand.dart';
 import 'package:skillsgo/ui/native_components.dart';
-import 'package:skillsgo/ui/subscription_segmented_switch.dart';
 
 import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
@@ -226,7 +225,7 @@ void main() {
       expect(find.text('Can’t connect to SkillsGo'), findsOneWidget);
       expect(find.text('hub-demo'), findsOneWidget);
 
-      await tester.tap(libraryLocation('External Skills'));
+      await tester.tap(libraryLocation('Global Skills'));
       await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();
@@ -424,7 +423,6 @@ void main() {
       );
       expect(librarySearch.appearance, SkillSearchAppearance.leaderboard);
       expect(find.byKey(const Key('library-update-filter')), findsOneWidget);
-      expect(find.byType(SubscriptionSegmentedSwitch), findsOneWidget);
       expect(find.text('Add Project'), findsOneWidget);
       expect(find.text('Check updates'), findsNothing);
       expect(find.text('Refresh'), findsNothing);

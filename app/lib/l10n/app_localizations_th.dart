@@ -433,6 +433,25 @@ class AppLocalizationsTh extends AppLocalizations {
   String get libraryGlobalScope => 'ทักษะระดับโลก';
 
   @override
+  String get libraryImportedSkills => 'จัดการโดย SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'ติดตั้งด้วยวิธีอื่น';
+
+  @override
+  String get libraryFilterTooltip => 'Skills ที่ติดตั้งทั้งหมดในขอบเขตนี้';
+
+  @override
+  String get libraryFilterManagedTooltip => 'SkillsGo อัปเดตและลบได้';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'ต้องให้ SkillsGo จัดการก่อนจึงจะอัปเดตได้';
+
+  @override
+  String get libraryFilterUpdatesTooltip => 'Skill ที่จัดการและมีการอัปเดต';
+
+  @override
   String get libraryExternalScope => 'ทักษะภายนอก';
 
   @override

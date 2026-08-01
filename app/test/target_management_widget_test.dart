@@ -165,9 +165,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('External Skills'));
-    await tester.pumpAndSettle();
-
     await tester.tap(
       find.byKey(
         const ValueKey(
@@ -238,12 +235,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(gateway.managementTargetHistory, hasLength(1));
-    expect(gateway.managementTargetHistory.single, hasLength(3));
+    expect(gateway.managementTargetHistory.single, hasLength(2));
     expect(
       gateway.managementTargetHistory.single.values,
       everyElement(TargetManagementAction.remove),
     );
-    expect(gateway.libraryEntries, isEmpty);
+    final remainingEntries = gateway.libraryEntries!;
+    expect(remainingEntries, hasLength(1));
+    expect(remainingEntries.single.name, 'demo');
+    expect(remainingEntries.single.targets, hasLength(1));
+    expect(
+      remainingEntries.single.targets.single.scope,
+      InstallationScope.project,
+    );
   });
 
   testWidgets('unhealthy targets offer no automatic mutation', (tester) async {

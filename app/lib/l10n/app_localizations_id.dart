@@ -433,6 +433,27 @@ class AppLocalizationsId extends AppLocalizations {
   String get libraryGlobalScope => 'Keterampilan Global';
 
   @override
+  String get libraryImportedSkills => 'Dikelola SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Dipasang dengan cara lain';
+
+  @override
+  String get libraryFilterTooltip => 'Semua Skills terinstal dalam cakupan ini';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Dapat diperbarui dan dihapus oleh SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Harus dikelola SkillsGo sebelum diperbarui';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Skills terkelola dengan pembaruan tersedia';
+
+  @override
   String get libraryExternalScope => 'Keterampilan Eksternal';
 
   @override

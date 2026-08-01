@@ -379,20 +379,10 @@ extension _LibraryActions on _LibraryScreenState {
     final current = skills ?? const <InstalledSkill>[];
     final projected = <InstalledSkill>[];
     for (final skill in current) {
-      final external = skill.provenance == LibraryProvenance.external;
-      if (selectedLocation.kind == _LibraryLocationKind.external) {
-        if (!external) continue;
-      } else if (selectedLocation.kind == _LibraryLocationKind.project &&
-          external) {
-        continue;
-      }
       final project = _selectedProject;
       final visibleTargets = skill.targets
           .where((target) {
-            final matchesLocation =
-                selectedLocation.kind == _LibraryLocationKind.external
-                ? true
-                : project == null
+            final matchesLocation = project == null
                 ? target.scope == InstallationScope.global
                 : target.scope == InstallationScope.project &&
                       target.projectRoot == project.path;
@@ -410,9 +400,18 @@ extension _LibraryActions on _LibraryScreenState {
   List<InstalledSkill> get _visibleSkills {
     final visible = <InstalledSkill>[];
     for (final visibleSkill in _locationAndAgentProjectedSkills) {
-      if (updatesOnly &&
-          updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
-              UpdateState.available) {
+      if (libraryFilter == _LibraryFilter.updates &&
+          (visibleSkill.provenance == LibraryProvenance.external ||
+              updates[libraryScopeUpdateKey(visibleSkill)]?.state !=
+                  UpdateState.available)) {
+        continue;
+      }
+      if (libraryFilter == _LibraryFilter.managed &&
+          visibleSkill.provenance == LibraryProvenance.external) {
+        continue;
+      }
+      if (libraryFilter == _LibraryFilter.otherInstallation &&
+          visibleSkill.provenance != LibraryProvenance.external) {
         continue;
       }
       final query = librarySearchController.text.trim().toLowerCase();
@@ -430,5 +429,30 @@ extension _LibraryActions on _LibraryScreenState {
       visible.add(visibleSkill);
     }
     return visible;
+  }
+
+  int get _availableUpdatePackageCount {
+    final query = librarySearchController.text.trim().toLowerCase();
+    final packages = <String>{};
+    for (final skill in _locationAndAgentProjectedSkills) {
+      if (skill.provenance == LibraryProvenance.external ||
+          updates[libraryScopeUpdateKey(skill)]?.state !=
+              UpdateState.available) {
+        continue;
+      }
+      if (query.isNotEmpty) {
+        final searchable = [
+          skill.name,
+          skill.description,
+          skill.packagePath,
+          ...skill.agents,
+          ...skill.projects,
+          ...skill.versions,
+        ].join('\n').toLowerCase();
+        if (!searchable.contains(query)) continue;
+      }
+      packages.add(skill.packagePath);
+    }
+    return packages.length;
   }
 }

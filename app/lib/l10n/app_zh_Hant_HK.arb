@@ -190,6 +190,12 @@
   "allProjects": "所有項目",
   "specificProject": "指定項目",
   "libraryGlobalScope": "全局技能",
+  "libraryImportedSkills": "SkillsGo 管理",
+  "libraryLocalSkills": "其他方式安裝",
+  "libraryFilterTooltip": "目前範圍內的全部已安裝 Skills",
+  "libraryFilterManagedTooltip": "可由 SkillsGo 更新和刪除",
+  "libraryFilterOtherTooltip": "透過 skill.sh、手動複製或 git clone 等方式安裝的技能，需先納入 SkillsGo 管理才能更新",
+  "libraryFilterUpdatesTooltip": "僅顯示有可用更新的託管 Skills",
   "libraryExternalScope": "外部技能",
   "libraryEmptyAddProject": "前往新增專案",
   "globalScope": "全局安裝",
@@ -863,14 +869,14 @@
       }
     }
   },
-  "batchAdoptionAction": "納入 SkillsGo 管理",
+  "batchAdoptionAction": "託管並追蹤更新",
   "handExternalSkillsToSkillsGoManagementCount": "將 {count} 個外部技能交給 SkillsGo 管理",
   "@handExternalSkillsToSkillsGoManagementCount": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "confirmSkillsGoManagementCount": "確認由 SkillsGo 管理（{selected}/{total}）",
+  "confirmSkillsGoManagementCount": "確認託管（{selected}/{total}）",
   "@confirmSkillsGoManagementCount": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
   "skillColumnLabel": "技能",
   "packageSourceColumnLabel": "來源",
@@ -901,7 +907,7 @@
   },
   "batchAdoptionPending": "匯入中…",
   "batchAdoptionTitle": "將現有技能納入 SkillsGo 管理？",
-  "batchAdoptionDescription": "SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。",
+  "batchAdoptionDescription": "SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。",
   "batchAdoptionStoryTitle": "把散落的技能，整理成一個清晰的 Library",
   "batchAdoptionStoryDescription": "SkillsGo 在當前位置發現 {count} 個可以納入管理的現有技能。",
   "@batchAdoptionStoryDescription": {
@@ -997,7 +1003,7 @@
   "batchAdoptionPreservation": "原文件、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。",
   "batchAdoptionLaterHint": "暫時跳過後，仍可隨時在 Library 點擊「納入管理」。",
   "batchAdoptionSkip": "暫時跳過",
-  "batchAdoptionConfirm": "納入管理",
+  "batchAdoptionConfirm": "確認託管",
   "batchAdoptionExecutionRetry": "重試納入",
   "batchAdoptionResultTitle": "已納入管理",
   "batchAdoptionSummary": "已納入管理 {adopted} 個技能，跳過 {skipped} 個。",

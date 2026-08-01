@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on visible External Library entries with optional lock-backed Package hints, CLI-mediated batch Find, localized management copy, the SkillsGo logo asset, PackageAvatar, native buttons, single-select MultiDropdown controls, the vendored Portal Labs split interaction, and semantic theme roles.
- * [OUTPUT]: Provides the feature-gated inline Adoption Review with lock-restricted or manual server-ranked exact-name bounded batch matching, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, reviewed handoff records, and group-bounded sticky morphing actions.
+ * [INPUT]: Depends on visible External Library entries with optional lock-backed Package hints, CLI-mediated batch Find, localized provenance and management copy, HugeIcons, PackageAvatar, Portal Labs SplitButtonInteraction, single-select MultiDropdown controls, and semantic theme roles.
+ * [OUTPUT]: Provides the feature-gated inline Adoption Review with lock-restricted or manual server-ranked exact-name bounded batch matching, a shared structural column grid for headers and rows, avatar-enhanced and match-chip-labeled separated Source options, Package-synchronized single-select Version menus, latest eligible version selection, a side-effect confirmation dialog, reviewed handoff records, and group-bounded sticky morphing actions.
  * [POS]: Serves as the user-reviewed matching presentation inside the Library journey while leaving Hub transport and filesystem mutation to the Gateway and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,6 +48,7 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
   final optedOutSkillKeys = <String>{};
   final matches = <String, _AdoptionMatch>{};
   int matchGeneration = 0;
+  bool confirmationDialogOpen = false;
 
   @override
   void initState() {
@@ -234,83 +235,195 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
         version: version,
       ));
     }
-    if (selections.isNotEmpty) widget.onConfirm(List.unmodifiable(selections));
+    if (selections.isNotEmpty && !confirmationDialogOpen) {
+      unawaited(_requestConfirmation(List.unmodifiable(selections)));
+    }
+  }
+
+  Future<void> _requestConfirmation(
+    List<_AdoptionReviewSelection> selections,
+  ) async {
+    if (!mounted || confirmationDialogOpen) return;
+    confirmationDialogOpen = true;
+    try {
+      final confirmed = await showSkillsDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          key: const Key('library-adoption-confirmation-dialog'),
+          backgroundColor: dialogContext.skillsComponents.overlay,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            context.l10n.confirmSkillsGoManagementCount(
+              selections.length,
+              widget.skills.length,
+            ),
+          ),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DecoratedBox(
+                  key: const Key('library-adoption-confirmation-effects'),
+                  decoration: BoxDecoration(
+                    color:
+                        dialogContext.skillsComponents.statusAttentionContainer,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: dialogContext.skillsComponents.statusAttention,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedAlert02,
+                          size: 20,
+                          strokeWidth: 1.8,
+                          color: dialogContext.skillsComponents.statusAttention,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: _AdoptionEffectList(
+                            key: const Key(
+                              'library-adoption-confirmation-message',
+                            ),
+                            description: context.l10n.batchAdoptionDescription,
+                            color:
+                                dialogContext.skillsComponents.statusAttention,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('library-adoption-confirmation-cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              key: const Key('library-adoption-confirmation-confirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(context.l10n.batchAdoptionConfirm),
+            ),
+          ],
+        ),
+      );
+      if (mounted && confirmed == true) {
+        widget.onConfirm(selections);
+      }
+    } finally {
+      confirmationDialogOpen = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedCount = selectedSkillKeys.length;
-    final buttonForeground = context.skillsComponents.primaryForeground;
     final scheme = Theme.of(context).colorScheme;
-    final contrastCandidate =
-        (scheme.surface.computeLuminance() -
-                    buttonForeground.computeLuminance())
-                .abs() >
-            (scheme.inverseSurface.computeLuminance() -
-                    buttonForeground.computeLuminance())
-                .abs()
-        ? scheme.surface
-        : scheme.inverseSurface;
-    final shimmerHighlight =
-        Color.lerp(buttonForeground, contrastCandidate, .32) ??
-        buttonForeground;
     final actionBar = Semantics(
       key: const Key('library-adoption-review'),
       container: true,
       label: context.l10n.batchAdoptionTitle,
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(11, 4.5, 12, 4.5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        padding: const EdgeInsetsDirectional.fromSTEB(11, 6, 12, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 44,
-              child: Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(13),
-                  child: Image.asset(
-                    'assets/branding/skillsgo-logo.webp',
-                    key: const Key('library-external-skills-logo'),
-                    width: 42,
-                    height: 42,
-                    fit: BoxFit.cover,
-                    filterQuality: FilterQuality.high,
-                    excludeFromSemantics: true,
+            Row(
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: Center(
+                    child: HugeIcon(
+                      key: const Key('library-external-skills-icon'),
+                      icon: HugeIcons.strokeRoundedFolderOpen,
+                      size: 26,
+                      strokeWidth: 1.8,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final showCount = constraints.maxWidth >= 40;
+                      return Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              context.l10n.libraryLocalSkills,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.skillsTypography.display.copyWith(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w600,
+                                height: 1.05,
+                              ),
+                            ),
+                          ),
+                          if (showCount) ...[
+                            const SizedBox(width: 8),
+                            StatusChip(
+                              key: const Key('library-external-skills-count'),
+                              label: '${widget.skills.length}',
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: _PortalMorphingAdoptionButton(
+                      height: 42,
+                      expanded: widget.expanded,
+                      collapsedLabel: context.l10n.batchAdoptionAction,
+                      cancelLabel: context.l10n.cancel,
+                      confirmLabel: context.l10n.confirmSkillsGoManagementCount(
+                        selectedCount,
+                        widget.skills.length,
+                      ),
+                      confirmEnabled: selectedCount > 0,
+                      onExpand: widget.onEnter,
+                      onCollapseComplete: widget.onExit,
+                      onConfirm: _confirmSelection,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            _PortalMorphingAdoptionButton(
-              height: 42,
-              expanded: widget.expanded,
-              collapsedLabel: context.l10n
-                  .handExternalSkillsToSkillsGoManagementCount(
-                    widget.skills.length,
-                  ),
-              collapsedLabelWidget: ShimmerText(
-                text: context.l10n.handExternalSkillsToSkillsGoManagementCount(
-                  widget.skills.length,
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 52),
+              child: Text(
+                context.l10n.libraryFilterOtherTooltip,
+                key: const Key('library-adoption-review-description'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.skillsTypography.metadata.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 12,
+                  height: 1.15,
                 ),
-                style: context.skillsTypography.label.copyWith(
-                  color: buttonForeground,
-                  fontWeight: FontWeight.w600,
-                ),
-                baseColor: buttonForeground,
-                highlightColor: shimmerHighlight,
-                duration: const Duration(milliseconds: 2600),
-                repeat: !widget.expanded,
               ),
-              collapsedTrailing: const _IdleMagicSelectionIcon(),
-              cancelLabel: context.l10n.cancel,
-              confirmLabel: context.l10n.confirmSkillsGoManagementCount(
-                selectedCount,
-                widget.skills.length,
-              ),
-              confirmEnabled: selectedCount > 0,
-              onExpand: widget.onEnter,
-              onCollapseComplete: widget.onExit,
-              onConfirm: _confirmSelection,
             ),
           ],
         ),
@@ -398,6 +511,46 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
   }
 }
 
+class _AdoptionEffectList extends StatelessWidget {
+  const _AdoptionEffectList({
+    super.key,
+    required this.description,
+    required this.color,
+  });
+
+  final String description;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = description
+        .split('\n')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+    final style = context.skillsTypography.bodySecondary.copyWith(
+      color: color,
+      fontWeight: FontWeight.w600,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < items.length; index++) ...[
+          if (index > 0) const SizedBox(height: 5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('•', style: style),
+              const SizedBox(width: 7),
+              Expanded(child: Text(items[index], style: style)),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _AdoptionActionHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _AdoptionActionHeaderDelegate({
     required this.backgroundColor,
@@ -405,8 +558,8 @@ class _AdoptionActionHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.child,
   });
 
-  static const pinnedExtent = 51.0;
-  static const restingExtent = 52.0;
+  static const pinnedExtent = 72.0;
+  static const restingExtent = 74.0;
 
   final Color backgroundColor;
   final Color tintColor;

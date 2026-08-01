@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives and top-level navigation, collection natural ordering, HugeIcons, multi_dropdown, ShimmerText, the shared destination rail, ProjectIdentityIcon, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives and top-level navigation, collection natural ordering, HugeIcons, multi_dropdown, Portal Labs SplitButtonInteraction, ShimmerText, the shared destination rail, ProjectIdentityIcon, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
  * [OUTPUT]: Provides the unified Library destination with separate Global and External navigation, a labeled Added Project section with an inline empty-state add link, fixed header/footer dividers, an independently scrollable compact Added Project rail, a pinned multi-directory Add Project action, a concise project-empty path to Discover, a feature-gated in-place External Adoption Review shell, location-scoped legacy Batch Adoption, reminder-aware update and safety summaries, cold/stale loading UI, composable update, multi-Agent filtering, compact target-derived installation scope with hover details, animated detail with a sticky compact toolbar, exact External removal, and Package installation-target views.
  * [POS]: Serves as the complete Library feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,6 +18,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:just_tooltip/just_tooltip.dart';
 import 'package:multi_dropdown/multi_dropdown.dart';
 import 'package:path/path.dart' as p;
+import 'package:portal_labs/portal_labs.dart' as portal;
 
 import '../domain/skills_gateway.dart';
 import 'agent_catalog_controller.dart';
@@ -33,7 +34,6 @@ import 'native_components.dart';
 import 'nested_navigation.dart';
 import 'project_identity_icon.dart';
 import 'skill_markdown_view.dart';
-import 'subscription_segmented_switch.dart';
 import 'ui_support.dart';
 import 'update_check_controller.dart';
 

@@ -1,21 +1,19 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library and App-scoped update-check state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, distinct Global/External/Project routes, an inline empty-project add link, an icon-only local-inventory refresh action, reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, Global/Project location routes, SkillsGo-managed/other-installation/update filters, an inline empty-project add link, an icon-only local-inventory refresh action, reduced-motion-aware body transitions, coordinated update-state rendering, in-place Adoption Review and reviewed execution state, inline-console and removal-confirmation state, filter-change selection reset, App-centered selection overlay, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
 
-enum _LibraryLocationKind { global, external, project }
+enum _LibraryLocationKind { global, project }
+
+enum _LibraryFilter { all, managed, otherInstallation, updates }
 
 class _LibraryLocationRoute {
   const _LibraryLocationRoute._(this.kind, [this.projectId]);
 
   static const global = _LibraryLocationRoute._(_LibraryLocationKind.global);
-  static const external = _LibraryLocationRoute._(
-    _LibraryLocationKind.external,
-  );
-
   factory _LibraryLocationRoute.project(String projectId) =>
       _LibraryLocationRoute._(_LibraryLocationKind.project, projectId);
 
@@ -57,7 +55,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool removalConfirming = false;
   int removalFinishedTargets = 0;
   int removalTotalTargets = 0;
-  bool updatesOnly = false;
+  _LibraryFilter libraryFilter = _LibraryFilter.all;
   final selectedAgents = <String>{};
   _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.global;
   bool addingProject = false;
@@ -187,11 +185,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             label: context.l10n.libraryGlobalScope,
             icon: HugeIcons.strokeRoundedUser,
           ),
-          SkillsRailItem(
-            value: _LibraryLocationRoute.external,
-            label: context.l10n.libraryExternalScope,
-            icon: HugeIcons.strokeRoundedFolderUnknown,
-          ),
         ],
         items: [
           for (var index = 0; index < projects.length; index++)
@@ -276,7 +269,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                       : context.l10n.selectCurrentResults,
                                   child: adoptionReviewVisible
                                       ? const SizedBox.shrink()
-                                      : updatesOnly
+                                      : libraryFilter == _LibraryFilter.updates
                                       ? const SizedBox.shrink()
                                       : SkillsCheckbox(
                                           key: const Key(
@@ -313,11 +306,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         ),
                         const SizedBox(width: 4),
                         _LibraryScopeToggle(
-                          updatesOnly: updatesOnly,
-                          updateCount: _packageUpdateCards.length,
-                          onChanged: (value) {
-                            setState(() => updatesOnly = value);
-                            if (value) {
+                          filter: libraryFilter,
+                          updateCount: _availableUpdatePackageCount,
+                          onChanged: (filter) {
+                            setState(() => libraryFilter = filter);
+                            if (filter == _LibraryFilter.updates) {
                               unawaited(
                                 checkUpdates(
                                   trigger: UpdateCheckTrigger.updatesView,

@@ -432,6 +432,27 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryGlobalScope => 'Küresel Beceriler';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo tarafından yönetilen';
+
+  @override
+  String get libraryLocalSkills => 'Başka şekilde yüklenen';
+
+  @override
+  String get libraryFilterTooltip => 'Bu kapsamdaki tüm yüklü Skill\'ler';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'SkillsGo ile güncellenip silinebilir';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Güncellemeden önce SkillsGo tarafından yönetilmelidir';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Güncellemesi bulunan yönetilen Skill\'ler';
+
+  @override
   String get libraryExternalScope => 'Harici Beceriler';
 
   @override

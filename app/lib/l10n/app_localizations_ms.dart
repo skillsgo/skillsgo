@@ -431,6 +431,27 @@ class AppLocalizationsMs extends AppLocalizations {
   String get libraryGlobalScope => 'Kemahiran Global';
 
   @override
+  String get libraryImportedSkills => 'Diurus SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Dipasang dengan cara lain';
+
+  @override
+  String get libraryFilterTooltip => 'Semua Skill yang dipasang dalam skop ini';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Boleh dikemas kini dan dipadam oleh SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Mesti diurus oleh SkillsGo sebelum dikemas kini';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Skill terurus dengan kemas kini tersedia';
+
+  @override
   String get libraryExternalScope => 'Kemahiran Luaran';
 
   @override

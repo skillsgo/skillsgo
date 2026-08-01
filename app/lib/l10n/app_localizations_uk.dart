@@ -436,6 +436,27 @@ class AppLocalizationsUk extends AppLocalizations {
   String get libraryGlobalScope => 'Глобальні навички';
 
   @override
+  String get libraryImportedSkills => 'Керується SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Встановлено іншим способом';
+
+  @override
+  String get libraryFilterTooltip => 'Усі встановлені Skills у цій області';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Можна оновлювати й видаляти через SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Перед оновленням додайте їх під керування SkillsGo';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Керовані Skills із доступними оновленнями';
+
+  @override
   String get libraryExternalScope => 'Зовнішні навички';
 
   @override

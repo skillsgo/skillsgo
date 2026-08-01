@@ -432,6 +432,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get libraryGlobalScope => 'Compétences mondiales';
 
   @override
+  String get libraryImportedSkills => 'Gérées par SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Installées autrement';
+
+  @override
+  String get libraryFilterTooltip =>
+      'Toutes les Skills installées dans ce périmètre';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Mises à jour et suppression par SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Doivent être gérées par SkillsGo avant la mise à jour';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Skills gérées avec des mises à jour disponibles';
+
+  @override
   String get libraryExternalScope => 'Compétences externes';
 
   @override

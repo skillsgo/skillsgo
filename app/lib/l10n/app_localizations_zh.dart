@@ -402,6 +402,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryGlobalScope => '全局技能';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安装';
+
+  @override
+  String get libraryFilterTooltip => '当前范围内的全部已安装 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和删除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '通过 skill.sh、手动复制或 git clone 等方式安装的技能，需先纳入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '仅显示有可用更新的托管 Skills';
+
+  @override
   String get libraryExternalScope => '外部技能';
 
   @override
@@ -1612,7 +1631,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchAdoptionAction => '纳入 SkillsGo 管理';
+  String get batchAdoptionAction => '托管并追踪更新';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -1621,7 +1640,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '确认由 SkillsGo 管理（$selected/$total）';
+    return '确认托管（$selected/$total）';
   }
 
   @override
@@ -1674,7 +1693,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。';
+      'SkillsGo 会用你选的版本替换当前安装。\n原 Skill 会移到废纸篓。\n本地修改不会保留。\n之后更新和删除由 SkillsGo 负责。\n请先备份需要保留的修改。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一个清晰的 Library';
@@ -1817,7 +1836,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchAdoptionSkip => '暂时跳过';
 
   @override
-  String get batchAdoptionConfirm => '纳入管理';
+  String get batchAdoptionConfirm => '确认托管';
 
   @override
   String get batchAdoptionExecutionRetry => '重试纳入';
@@ -2368,6 +2387,25 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get libraryGlobalScope => '全局技能';
+
+  @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安裝';
+
+  @override
+  String get libraryFilterTooltip => '目前範圍內的全部已安裝 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和刪除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '透過 skill.sh、手動複製或 git clone 等方式安裝的技能，需先納入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '僅顯示有可用更新的託管 Skills';
 
   @override
   String get libraryExternalScope => '外部技能';
@@ -3580,7 +3618,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   }
 
   @override
-  String get batchAdoptionAction => '納入 SkillsGo 管理';
+  String get batchAdoptionAction => '託管並追蹤更新';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -3589,7 +3627,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '確認由 SkillsGo 管理（$selected/$total）';
+    return '確認託管（$selected/$total）';
   }
 
   @override
@@ -3642,7 +3680,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
+      'SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
@@ -3785,7 +3823,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchAdoptionConfirm => '納入管理';
+  String get batchAdoptionConfirm => '確認託管';
 
   @override
   String get batchAdoptionExecutionRetry => '重試納入';
@@ -4337,6 +4375,25 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get libraryGlobalScope => '全域技能';
+
+  @override
+  String get libraryImportedSkills => 'SkillsGo 管理';
+
+  @override
+  String get libraryLocalSkills => '其他方式安裝';
+
+  @override
+  String get libraryFilterTooltip => '目前範圍內的全部已安裝 Skills';
+
+  @override
+  String get libraryFilterManagedTooltip => '可由 SkillsGo 更新和刪除';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      '透過 skill.sh、手動複製或 git clone 等方式安裝的技能，需先納入 SkillsGo 管理才能更新';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '僅顯示有可用更新的託管 Skills';
 
   @override
   String get libraryExternalScope => '外部技能';
@@ -5549,7 +5606,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   }
 
   @override
-  String get batchAdoptionAction => '納入 SkillsGo 管理';
+  String get batchAdoptionAction => '託管並追蹤更新';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -5558,7 +5615,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String confirmSkillsGoManagementCount(int selected, int total) {
-    return '確認由 SkillsGo 管理（$selected/$total）';
+    return '確認託管（$selected/$total）';
   }
 
   @override
@@ -5611,7 +5668,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。';
+      'SkillsGo 會用你選的版本取代目前安裝。\n原有 Skill 會移到垃圾桶。\n本地修改不會保留。\n之後更新與刪除由 SkillsGo 負責。\n請先備份需要保留的修改。';
 
   @override
   String get batchAdoptionStoryTitle => '把散落的技能，整理成一個清晰的 Library';
@@ -5754,7 +5811,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get batchAdoptionSkip => '暫時跳過';
 
   @override
-  String get batchAdoptionConfirm => '納入管理';
+  String get batchAdoptionConfirm => '確認託管';
 
   @override
   String get batchAdoptionExecutionRetry => '重試納入';

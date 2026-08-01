@@ -430,6 +430,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryGlobalScope => 'Global Skills';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo Managed';
+
+  @override
+  String get libraryLocalSkills => 'Other Installation';
+
+  @override
+  String get libraryFilterTooltip => 'All installed Skills in this scope';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Can be updated and removed by SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Skills installed via skill.sh, manual copy, or git clone must be managed by SkillsGo before updating';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Managed Skills with updates available';
+
+  @override
   String get libraryExternalScope => 'External Skills';
 
   @override
@@ -1722,7 +1743,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get batchAdoptionAction => 'Manage existing skills';
+  String get batchAdoptionAction => 'Manage & track updates';
 
   @override
   String handExternalSkillsToSkillsGoManagementCount(int count) {
@@ -1784,7 +1805,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get batchAdoptionDescription =>
-      'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.';
+      'SkillsGo will replace the current install with your selected version.\nThe old copy will move to Trash.\nLocal changes will not be kept.\nSkillsGo will handle future updates and removals.\nBack up anything you need.';
 
   @override
   String get batchAdoptionStoryTitle =>
@@ -1951,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchAdoptionSkip => 'Not now';
 
   @override
-  String get batchAdoptionConfirm => 'Add to management';
+  String get batchAdoptionConfirm => 'Confirm management';
 
   @override
   String get batchAdoptionExecutionRetry => 'Retry';

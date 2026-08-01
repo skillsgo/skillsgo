@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Flutter animation, blur, native SkillsGo buttons, and Portal Labs SplitButtonInteraction motion values.
- * [OUTPUT]: Provides the persistent management-to-confirm morph that reveals Cancel while preserving one primary button identity.
- * [POS]: Serves as the Library-local vendored adaptation of Portal Labs 0.34.0 SplitButtonInteraction for External Adoption Review.
+ * [INPUT]: Depends on Portal Labs 0.34.0 SplitButtonInteraction, HugeIcons, SkillsGo semantic component and typography tokens, and the controlled External Adoption callbacks.
+ * [OUTPUT]: Provides a controlled handoff button that uses the Portal Labs split morph while preserving localized labels, stable test hooks, and the review flow's externally owned expanded state.
+ * [POS]: Serves as the Library-local adapter between Portal Labs' split interaction and the External Adoption Review header.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
@@ -11,8 +11,6 @@ class _PortalMorphingAdoptionButton extends StatefulWidget {
     required this.expanded,
     required this.height,
     required this.collapsedLabel,
-    required this.collapsedLabelWidget,
-    required this.collapsedTrailing,
     required this.cancelLabel,
     required this.confirmLabel,
     required this.confirmEnabled,
@@ -24,8 +22,6 @@ class _PortalMorphingAdoptionButton extends StatefulWidget {
   final bool expanded;
   final double height;
   final String collapsedLabel;
-  final Widget collapsedLabelWidget;
-  final Widget collapsedTrailing;
   final String cancelLabel;
   final String confirmLabel;
   final bool confirmEnabled;
@@ -39,131 +35,169 @@ class _PortalMorphingAdoptionButton extends StatefulWidget {
 }
 
 class _PortalMorphingAdoptionButtonState
-    extends State<_PortalMorphingAdoptionButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 420),
-    reverseDuration: const Duration(milliseconds: 360),
-    value: widget.expanded ? 1 : 0,
-  );
-  late final Animation<double> expansion = CurvedAnimation(
-    parent: controller,
-    curve: Curves.easeOutBack,
-    reverseCurve: Curves.easeInOutCubic,
-  );
-  bool collapsing = false;
+    extends State<_PortalMorphingAdoptionButton> {
+  late final portal.SplitButtonController controller;
+  bool synchronizing = false;
+  late bool lastNotifiedExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = portal.SplitButtonController();
+    lastNotifiedExpanded = widget.expanded;
+    controller.addListener(_handleControllerChanged);
+    if (widget.expanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.expanded && !controller.isExpanded) {
+          synchronizing = true;
+          controller.expand();
+          synchronizing = false;
+        }
+      });
+    }
+  }
+
+  void _handleControllerChanged() {
+    final nextExpanded = controller.isExpanded;
+    if (nextExpanded == lastNotifiedExpanded) return;
+    lastNotifiedExpanded = nextExpanded;
+    if (synchronizing || !mounted) return;
+    if (nextExpanded) {
+      widget.onExpand();
+    } else {
+      widget.onCollapseComplete();
+    }
+  }
 
   @override
   void didUpdateWidget(covariant _PortalMorphingAdoptionButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.expanded == widget.expanded || collapsing) return;
+    if (widget.expanded == controller.isExpanded) return;
+    synchronizing = true;
     if (widget.expanded) {
-      controller.forward();
+      controller.expand();
     } else {
-      controller.reverse();
+      controller.collapse();
     }
-  }
-
-  Future<void> collapse() async {
-    if (collapsing) return;
-    collapsing = true;
-    await controller.reverse();
-    if (mounted) widget.onCollapseComplete();
-    collapsing = false;
+    synchronizing = false;
   }
 
   @override
   void dispose() {
+    controller.removeListener(_handleControllerChanged);
     controller.dispose();
     super.dispose();
   }
 
+  Widget _tapRegion({
+    required Key key,
+    required String label,
+    required VoidCallback onTap,
+    required bool enabled,
+    Widget? visual,
+  }) {
+    return Semantics(
+      key: key,
+      container: true,
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: visual ?? const SizedBox.expand(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final factor = expansion.value < 0 ? 0.0 : expansion.value;
-        final visual = controller.value.clamp(0.0, 1.0);
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRect(
-              child: Align(
-                alignment: AlignmentDirectional.centerEnd,
-                widthFactor: factor,
-                child: Opacity(
-                  opacity: visual,
-                  child: SizedBox(
-                    height: widget.height,
-                    child: PrimaryCapsuleButton(
-                      key: const Key('library-adoption-review-exit'),
-                      label: widget.cancelLabel,
-                      height: widget.height,
-                      horizontalPadding: 18,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.secondaryContainer,
-                      foregroundColor: Theme.of(
-                        context,
-                      ).colorScheme.onSecondaryContainer,
-                      hoverBackgroundColor: Color.alphaBlend(
-                        Theme.of(context).colorScheme.onSecondaryContainer
-                            .withValues(alpha: .08),
-                        Theme.of(context).colorScheme.secondaryContainer,
-                      ),
-                      onPressed: collapse,
-                    ),
+    final components = context.skillsComponents;
+    final foreground = components.primaryForeground;
+    final splitButton = portal.SplitButtonInteraction(
+      key: const Key('library-adoption-review-split-button'),
+      initialLabel: widget.collapsedLabel,
+      controller: controller,
+      spacing: 8,
+      actions: [
+        portal.SplitAction(
+          label: widget.confirmLabel,
+          closeOnTap: false,
+          onTap: () {},
+        ),
+      ],
+      style: portal.SplitButtonStyle(
+        backgroundColor: components.primaryRest,
+        foregroundColor: foreground,
+        activeBackgroundColor: components.primaryRest,
+        activeForegroundColor: foreground,
+        borderRadius: BorderRadius.circular(widget.height / 2),
+        height: widget.height,
+        textStyle: context.skillsTypography.label.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(widget.height / 2),
+          clipBehavior: Clip.antiAlias,
+          child: ExcludeSemantics(child: splitButton),
+        ),
+        if (widget.expanded) ...[
+          PositionedDirectional(
+            start: 0,
+            width: 56,
+            top: 0,
+            bottom: 0,
+            child: _tapRegion(
+              key: const Key('library-adoption-review-exit'),
+              label: widget.cancelLabel,
+              onTap: controller.toggle,
+              enabled: true,
+              visual: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: components.primaryRest,
+                  borderRadius: BorderRadius.circular(widget.height / 2),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    key: const Key('library-adoption-review-cancel-icon'),
+                    icon: HugeIcons.strokeRoundedCancel01,
+                    size: 20,
+                    strokeWidth: 1.8,
+                    color: foreground,
                   ),
                 ),
               ),
             ),
-            SizedBox(width: 8 * visual),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 420),
-              curve: Curves.easeOutCubic,
-              alignment: AlignmentDirectional.centerStart,
-              child: SizedBox(
-                height: widget.height,
-                child: PrimaryCapsuleButton(
-                  key: widget.expanded
-                      ? const Key('library-adoption-review-confirm')
-                      : const Key('library-adoption-review-enter'),
-                  label: widget.expanded
-                      ? widget.confirmLabel
-                      : widget.collapsedLabel,
-                  height: widget.height,
-                  horizontalPadding: 18,
-                  labelWidget: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: widget.expanded
-                        ? Text(
-                            widget.confirmLabel,
-                            key: const ValueKey('adoption-confirm-label'),
-                          )
-                        : KeyedSubtree(
-                            key: const ValueKey('adoption-entry-label'),
-                            child: widget.collapsedLabelWidget,
-                          ),
-                  ),
-                  trailingWidget: widget.expanded
-                      ? null
-                      : widget.collapsedTrailing,
-                  disabledBackgroundColor: context.skillsComponents.primaryRest,
-                  disabledForegroundColor: context
-                      .skillsComponents
-                      .primaryForeground
-                      .withValues(alpha: .78),
-                  onPressed: widget.expanded
-                      ? (widget.confirmEnabled ? widget.onConfirm : null)
-                      : widget.onExpand,
-                ),
-              ),
+          ),
+          PositionedDirectional(
+            start: 64,
+            end: 0,
+            top: 0,
+            bottom: 0,
+            child: _tapRegion(
+              key: const Key('library-adoption-review-confirm'),
+              label: widget.confirmLabel,
+              onTap: widget.onConfirm,
+              enabled: widget.confirmEnabled,
             ),
-          ],
-        );
-      },
+          ),
+        ] else
+          Positioned.fill(
+            child: _tapRegion(
+              key: const Key('library-adoption-review-enter'),
+              label: widget.collapsedLabel,
+              onTap: controller.toggle,
+              enabled: true,
+            ),
+          ),
+      ],
     );
   }
 }

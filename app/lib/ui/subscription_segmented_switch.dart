@@ -2,8 +2,8 @@
  * Derived from Portal Labs Subscription Pricing Picker, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
  * [INPUT]: Depends on Flutter Material interaction, physics, focus, semantics, and haptic APIs, SkillsGo semantic color tokens, plus HugeIcons rendering.
- * [OUTPUT]: Provides a controlled two-option segmented switch with a sliding selection capsule, optional bounded breathing status dots, and single-click selection.
- * [POS]: Serves as the vendored Portal Labs subscription-period switch adapted for compact Library filtering.
+ * [OUTPUT]: Provides a controlled segmented switch with two or more options, a sliding selection capsule, optional bounded breathing status dots, and single-click selection.
+ * [POS]: Serves as the vendored Portal Labs subscription-period switch adapted for compact Library filtering and other short option sets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:math' as math;
@@ -33,12 +33,16 @@ class SubscriptionSegmentedSwitch extends StatefulWidget {
     required this.options,
     required this.selectedIndex,
     required this.onChanged,
-  }) : assert(options.length == 2),
-       assert(selectedIndex == 0 || selectedIndex == 1);
+    this.maxWidth,
+    this.showIcons = true,
+  }) : assert(options.length >= 2),
+       assert(selectedIndex >= 0 && selectedIndex < options.length);
 
   final List<SubscriptionSwitchOption> options;
   final int selectedIndex;
   final ValueChanged<int> onChanged;
+  final double? maxWidth;
+  final bool showIcons;
 
   @override
   State<SubscriptionSegmentedSwitch> createState() =>
@@ -132,12 +136,20 @@ class _SubscriptionSegmentedSwitchState
     });
     const segmentHorizontalPadding = 12.0;
     final hasBadge = widget.options.any((option) => option.showBadge);
-    final iconAndGapWidth = hasBadge ? 29.0 : 20.0;
-    final segmentWidth =
-        (widestLabel + iconAndGapWidth + segmentHorizontalPadding * 2).clamp(
-          86.0,
-          double.infinity,
-        );
+    final iconAndGapWidth = widget.showIcons ? (hasBadge ? 29.0 : 20.0) : 0.0;
+    final naturalSegmentWidth =
+        (widestLabel + iconAndGapWidth + segmentHorizontalPadding * 2)
+            .clamp(86.0, double.infinity)
+            .toDouble();
+    final naturalWidth = naturalSegmentWidth * widget.options.length + 8;
+    final availableWidth = widget.maxWidth != null && widget.maxWidth!.isFinite
+        ? widget.maxWidth!.clamp(0.0, double.infinity).toDouble()
+        : naturalWidth;
+    final containerWidth = math.min(naturalWidth, availableWidth);
+    final segmentWidth = ((containerWidth - 8) / widget.options.length)
+        .clamp(1.0, double.infinity)
+        .toDouble();
+    final lastIndex = widget.options.length - 1;
     final overshootFraction = 2.5 / segmentWidth;
     double softenOvershoot(double distance) {
       final normalized = (distance / overshootFraction).clamp(0.0, 20.0);
@@ -149,22 +161,22 @@ class _SubscriptionSegmentedSwitchState
       if (value < 0) {
         return -softenOvershoot(-value);
       }
-      if (value > 1) {
-        return 1 + softenOvershoot(value - 1);
+      if (value > lastIndex) {
+        return lastIndex + softenOvershoot(value - lastIndex);
       }
       return value;
     }
 
     double visualPosition(double value) {
-      final logical = displayPosition(value);
+      final logical = displayPosition(value) / lastIndex;
       return textDirection == TextDirection.rtl ? 1 - logical : logical;
     }
 
     return Semantics(
       container: true,
-      label: '${widget.options[0].label}, ${widget.options[1].label}',
+      label: widget.options.map((option) => option.label).join(', '),
       child: Container(
-        width: segmentWidth * 2 + 8,
+        width: containerWidth,
         height: 36,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
@@ -185,7 +197,7 @@ class _SubscriptionSegmentedSwitchState
                 child: child,
               ),
               child: FractionallySizedBox(
-                widthFactor: .5,
+                widthFactor: 1 / widget.options.length,
                 child: SizedBox.expand(
                   child: DecoratedBox(
                     key: const Key('subscription-switch-thumb'),
@@ -212,6 +224,7 @@ class _SubscriptionSegmentedSwitchState
                   option: widget.options[index],
                   selected: selectedIndex == index,
                   width: segmentWidth,
+                  showIcon: widget.showIcons,
                   selectedColor: selectedColor,
                   unselectedColor: unselectedColor,
                   onPressed: () => _select(index),
@@ -230,6 +243,7 @@ class _SubscriptionSwitchSegment extends StatelessWidget {
     required this.option,
     required this.selected,
     required this.width,
+    required this.showIcon,
     required this.selectedColor,
     required this.unselectedColor,
     required this.onPressed,
@@ -238,6 +252,7 @@ class _SubscriptionSwitchSegment extends StatelessWidget {
   final SubscriptionSwitchOption option;
   final bool selected;
   final double width;
+  final bool showIcon;
   final Color selectedColor;
   final Color unselectedColor;
   final VoidCallback onPressed;
@@ -268,46 +283,54 @@ class _SubscriptionSwitchSegment extends StatelessWidget {
           onTap: onPressed,
           child: SizedBox(
             width: width,
-            child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  HugeIcon(
-                    icon: option.icon,
-                    size: 15,
-                    strokeWidth: 1.8,
-                    color: selected ? selectedColor : unselectedColor,
-                  ),
-                  const SizedBox(width: 5),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Padding(
-                        padding: EdgeInsetsDirectional.only(
-                          end: option.showBadge ? 5 : 0,
-                        ),
-                        child: Text(
-                          option.label,
-                          style: TextStyle(
-                            color: selected ? selectedColor : unselectedColor,
-                            fontSize: 13,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                  if (showIcon) ...[
+                    HugeIcon(
+                      icon: option.icon,
+                      size: 15,
+                      strokeWidth: 1.8,
+                      color: selected ? selectedColor : unselectedColor,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Flexible(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Padding(
+                          padding: EdgeInsetsDirectional.only(
+                            end: option.showBadge ? 5 : 0,
                           ),
-                        ),
-                      ),
-                      if (option.showBadge)
-                        PositionedDirectional(
-                          top: -3,
-                          end: -3,
-                          child: _BreathingStatusDot(
-                            key: Key(
-                              'subscription-switch-badge-${option.label}',
+                          child: Text(
+                            option.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: selected ? selectedColor : unselectedColor,
+                              fontSize: 13,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
                             ),
                           ),
                         ),
-                    ],
+                        if (option.showBadge)
+                          PositionedDirectional(
+                            top: -3,
+                            end: -3,
+                            child: _BreathingStatusDot(
+                              key: Key(
+                                'subscription-switch-badge-${option.label}',
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),

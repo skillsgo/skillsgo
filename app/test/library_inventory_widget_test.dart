@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
-import 'dart:ui' show ImageFilter, SemanticsAction;
+import 'dart:ui' show ImageFilter, PointerDeviceKind, SemanticsAction;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -113,15 +113,34 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('primary-destination-library')));
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.tap(libraryLocation('External Skills'));
-      await tester.pumpAndSettle();
+      final provenanceIcon = find.byKey(
+        const Key('library-external-skills-icon'),
+      );
+      expect(provenanceIcon, findsOneWidget);
       expect(
-        tester
-            .getSize(find.byKey(const Key('library-adoption-review-enter')))
-            .height,
-        tester
-            .getSize(find.byKey(const Key('library-external-skills-logo')))
-            .height,
+        tester.widget<HugeIcon>(provenanceIcon).icon,
+        HugeIcons.strokeRoundedFolderOpen,
+      );
+      expect(find.text('Other Installation'), findsOneWidget);
+      expect(
+        find.byKey(const Key('library-external-skills-count')),
+        findsOneWidget,
+      );
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('Manage & track updates'), findsOneWidget);
+      expect(
+        find.byKey(const Key('library-adoption-review-description')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopRight(find.text('Other Installation')).dx,
+        lessThan(
+          tester
+              .getTopLeft(
+                find.byKey(const Key('library-adoption-review-enter')),
+              )
+              .dx,
+        ),
       );
       await tester.tap(find.byKey(const Key('library-adoption-review-enter')));
       await tester.pumpAndSettle();
@@ -268,6 +287,36 @@ void main() {
 
       await tester.tap(
         find.byKey(const Key('library-adoption-review-confirm')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('library-adoption-confirmation-dialog')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('library-adoption-confirmation-message')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('library-adoption-confirmation-effects')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('batch-adoption-dialog')), findsNothing);
+      await tester.tap(
+        find.byKey(const Key('library-adoption-confirmation-cancel')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('library-adoption-confirmation-dialog')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('batch-adoption-dialog')), findsNothing);
+      await tester.tap(
+        find.byKey(const Key('library-adoption-review-confirm')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('library-adoption-confirmation-confirm')),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 950));
@@ -438,8 +487,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(libraryLocation('External Skills'));
-    await tester.pumpAndSettle();
     expect(
       tester
           .widget<SliverPersistentHeader>(find.byType(SliverPersistentHeader))
@@ -495,12 +542,20 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const Key('library-external-skills-logo')),
+      find.byKey(const Key('library-external-skills-icon')),
       findsOneWidget,
     );
     expect(
       find.byKey(const Key('library-adoption-review-exit')),
       findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<HugeIcon>(
+            find.byKey(const Key('library-adoption-review-cancel-icon')),
+          )
+          .icon,
+      HugeIcons.strokeRoundedCancel01,
     );
     expect(
       find.byKey(const Key('library-adoption-review-confirm')),
@@ -703,7 +758,7 @@ void main() {
 
     expect(find.text('All Skills'), findsNothing);
     expect(libraryLocation('Global Skills'), findsOneWidget);
-    expect(libraryLocation('External Skills'), findsOneWidget);
+    expect(libraryLocation('External Skills'), findsNothing);
     expect(find.text('Projects'), findsOneWidget);
     expect(libraryLocation('Project Alpha'), findsOneWidget);
     expect(
@@ -770,7 +825,7 @@ void main() {
   });
 
   testWidgets(
-    'Global includes External Skills and External remains dedicated',
+    'Global includes managed and local existing Skills without a dedicated External route',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -820,29 +875,29 @@ void main() {
 
       expect(find.text('managed-skill'), findsOneWidget);
       expect(find.text('external-skill'), findsOneWidget);
+      expect(libraryLocation('External Skills'), findsNothing);
 
-      await tester.tap(libraryLocation('External Skills'));
+      await tester.tap(find.byKey(const Key('library-update-filter')));
       await tester.pumpAndSettle();
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.moveTo(tester.getCenter(find.text('SkillsGo Managed')));
+      await tester.pump();
+      expect(
+        find.text('Can be updated and removed by SkillsGo'),
+        findsOneWidget,
+      );
+      await mouse.removePointer();
+      await tester.tap(find.text('SkillsGo Managed'));
+      await tester.pumpAndSettle();
+      expect(find.text('managed-skill'), findsOneWidget);
+      expect(find.text('external-skill'), findsNothing);
 
+      await tester.tap(find.byKey(const Key('library-update-filter')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Other Installation'));
+      await tester.pumpAndSettle();
       expect(find.text('managed-skill'), findsNothing);
       expect(find.text('external-skill'), findsOneWidget);
-      final externalButton = find
-          .ancestor(
-            of: libraryLocation('External Skills'),
-            matching: find.byType(TextButton),
-          )
-          .first;
-      expect(
-        tester
-            .widget<HugeIcon>(
-              find.descendant(
-                of: externalButton,
-                matching: find.byType(HugeIcon),
-              ),
-            )
-            .icon,
-        HugeIcons.strokeRoundedFolderUnknown,
-      );
     },
   );
 
@@ -1122,6 +1177,7 @@ void main() {
       agents: ['codex'],
       targetCount: 1,
       projects: ['/work/alpha'],
+      provenance: LibraryProvenance.external,
       targets: [
         SkillInstallationTarget(
           agent: 'codex',

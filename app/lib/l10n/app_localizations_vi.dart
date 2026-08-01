@@ -432,6 +432,28 @@ class AppLocalizationsVi extends AppLocalizations {
   String get libraryGlobalScope => 'Kỹ năng toàn cầu';
 
   @override
+  String get libraryImportedSkills => 'Được SkillsGo quản lý';
+
+  @override
+  String get libraryLocalSkills => 'Cài đặt theo cách khác';
+
+  @override
+  String get libraryFilterTooltip =>
+      'Tất cả Skill đã cài đặt trong phạm vi này';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Có thể cập nhật và xóa bằng SkillsGo';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Cần được SkillsGo quản lý trước khi cập nhật';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Skill được quản lý có bản cập nhật';
+
+  @override
   String get libraryExternalScope => 'Kỹ năng bên ngoài';
 
   @override

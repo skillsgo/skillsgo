@@ -49,10 +49,6 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('primary-destination-library')));
       await tester.pumpAndSettle();
-      if (entry.provenance == LibraryProvenance.external) {
-        await tester.tap(find.text('External Skills'));
-        await tester.pumpAndSettle();
-      }
       await tester.tap(find.text(entry.name).first);
       await tester.pumpAndSettle();
     }

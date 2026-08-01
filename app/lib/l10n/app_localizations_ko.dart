@@ -423,6 +423,24 @@ class AppLocalizationsKo extends AppLocalizations {
   String get libraryGlobalScope => '글로벌 스킬';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo 관리';
+
+  @override
+  String get libraryLocalSkills => '다른 방식으로 설치';
+
+  @override
+  String get libraryFilterTooltip => '이 범위에 설치된 모든 Skill';
+
+  @override
+  String get libraryFilterManagedTooltip => 'SkillsGo에서 업데이트·삭제 가능';
+
+  @override
+  String get libraryFilterOtherTooltip => '업데이트하려면 먼저 SkillsGo 관리에 추가해야 합니다';
+
+  @override
+  String get libraryFilterUpdatesTooltip => '업데이트 가능한 관리 Skill';
+
+  @override
   String get libraryExternalScope => '외부 스킬';
 
   @override

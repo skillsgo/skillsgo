@@ -129,6 +129,12 @@
   "allProjects": "所有项目",
   "specificProject": "指定项目",
   "libraryGlobalScope": "全局技能",
+  "libraryImportedSkills": "SkillsGo 管理",
+  "libraryLocalSkills": "其他方式安装",
+  "libraryFilterTooltip": "当前范围内的全部已安装 Skills",
+  "libraryFilterManagedTooltip": "可由 SkillsGo 更新和删除",
+  "libraryFilterOtherTooltip": "通过 skill.sh、手动复制或 git clone 等方式安装的技能，需先纳入 SkillsGo 管理才能更新",
+  "libraryFilterUpdatesTooltip": "仅显示有可用更新的托管 Skills",
   "libraryExternalScope": "外部技能",
   "libraryEmptyAddProject": "前往添加项目",
   "globalScope": "全局安装",
@@ -556,14 +562,14 @@
   "noDescriptionAvailable": "暂无描述",
   "moreCoverage": "另外 {count} 个安装位置",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
-  "batchAdoptionAction": "纳入 SkillsGo 管理",
+  "batchAdoptionAction": "托管并追踪更新",
   "handExternalSkillsToSkillsGoManagementCount": "将 {count} 个外部技能交给 SkillsGo 管理",
   "@handExternalSkillsToSkillsGoManagementCount": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "confirmSkillsGoManagementCount": "确认由 SkillsGo 管理（{selected}/{total}）",
+  "confirmSkillsGoManagementCount": "确认托管（{selected}/{total}）",
   "@confirmSkillsGoManagementCount": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
   "skillColumnLabel": "技能",
   "packageSourceColumnLabel": "来源",
@@ -590,7 +596,7 @@
   },
   "batchAdoptionPending": "导入中…",
   "batchAdoptionTitle": "将现有技能纳入 SkillsGo 管理？",
-  "batchAdoptionDescription": "SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。",
+  "batchAdoptionDescription": "SkillsGo 会用你选的版本替换当前安装。\n原 Skill 会移到废纸篓。\n本地修改不会保留。\n之后更新和删除由 SkillsGo 负责。\n请先备份需要保留的修改。",
   "batchAdoptionStoryTitle": "把散落的技能，整理成一个清晰的 Library",
   "batchAdoptionStoryDescription": "SkillsGo 在当前位置发现 {count} 个可以纳入管理的现有技能。",
   "@batchAdoptionStoryDescription": {
@@ -655,7 +661,7 @@
   "batchAdoptionPreservation": "原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。",
   "batchAdoptionLaterHint": "暂时跳过后，仍可随时在 Library 点击「纳入管理」。",
   "batchAdoptionSkip": "暂时跳过",
-  "batchAdoptionConfirm": "纳入管理",
+  "batchAdoptionConfirm": "确认托管",
   "batchAdoptionExecutionRetry": "重试纳入",
   "batchAdoptionResultTitle": "已纳入管理",
   "batchAdoptionSummary": "已纳入管理 {adopted} 个技能，跳过 {skipped} 个。",

@@ -432,6 +432,27 @@ class AppLocalizationsNl extends AppLocalizations {
   String get libraryGlobalScope => 'Mondiale vaardigheden';
 
   @override
+  String get libraryImportedSkills => 'Beheerd door SkillsGo';
+
+  @override
+  String get libraryLocalSkills => 'Op andere wijze geïnstalleerd';
+
+  @override
+  String get libraryFilterTooltip => 'Alle geïnstalleerde Skills in dit bereik';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'Kan door SkillsGo worden bijgewerkt en verwijderd';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'Moeten vóór het bijwerken door SkillsGo worden beheerd';
+
+  @override
+  String get libraryFilterUpdatesTooltip =>
+      'Beheerde Skills met beschikbare updates';
+
+  @override
   String get libraryExternalScope => 'Externe vaardigheden';
 
   @override

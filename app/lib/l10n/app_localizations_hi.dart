@@ -430,6 +430,26 @@ class AppLocalizationsHi extends AppLocalizations {
   String get libraryGlobalScope => 'वैश्विक कौशल';
 
   @override
+  String get libraryImportedSkills => 'SkillsGo द्वारा प्रबंधित';
+
+  @override
+  String get libraryLocalSkills => 'अन्य तरीके से इंस्टॉल';
+
+  @override
+  String get libraryFilterTooltip => 'इस दायरे में इंस्टॉल किए गए सभी Skills';
+
+  @override
+  String get libraryFilterManagedTooltip =>
+      'SkillsGo इन्हें अपडेट और डिलीट कर सकता है';
+
+  @override
+  String get libraryFilterOtherTooltip =>
+      'अपडेट से पहले SkillsGo को इन्हें प्रबंधित करना होगा';
+
+  @override
+  String get libraryFilterUpdatesTooltip => 'उपलब्ध अपडेट वाले प्रबंधित Skills';
+
+  @override
   String get libraryExternalScope => 'बाहरी कौशल';
 
   @override
