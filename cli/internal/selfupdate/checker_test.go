@@ -99,6 +99,17 @@ func validManifest(origin string) Manifest {
 	}}
 }
 
+func TestBundledCheckStopsBeforeReadingUpdateMetadata(t *testing.T) {
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	checker, err := NewChecker("https://updates.example.com", publicKey, nil, "darwin", "arm64")
+	require.NoError(t, err)
+
+	_, err = checker.Check(context.Background(), "0.0.2", "bundled", "")
+
+	require.ErrorContains(t, err, "owned by the SkillsGo App")
+}
+
 func fixtureChecker(t *testing.T, manifest func(string) Manifest, tamper bool) *Checker {
 	t.Helper()
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
