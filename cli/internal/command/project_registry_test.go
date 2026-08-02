@@ -8,7 +8,9 @@ package command
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,8 +40,12 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	oversizedMetadata := `{"type":"session_meta","payload":{"cwd":` + quotedJSON(codexWorkspace) + `,"environment":"` + strings.Repeat("x", 46*1024) + `"}}`
 	require.NoError(t, os.WriteFile(codexSession, []byte(oversizedMetadata+"\n"+`{"type":"message","cwd":"/wrong-event-path"}`+"\n"), 0o600))
 	writeProjectFixture(t, filepath.Join(home, ".gemini", "projects.json"), `{"projects":{`+quotedJSON(geminiWorkspace)+`:"gemini-demo"}}`)
-	writeProjectFixture(t, filepath.Join(home, ".kimi", "kimi.json"), `{"work_dirs":[{"path":`+quotedJSON(kimiWorkspace)+`,"kaos":"local"}]}`)
-	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"2026-08-02T00:00:00Z","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".gemini", "tmp", "gemini-demo"), 0o700))
+	kimiSessionID := "session-1"
+	writeProjectFixture(t, filepath.Join(home, ".kimi", "kimi.json"), `{"work_dirs":[{"path":`+quotedJSON(kimiWorkspace)+`,"kaos":"local","last_session_id":"`+kimiSessionID+`"}]}`)
+	kimiHash := fmt.Sprintf("%x", md5.Sum([]byte(kimiWorkspace)))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".kimi", "sessions", kimiHash, kimiSessionID), 0o700))
+	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"1785628800000","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
 	writeProjectFixture(t, filepath.Join(home, ".vibe", "logs", "session", "session_1", "meta.json"), `{"environment":{"working_directory":`+quotedJSON(vibeWorkspace)+`}}`)
 	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1785628800000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
 	t.Setenv("HOME", home)

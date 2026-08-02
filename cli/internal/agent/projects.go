@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded line and streaming JSON reads, canonical filesystem paths, and filesystem activity times.
- * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery that tolerates oversized Codex metadata while retaining only structured cwd metadata and filesystem activity.
+ * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, and Cline registries or metadata plus canonical filesystem paths and activity times.
+ * [OUTPUT]: Provides complete-window, activity-prioritized recent Agent Workspace discovery while retaining only structured project paths and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,12 +8,15 @@ package agent
 
 import (
 	"bufio"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,7 +25,6 @@ const (
 	projectDiscoveryWindow = 30 * 24 * time.Hour
 	projectDiscoveryLimit  = 12
 	codexMetadataReadLimit = 256 * 1024
-	registryReadLimit      = 4 * 1024 * 1024
 )
 
 type workspaceObservation struct {
@@ -73,7 +75,7 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 
 func readRegistry(path string, cutoff time.Time, target any) (time.Time, bool) {
 	info, err := os.Stat(path)
-	if err != nil || info.ModTime().Before(cutoff) || info.Size() > registryReadLimit {
+	if err != nil || info.ModTime().Before(cutoff) {
 		return time.Time{}, false
 	}
 	file, err := os.Open(path)
@@ -81,7 +83,7 @@ func readRegistry(path string, cutoff time.Time, target any) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	defer file.Close()
-	if json.NewDecoder(io.LimitReader(file, registryReadLimit)).Decode(target) != nil {
+	if json.NewDecoder(file).Decode(target) != nil {
 		return time.Time{}, false
 	}
 	return info.ModTime(), true
@@ -91,26 +93,35 @@ func discoverGeminiProjects(path string, cutoff time.Time, observe func(string, 
 	var registry struct {
 		Projects map[string]string `json:"projects"`
 	}
-	active, ok := readRegistry(path, cutoff, &registry)
+	_, ok := readRegistry(path, cutoff, &registry)
 	if !ok {
 		return
 	}
-	for project := range registry.Projects {
-		observe(project, active)
+	for project, slug := range registry.Projects {
+		if info, err := os.Stat(filepath.Join(filepath.Dir(path), "tmp", slug)); err == nil {
+			observe(project, info.ModTime())
+		}
 	}
 }
 
 func discoverKimiProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
 	var registry struct {
-		WorkDirs []struct{ Path, Kaos string } `json:"work_dirs"`
+		WorkDirs []struct {
+			Path          string `json:"path"`
+			Kaos          string `json:"kaos"`
+			LastSessionID string `json:"last_session_id"`
+		} `json:"work_dirs"`
 	}
-	active, ok := readRegistry(path, cutoff, &registry)
+	_, ok := readRegistry(path, cutoff, &registry)
 	if !ok {
 		return
 	}
 	for _, workDir := range registry.WorkDirs {
-		if workDir.Kaos == "" || workDir.Kaos == "local" {
-			observe(workDir.Path, active)
+		if (workDir.Kaos == "" || workDir.Kaos == "local") && workDir.LastSessionID != "" {
+			hash := fmt.Sprintf("%x", md5.Sum([]byte(workDir.Path)))
+			if info, err := os.Stat(filepath.Join(filepath.Dir(path), "sessions", hash, workDir.LastSessionID)); err == nil {
+				observe(workDir.Path, info.ModTime())
+			}
 		}
 	}
 }
@@ -125,8 +136,9 @@ func discoverContinueProjects(path string, cutoff time.Time, observe func(string
 		return
 	}
 	for _, session := range sessions {
-		sessionActive, err := time.Parse(time.RFC3339, session.DateCreated)
-		if err != nil {
+		milliseconds, err := strconv.ParseInt(session.DateCreated, 10, 64)
+		sessionActive := time.UnixMilli(milliseconds)
+		if err != nil || milliseconds <= 0 {
 			sessionActive = active
 		}
 		observe(session.WorkspaceDirectory, sessionActive)
@@ -226,10 +238,6 @@ func discoverCodexProjects(root string, cutoff time.Time, observe func(string, t
 		}
 		return nil
 	})
-	sort.Slice(files, func(i, j int) bool { return files[i].modifiedAt.After(files[j].modifiedAt) })
-	if len(files) > 40 {
-		files = files[:40]
-	}
 	for _, file := range files {
 		observe(readCodexSessionCWD(file.path, codexMetadataReadLimit), file.modifiedAt)
 	}
