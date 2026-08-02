@@ -25,9 +25,9 @@ type startupHandshake struct {
 	Product            string `json:"product"`
 	Version            string `json:"version"`
 	BundleVersion      string `json:"bundleVersion,omitempty"`
-	Distribution       string `json:"distribution"`
-	Commit             string `json:"commit"`
-	BuildDate          string `json:"buildDate"`
+	Distribution       string `json:"distribution,omitempty"`
+	Commit             string `json:"commit,omitempty"`
+	BuildDate          string `json:"buildDate,omitempty"`
 	AppProtocolVersion int    `json:"appProtocolVersion"`
 	OS                 string `json:"os"`
 	Architecture       string `json:"architecture"`
@@ -43,18 +43,21 @@ func newVersionCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			build := currentBuildInfo()
 			if output == "json" {
-				return json.NewEncoder(cmd.OutOrStdout()).Encode(startupHandshake{
+				handshake := startupHandshake{
 					SchemaVersion:      startupHandshakeSchemaVersion,
 					Product:            "skillsgo",
 					Version:            build.Version,
-					BundleVersion:      build.BundleVersion,
-					Distribution:       build.Distribution,
-					Commit:             build.Commit,
-					BuildDate:          build.BuildDate,
 					AppProtocolVersion: appProtocolVersion,
 					OS:                 runtime.GOOS,
 					Architecture:       runtime.GOARCH,
-				})
+				}
+				if build.Distribution != "bundled" {
+					handshake.BundleVersion = build.BundleVersion
+					handshake.Distribution = build.Distribution
+					handshake.Commit = build.Commit
+					handshake.BuildDate = build.BuildDate
+				}
+				return json.NewEncoder(cmd.OutOrStdout()).Encode(handshake)
 			}
 			if output != "human" {
 				return fmt.Errorf("unsupported output format %q", output)
