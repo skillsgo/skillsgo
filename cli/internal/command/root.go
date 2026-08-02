@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Hub, project, Package installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and stdin-capable ExecuteWithInput, localized Cobra help, and the Package-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, Managed Workspace registration, conflict-safe Workspace/Global install ensure, Package preview/update/remove, grouped Hub reads, installed-Skill listing/inspection, and explicitly overwrite-authorized Package-backed adoption for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, build identity, Hub, project, Package installation, target-operation, source, i18n, self-update, and terminal UI modules.
+ * [OUTPUT]: Provides command.Execute and stdin-capable ExecuteWithInput, localized Cobra help, and the Package-oriented CLI graph plus signed CLI update checks.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,18 +15,18 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/selfupdate"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
-
-var version = "dev"
 
 func defaultHubURL() string {
 	if value := strings.TrimSpace(os.Getenv("SKILLSGO_HUB_URL")); value != "" {
@@ -85,12 +85,12 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.SetErr(stderr)
 	cobra.AddTemplateFunc("localizedFlagUsages", localizedFlagUsages)
 	root.SetUsageTemplate(localizedUsageTemplate())
-	root.Version = version
+	root.Version = buildinfo.Current().Version
 	var languageOverride string
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newRecoveryCommand(catalog), newShowCommand(), newFindCommand(), newRankingsCommand(), newHubCommand(), newProjectCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newPackageUpdateCommand(catalog))
+	root.AddCommand(newVersionCommand(), newSelfUpdateCommand(selfupdate.NewDefaultChecker()), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newAdoptCommand(catalog), newRecoveryCommand(catalog), newShowCommand(), newFindCommand(), newRankingsCommand(), newHubCommand(), newProjectCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newPackageUpdateCommand(catalog))
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
 	root.InitDefaultVersionFlag()

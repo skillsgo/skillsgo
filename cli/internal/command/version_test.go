@@ -26,6 +26,9 @@ func TestVersionJSONProvidesAppStartupHandshake(t *testing.T) {
 		SchemaVersion      int    `json:"schemaVersion"`
 		Product            string `json:"product"`
 		Version            string `json:"version"`
+		Distribution       string `json:"distribution"`
+		Commit             string `json:"commit"`
+		BuildDate          string `json:"buildDate"`
 		AppProtocolVersion int    `json:"appProtocolVersion"`
 		OS                 string `json:"os"`
 		Architecture       string `json:"architecture"`
@@ -34,6 +37,9 @@ func TestVersionJSONProvidesAppStartupHandshake(t *testing.T) {
 	require.Equal(t, 1, handshake.SchemaVersion)
 	require.Equal(t, "skillsgo", handshake.Product)
 	require.Equal(t, "dev", handshake.Version)
+	require.Equal(t, "unknown", handshake.Distribution)
+	require.Equal(t, "unknown", handshake.Commit)
+	require.Equal(t, "unknown", handshake.BuildDate)
 	require.Equal(t, 17, handshake.AppProtocolVersion)
 	require.NotEmpty(t, handshake.OS)
 	require.NotEmpty(t, handshake.Architecture)

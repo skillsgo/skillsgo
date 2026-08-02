@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on successful local installation facts, cryptographic event IDs, the current Hub Origin, and the shared install-event route.
+ * [INPUT]: Depends on successful local installation facts, CLI build identity, cryptographic event IDs, the current Hub Origin, and the shared install-event route.
  * [OUTPUT]: Provides one best-effort batch Package install-event request with stable event identity, exact Skill facts, optional App version, and bounded network time that never changes an installation result.
  * [POS]: Serves as the narrow post-commit adapter between CLI-owned installation facts and the Hub's always-present community-data surface.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/protocol/cloud"
 )
@@ -47,7 +48,7 @@ func reportHubInstall(ctx context.Context, hubURL string, fact hubInstallFact) {
 	body, err := json.Marshal(cloud.InstallEvent{
 		EventID: hex.EncodeToString(eventID), PackagePath: fact.PackagePath,
 		Version: fact.Version, Skills: fact.Skills, Agents: fact.Agents,
-		Scope: cloud.Scope(fact.Scope), CLIVersion: version, AppVersion: fact.AppVersion, OccurredAt: time.Now().UTC(),
+		Scope: cloud.Scope(fact.Scope), CLIVersion: buildinfo.Current().Version, AppVersion: fact.AppVersion, OccurredAt: time.Now().UTC(),
 	})
 	if err != nil {
 		return
