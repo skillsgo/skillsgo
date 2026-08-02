@@ -30,6 +30,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | --- | --- |
 | `cmd/skillsgo/` | Product process entry point and executable wiring. |
 | `cmd/skillsgo-release-manifest/` | Release-only unsigned Manifest/checksum assembly entry point. |
+| `osv-scanner.toml` | Evidence-backed exceptions for unfixable advisories whose vulnerable package is absent from the CLI build graph. |
 | `internal/buildinfo/` | Immutable linker-injected CLI product, App bundle, distribution, commit, and build-time identity. |
 | `bin/skillsgo` | Ignored local development binary produced by `make build`. |
 | `internal/agent/` | Supported Agent definitions, detection, installation locations, and bounded local Agent project evidence. |

@@ -22,6 +22,12 @@ All repository documentation must be written in English. This includes README fi
 
 Do not add non-English documentation. When modifying an existing document, leave the complete edited document in English. User-facing application copy is not repository documentation and must continue to use the App's i18n system.
 
+## Working-Tree Safety
+
+- Unless the user explicitly requests it, do not create or switch local Git branches.
+- Continue work on the currently checked-out branch and worktree; do not create a new worktree to bypass this rule.
+- If the requested work requires a different branch or worktree, stop and ask the user before changing Git state.
+
 ## Repository Architecture
 
 ```text
