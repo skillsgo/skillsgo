@@ -34,6 +34,9 @@ func newSelfUpdateCommand(checker updateChecker) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_ = check // The first release is intentionally check-only, including the default invocation.
 			build := currentBuildInfo()
+			if build.Distribution == "bundled" {
+				return fmt.Errorf("%s", appi18n.Pick("The bundled CLI updates with the SkillsGo App.", "内嵌 CLI 会随 SkillsGo App 一起更新。"))
+			}
 			result, err := checker.Check(cmd.Context(), build.Version, build.Distribution, requestedVersion)
 			if err != nil {
 				return err

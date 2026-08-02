@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, build identity, Hub, project, Package installation, target-operation, source, i18n, self-update, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and stdin-capable ExecuteWithInput, localized Cobra help, and the Package-oriented CLI graph plus signed CLI update checks.
+ * [OUTPUT]: Provides command.Execute and stdin-capable ExecuteWithInput, localized Cobra help, Hub reads, Package install/update/remove/recovery commands, and signed standalone-CLI update checks.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

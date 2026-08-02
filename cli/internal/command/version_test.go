@@ -54,13 +54,11 @@ func TestLegacyAppVersionInjectionRemainsBundled(t *testing.T) {
 	err := Execute([]string{"version", "--output", "json"}, &stdout, &bytes.Buffer{})
 	require.NoError(t, err)
 
-	var handshake struct {
-		Version       string `json:"version"`
-		BundleVersion string `json:"bundleVersion"`
-		Distribution  string `json:"distribution"`
-	}
+	var handshake map[string]any
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &handshake))
-	require.Equal(t, "0.0.2", handshake.Version)
-	require.Equal(t, "0.0.2", handshake.BundleVersion)
-	require.Equal(t, "bundled", handshake.Distribution)
+	require.Equal(t, "0.0.2", handshake["version"])
+	require.NotContains(t, handshake, "bundleVersion")
+	require.NotContains(t, handshake, "distribution")
+	require.NotContains(t, handshake, "commit")
+	require.NotContains(t, handshake, "buildDate")
 }

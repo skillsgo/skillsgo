@@ -102,6 +102,9 @@ func secureHTTPClient(origin *url.URL) *http.Client {
 }
 
 func (c *Checker) Check(ctx context.Context, currentVersion, distribution, requestedVersion string) (Result, error) {
+	if distribution == "bundled" {
+		return Result{}, fmt.Errorf("bundled CLI updates are owned by the SkillsGo App")
+	}
 	manifestPath := "/cli/stable/manifest.json"
 	signaturePath := "/cli/stable/manifest.sig"
 	if requestedVersion != "" {

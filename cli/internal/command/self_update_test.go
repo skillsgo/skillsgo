@@ -19,9 +19,13 @@ import (
 type fixedUpdateChecker struct {
 	result selfupdate.Result
 	err    error
+	calls  *int
 }
 
 func (checker fixedUpdateChecker) Check(context.Context, string, string, string) (selfupdate.Result, error) {
+	if checker.calls != nil {
+		*checker.calls++
+	}
 	return checker.result, checker.err
 }
 
@@ -47,4 +51,19 @@ func TestSelfUpdateExplainsPackageManagerUpgrade(t *testing.T) {
 
 	require.NoError(t, command.Execute())
 	require.Contains(t, stdout.String(), "brew upgrade skillsgo")
+}
+
+func TestBundledSelfUpdateStopsBeforeCheckingTheNetwork(t *testing.T) {
+	previousVersion := version
+	version = "0.0.2"
+	t.Cleanup(func() { version = previousVersion })
+	calls := 0
+	command := newSelfUpdateCommand(fixedUpdateChecker{calls: &calls})
+	command.SetOut(&bytes.Buffer{})
+	command.SetArgs(nil)
+
+	err := command.Execute()
+
+	require.Error(t, err)
+	require.Zero(t, calls)
 }
