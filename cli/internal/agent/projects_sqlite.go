@@ -42,10 +42,14 @@ func agentDatabasePaths(home, app string, prefixes []string, overrideKey string)
 		dataDirs = append(dataDirs, filepath.Join(dataHome, app))
 	}
 	if override := os.Getenv(overrideKey); override != "" && override != ":memory:" {
-		if !filepath.IsAbs(override) {
-			override = filepath.Join(dataDirs[0], override)
+		if filepath.IsAbs(override) {
+			return []string{override}
 		}
-		return []string{override}
+		paths := make([]string, 0, len(dataDirs))
+		for _, dataDir := range dataDirs {
+			paths = append(paths, filepath.Join(dataDir, override))
+		}
+		return paths
 	}
 	paths := []string{}
 	for _, dataDir := range dataDirs {
