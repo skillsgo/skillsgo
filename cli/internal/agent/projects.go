@@ -154,15 +154,11 @@ func readCodexSessionCWD(path string, limit int64) string {
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(io.LimitReader(file, limit))
-	for {
-		var value record
-		if err := decoder.Decode(&value); err != nil {
-			return ""
-		}
-		if value.Type == "session_meta" {
-			return value.Payload.CWD
-		}
+	var value record
+	if err := decoder.Decode(&value); err != nil || value.Type != "session_meta" {
+		return ""
 	}
+	return value.Payload.CWD
 }
 
 func readSessionRecords(path string, limit int64, cwdFromLine func([]byte) string) string {

@@ -30,7 +30,7 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(codexSession), 0o700))
 	require.NoError(t, os.WriteFile(claudeSession, []byte(`{"message":{"cwd":"/wrong-nested-path"}}`+"\n"+`{"cwd":`+quotedJSON(claudeWorkspace)+`}`+"\n"), 0o600))
 	oversizedMetadata := `{"type":"session_meta","payload":{"cwd":` + quotedJSON(codexWorkspace) + `,"environment":"` + strings.Repeat("x", 46*1024) + `"}}`
-	require.NoError(t, os.WriteFile(codexSession, []byte(`{"type":"message","cwd":"/wrong-event-path"}`+"\n"+oversizedMetadata+"\n"), 0o600))
+	require.NoError(t, os.WriteFile(codexSession, []byte(oversizedMetadata+"\n"+`{"type":"message","cwd":"/wrong-event-path"}`+"\n"), 0o600))
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
