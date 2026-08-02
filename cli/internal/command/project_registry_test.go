@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a temporary user home and real Workspace directories.
- * [OUTPUT]: Specifies stable machine add/list/remove journeys plus one-time Agent-session bootstrap over the projects section of CLI-owned user configuration.
+ * [OUTPUT]: Specifies stable machine add/list/remove journeys plus one-time Agent-session bootstrap from bounded ordinary and oversized structured records into CLI-owned user configuration.
  * [POS]: Serves as executable command-contract coverage for App and terminal project registration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/config"
@@ -28,7 +29,8 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(claudeSession), 0o700))
 	require.NoError(t, os.MkdirAll(filepath.Dir(codexSession), 0o700))
 	require.NoError(t, os.WriteFile(claudeSession, []byte(`{"message":{"cwd":"/wrong-nested-path"}}`+"\n"+`{"cwd":`+quotedJSON(claudeWorkspace)+`}`+"\n"), 0o600))
-	require.NoError(t, os.WriteFile(codexSession, []byte(`{"type":"message","cwd":"/wrong-event-path"}`+"\n"+`{"type":"session_meta","payload":{"cwd":`+quotedJSON(codexWorkspace)+`}}`+"\n"), 0o600))
+	oversizedMetadata := `{"type":"session_meta","payload":{"cwd":` + quotedJSON(codexWorkspace) + `,"environment":"` + strings.Repeat("x", 46*1024) + `"}}`
+	require.NoError(t, os.WriteFile(codexSession, []byte(`{"type":"message","cwd":"/wrong-event-path"}`+"\n"+oversizedMetadata+"\n"), 0o600))
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer

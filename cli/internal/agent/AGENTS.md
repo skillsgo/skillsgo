@@ -6,7 +6,7 @@
 - `catalog.go`: defines the complete supported Agent catalog, resolves platform-specific managed and read-only discovery roots, and exposes the Global root used by shared canonical Skill storage.
 - `catalog_test.go`: specifies catalog parity, managed/discovery root separation, special detection, universal visibility, and stable machine-report fields.
 - `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including Global Skill loading paths.
-- `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from bounded Claude Code and Codex local session metadata.
+- `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from bounded Claude Code line records and streaming Codex metadata records, including oversized session headers.
 
 ## Architectural Boundary
 

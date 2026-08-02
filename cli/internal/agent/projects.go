@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded file-head reads, canonical filesystem paths, and filesystem activity times.
- * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery that retains only structured cwd metadata and filesystem activity.
+ * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded line and streaming JSON reads, canonical filesystem paths, and filesystem activity times.
+ * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery that tolerates oversized Codex metadata while retaining only structured cwd metadata and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,6 +21,7 @@ import (
 const (
 	projectDiscoveryWindow = 30 * 24 * time.Hour
 	projectDiscoveryLimit  = 12
+	codexMetadataReadLimit = 256 * 1024
 )
 
 type workspaceObservation struct {
@@ -123,7 +124,7 @@ func discoverCodexProjects(root string, cutoff time.Time, observe func(string, t
 		files = files[:40]
 	}
 	for _, file := range files {
-		observe(readCodexSessionCWD(file.path, 16*1024), file.modifiedAt)
+		observe(readCodexSessionCWD(file.path, codexMetadataReadLimit), file.modifiedAt)
 	}
 }
 
@@ -147,13 +148,21 @@ func readCodexSessionCWD(path string, limit int64) string {
 			CWD string `json:"cwd"`
 		} `json:"payload"`
 	}
-	return readSessionRecords(path, limit, func(line []byte) string {
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(io.LimitReader(file, limit))
+	for {
 		var value record
-		if json.Unmarshal(line, &value) == nil && value.Type == "session_meta" {
+		if err := decoder.Decode(&value); err != nil {
+			return ""
+		}
+		if value.Type == "session_meta" {
 			return value.Payload.CWD
 		}
-		return ""
-	})
+	}
 }
 
 func readSessionRecords(path string, limit int64, cwdFromLine func([]byte) string) string {
