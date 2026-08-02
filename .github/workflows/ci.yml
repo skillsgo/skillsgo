@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real 0.0.1-to-0.0.2 loopback update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
+# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -106,7 +106,55 @@ jobs:
         run: go test -race ./...
 
       - name: Build CLI
-        run: go build -trimpath -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
+        run: GOWORK=off go build -trimpath -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
+
+      - name: Test standalone release build contract
+        if: matrix.go == '1.26.5'
+        working-directory: .
+        run: ./scripts/test-build-cli-release.sh
+
+  cli-release-candidate:
+    name: CLI Candidate (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: cli/go.sum
+
+      - name: Build standalone candidate
+        env:
+          SKILLSGO_CLI_BUILD_DATE: '2026-01-01T00:00:00Z'
+        run: ./scripts/build-cli-release.sh v0.0.0-ci.${{ github.run_number }} ${{ matrix.goos }} ${{ matrix.goarch }} "$RUNNER_TEMP/cli-candidate" direct
+
+      - name: Upload standalone candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-candidate-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            ${{ runner.temp }}/cli-candidate/*.tar.gz
+            ${{ runner.temp }}/cli-candidate/*.zip
+          if-no-files-found: error
+          retention-days: 7
 
   hub:
     name: Hub
@@ -539,7 +587,7 @@ jobs:
   required:
     name: Required
     if: ${{ always() }}
-    needs: [dependency-vulnerabilities, protocol, cli, hub, app, app-desktop, web, e2e-cli, e2e-app]
+    needs: [dependency-vulnerabilities, protocol, cli, cli-release-candidate, hub, app, app-desktop, web, e2e-cli, e2e-app]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:

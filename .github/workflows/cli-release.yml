@@ -1,0 +1,236 @@
+# [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, GitHub Releases, SBOM generation, and artifact attestations.
+# [OUTPUT]: Publishes five standalone CLI archives, SBOMs, checksums, an unsigned provider-neutral CDN Manifest payload, attestations, and one immutable GitHub Release.
+# [POS]: Serves as the public verify-build-assemble control plane; an embedding publisher owns Manifest signing, immutable hosting, read-back, and stable-pointer publication.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - cli/v*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Candidate version, for example v0.1.0-rc.1
+        required: true
+        default: v0.0.0-dev
+
+concurrency:
+  group: cli-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify CLI release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_number: ${{ steps.version.outputs.version_number }}
+      published_at: ${{ steps.version.outputs.published_at }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: cli/go.sum
+
+      - name: Resolve and validate version
+        id: version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            if [[ ! "${REF_NAME}" =~ ^cli/v ]]; then
+              echo "Invalid CLI tag: ${REF_NAME}" >&2
+              exit 1
+            fi
+            version="${REF_NAME#cli/}"
+            git fetch origin main
+            if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+              echo "CLI release commit must be reachable from main." >&2
+              exit 1
+            fi
+          else
+            version="${MANUAL_VERSION}"
+          fi
+          GOWORK=off go -C cli run ./cmd/skillsgo-release-manifest --validate-version "${version}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "version_number=${version#v}" >> "${GITHUB_OUTPUT}"
+          echo "published_at=$(git show -s --format=%cI "${GITHUB_SHA}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Test standalone module
+        working-directory: cli
+        run: |
+          GOWORK=off go mod download
+          GOWORK=off go test ./...
+          GOWORK=off go build ./cmd/skillsgo
+
+      - name: Test release build contract
+        run: ./scripts/test-build-cli-release.sh
+
+      - name: Verify public go install contract
+        if: github.event_name == 'push'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          install_root="${RUNNER_TEMP}/go-install"
+          GOWORK=off GOPROXY=direct GOBIN="${install_root}" \
+            go install "github.com/skillsgo/skillsgo/cli/cmd/skillsgo@${RELEASE_VERSION}"
+          handshake="$("${install_root}/skillsgo" version --output json)"
+          if [[ "${handshake}" != *"\"version\":\"${RELEASE_VERSION}\""* || \
+            "${handshake}" != *'"distribution":"go-install"'* ]]; then
+            echo "go install produced an invalid CLI identity: ${handshake}" >&2
+            exit 1
+          fi
+
+  build:
+    name: Build CLI ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: cli/go.sum
+
+      - name: Build release archive
+        env:
+          SKILLSGO_CLI_COMMIT: ${{ github.sha }}
+          SKILLSGO_CLI_BUILD_DATE: ${{ needs.verify.outputs.published_at }}
+        run: ./scripts/build-cli-release.sh ${{ needs.verify.outputs.version }} ${{ matrix.goos }} ${{ matrix.goarch }} "$RUNNER_TEMP/cli-release" direct
+
+      - name: Generate binary SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          file: ${{ runner.temp }}/cli-release/skillsgo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+          format: spdx-json
+          output-file: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest Unix release archive
+        if: matrix.goos != 'windows'
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz
+
+      - name: Attest Windows release archive
+        if: matrix.goos == 'windows'
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+
+      - name: Attest generated SBOM
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.spdx.json
+
+      - name: Upload platform release
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-release-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            ${{ runner.temp }}/cli-release/*.tar.gz
+            ${{ runner.temp }}/cli-release/*.zip
+            ${{ runner.temp }}/cli-release/*.spdx.json
+          if-no-files-found: error
+          retention-days: 14
+
+  assemble:
+    name: Assemble CLI release
+    if: github.event_name == 'push'
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      PUBLISHED_AT: ${{ needs.verify.outputs.published_at }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.5'
+          cache-dependency-path: cli/go.sum
+
+      - name: Download platform releases
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: cli-release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Assemble provider-neutral release metadata
+        shell: bash
+        run: |
+          mkdir -p release-metadata
+          GOWORK=off go -C cli run ./cmd/skillsgo-release-manifest \
+            --assets "${GITHUB_WORKSPACE}/release-assets" \
+            --version "${RELEASE_VERSION}" \
+            --commit "${GITHUB_SHA}" \
+            --published-at "${PUBLISHED_AT}" \
+            --manifest "${GITHUB_WORKSPACE}/release-metadata/manifest.json" \
+            --checksums "${GITHUB_WORKSPACE}/release-metadata/checksums.txt"
+
+      - name: Attest release metadata
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            release-metadata/checksums.txt
+            release-metadata/manifest.json
+
+      - name: Publish immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          release_flags=()
+          if [[ "${RELEASE_VERSION}" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          gh release create "${TAG}" release-assets/* release-metadata/* "${release_flags[@]}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --title "SkillsGo CLI ${RELEASE_VERSION}" \
+            --generate-notes

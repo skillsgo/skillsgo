@@ -13,9 +13,11 @@
 - `prepare-app-update-rehearsal.sh`: preserves the packaged version from `app/pubspec.yaml`, rebuilds the same source as the next patch version, and appends the later full package to one local Velopack feed.
 - `serve-update-feed.dart`: exposes one exact Velopack release directory through a traversal-safe loopback-only HTTP origin for update E2E.
 - `smoke-app-update-rehearsal.sh`: drives a packaged macOS/Linux client through real local-feed check, download, replacement, restart, and next-patch bundled-CLI verification.
+- `build-cli-release.sh`: cross-compiles one supported standalone CLI target from GOWORK-independent dependencies and injects immutable release identity before archiving it.
+- `test-build-cli-release.sh`: black-box tests the Linux/amd64 standalone archive, LICENSE, and complete release handshake.
 
 ## Architectural Boundary
 
-This module owns repository-level development lifecycle automation, unsigned App candidate packaging/rehearsal, and deterministic production-download collection. Development cleanup may identify processes only when their command and repository ownership can both be established, and it must not terminate unrelated port owners or development sessions from other checkouts. Candidate scripts may assemble, locally serve, update, and validate ephemeral CI artifacts; the loopback source is not a production endpoint. The release collector may select and rename already verified channel outputs, but production signing, notarization, publication, and update hosting remain outside this module.
+This module owns repository-level development lifecycle automation, unsigned App candidate packaging/rehearsal, deterministic production-download collection, and the standalone CLI build contract. Development cleanup may identify processes only when their command and repository ownership can both be established, and it must not terminate unrelated port owners or development sessions from other checkouts. Candidate scripts may assemble, locally serve, update, and validate ephemeral CI artifacts; the loopback source is not a production endpoint. Release collectors and CLI build scripts may select, identify, and archive verified outputs, but production signing, publication, and update hosting remain workflow responsibilities.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
