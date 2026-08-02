@@ -12,7 +12,7 @@ SkillsGo maintains the Flutter desktop App and Go Hub in one repository while pr
 - Prefer GitHub-native permissions and GHCR over long-lived credentials.
 - Label unsigned and unnotarized App downloads explicitly rather than presenting them as signed installers.
 
-The standalone CLI now exists as a third release unit. Its final public release automation is intentionally deferred until the bundled-App contract stabilizes; production App builds compile a matching CLI from the same commit.
+The standalone CLI is a third release unit with independent authenticated publication. Production App builds still compile a bundled CLI from the same commit, identify it as `bundled`, and keep it under the App lifecycle.
 
 The dependency-light `protocol/` Go module is a shared source and compatibility unit for CLI and Hub builds, not an independently shipped product. Repository development resolves it through `go.work`; independently released Go modules must declare an explicit compatible Protocol module version.
 
@@ -21,7 +21,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
 | App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Windows x64 Setup, Linux x64 AppImage, separate macOS arm64/x86_64 downloads, Velopack feeds, and checksums; signing credentials upgrade Windows Setup and macOS PKGs, while unsigned downloads are labeled explicitly |
-| CLI | `cli/` | `cli/vX.Y.Z` | tag | Deferred standalone binary matrix |
+| CLI | `cli/` | `cli/vX.Y.Z` | tag | Five platform archives, checksums, SBOMs, signed CDN Manifests, and GitHub Release |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
 A repository-wide `vX.Y.Z` tag is not used because it cannot identify the released unit and would force unrelated components to share a version.
@@ -42,6 +42,7 @@ hub/v0.1.0
 4. Hub version and build date are injected into build metadata.
 5. Artifact names use normalized versions without the unit prefix.
 6. Existing tags, releases, container tags, and artifacts are never overwritten.
+7. CLI release builds carry CLI version, distribution, commit, and build date; bundled builds additionally carry their App bundle version.
 
 ## Pull Request CI
 
@@ -57,6 +58,7 @@ Web       → frozen install + typecheck + production build
 Dependencies → OSV scan of every supported lockfile, including Dart `pubspec.lock`
 CLI E2E   → isolated Linux container journeys across CLI and Hub
 App E2E   → rendered four-target startup smoke plus complete macOS, Windows, and Linux journeys across App, bundled CLI, and native Hub
+CLI Candidate → GOWORK-independent macOS/Linux/Windows archives for all five Tier-1 targets
 ```
 
 CI receives read-only repository permissions, cancels only superseded pull-request runs, and never cancels main or merge-queue validation. Third-party actions are pinned to full commit SHAs and updated through Dependabot.
@@ -94,6 +96,45 @@ checksums.txt
 ```
 
 Stable releases update full, minor, major, and `latest` container tags. Pre-releases publish only the complete version tag.
+
+## Standalone CLI Candidate Builds
+
+Pull-request and merge-queue CI cross-compiles the standalone CLI with the same repository script used by releases. The contract runs with `GOWORK=off`, injects immutable build identity, packages LICENSE with the binary, and covers:
+
+```text
+darwin/arm64
+darwin/amd64
+linux/arm64
+linux/amd64
+windows/amd64
+```
+
+The Linux amd64 candidate is extracted and executed as a black-box test. Its version handshake must report the requested CLI version, direct distribution, commit, and build date. Candidate archives expire and never create a public release or update pointer.
+
+## Standalone CLI Production Release
+
+A `cli/vX.Y.Z` tag reachable from `main` runs the complete CLI suite with the standalone module graph before building these exact archives:
+
+```text
+skillsgo_<version>_darwin_arm64.tar.gz
+skillsgo_<version>_darwin_amd64.tar.gz
+skillsgo_<version>_linux_arm64.tar.gz
+skillsgo_<version>_linux_amd64.tar.gz
+skillsgo_<version>_windows_amd64.zip
+```
+
+The protected `cli-release` Environment owns the Ed25519 private key and CLI-scoped object-storage credentials. The client embeds only the public key. Release assembly writes deterministic SHA-256 checksums and a schema-v1 Manifest whose artifact URLs are immutable objects below `https://cdn.skillsgo.ai/cli/versions/<version>/`.
+
+Publication follows one fail-closed order:
+
+1. Upload archives, SBOMs, checksums, version Manifest, and signature as immutable objects.
+2. Read every object back through the public CDN and verify its SHA-256.
+3. Create the immutable GitHub Release and fallback archive.
+4. For a stable SemVer only, publish `/cli/stable/manifest.json` and `/cli/stable/manifest.sig` last with `no-cache` semantics, then read them back. Pre-releases remain version-addressable and create a GitHub pre-release without moving stable.
+
+An existing immutable object may be reused only when its stored SHA-256 metadata matches. Missing credentials, signing-key mismatch, public read-back failure, or same-name content drift fails the release. The workflow never silently substitutes GitHub for the signed CDN update source.
+
+`skillsgo self-update` currently performs authenticated checks only. It verifies the raw Ed25519 signature before decoding bounded JSON, requires canonical SemVer, accepts only same-Origin immutable artifact URLs, and selects an exact OS/architecture entry. Bundled and package-manager distributions receive their owning upgrade instruction; unknown builds remain check-only. Executable replacement requires a later atomic-update implementation and interruption E2E gate.
 
 ## App Candidate Builds
 
@@ -176,6 +217,19 @@ R2_APP_BUCKET
 credentials are restricted to reading and writing the `app/` prefix and do not
 carry bucket-administration permissions.
 
+The independent `cli-release` Environment defines:
+
+```text
+CLI_MANIFEST_SIGNING_KEY
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_ENDPOINT
+CLI_CDN_BASE_URL
+R2_CLI_BUCKET
+```
+
+`CLI_CDN_BASE_URL` must be exactly `https://cdn.skillsgo.ai`. CLI storage credentials are restricted to the `cli/` prefix and must not reuse a token limited to the App prefix.
+
 ## Supply Chain and Traceability
 
 The first release phase provides:
@@ -185,7 +239,8 @@ The first release phase provides:
 - immutable Git tags and GitHub Releases;
 - GHCR digests;
 - SPDX or CycloneDX SBOMs;
-- GitHub Artifact Attestations.
+- GitHub Artifact Attestations;
+- Ed25519-authenticated CLI update Manifests with an embedded client trust root.
 
 A later phase may add keyless container signing and a signed App-update manifest.
 
@@ -234,6 +289,8 @@ The Hub uses a native GitHub Actions build matrix instead of GoReleaser because 
 
 ### Phase 4: Standalone CLI
 
-- Stabilize the App-to-CLI JSON protocol.
-- Define the standalone four-platform binary matrix and install channels.
-- Enable `cli/vX.Y.Z` only after compatibility and upgrade policy are documented.
+- Keep the App-to-CLI JSON protocol stable while exposing separate CLI, bundle, and distribution identity.
+- Maintain the five-target candidate and tag-release matrices.
+- Publish immutable CLI version objects and the signed stable Manifest through `cdn.skillsgo.ai`.
+- Add package-manager formulae and installers from the same official artifact bytes.
+- Add direct Unix atomic replacement and a Windows exit-helper only after rollback and interruption tests pass.

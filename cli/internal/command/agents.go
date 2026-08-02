@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, terminal documents, and the Agent Catalog's stable status records.
+ * [INPUT]: Depends on Cobra, CLI build identity, localized human copy, terminal documents, and the Agent Catalog's stable status records.
  * [OUTPUT]: Provides `skillsgo agents` with a versioned JSON contract and grouped adaptive Human summary.
  * [POS]: Serves as the CLI serialization boundary for complete supported and installed Agent discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -12,6 +12,7 @@ import (
 	"runtime"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
@@ -40,7 +41,7 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 			report := agentsReport{
 				SchemaVersion:      agentsSchemaVersion,
 				Product:            "skillsgo",
-				Version:            version,
+				Version:            buildinfo.Current().Version,
 				AppProtocolVersion: appProtocolVersion,
 				OS:                 runtime.GOOS,
 				Architecture:       runtime.GOARCH,

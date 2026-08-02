@@ -23,6 +23,7 @@
 - `0019-publish-conventional-skill-directory-subtrees.md`: adopts skills.sh-compatible convention-first discovery and limits each filtered Package Artifact to accepted self-contained Skill directory subtrees plus applicable plugin manifests.
 - `0020-publish-only-package-content-transitions.md`: publishes only filtered Package content transitions while retaining duplicate upstream revisions as exact, artifact-free equivalent Versions.
 - `0021-report-package-installs-as-batch-events.md`: reports one Package transaction as one best-effort event with embedded Skill facts, CLI version, and optional App version.
+- `0022-publish-authenticated-standalone-cli-releases.md`: establishes independent CLI tags, exact cross-platform archives, signed CDN Manifests, fixed update trust, and check-only source-aware self-update behavior.
 
 ## Architectural Boundary
 

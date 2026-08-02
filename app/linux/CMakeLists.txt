@@ -1,5 +1,5 @@
-# [INPUT]: Depends on Flutter Linux tooling and product/build version metadata, GTK, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
-# [OUTPUT]: Builds the Linux desktop runner and packages a native SkillsGo CLI aligned to the App product version, excluding the Flutter build number.
+# [INPUT]: Depends on Flutter Linux tooling and App bundle metadata, GTK, the SkillsGo Go CLI workspace, and the shared data/bin bundle layout.
+# [OUTPUT]: Builds the Linux desktop runner and packages a distribution-identified bundled CLI, excluding the Flutter build number.
 # [POS]: Serves as the Linux desktop build and relocatable bundle entry point.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 cmake_minimum_required(VERSION 3.13)
@@ -76,7 +76,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bundled_cli"
   COMMAND ${CMAKE_COMMAND} -E env CGO_ENABLED=0 GOOS=linux GOARCH=amd64
     ${GO_EXECUTABLE} build -trimpath
-    "-ldflags=-s -w -X github.com/skillsgo/skillsgo/cli/internal/command.version=${SKILLSGO_APP_VERSION}"
+    "-ldflags=-s -w -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.version=${SKILLSGO_APP_VERSION} -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.bundleVersion=${SKILLSGO_APP_VERSION} -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.distribution=bundled"
     -o "${SKILLSGO_CLI_BINARY}" ./cmd/skillsgo
   WORKING_DIRECTORY "${SKILLSGO_CLI_SOURCE_DIR}"
   DEPENDS ${SKILLSGO_CLI_SOURCES}
