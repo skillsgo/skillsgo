@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, and Goose registries or metadata plus OpenCode SQLite metadata, canonical filesystem paths, and activity times.
+ * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, and Qwen Code registries or metadata plus schema-guarded OpenCode and Kilo Code SQLite metadata, canonical filesystem paths, and activity times.
  * [OUTPUT]: Provides complete-window, activity-prioritized recent Agent Workspace discovery while retaining only structured project paths and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -62,8 +62,13 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 		discoverRooProjects(path, cutoff, observe)
 	}
 	discoverGooseProjects(gooseProjectsPath(home), cutoff, observe)
-	discoverOpenCodeProjects(openCodeDatabasePath(home), cutoff, observe)
-	discoverOpenCodeProjects(kiloDatabasePath(home), cutoff, observe)
+	discoverGooseDatabase(gooseDatabasePath(home), cutoff, observe)
+	for _, path := range agentDatabasePaths(home, "opencode", []string{"opencode"}, "OPENCODE_DB") {
+		discoverOpenCodeProjects(path, cutoff, observe)
+	}
+	for _, path := range agentDatabasePaths(home, "kilo", []string{"kilo", "opencode"}, "KILO_DB") {
+		discoverOpenCodeProjects(path, cutoff, observe)
+	}
 	discoverQwenProjects(filepath.Join(envHome("QWEN_RUNTIME_DIR", envHome("QWEN_HOME", filepath.Join(home, ".qwen"))), "projects"), cutoff, observe)
 
 	projects := make([]workspaceObservation, 0, len(observed))
@@ -195,6 +200,10 @@ func gooseProjectsPath(home string) string {
 	default:
 		return filepath.Join(envHome("XDG_DATA_HOME", filepath.Join(home, ".local", "share")), "goose", "projects.json")
 	}
+}
+
+func gooseDatabasePath(home string) string {
+	return filepath.Join(filepath.Dir(gooseProjectsPath(home)), "sessions", "sessions.db")
 }
 
 func discoverGooseProjects(path string, cutoff time.Time, observe func(string, time.Time)) {

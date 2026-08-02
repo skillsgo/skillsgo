@@ -7,7 +7,7 @@
 - `catalog_test.go`: specifies catalog parity, managed/discovery root separation, special detection, universal visibility, and stable machine-report fields.
 - `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including Global Skill loading paths.
 - `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, and Qwen Code registries or metadata records.
-- `projects_sqlite.go`: queries version-guarded OpenCode and Kilo Code session metadata through read-only SQLite connections.
+- `projects_sqlite.go`: queries schema-guarded OpenCode and Kilo Code session metadata through read-only SQLite connections.
 - `projects_test.go`: specifies complete-window streaming behavior for large supported-Agent project registries.
 
 ## Architectural Boundary

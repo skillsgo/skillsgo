@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on OpenCode and Kilo Code XDG data locations plus their version-guarded read-only SQLite session schemas.
+ * [INPUT]: Depends on OpenCode and Kilo Code XDG data locations plus their schema-guarded read-only SQLite session records.
  * [OUTPUT]: Provides recent OpenCode and Kilo Code Workspace observations without reading message content or mutating either database.
  * [POS]: Serves as the SQLite-backed Agent project-evidence adapter used by project discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -8,63 +8,119 @@ package agent
 
 import (
 	"database/sql"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
 
-func openCodeDatabasePath(home string) string {
-	return agentDatabasePath(home, "opencode", "opencode.db")
-}
-
-func kiloDatabasePath(home string) string {
-	return agentDatabasePath(home, "kilo", "kilo.db")
-}
-
-func agentDatabasePath(home, app, database string) string {
+func agentDataHome(home string) string {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
 		switch runtime.GOOS {
-		case "darwin":
-			dataHome = filepath.Join(home, "Library", "Application Support")
 		case "windows":
 			dataHome = envHome("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
 		default:
 			dataHome = filepath.Join(home, ".local", "share")
 		}
 	}
-	return filepath.Join(dataHome, app, database)
+	return dataHome
 }
 
-func discoverOpenCodeProjects(path string, _ time.Time, observe func(string, time.Time)) {
+func agentDatabasePaths(home, app string, prefixes []string, overrideKey string) []string {
+	dataDir := filepath.Join(agentDataHome(home), app)
+	if override := os.Getenv(overrideKey); override != "" && override != ":memory:" {
+		if !filepath.IsAbs(override) {
+			override = filepath.Join(dataDir, override)
+		}
+		return []string{override}
+	}
+	paths := []string{filepath.Join(dataDir, prefixes[0]+".db")}
+	entries, _ := os.ReadDir(dataDir)
+	for _, entry := range entries {
+		name := entry.Name()
+		for _, prefix := range prefixes {
+			if !entry.IsDir() && strings.HasPrefix(name, prefix+"-") && strings.HasSuffix(name, ".db") {
+				paths = append(paths, filepath.Join(dataDir, name))
+				break
+			}
+		}
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+func discoverOpenCodeProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	discoverSQLiteProjects(path, `SELECT directory, MAX(time_updated) FROM session WHERE directory IS NOT NULL AND directory != '' AND time_updated >= ? GROUP BY directory`, []any{cutoff.UnixMilli()}, observe)
+}
+
+func discoverGooseDatabase(path string, cutoff time.Time, observe func(string, time.Time)) {
+	discoverSQLiteProjects(path, `SELECT working_dir, MAX(updated_at) FROM sessions WHERE working_dir IS NOT NULL AND working_dir != '' AND updated_at >= ? GROUP BY working_dir`, []any{cutoff.UTC().Format("2006-01-02 15:04:05")}, observe)
+}
+
+func discoverSQLiteProjects(path, query string, args []any, observe func(string, time.Time)) {
 	if _, err := os.Stat(path); err != nil {
 		return
 	}
-	dsn := (&url.URL{Scheme: "file", Path: path, RawQuery: "mode=ro&_pragma=busy_timeout(250)"}).String()
+	uriPath := filepath.ToSlash(path)
+	if filepath.VolumeName(path) != "" && !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	dsn := (&url.URL{Scheme: "file", Path: uriPath, RawQuery: "mode=ro&_pragma=busy_timeout(250)"}).String()
 	database, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return
 	}
 	defer database.Close()
 
-	rows, err := database.Query(`
-		SELECT directory, MAX(time_updated)
-		FROM session
-		WHERE directory IS NOT NULL AND directory != ''
-		GROUP BY directory`)
+	rows, err := database.Query(query, args...)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var directory string
-		var milliseconds int64
-		if rows.Scan(&directory, &milliseconds) == nil {
-			observe(directory, time.UnixMilli(milliseconds))
+		var rawActive any
+		if rows.Scan(&directory, &rawActive) == nil {
+			if active, ok := sqliteActivity(rawActive); ok {
+				observe(directory, active)
+			}
 		}
 	}
+}
+
+func sqliteActivity(value any) (time.Time, bool) {
+	switch typed := value.(type) {
+	case int64:
+		return time.UnixMilli(typed), typed > 0
+	case float64:
+		return time.UnixMilli(int64(typed)), typed > 0
+	case time.Time:
+		return typed, !typed.IsZero()
+	case []byte:
+		return parseSQLiteActivity(string(typed))
+	case string:
+		return parseSQLiteActivity(typed)
+	default:
+		return parseSQLiteActivity(fmt.Sprint(typed))
+	}
+}
+
+func parseSQLiteActivity(value string) (time.Time, bool) {
+	if milliseconds, err := strconv.ParseInt(value, 10, 64); err == nil && milliseconds > 0 {
+		return time.UnixMilli(milliseconds), true
+	}
+	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05.999999999-07:00", "2006-01-02 15:04:05"} {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }

@@ -58,11 +58,13 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1785628800000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
 	writeProjectFixture(t, rooIndexPath(home), `{"version":1,"updatedAt":1785628800000,"entries":[{"id":"1","ts":1785628800000,"workspace":`+quotedJSON(rooWorkspace)+`}]}`)
 	gooseRoot := filepath.Join(home, "goose-root")
-	writeProjectFixture(t, filepath.Join(gooseRoot, "data", "projects.json"), `{"projects":{"goose-demo":{"path":`+quotedJSON(gooseWorkspace)+`,"last_accessed":"2026-08-02T00:00:00Z"}}}`)
+	writeGooseFixture(t, filepath.Join(gooseRoot, "data", "sessions", "sessions.db"), gooseWorkspace)
 	t.Setenv("GOOSE_PATH_ROOT", gooseRoot)
 	openCodeData := filepath.Join(home, "xdg-data")
-	writeOpenCodeFixture(t, filepath.Join(openCodeData, "opencode", "opencode.db"), openCodeWorkspace)
-	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "kilo.db"), kiloWorkspace)
+	openCodeOverride := filepath.Join(openCodeData, "opencode", "custom.db")
+	writeOpenCodeFixture(t, openCodeOverride, openCodeWorkspace)
+	t.Setenv("OPENCODE_DB", openCodeOverride)
+	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "opencode-dev.db"), kiloWorkspace)
 	t.Setenv("XDG_DATA_HOME", openCodeData)
 	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1785628800,"qwen_version":"1"}`)
 	t.Setenv("HOME", home)
@@ -104,6 +106,18 @@ func writeOpenCodeFixture(t *testing.T, path, workspace string) {
 	_, err = database.Exec(`CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL, time_updated INTEGER NOT NULL)`)
 	require.NoError(t, err)
 	_, err = database.Exec(`INSERT INTO session (id, directory, time_updated) VALUES ('1', ?, 1785628800000)`, workspace)
+	require.NoError(t, err)
+}
+
+func writeGooseFixture(t *testing.T, path, workspace string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	database, err := sql.Open("sqlite", path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+	_, err = database.Exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, working_dir TEXT NOT NULL, updated_at TIMESTAMP NOT NULL)`)
+	require.NoError(t, err)
+	_, err = database.Exec(`INSERT INTO sessions (id, working_dir, updated_at) VALUES ('1', ?, '2026-08-02 00:00:00')`, workspace)
 	require.NoError(t, err)
 }
 
