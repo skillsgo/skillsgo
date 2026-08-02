@@ -99,7 +99,7 @@ Stable releases update full, minor, major, and `latest` container tags. Pre-rele
 
 Every maintained native App Desktop CI job packages its verified Release bundle as an expiring, explicitly unsigned Velopack candidate and then exercises an ephemeral two-version update feed. Candidate builds do not create GitHub Releases and must not be presented as production downloads.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, and portable package, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App and deliberately skips the unsigned PKG because an unsigned installer is not a distributable macOS artifact.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, portable package, and platform installer, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App for smoke coverage while also verifying that each architecture produced a PKG.
 
 Each platform job then preserves its packaged `0.0.1` launcher, rebuilds the same source as `0.0.2`, and appends the later full package to the channel feed. A traversal-safe loopback HTTP server provides that feed only inside the runner. The packaged `0.0.1` App uses the community `velopack_flutter` bridge, which embeds Velopack Rust SDK 1.2.0, to check, download, verify, apply, and restart into `0.0.2`; the bundled CLI version proves the installed or portable payload actually changed. The loopback source accepts no remote host, credentials, query, or fragment. This gate proves update mechanics without hosting fees, certificates, or release publication, but it does not establish production publisher trust. Successful CI runs retain all four two-version candidate feeds for seven days.
 
@@ -119,20 +119,20 @@ not reachable from `main`. It then:
 4. Signs the two macOS Apps and installer packages when Developer ID
    identities are configured, submits them to Apple Notary Service through
    Velopack, staples the result, and validates the signed PKG. Without those
-   identities, it publishes the unsigned macOS update channel without a PKG
-   and exposes the portable App ZIP as the user-facing download.
+   identities, it publishes the unsigned macOS update channel and exposes a
+   clearly labeled unsigned PKG as the user-facing download.
 5. Generates provenance attestations and SHA-256 checksums.
 6. Uploads only the current version's immutable update packages to R2 before
    publishing the mutable `releases.<channel>.json` indexes. Prior packages
    hydrated from the public feed are never written back. This ordering prevents
    clients from observing a release whose package is not yet available.
 7. Creates an immutable GitHub Release containing one user-facing download per
-   architecture and checksums. Signed macOS channels contribute PKGs; unsigned
-   macOS channels contribute archives named with an `unsigned` suffix.
+   architecture and checksums. Both signed and unsigned macOS channels
+   contribute PKGs; unsigned installer names carry an `unsigned` suffix.
 
-The workflow uses Velopack's native signed PKG output on macOS rather than
-inventing a separate DMG packaging layer. macOS architectures remain separate;
-there is no Universal binary.
+The workflow uses Velopack's native PKG output on macOS rather than inventing a
+separate DMG packaging layer, then signs and notarizes it when credentials are
+available. macOS architectures remain separate; there is no Universal binary.
 
 The workflow exists in source but cannot publish until the protected
 `app-release` GitHub Environment contains the R2 configuration and public URL
