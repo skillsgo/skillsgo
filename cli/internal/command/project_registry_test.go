@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/config"
 	"github.com/stretchr/testify/require"
@@ -147,9 +148,21 @@ func writeWorkBuddyFixture(t *testing.T, path, workspace string) {
 	require.NoError(t, err)
 	_, err = database.Exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, cwd TEXT NOT NULL, deleted_at INTEGER, is_playground INTEGER)`)
 	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO workspaces (path, last_opened_at) VALUES (?, 1785628800000)`, workspace)
+	staleWorkspace := filepath.Join(filepath.Dir(workspace), "stale")
+	deletedWorkspace := filepath.Join(filepath.Dir(workspace), "deleted")
+	playgroundWorkspace := filepath.Join(filepath.Dir(workspace), "playground")
+	for _, candidate := range []string{staleWorkspace, deletedWorkspace, playgroundWorkspace} {
+		require.NoError(t, os.MkdirAll(candidate, 0o700))
+	}
+	now := time.Now()
+	_, err = database.Exec(`INSERT INTO workspaces (path, last_opened_at) VALUES (?, ?), (?, ?), (?, ?), (?, ?)`,
+		workspace, now.UnixMilli(),
+		staleWorkspace, now.Add(-31*24*time.Hour).UnixMilli(),
+		deletedWorkspace, now.UnixMilli(),
+		playgroundWorkspace, now.UnixMilli())
 	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO sessions (id, cwd, deleted_at, is_playground) VALUES ('1', ?, NULL, 0)`, workspace)
+	_, err = database.Exec(`INSERT INTO sessions (id, cwd, deleted_at, is_playground) VALUES ('1', ?, NULL, 0), ('2', ?, NULL, 0), ('3', ?, ?, 0), ('4', ?, NULL, 1)`,
+		workspace, staleWorkspace, deletedWorkspace, now.UnixMilli(), playgroundWorkspace)
 	require.NoError(t, err)
 }
 

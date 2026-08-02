@@ -16,14 +16,14 @@ The CLI exposes `skillsgo project bootstrap`. Before the configuration's one-tim
 
 - reads local Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, OpenCode, Kilo Code, and WorkBuddy registries or session metadata through Agent-specific structured fields and schema-guarded read-only database queries;
 - considers sessions active within the previous thirty days;
-- extracts only Workspace `cwd` and filesystem modification time;
+- extracts only explicit Workspace paths and their structured or filesystem activity times;
 - excludes the user home, missing roots, and non-directories;
 - canonicalizes and deduplicates before selecting at most twelve Workspaces by recent activity;
 - atomically persists those roots in the ordinary deterministic path-sorted `projects` sequence.
 
 Bootstrap atomically sets its durable marker even when no project is discovered. An explicit project add also sets that marker. Once marked, bootstrap performs no discovery and returns the existing projects unchanged. The App invokes bootstrap before loading Added Projects. Afterward, `project add` and `project remove` remain the only operations that change the sequence.
 
-Only structured `cwd` metadata and filesystem modification time survive parsing. Session prompts, responses, file names, and project content are never returned or persisted by this operation. Bootstrap remains local and does not report discovered paths to the Hub.
+Only explicit Workspace path metadata and structured or filesystem activity times survive parsing. Session prompts, responses, file names, remote collaboration projects, and project content are never returned or persisted by this operation. Bootstrap remains local and does not report discovered paths to the Hub.
 
 This decision supersedes ADR-0015 only where that ADR requires every project registration to be explicit and forbids inference from recent directories. It preserves ADR-0015's CLI-owned configuration, canonical project paths, and removal semantics.
 
