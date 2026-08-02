@@ -24,6 +24,14 @@ _Avoid_: localized machine protocol, artifact locale, translated installation
 The post-commit, best-effort emission of one Package Install Event for one successful Package transaction. The event batches every selected exact Skill Path and Agent, includes the CLI version plus an optional calling App version, and never changes the installation result when community reporting is unavailable.
 _Avoid_: per-Skill request loop, installation prerequisite, local receipt
 
+**CLI Distribution Identity**:
+Immutable build metadata distinguishing a standalone direct archive, package-manager build, unknown development build, or App-bundled CLI. It controls upgrade guidance and never comes from a runtime environment override. A bundled CLI additionally reports its App bundle version and remains under the App update lifecycle.
+_Avoid_: filesystem-path guess, mutable environment identity, treating App and CLI versions as compatibility negotiation
+
+**Authenticated CLI Release Manifest**:
+The bounded schema-v1 JSON document served from the fixed `https://cdn.skillsgo.ai` Origin and verified with the CLI's embedded Ed25519 public key before decoding. It maps exact OS/architecture targets to immutable same-Origin archive URLs, SHA-256 digests, and sizes. GitHub Release remains an archive and fallback, not a runtime API dependency.
+_Avoid_: unsigned latest JSON, redirectable update Origin, GitHub API requirement, checksum fetched from the same unauthenticated channel
+
 **Installation Target Group**:
 The set of requested Installation Targets that share one physical mutation and compensation scope. A group succeeds or rolls back atomically, while unrelated groups in the same Installation Request may complete independently.
 _Avoid_: globally atomic Installation Request, independent shared-path targets

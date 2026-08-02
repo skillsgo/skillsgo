@@ -28,7 +28,10 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 | Path | Responsibility |
 | --- | --- |
-| `cmd/skillsgo/` | Process entry point and executable wiring. |
+| `cmd/skillsgo/` | Product process entry point and executable wiring. |
+| `cmd/skillsgo-release-manifest/` | Release-only unsigned Manifest/checksum assembly entry point. |
+| `osv-scanner.toml` | Evidence-backed exceptions for unfixable advisories whose vulnerable package is absent from the CLI build graph. |
+| `internal/buildinfo/` | Immutable linker-injected CLI product, App bundle, distribution, commit, and build-time identity. |
 | `bin/skillsgo` | Ignored local development binary produced by `make build`. |
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
@@ -38,6 +41,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/managementplan/` | Exact-path External Remove planning, in-command state binding, and target-specific execution. |
 | `internal/project/` | Strict Package dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
 | `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, currently including explicit Managed Workspace projects shared by CLI cross-Scope operations and the App. |
+| `internal/selfupdate/` | Signed CDN Manifest verification and installation-source-aware CLI update checks. |
+| `internal/releasemanifest/` | Exact five-target CLI archive validation plus deterministic CDN Manifest and checksum assembly. |
 | `internal/packagemutation/` | Ordered local Package mutation commits spanning prepared Scope Tree/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
 | `internal/infocache/` | User-level disposable exact immutable Package Info bytes used for checksum-verified offline restore across all scopes. |
 | `internal/packageprovider/` | Unified read-through acquisition of exact locked Package metadata and Git content, including automatic cache reconstruction and lock-integrity checks. |

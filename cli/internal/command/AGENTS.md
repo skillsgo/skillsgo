@@ -26,7 +26,8 @@
 - `adoption_test.go`: specifies exact Package-member adoption, skills.sh and physical-root symlink topologies, reviewed conflicting Package-path replacement, existing managed coordinates, independent failure groups, crash-safe restoration, committed cleanup failure semantics, successful External disposal, and strict request validation through `Execute`.
 - `management_plan.go`: adapts repeatable flat exact-target flags into top-level External Remove planning JSON and `--yes`-confirmed Human, JSON, or NDJSON execution progress/results.
 - `management_plan_test.go`: specifies state-bound exact External removal and absence of removed `manage`, `use`, `init`, and `inventory` commands.
-- `version.go`: serves the human version output and versioned App startup handshake.
+- `version.go`: serves human version output and the versioned App startup handshake with CLI, bundle, and distribution identity.
+- `self_update.go`, `self_update_test.go`: expose and specify authenticated, check-only CLI release discovery plus installation-source guidance.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root command help.
 - `package_add.go`: resolves and prepares one shared Scope-local Package mutation, lets dry-run discard that exact Plan, and atomically replaces complete Scope Package Trees, member Projections, YAML, and Lock state.
