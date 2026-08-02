@@ -160,7 +160,7 @@ All adapters should treat the source as read-only, canonicalize and validate the
 
 ## Privacy and performance boundary
 
-The first implementation should prefer the five JSON metadata sources (Gemini, Kimi, Continue, Vibe, and Cline/Roo indexes), then add the two SQLite adapters (Goose and OpenCode) behind schema checks. JSON files should have explicit byte ceilings generous enough for metadata indexes; per-session metadata directories should be bounded by age but not silently truncated within the selected time window. SQLite queries must be read-only, select only the path and activity columns, and use grouping/ordering in the database.
+The first implementation should prefer the five JSON metadata sources (Gemini, Kimi, Continue, Vibe, and Cline/Roo indexes), then add the two SQLite adapters (Goose and OpenCode) behind schema checks. Growing JSON indexes must be streamed entry by entry, so a valid entry at the end is not dropped and memory scales with one record rather than the complete registry; per-session metadata directories should be bounded by age but not silently truncated within the selected time window. SQLite queries must be read-only, select only the path and activity columns, and use grouping/ordering in the database.
 
 "Complete" means complete for all metadata records inside the configured recency window, not complete transcript ingestion. A malformed or inaccessible source must be skipped independently so one Agent cannot prevent other Agents from seeding projects.
 

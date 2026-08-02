@@ -73,69 +73,155 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 	return paths
 }
 
-func readRegistry(path string, cutoff time.Time, target any) (time.Time, bool) {
+func openRegistry(path string) (*os.File, time.Time, bool) {
 	info, err := os.Stat(path)
-	if err != nil || info.ModTime().Before(cutoff) {
-		return time.Time{}, false
+	if err != nil {
+		return nil, time.Time{}, false
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return time.Time{}, false
+		return nil, time.Time{}, false
 	}
-	defer file.Close()
-	if json.NewDecoder(file).Decode(target) != nil {
-		return time.Time{}, false
+	return file, info.ModTime(), true
+}
+
+func skipJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
 	}
-	return info.ModTime(), true
+	delimiter, ok := token.(json.Delim)
+	if !ok || (delimiter != '{' && delimiter != '[') {
+		return nil
+	}
+	for decoder.More() {
+		if delimiter == '{' {
+			if _, err = decoder.Token(); err != nil {
+				return err
+			}
+		}
+		if err = skipJSONValue(decoder); err != nil {
+			return err
+		}
+	}
+	_, err = decoder.Token()
+	return err
+}
+
+func newestFileActivity(root string, cutoff time.Time) time.Time {
+	newest := time.Time{}
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		info, infoErr := entry.Info()
+		if infoErr == nil && !info.ModTime().Before(cutoff) && info.ModTime().After(newest) {
+			newest = info.ModTime()
+		}
+		return nil
+	})
+	return newest
 }
 
 func discoverGeminiProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
-	var registry struct {
-		Projects map[string]string `json:"projects"`
-	}
-	_, ok := readRegistry(path, cutoff, &registry)
+	file, _, ok := openRegistry(path)
 	if !ok {
 		return
 	}
-	for project, slug := range registry.Projects {
-		if info, err := os.Stat(filepath.Join(filepath.Dir(path), "tmp", slug)); err == nil {
-			observe(project, info.ModTime())
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return
+	}
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return
 		}
+		if key != "projects" {
+			_ = skipJSONValue(decoder)
+			continue
+		}
+		if token, tokenErr := decoder.Token(); tokenErr != nil || token != json.Delim('{') {
+			return
+		}
+		for decoder.More() {
+			projectToken, tokenErr := decoder.Token()
+			project, projectOK := projectToken.(string)
+			var slug string
+			if tokenErr != nil || !projectOK || decoder.Decode(&slug) != nil {
+				return
+			}
+			active := newestFileActivity(filepath.Join(filepath.Dir(path), "tmp", slug), cutoff)
+			if !active.IsZero() {
+				observe(project, active)
+			}
+		}
+		_, _ = decoder.Token()
 	}
 }
 
 func discoverKimiProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
-	var registry struct {
-		WorkDirs []struct {
-			Path          string `json:"path"`
-			Kaos          string `json:"kaos"`
-			LastSessionID string `json:"last_session_id"`
-		} `json:"work_dirs"`
-	}
-	_, ok := readRegistry(path, cutoff, &registry)
+	file, _, ok := openRegistry(path)
 	if !ok {
 		return
 	}
-	for _, workDir := range registry.WorkDirs {
-		if (workDir.Kaos == "" || workDir.Kaos == "local") && workDir.LastSessionID != "" {
-			hash := fmt.Sprintf("%x", md5.Sum([]byte(workDir.Path)))
-			if info, err := os.Stat(filepath.Join(filepath.Dir(path), "sessions", hash, workDir.LastSessionID)); err == nil {
-				observe(workDir.Path, info.ModTime())
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return
+	}
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return
+		}
+		if key != "work_dirs" {
+			_ = skipJSONValue(decoder)
+			continue
+		}
+		if token, tokenErr := decoder.Token(); tokenErr != nil || token != json.Delim('[') {
+			return
+		}
+		for decoder.More() {
+			var workDir struct {
+				Path          string `json:"path"`
+				Kaos          string `json:"kaos"`
+				LastSessionID string `json:"last_session_id"`
+			}
+			if decoder.Decode(&workDir) != nil {
+				return
+			}
+			if (workDir.Kaos == "" || workDir.Kaos == "local") && workDir.LastSessionID != "" {
+				hash := fmt.Sprintf("%x", md5.Sum([]byte(workDir.Path)))
+				active := newestFileActivity(filepath.Join(filepath.Dir(path), "sessions", hash, workDir.LastSessionID), cutoff)
+				if !active.IsZero() {
+					observe(workDir.Path, active)
+				}
 			}
 		}
+		_, _ = decoder.Token()
 	}
 }
 
 func discoverContinueProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
-	var sessions []struct {
-		WorkspaceDirectory string `json:"workspaceDirectory"`
-		DateCreated        string `json:"dateCreated"`
-	}
-	active, ok := readRegistry(path, cutoff, &sessions)
+	file, active, ok := openRegistry(path)
 	if !ok {
 		return
 	}
-	for _, session := range sessions {
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('[') {
+		return
+	}
+	for decoder.More() {
+		var session struct {
+			WorkspaceDirectory string `json:"workspaceDirectory"`
+			DateCreated        string `json:"dateCreated"`
+		}
+		if decoder.Decode(&session) != nil {
+			return
+		}
 		milliseconds, err := strconv.ParseInt(session.DateCreated, 10, 64)
 		sessionActive := time.UnixMilli(milliseconds)
 		if err != nil || milliseconds <= 0 {
@@ -159,23 +245,35 @@ func discoverVibeProjects(root string, cutoff time.Time, observe func(string, ti
 				WorkingDirectory string `json:"working_directory"`
 			} `json:"environment"`
 		}
-		active, ok := readRegistry(filepath.Join(root, directory.Name(), "meta.json"), cutoff, &metadata)
-		if ok {
+		metaPath := filepath.Join(root, directory.Name(), "meta.json")
+		file, active, ok := openRegistry(metaPath)
+		if ok && !active.Before(cutoff) && json.NewDecoder(file).Decode(&metadata) == nil {
 			observe(metadata.Environment.WorkingDirectory, active)
+		}
+		if ok {
+			file.Close()
 		}
 	}
 }
 
 func discoverClineProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
-	var history []struct {
-		CWD       string `json:"cwdOnTaskInitialization"`
-		Timestamp int64  `json:"ts"`
-	}
-	active, ok := readRegistry(path, cutoff, &history)
+	file, active, ok := openRegistry(path)
 	if !ok {
 		return
 	}
-	for _, item := range history {
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('[') {
+		return
+	}
+	for decoder.More() {
+		var item struct {
+			CWD       string `json:"cwdOnTaskInitialization"`
+			Timestamp int64  `json:"ts"`
+		}
+		if decoder.Decode(&item) != nil {
+			return
+		}
 		itemActive := time.UnixMilli(item.Timestamp)
 		if item.Timestamp <= 0 {
 			itemActive = active
