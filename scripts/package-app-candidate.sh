@@ -126,10 +126,6 @@ case "${target}" in
         --signInstallIdentity "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY}"
         --notaryProfile "${SKILLSGO_MACOS_NOTARY_PROFILE}"
         --keychain "${SKILLSGO_MACOS_KEYCHAIN}")
-    else
-      # An unsigned PKG is not a distributable macOS installer. Candidate
-      # rehearsals deliberately emit only the portable update bundle.
-      pack_args+=(--noInst)
     fi
     ;;
 esac
@@ -170,16 +166,39 @@ if [[ -n "${installer_name}" && ! -s "${output_dir}/${installer_name}" ]]; then
   echo "Velopack installer is missing or empty: ${output_dir}/${installer_name}" >&2
   exit 1
 fi
-if [[ "${target}" == "macos" && "${package_mode}" == "release" && -n "${SKILLSGO_MACOS_SIGN_APP_IDENTITY:-}" && -n "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY:-}" && -n "${SKILLSGO_MACOS_NOTARY_PROFILE:-}" && -n "${SKILLSGO_MACOS_KEYCHAIN:-}" ]]; then
+if [[ "${target}" == "macos" ]]; then
   shopt -s nullglob
   macos_installers=("${output_dir}"/*.pkg)
   shopt -u nullglob
   if [[ "${#macos_installers[@]}" -ne 1 || ! -s "${macos_installers[0]}" ]]; then
-    echo "Expected exactly one signed macOS PKG in ${output_dir}." >&2
+    echo "Expected exactly one macOS PKG in ${output_dir}." >&2
     exit 1
   fi
-  pkgutil --check-signature "${macos_installers[0]}"
-  xcrun stapler validate "${macos_installers[0]}"
+  readonly macos_installer="${macos_installers[0]}"
+  readonly macos_installer_entries="$(pkgutil --payload-files "${macos_installer}")"
+  for installer_entry in \
+    "./SkillsGo.app/Contents/MacOS/SkillsGo" \
+    "./SkillsGo.app/Contents/Resources/bin/skillsgo"; do
+    if ! grep -Fxq "${installer_entry}" <<<"${macos_installer_entries}"; then
+      echo "macOS PKG is missing ${installer_entry}: ${macos_installer}" >&2
+      exit 1
+    fi
+  done
+  if [[ "${package_mode}" == "release" && -n "${SKILLSGO_MACOS_SIGN_APP_IDENTITY:-}" && -n "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY:-}" && -n "${SKILLSGO_MACOS_NOTARY_PROFILE:-}" && -n "${SKILLSGO_MACOS_KEYCHAIN:-}" ]]; then
+    pkgutil --check-signature "${macos_installer}"
+    xcrun stapler validate "${macos_installer}"
+  else
+    set +e
+    macos_signature_status="$(pkgutil --check-signature "${macos_installer}" 2>&1)"
+    macos_signature_exit=$?
+    set -e
+    readonly macos_signature_status macos_signature_exit
+    if [[ "${macos_signature_exit}" -ne 1 ]] || ! grep -Fxq '   Status: no signature' <<<"${macos_signature_status}"; then
+      printf '%s\n' "${macos_signature_status}" >&2
+      echo "Expected an unsigned macOS PKG: ${macos_installer}" >&2
+      exit 1
+    fi
+  fi
 fi
 
 readonly metadata_name="$([[ "${package_mode}" == "release" ]] && echo "release-${version}" || echo candidate)"

@@ -7,7 +7,7 @@
 - `cleanup-dev.sh`: discovers and terminates stale SkillsGo development process trees without affecting unrelated processes.
 - `watch-flutter.sh`: watches maintained App sources and assets and requests Flutter Hot Reload through its PID file.
 - `package-app-candidate.sh`: converts one native Flutter Release bundle into a versioned, architecture-isolated Velopack candidate or production channel, signs when publisher identities are available and otherwise publishes the unsigned channel, can append a later version to the same rehearsal feed, and verifies its release manifest, full package, portable package, and platform installer where applicable.
-- `collect-app-release-downloads.sh`: converts four verified production channels into exactly four user-facing GitHub Release downloads, preferring signed macOS PKGs and otherwise publishing clearly named unsigned portable ZIPs, then emits SHA-256 checksums.
+- `collect-app-release-downloads.sh`: converts four verified production channels into exactly four user-facing GitHub Release installers, preserving signed package names and labeling unsigned Windows and macOS packages explicitly, then emits SHA-256 checksums.
 - `test-collect-app-release-downloads.sh`: exercises the release-download collector with unsigned, signed, checksum, and missing-artifact fixtures on Linux CI.
 - `smoke-app-candidate.sh`: extracts and starts packaged macOS/Linux candidates and verifies the packaged bundled CLI reports the App version; Windows installation smoke remains native PowerShell in CI.
 - `prepare-app-update-rehearsal.sh`: preserves the packaged version from `app/pubspec.yaml`, rebuilds the same source as the next patch version, and appends the later full package to one local Velopack feed.
