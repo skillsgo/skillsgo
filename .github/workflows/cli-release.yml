@@ -68,7 +68,8 @@ jobs:
           GOWORK=off go -C cli run ./cmd/skillsgo-release-manifest --validate-version "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "version_number=${version#v}" >> "${GITHUB_OUTPUT}"
-          echo "published_at=$(git show -s --format=%cI "${GITHUB_SHA}")" >> "${GITHUB_OUTPUT}"
+          commit_timestamp="$(git show -s --format=%ct "${GITHUB_SHA}")"
+          echo "published_at=$(date --utc --date="@${commit_timestamp}" +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
 
       - name: Test standalone module
         working-directory: cli
