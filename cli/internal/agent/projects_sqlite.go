@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on OpenCode, Kilo Code, and Goose platform data locations plus their schema-guarded read-only SQLite session records.
- * [OUTPUT]: Provides recent OpenCode, Kilo Code, and Goose Workspace observations without reading message content or mutating any database.
+ * [INPUT]: Depends on OpenCode, Kilo Code, Goose, and WorkBuddy platform data locations plus their schema-guarded read-only SQLite project/session records.
+ * [OUTPUT]: Provides recent OpenCode, Kilo Code, Goose, and WorkBuddy Workspace observations without reading message content or mutating any database.
  * [POS]: Serves as the SQLite-backed Agent project-evidence adapter used by project discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -75,6 +75,19 @@ func discoverOpenCodeProjects(path string, cutoff time.Time, observe func(string
 
 func discoverGooseDatabase(path string, cutoff time.Time, observe func(string, time.Time)) {
 	discoverSQLiteProjects(path, `SELECT working_dir, MAX(updated_at) FROM sessions WHERE working_dir IS NOT NULL AND working_dir != '' AND updated_at >= ? GROUP BY working_dir`, []any{cutoff.UTC().Format("2006-01-02 15:04:05")}, observe)
+}
+
+func discoverWorkBuddyDatabase(path string, cutoff time.Time, observe func(string, time.Time)) {
+	discoverSQLiteProjects(path, `
+		SELECT w.path, w.last_opened_at
+		FROM workspaces w
+		WHERE w.last_opened_at >= ?
+		  AND EXISTS (
+			SELECT 1 FROM sessions s
+			WHERE s.cwd = w.path
+			  AND s.deleted_at IS NULL
+			  AND COALESCE(s.is_playground, 0) = 0
+		  )`, []any{cutoff.UnixMilli()}, observe)
 }
 
 func discoverSQLiteProjects(path, query string, args []any, observe func(string, time.Time)) {

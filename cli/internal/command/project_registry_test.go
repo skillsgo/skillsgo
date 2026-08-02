@@ -121,6 +121,38 @@ func writeGooseFixture(t *testing.T, path, workspace string) {
 	require.NoError(t, err)
 }
 
+func TestProjectBootstrapDiscoversWorkBuddyWorkspace(t *testing.T) {
+	home := t.TempDir()
+	workspace := filepath.Join(home, "work", "workbuddy-demo")
+	require.NoError(t, os.MkdirAll(workspace, 0o700))
+	writeWorkBuddyFixture(t, filepath.Join(home, ".workbuddy", "workbuddy.db"), workspace)
+	t.Setenv("HOME", home)
+
+	var output bytes.Buffer
+	require.NoError(t, Execute([]string{"project", "bootstrap", "--output", "json"}, &output, &output), output.String())
+	var report projectRegistryReport
+	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
+	canonical, err := filepath.EvalSymlinks(workspace)
+	require.NoError(t, err)
+	require.Equal(t, []string{canonical}, projectRoots(report.Projects))
+}
+
+func writeWorkBuddyFixture(t *testing.T, path, workspace string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	database, err := sql.Open("sqlite", path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+	_, err = database.Exec(`CREATE TABLE workspaces (path TEXT PRIMARY KEY, last_opened_at INTEGER NOT NULL)`)
+	require.NoError(t, err)
+	_, err = database.Exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, cwd TEXT NOT NULL, deleted_at INTEGER, is_playground INTEGER)`)
+	require.NoError(t, err)
+	_, err = database.Exec(`INSERT INTO workspaces (path, last_opened_at) VALUES (?, 1785628800000)`, workspace)
+	require.NoError(t, err)
+	_, err = database.Exec(`INSERT INTO sessions (id, cwd, deleted_at, is_playground) VALUES ('1', ?, NULL, 0)`, workspace)
+	require.NoError(t, err)
+}
+
 func writeProjectFixture(t *testing.T, path, content string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))

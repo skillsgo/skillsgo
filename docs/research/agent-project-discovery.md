@@ -10,7 +10,7 @@ The preferred source is a small project registry or per-session metadata file. A
 
 | Tier | Agents | Discovery source |
 | --- | --- | --- |
-| Implemented | Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, OpenCode, Qwen Code, Kilo Code | Explicit registries, versioned runtime metadata, or narrow session-table queries |
+| Implemented | Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, OpenCode, Qwen Code, Kilo Code, WorkBuddy | Explicit registries, versioned runtime metadata, or narrow project/session-table queries |
 | Keep existing | Claude Code, Codex | Structured JSONL metadata already supported by SkillsGo |
 | Do not implement yet | Cursor, Aider/AiderDesk, iFlow CLI, OpenHands, Warp, Zed, GitHub Copilot CLI | No verified stable, local, bounded path-to-project contract from first-party evidence |
 
@@ -97,6 +97,13 @@ All adapters should treat the source as read-only, canonicalize and validate the
 - Project field: the current Kilo CLI stores `session.directory` and `session.time_updated` in `${XDG_DATA_HOME}/kilo/kilo.db`; the production database filename is `kilo.db`.
 - Bounded read: yes, through the same read-only, schema-guarded query shape as OpenCode.
 - Recommendation: query only the current Kilo database and skip safely when the required table or columns are absent. Do not probe legacy editor task stores through this adapter.
+
+### WorkBuddy — recommend for local Workspaces only
+
+- Installed application evidence: WorkBuddy Desktop 5.2.5 was inspected from `/Applications/WorkBuddy.app`. Its bundled `UnifiedDatabaseService` stores `workbuddy.db` below `WORKBUDDY_CONFIG_DIR`, `CODEBUDDY_CONFIG_DIR`, or the default `~/.workbuddy`.
+- Project field: the `workspaces` table exposes `path` and `last_opened_at`; the application's own listing requires a matching non-deleted, non-playground `sessions.cwd` record.
+- Bounded read: yes, through a read-only, schema-guarded query constrained by `last_opened_at`.
+- Recommendation: import only canonical existing local Workspace paths. WorkBuddy's separate cloud collaboration “My Projects” records expose remote collaboration identity rather than a durable local directory and therefore cannot become a SkillsGo Added Project without a future remote-project product contract.
 
 ### Claude Code — existing support
 
