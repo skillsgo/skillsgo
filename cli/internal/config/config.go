@@ -59,6 +59,12 @@ func (s Store) AddProject(rawRoot string) (Project, error) {
 	}
 	for _, projectRoot := range document.Projects {
 		if projectRoot == root {
+			if !document.ProjectsBootstrapped {
+				document.ProjectsBootstrapped = true
+				if err := s.write(document); err != nil {
+					return Project{}, err
+				}
+			}
 			return projectFromRoot(root), nil
 		}
 	}
@@ -83,11 +89,10 @@ func (s Store) BootstrapProjects(rawRoots []string) ([]Project, error) {
 		}
 		return projectsFromRoots(document.Projects), nil
 	}
-	canonicalHome, _ := canonicalRoot(s.Home)
 	seen := map[string]bool{}
 	for _, rawRoot := range rawRoots {
 		root, canonicalErr := canonicalRoot(rawRoot)
-		if canonicalErr != nil || root == canonicalHome || root == filepath.VolumeName(root)+string(filepath.Separator) || seen[root] {
+		if canonicalErr != nil || seen[root] {
 			continue
 		}
 		seen[root] = true

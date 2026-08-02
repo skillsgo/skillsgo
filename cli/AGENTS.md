@@ -32,7 +32,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `cmd/skillsgo-release-manifest/` | Release-only unsigned Manifest/checksum assembly entry point. |
 | `internal/buildinfo/` | Immutable linker-injected CLI product, App bundle, distribution, commit, and build-time identity. |
 | `bin/skillsgo` | Ignored local development binary produced by `make build`. |
-| `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
+| `internal/agent/` | Supported Agent definitions, detection, installation locations, and bounded local Agent project evidence. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |

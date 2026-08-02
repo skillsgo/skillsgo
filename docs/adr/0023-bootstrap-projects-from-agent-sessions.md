@@ -18,8 +18,8 @@ The CLI exposes `skillsgo project bootstrap`. Before the configuration's one-tim
 - considers sessions active within the previous thirty days;
 - extracts only Workspace `cwd` and filesystem modification time;
 - excludes the user home, missing roots, and non-directories;
-- canonicalizes, deduplicates, activity-orders, and limits the result to twelve Workspaces;
-- atomically persists those roots directly into the ordinary `projects` sequence.
+- canonicalizes and deduplicates before selecting at most twelve Workspaces by recent activity;
+- atomically persists those roots in the ordinary deterministic path-sorted `projects` sequence.
 
 Bootstrap atomically sets its durable marker even when no project is discovered. An explicit project add also sets that marker. Once marked, bootstrap performs no discovery and returns the existing projects unchanged. The App invokes bootstrap before loading Added Projects. Afterward, `project add` and `project remove` remain the only operations that change the sequence.
 

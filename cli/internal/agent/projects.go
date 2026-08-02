@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded file-head reads, filesystem activity times, and canonical Workspace persistence owned by config.Store.
- * [OUTPUT]: Provides recent Agent Workspace discovery ordered by activity without reading prompts or session bodies.
- * [POS]: Serves as the read-only local evidence adapter behind one-time project bootstrap at the public command seam.
+ * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded file-head reads, canonical filesystem paths, and filesystem activity times.
+ * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery without extracting prompts or session bodies.
+ * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package command
+package agent
 
 import (
 	"encoding/json"
@@ -25,38 +25,45 @@ const (
 
 var cwdPattern = regexp.MustCompile(`"cwd"\s*:\s*("(?:[^"\\]|\\.)*")`)
 
-type observedProject struct {
-	root       string
-	lastActive time.Time
+type workspaceObservation struct {
+	path       string
+	modifiedAt time.Time
 }
 
-func discoverRecentAgentProjects(home string, now time.Time) []string {
+type sessionCandidate struct {
+	path       string
+	modifiedAt time.Time
+}
+
+func DiscoverRecentProjects(home string, now time.Time) []string {
 	cutoff := now.Add(-projectDiscoveryWindow)
+	canonicalHome := canonicalExistingDirectory(home)
 	observed := map[string]time.Time{}
-	observe := func(root string, active time.Time) {
-		if root == "" || root == home || active.Before(cutoff) {
+	observe := func(rawPath string, active time.Time) {
+		path := canonicalExistingDirectory(rawPath)
+		if path == "" || path == canonicalHome || isVolumeRoot(path) || active.Before(cutoff) {
 			return
 		}
-		if previous, ok := observed[root]; !ok || active.After(previous) {
-			observed[root] = active
+		if previous, ok := observed[path]; !ok || active.After(previous) {
+			observed[path] = active
 		}
 	}
 	discoverClaudeProjects(filepath.Join(home, ".claude", "projects"), cutoff, observe)
 	discoverCodexProjects(filepath.Join(home, ".codex", "sessions"), cutoff, observe)
 
-	projects := make([]observedProject, 0, len(observed))
-	for root, lastActive := range observed {
-		projects = append(projects, observedProject{root: root, lastActive: lastActive})
+	projects := make([]workspaceObservation, 0, len(observed))
+	for path, modifiedAt := range observed {
+		projects = append(projects, workspaceObservation{path: path, modifiedAt: modifiedAt})
 	}
-	sort.Slice(projects, func(i, j int) bool { return projects[i].lastActive.After(projects[j].lastActive) })
+	sort.Slice(projects, func(i, j int) bool { return projects[i].modifiedAt.After(projects[j].modifiedAt) })
 	if len(projects) > projectDiscoveryLimit {
 		projects = projects[:projectDiscoveryLimit]
 	}
-	roots := make([]string, 0, len(projects))
+	paths := make([]string, 0, len(projects))
 	for _, project := range projects {
-		roots = append(roots, project.root)
+		paths = append(paths, project.path)
 	}
-	return roots
+	return paths
 }
 
 func discoverClaudeProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
@@ -83,15 +90,14 @@ func discoverClaudeProjects(root string, cutoff time.Time, observe func(string, 
 				newest, newestPath = info, filepath.Join(root, directory.Name(), entry.Name())
 			}
 		}
-		if newest == nil || newest.ModTime().Before(cutoff) {
-			continue
+		if newest != nil && !newest.ModTime().Before(cutoff) {
+			observe(readSessionCWD(newestPath, 64*1024), newest.ModTime())
 		}
-		observe(readSessionCWD(newestPath, 64*1024), newest.ModTime())
 	}
 }
 
 func discoverCodexProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
-	files := []observedProject{}
+	files := []sessionCandidate{}
 	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -110,16 +116,16 @@ func discoverCodexProjects(root string, cutoff time.Time, observe func(string, t
 		}
 		info, infoErr := entry.Info()
 		if infoErr == nil && !info.ModTime().Before(cutoff) {
-			files = append(files, observedProject{root: path, lastActive: info.ModTime()})
+			files = append(files, sessionCandidate{path: path, modifiedAt: info.ModTime()})
 		}
 		return nil
 	})
-	sort.Slice(files, func(i, j int) bool { return files[i].lastActive.After(files[j].lastActive) })
+	sort.Slice(files, func(i, j int) bool { return files[i].modifiedAt.After(files[j].modifiedAt) })
 	if len(files) > 40 {
 		files = files[:40]
 	}
 	for _, file := range files {
-		observe(readSessionCWD(file.root, 16*1024), file.lastActive)
+		observe(readSessionCWD(file.path, 16*1024), file.modifiedAt)
 	}
 }
 
@@ -142,4 +148,23 @@ func readSessionCWD(path string, limit int64) string {
 		return ""
 	}
 	return cwd
+}
+
+func canonicalExistingDirectory(rawPath string) string {
+	if !filepath.IsAbs(strings.TrimSpace(rawPath)) {
+		return ""
+	}
+	info, err := os.Stat(rawPath)
+	if err != nil || !info.IsDir() {
+		return ""
+	}
+	resolved, err := filepath.EvalSymlinks(rawPath)
+	if err != nil {
+		return ""
+	}
+	return filepath.Clean(resolved)
+}
+
+func isVolumeRoot(path string) bool {
+	return path == filepath.VolumeName(path)+string(filepath.Separator)
 }

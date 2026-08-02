@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/config"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ func newProjectBootstrapCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		projects, err := registry.BootstrapProjects(discoverRecentAgentProjects(registry.Home, time.Now()))
+		projects, err := registry.BootstrapProjects(agent.DiscoverRecentProjects(registry.Home, time.Now()))
 		if err != nil {
 			return err
 		}

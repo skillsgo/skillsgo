@@ -54,6 +54,11 @@ func TestProjectBootstrapDoesNotExpandExistingRegistry(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(session), 0o700))
 	require.NoError(t, os.WriteFile(session, []byte(`{"cwd":`+quotedJSON(discovered)+`}`+"\n"), 0o600))
 	t.Setenv("HOME", home)
+	canonicalExisting, err := filepath.EvalSymlinks(existing)
+	require.NoError(t, err)
+	configPath := filepath.Join(home, ".skillsgo", "config.yaml")
+	require.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0o700))
+	require.NoError(t, os.WriteFile(configPath, []byte("schemaVersion: 1\nprojects:\n  - "+canonicalExisting+"\n"), 0o600))
 
 	var output bytes.Buffer
 	require.NoError(t, Execute([]string{"project", "add", existing, "--output", "json"}, &output, &output))
@@ -61,8 +66,6 @@ func TestProjectBootstrapDoesNotExpandExistingRegistry(t *testing.T) {
 	require.NoError(t, Execute([]string{"project", "bootstrap", "--output", "json"}, &output, &output))
 	var report projectRegistryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
-	canonicalExisting, err := filepath.EvalSymlinks(existing)
-	require.NoError(t, err)
 	require.Equal(t, []config.Project{{Name: "existing", Root: canonicalExisting}}, report.Projects)
 
 	output.Reset()
