@@ -1,0 +1,8 @@
+# [INPUT]: Depends on OSV findings for CLI dependencies and verified package reachability.
+# [OUTPUT]: Suppresses only the unfixable legacy OpenPGP advisory when no OpenPGP package is in the CLI build graph.
+# [POS]: Serves as the evidence-backed OSV exception policy beside the CLI Go manifest.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+reason = "govulncheck ./... reports no reachable vulnerable symbols; golang.org/x/crypto/openpgp is not in the CLI dependency graph, and the advisory has no fixed x/crypto version."
