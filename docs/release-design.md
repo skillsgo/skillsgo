@@ -123,16 +123,16 @@ skillsgo_<version>_linux_amd64.tar.gz
 skillsgo_<version>_windows_amd64.zip
 ```
 
-The protected `cli-release` Environment owns the Ed25519 private key and CLI-scoped object-storage credentials. The client embeds only the public key. Release assembly writes deterministic SHA-256 checksums and a schema-v1 Manifest whose artifact URLs are immutable objects below `https://cdn.skillsgo.ai/cli/versions/<version>/`.
+The OSS workflow writes deterministic SHA-256 checksums, a schema-v1 provider-neutral Manifest payload, SBOMs, and attestations into the GitHub Release. The client embeds only the public verification key. An embedding publisher owns the signing key and makes the Manifest's artifacts available below its configured immutable version prefix. Official client builds use `https://cdn.skillsgo.ai/cli/versions/<version>/`.
 
 Publication follows one fail-closed order:
 
-1. Upload archives, SBOMs, checksums, version Manifest, and signature as immutable objects.
-2. Read every object back through the public CDN and verify its SHA-256.
-3. Create the immutable GitHub Release and fallback archive.
-4. For a stable SemVer only, publish `/cli/stable/manifest.json` and `/cli/stable/manifest.sig` last with `no-cache` semantics, then read them back. Pre-releases remain version-addressable and create a GitHub pre-release without moving stable.
+1. The OSS workflow creates the immutable GitHub Release and fallback archive from one tested commit.
+2. The embedding publisher verifies those release inputs, signs the exact Manifest payload, and uploads the version objects immutably.
+3. The embedding publisher reads every object back through the public Origin and verifies its SHA-256.
+4. For a stable SemVer only, the embedding publisher publishes the signature and then switches `/cli/stable/manifest.json` last, using `no-cache` semantics and public read-back. Pre-releases remain version-addressable without moving stable.
 
-An existing immutable object may be reused only when its stored SHA-256 metadata matches. Missing credentials, signing-key mismatch, public read-back failure, or same-name content drift fails the release. The workflow never silently substitutes GitHub for the signed CDN update source.
+An existing immutable object may be reused only when its stored SHA-256 identity matches. Missing publisher capabilities, signing-key mismatch, public read-back failure, or same-name content drift must fail publication. Clients never silently substitute GitHub for the signed update source.
 
 `skillsgo self-update` currently performs authenticated checks only. It verifies the raw Ed25519 signature before decoding bounded JSON, requires canonical SemVer, accepts only same-Origin immutable artifact URLs, and selects an exact OS/architecture entry. Bundled and package-manager distributions receive their owning upgrade instruction; unknown builds remain check-only. Executable replacement requires a later atomic-update implementation and interruption E2E gate.
 
@@ -216,19 +216,6 @@ R2_APP_BUCKET
 `R2_APP_BUCKET` is the private S3 API bucket name used only by release CI. R2
 credentials are restricted to reading and writing the `app/` prefix and do not
 carry bucket-administration permissions.
-
-The independent `cli-release` Environment defines:
-
-```text
-CLI_MANIFEST_SIGNING_KEY
-R2_ACCESS_KEY_ID
-R2_SECRET_ACCESS_KEY
-R2_ENDPOINT
-CLI_CDN_BASE_URL
-R2_CLI_BUCKET
-```
-
-`CLI_CDN_BASE_URL` must be exactly `https://cdn.skillsgo.ai`. CLI storage credentials are restricted to the `cli/` prefix and must not reuse a token limited to the App prefix.
 
 ## Supply Chain and Traceability
 

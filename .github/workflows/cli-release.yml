@@ -1,6 +1,6 @@
-# [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, the cli-release Environment's Ed25519/R2 configuration, and cdn.skillsgo.ai.
-# [OUTPUT]: Publishes five immutable standalone CLI archives, SBOMs, checksums, signed version/stable Manifests, attestations, and one immutable GitHub Release.
-# [POS]: Serves as the protected verify-build-publish control plane for standalone SkillsGo CLI releases.
+# [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, GitHub Releases, SBOM generation, and artifact attestations.
+# [OUTPUT]: Publishes five standalone CLI archives, SBOMs, checksums, an unsigned provider-neutral CDN Manifest payload, attestations, and one immutable GitHub Release.
+# [POS]: Serves as the public verify-build-assemble control plane; an embedding publisher owns Manifest signing, immutable hosting, read-back, and stable-pointer publication.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: CLI Release
 
@@ -31,7 +31,6 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       version_number: ${{ steps.version.outputs.version_number }}
       published_at: ${{ steps.version.outputs.published_at }}
-      stable: ${{ steps.version.outputs.stable }}
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -66,18 +65,10 @@ jobs:
           else
             version="${MANUAL_VERSION}"
           fi
-          if [[ ! "${version}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid CLI version: ${version}" >&2
-            exit 1
-          fi
+          GOWORK=off go -C cli run ./cmd/skillsgo-release-manifest --validate-version "${version}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "version_number=${version#v}" >> "${GITHUB_OUTPUT}"
           echo "published_at=$(git show -s --format=%cI "${GITHUB_SHA}")" >> "${GITHUB_OUTPUT}"
-          if [[ "${version}" == *-* ]]; then
-            echo "stable=false" >> "${GITHUB_OUTPUT}"
-          else
-            echo "stable=true" >> "${GITHUB_OUTPUT}"
-          fi
 
       - name: Test standalone module
         working-directory: cli
@@ -88,6 +79,21 @@ jobs:
 
       - name: Test release build contract
         run: ./scripts/test-build-cli-release.sh
+
+      - name: Verify public go install contract
+        if: github.event_name == 'push'
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          install_root="${RUNNER_TEMP}/go-install"
+          GOWORK=off GOPROXY=direct GOBIN="${install_root}" \
+            go install "github.com/skillsgo/skillsgo/cli/cmd/skillsgo@${RELEASE_VERSION}"
+          handshake="$("${install_root}/skillsgo" version --output json)"
+          if [[ "${handshake}" != *"\"version\":\"${RELEASE_VERSION}\""* || \
+            "${handshake}" != *'"distribution":"go-install"'* ]]; then
+            echo "go install produced an invalid CLI identity: ${handshake}" >&2
+            exit 1
+          fi
 
   build:
     name: Build CLI ${{ matrix.goos }}/${{ matrix.goarch }}
@@ -149,6 +155,11 @@ jobs:
         with:
           subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
+      - name: Attest generated SBOM
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.spdx.json
+
       - name: Upload platform release
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -160,25 +171,17 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  publish:
-    name: Publish CLI release
+  assemble:
+    name: Assemble CLI release
     if: github.event_name == 'push'
     needs: [verify, build]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    environment: cli-release
+    timeout-minutes: 10
     permissions:
       contents: write
       id-token: write
       attestations: write
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: auto
-      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-      R2_BUCKET: ${{ vars.R2_CLI_BUCKET }}
-      CLI_CDN_BASE_URL: ${{ vars.CLI_CDN_BASE_URL }}
-      CLI_MANIFEST_SIGNING_KEY: ${{ secrets.CLI_MANIFEST_SIGNING_KEY }}
       RELEASE_VERSION: ${{ needs.verify.outputs.version }}
       PUBLISHED_AT: ${{ needs.verify.outputs.published_at }}
     steps:
@@ -198,21 +201,7 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Validate protected publication configuration
-        shell: bash
-        run: |
-          for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_ENDPOINT R2_BUCKET CLI_MANIFEST_SIGNING_KEY; do
-            if [[ -z "${!value}" ]]; then
-              echo "Missing required cli-release configuration: ${value}" >&2
-              exit 1
-            fi
-          done
-          if [[ "${CLI_CDN_BASE_URL}" != 'https://cdn.skillsgo.ai' ]]; then
-            echo "CLI_CDN_BASE_URL must be https://cdn.skillsgo.ai" >&2
-            exit 1
-          fi
-
-      - name: Assemble and sign release metadata
+      - name: Assemble provider-neutral release metadata
         shell: bash
         run: |
           mkdir -p release-metadata
@@ -223,21 +212,6 @@ jobs:
             --published-at "${PUBLISHED_AT}" \
             --manifest "${GITHUB_WORKSPACE}/release-metadata/manifest.json" \
             --checksums "${GITHUB_WORKSPACE}/release-metadata/checksums.txt"
-          signing_key="${RUNNER_TEMP}/cli-manifest-signing-key.pem"
-          printf '%s\n' "${CLI_MANIFEST_SIGNING_KEY}" > "${signing_key}"
-          chmod 0600 "${signing_key}"
-          public_key="$(openssl pkey -in "${signing_key}" -pubout -outform DER 2>/dev/null | tail -c 32 | base64 | tr -d '\n')"
-          if [[ "${public_key}" != 'oh91YjzUjenBWnrX80L2rHl2xnDxNX9EOPe9ZDi/lz8=' ]]; then
-            echo 'CLI Manifest signing key does not match the embedded public key.' >&2
-            exit 1
-          fi
-          openssl pkeyutl -sign -rawin -inkey "${signing_key}" \
-            -in release-metadata/manifest.json \
-            -out release-metadata/manifest.sig
-          openssl pkeyutl -verify -rawin -pubin \
-            -inkey <(openssl pkey -in "${signing_key}" -pubout 2>/dev/null) \
-            -in release-metadata/manifest.json \
-            -sigfile release-metadata/manifest.sig
 
       - name: Attest release metadata
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
@@ -245,64 +219,6 @@ jobs:
           subject-path: |
             release-metadata/checksums.txt
             release-metadata/manifest.json
-            release-metadata/manifest.sig
-
-      - name: Upload immutable CDN version objects
-        shell: bash
-        run: |
-          version_prefix="cli/versions/${RELEASE_VERSION}"
-          while IFS= read -r -d '' file; do
-            name="$(basename "${file}")"
-            digest="$(sha256sum "${file}" | cut -d ' ' -f 1)"
-            head_error="${RUNNER_TEMP}/r2-head-error"
-            set +e
-            existing_digest="$(aws s3api head-object --bucket "${R2_BUCKET}" --key "${version_prefix}/${name}" --endpoint-url "${R2_ENDPOINT}" --query 'Metadata.sha256' --output text 2>"${head_error}")"
-            head_status=$?
-            set -e
-            if [[ "${head_status}" -ne 0 ]]; then
-              if ! grep -Eq '(404|Not Found|NoSuchKey)' "${head_error}"; then
-                cat "${head_error}" >&2
-                exit "${head_status}"
-              fi
-              existing_digest=""
-            fi
-            if [[ -n "${existing_digest}" && "${existing_digest}" != 'None' ]]; then
-              if [[ "${existing_digest}" != "${digest}" ]]; then
-                echo "Refusing to overwrite immutable CLI object ${name}." >&2
-                exit 1
-              fi
-              continue
-            fi
-            if [[ "${existing_digest}" == 'None' ]]; then
-              echo "Refusing to trust immutable CLI object without checksum metadata: ${name}." >&2
-              exit 1
-            fi
-            aws s3 cp "${file}" "s3://${R2_BUCKET}/${version_prefix}/${name}" \
-              --endpoint-url "${R2_ENDPOINT}" \
-              --cache-control 'public,max-age=31536000,immutable' \
-              --metadata "sha256=${digest}" \
-              --only-show-errors
-          done < <(find release-assets release-metadata -maxdepth 1 -type f -print0)
-
-      - name: Read back immutable CDN objects
-        shell: bash
-        run: |
-          while IFS= read -r -d '' file; do
-            name="$(basename "${file}")"
-            expected="$(sha256sum "${file}" | cut -d ' ' -f 1)"
-            downloaded="${RUNNER_TEMP}/readback-${name}"
-            for attempt in {1..10}; do
-              if curl --fail --silent --show-error "${CLI_CDN_BASE_URL}/cli/versions/${RELEASE_VERSION}/${name}" -o "${downloaded}" && \
-                [[ "$(sha256sum "${downloaded}" | cut -d ' ' -f 1)" == "${expected}" ]]; then
-                break
-              fi
-              if [[ "${attempt}" -eq 10 ]]; then
-                echo "CDN read-back failed for immutable CLI object ${name}." >&2
-                exit 1
-              fi
-              sleep 3
-            done
-          done < <(find release-assets release-metadata -maxdepth 1 -type f -print0)
 
       - name: Publish immutable GitHub Release
         env:
@@ -318,28 +234,3 @@ jobs:
             --verify-tag \
             --title "SkillsGo CLI ${RELEASE_VERSION}" \
             --generate-notes
-
-      - name: Publish stable signed Manifest last
-        if: needs.verify.outputs.stable == 'true'
-        shell: bash
-        run: |
-          for name in manifest.json manifest.sig; do
-            aws s3 cp "release-metadata/${name}" "s3://${R2_BUCKET}/cli/stable/${name}" \
-              --endpoint-url "${R2_ENDPOINT}" \
-              --cache-control 'no-cache' \
-              --only-show-errors
-          done
-          for name in manifest.json manifest.sig; do
-            expected="$(sha256sum "release-metadata/${name}" | cut -d ' ' -f 1)"
-            downloaded="${RUNNER_TEMP}/stable-${name}"
-            curl --fail --silent --show-error "${CLI_CDN_BASE_URL}/cli/stable/${name}" -o "${downloaded}"
-            if [[ "$(sha256sum "${downloaded}" | cut -d ' ' -f 1)" != "${expected}" ]]; then
-              echo "Stable CLI Manifest read-back mismatch for ${name}." >&2
-              exit 1
-            fi
-          done
-
-      - name: Clean up signing material
-        if: always()
-        shell: bash
-        run: rm -f "${RUNNER_TEMP}/cli-manifest-signing-key.pem"

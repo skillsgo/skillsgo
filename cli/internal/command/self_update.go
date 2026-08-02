@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/selfupdate"
 	"github.com/spf13/cobra"
@@ -34,7 +33,7 @@ func newSelfUpdateCommand(checker updateChecker) *cobra.Command {
 			"  skillsgo self-update --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_ = check // The first release is intentionally check-only, including the default invocation.
-			build := buildinfo.Current()
+			build := currentBuildInfo()
 			result, err := checker.Check(cmd.Context(), build.Version, build.Distribution, requestedVersion)
 			if err != nil {
 				return err

@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	validateVersion := flag.String("validate-version", "", "validate one canonical CLI version and exit")
 	assets := flag.String("assets", "", "directory containing the exact CLI platform archives")
 	version := flag.String("version", "", "canonical CLI version")
 	commit := flag.String("commit", "", "source commit")
@@ -22,6 +23,17 @@ func main() {
 	manifest := flag.String("manifest", "", "output Manifest path")
 	checksums := flag.String("checksums", "", "output checksums path")
 	flag.Parse()
+	if *validateVersion != "" {
+		if flag.NArg() != 0 {
+			flag.Usage()
+			os.Exit(64)
+		}
+		if err := releasemanifest.ValidateVersion(*validateVersion); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if flag.NArg() != 0 || *assets == "" || *version == "" || *commit == "" || *publishedAt == "" || *manifest == "" || *checksums == "" {
 		flag.Usage()
 		os.Exit(64)

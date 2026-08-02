@@ -6,7 +6,12 @@
  */
 package buildinfo
 
-import "strings"
+import (
+	"runtime/debug"
+	"strings"
+
+	"golang.org/x/mod/semver"
+)
 
 var (
 	version       = "dev"
@@ -25,10 +30,26 @@ type Info struct {
 }
 
 func Current() Info {
+	moduleVersion := ""
+	if details, ok := debug.ReadBuildInfo(); ok {
+		moduleVersion = details.Main.Version
+	}
+	return current(moduleVersion)
+}
+
+func current(moduleVersion string) Info {
+	resolvedVersion := normalized(version, "dev")
+	resolvedDistribution := normalized(distribution, "unknown")
+	if resolvedVersion == "dev" && semver.IsValid(moduleVersion) {
+		resolvedVersion = moduleVersion
+		if resolvedDistribution == "unknown" {
+			resolvedDistribution = "go-install"
+		}
+	}
 	return Info{
-		Version:       normalized(version, "dev"),
+		Version:       resolvedVersion,
 		BundleVersion: strings.TrimSpace(bundleVersion),
-		Distribution:  normalized(distribution, "unknown"),
+		Distribution:  resolvedDistribution,
 		Commit:        normalized(commit, "unknown"),
 		BuildDate:     normalized(buildDate, "unknown"),
 	}

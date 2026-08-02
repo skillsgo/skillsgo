@@ -29,7 +29,7 @@ const (
 	manifestSchema    = 1
 	maxManifestBytes  = 256 * 1024
 	maxSignatureBytes = 1024
-	publicKeyBase64   = "oh91YjzUjenBWnrX80L2rHl2xnDxNX9EOPe9ZDi/lz8="
+	publicKeyBase64   = "nR7t3Jk4ngVlpWwA7GOnY0xF+OZgVXYEp8DWBrpYIBM="
 )
 
 type Artifact struct {
