@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on OpenCode and Kilo Code XDG data locations plus their schema-guarded read-only SQLite session records.
- * [OUTPUT]: Provides recent OpenCode and Kilo Code Workspace observations without reading message content or mutating either database.
+ * [INPUT]: Depends on OpenCode, Kilo Code, and Goose platform data locations plus their schema-guarded read-only SQLite session records.
+ * [OUTPUT]: Provides recent OpenCode, Kilo Code, and Goose Workspace observations without reading message content or mutating any database.
  * [POS]: Serves as the SQLite-backed Agent project-evidence adapter used by project discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,35 +21,43 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func agentDataHome(home string) string {
+func agentDataHomes(home string) []string {
 	dataHome := os.Getenv("XDG_DATA_HOME")
-	if dataHome == "" {
-		switch runtime.GOOS {
-		case "windows":
-			dataHome = envHome("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
-		default:
-			dataHome = filepath.Join(home, ".local", "share")
-		}
+	if dataHome != "" {
+		return []string{dataHome}
 	}
-	return dataHome
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{filepath.Join(home, "Library", "Application Support"), filepath.Join(home, ".local", "share")}
+	case "windows":
+		return []string{envHome("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))}
+	default:
+		return []string{filepath.Join(home, ".local", "share")}
+	}
 }
 
 func agentDatabasePaths(home, app string, prefixes []string, overrideKey string) []string {
-	dataDir := filepath.Join(agentDataHome(home), app)
+	dataDirs := []string{}
+	for _, dataHome := range agentDataHomes(home) {
+		dataDirs = append(dataDirs, filepath.Join(dataHome, app))
+	}
 	if override := os.Getenv(overrideKey); override != "" && override != ":memory:" {
 		if !filepath.IsAbs(override) {
-			override = filepath.Join(dataDir, override)
+			override = filepath.Join(dataDirs[0], override)
 		}
 		return []string{override}
 	}
-	paths := []string{filepath.Join(dataDir, prefixes[0]+".db")}
-	entries, _ := os.ReadDir(dataDir)
-	for _, entry := range entries {
-		name := entry.Name()
-		for _, prefix := range prefixes {
-			if !entry.IsDir() && strings.HasPrefix(name, prefix+"-") && strings.HasSuffix(name, ".db") {
-				paths = append(paths, filepath.Join(dataDir, name))
-				break
+	paths := []string{}
+	for _, dataDir := range dataDirs {
+		paths = append(paths, filepath.Join(dataDir, prefixes[0]+".db"))
+		entries, _ := os.ReadDir(dataDir)
+		for _, entry := range entries {
+			name := entry.Name()
+			for _, prefix := range prefixes {
+				if !entry.IsDir() && strings.HasPrefix(name, prefix+"-") && strings.HasSuffix(name, ".db") {
+					paths = append(paths, filepath.Join(dataDir, name))
+					break
+				}
 			}
 		}
 	}

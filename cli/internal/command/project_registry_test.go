@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with a temporary user home and real Workspace directories.
+ * [INPUT]: Uses command.Execute with a temporary platform-shaped user home, real Workspace directories, JSON metadata, and SQLite fixtures.
  * [OUTPUT]: Specifies stable machine add/list/remove journeys plus one-time Agent-session bootstrap from bounded ordinary and oversized structured records into CLI-owned user configuration.
  * [POS]: Serves as executable command-contract coverage for App and terminal project registration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
