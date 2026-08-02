@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # [INPUT]: Depends on four verified architecture-specific Velopack release directories produced by the App release build matrix.
-# [OUTPUT]: Collects one user-facing download per supported platform and architecture, falling back from a signed macOS PKG to a clearly named unsigned portable ZIP, then writes SHA-256 checksums.
+# [OUTPUT]: Collects one user-facing installer per supported platform and architecture, labeling unsigned Windows and macOS packages explicitly, then writes SHA-256 checksums.
 # [POS]: Serves as the deterministic release-channel-to-GitHub-assets boundary used by the tag-only App release workflow.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -89,18 +89,14 @@ if [[ "${macos_arm_signed}" == "true" && "${macos_x64_signed}" == "true" ]]; the
   copy_exactly_one "signed macOS arm64 installer" "$(basename "${macos_arm_installers[0]:-missing}")" "${macos_arm_installers[@]}"
   copy_exactly_one "signed macOS x64 installer" "$(basename "${macos_x64_installers[0]:-missing}")" "${macos_x64_installers[@]}"
 elif [[ "${macos_arm_signed}" == "false" && "${macos_x64_signed}" == "false" ]]; then
-  if [[ "${#macos_arm_installers[@]}" -ne 0 || "${#macos_x64_installers[@]}" -ne 0 ]]; then
-    echo "Unsigned macOS channels must not contain PKG installers." >&2
-    exit 1
-  fi
   copy_exactly_one \
-    "unsigned macOS arm64 portable archive" \
-    "SkillsGo-macOS-arm64-unsigned.zip" \
-    "${release_assets_root}/osx-arm64/SkillsGo-osx-arm64-Portable.zip"
+    "unsigned macOS arm64 installer" \
+    "SkillsGo-macOS-arm64-unsigned.pkg" \
+    "${macos_arm_installers[@]}"
   copy_exactly_one \
-    "unsigned macOS x64 portable archive" \
-    "SkillsGo-macOS-x64-unsigned.zip" \
-    "${release_assets_root}/osx-x64/SkillsGo-osx-x64-Portable.zip"
+    "unsigned macOS x64 installer" \
+    "SkillsGo-macOS-x64-unsigned.pkg" \
+    "${macos_x64_installers[@]}"
 else
   echo "macOS arm64 and x64 channels must use the same signing mode." >&2
   exit 1
