@@ -39,7 +39,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/inventory/` | Package-managed and External Library reconciliation across YAML/Lock state, read-through exact metadata, Scope Package Trees, member Projections, optional content verification, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-path External Remove planning, in-command state binding, and target-specific execution. |
 | `internal/project/` | Strict Package dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
-| `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, currently including explicit Managed Workspace projects shared by CLI cross-Scope operations and the App. |
+| `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, including one-time Agent-session-bootstrapped and explicitly managed Workspace projects shared by CLI cross-Scope operations and the App. |
 | `internal/selfupdate/` | Signed CDN Manifest verification and installation-source-aware CLI update checks. |
 | `internal/releasemanifest/` | Exact five-target CLI archive validation plus deterministic CDN Manifest and checksum assembly. |
 | `internal/packagemutation/` | Ordered local Package mutation commits spanning prepared Scope Tree/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
