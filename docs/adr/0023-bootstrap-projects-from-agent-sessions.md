@@ -14,7 +14,7 @@ Automatically repeating that discovery would conflict with project removal: a Wo
 
 The CLI exposes `skillsgo project bootstrap`. Before the configuration's one-time project-bootstrap marker is set, the command:
 
-- reads bounded local Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, and Cline registries or session metadata through Agent-specific structured fields;
+- reads local Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, OpenCode, and Kilo Code registries or session metadata through Agent-specific structured fields and version-guarded read-only database queries;
 - considers sessions active within the previous thirty days;
 - extracts only Workspace `cwd` and filesystem modification time;
 - excludes the user home, missing roots, and non-directories;

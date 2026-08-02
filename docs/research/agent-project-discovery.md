@@ -10,8 +10,7 @@ The preferred source is a small project registry or per-session metadata file. A
 
 | Tier | Agents | Discovery source |
 | --- | --- | --- |
-| Implement now | Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, OpenCode | Explicit registries, metadata indexes, or narrow session-table queries |
-| Reuse compatible adapter after fixture validation | Qwen Code, Kilo Code | Qwen's project store and Kilo's OpenCode-derived store are active migrations; pin fixtures before enabling |
+| Implemented | Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, OpenCode, Qwen Code, Kilo Code | Explicit registries, versioned runtime metadata, or narrow session-table queries |
 | Keep existing | Claude Code, Codex | Structured JSONL metadata already supported by SkillsGo |
 | Do not implement yet | Cursor, Aider/AiderDesk, iFlow CLI, OpenHands, Warp, Zed, GitHub Copilot CLI | No verified stable, local, bounded path-to-project contract from first-party evidence |
 
@@ -83,21 +82,21 @@ All adapters should treat the source as read-only, canonicalize and validate the
 - Bounded read: yes, through a read-only SQLite query over the session table only.
 - Adapter: discover the platform XDG data location, verify the `session` table and required columns, then query distinct directories ordered by `MAX(time_updated)`. If the schema is absent or channel-specific database naming is unknown, skip safely instead of probing message storage.
 
-### Qwen Code — fixture first
+### Qwen Code — recommend with runtime-status schema guard
 
 - Official repository: `QwenLM/qwen-code`, inspected at `563f744`.
 - Evidence: `packages/channels/base/src/paths.ts` defines `~/.qwen`; `packages/core/src/config/storage.ts` maps a cwd-derived project id to `~/.qwen/projects/<id>`; official daemon documentation describes workspace-qualified session stores below each project's `chats/` directory.
-- Project field: no first-party, dedicated global path registry was confirmed in the inspected version. The project directory name is derived from cwd, but relying on that encoding without an explicit decode contract would be brittle.
-- Bounded read: potentially, if a current session JSONL metadata header contains cwd, but this needs a checked fixture.
-- Recommendation: do not enable by assumption. Add a real current-version fixture and prove a metadata-only, bounded extraction, or wait for a path registry. Do not copy Gemini's adapter merely because the projects are historically related.
+- Project field: `projects/*/chats/*.runtime.json` with `schema_version == 1` exposes the explicit `work_dir` field for external observers.
+- Bounded read: yes. Runtime-status sidecars are small, versioned metadata records independent of chat bodies.
+- Recommendation: scan only recent version-1 runtime sidecars under `QWEN_RUNTIME_DIR`, `QWEN_HOME`, or the default `~/.qwen`; never decode the cwd-derived project directory name.
 
-### Kilo Code — fixture first
+### Kilo Code — recommend with a database-version guard
 
 - Official repository: `Kilo-Org/kilocode`, inspected at `c554409`.
 - Evidence: the repository contains an OpenCode-derived runtime with the same session `directory` concept, while `packages/kilo-vscode/src/legacy-migration` still imports editor global-storage task data. This is an active persistence migration rather than one stable public layout.
-- Project field: likely OpenCode session `directory`; legacy VS Code records may expose cwd/workspace through migrated task metadata.
-- Bounded read: technically yes, but the authoritative store and application data root vary by product generation.
-- Recommendation: add only after collecting current desktop/CLI fixtures and identifying a version marker. Avoid reading both stores indiscriminately, which would duplicate or resurrect migrated projects.
+- Project field: the current Kilo CLI stores `session.directory` and `session.time_updated` in `${XDG_DATA_HOME}/kilo/kilo.db`; the production database filename is `kilo.db`.
+- Bounded read: yes, through the same read-only, schema-guarded query shape as OpenCode.
+- Recommendation: query only the current Kilo database and skip safely when the required table or columns are absent. Do not probe legacy editor task stores through this adapter.
 
 ### Claude Code — existing support
 

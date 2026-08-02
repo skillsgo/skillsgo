@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, and Cline registries or metadata plus canonical filesystem paths and activity times.
+ * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, and Goose registries or metadata plus OpenCode SQLite metadata, canonical filesystem paths, and activity times.
  * [OUTPUT]: Provides complete-window, activity-prioritized recent Agent Workspace discovery while retaining only structured project paths and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,6 +58,13 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 	discoverContinueProjects(filepath.Join(envHome("CONTINUE_GLOBAL_DIR", filepath.Join(home, ".continue")), "sessions", "sessions.json"), cutoff, observe)
 	discoverVibeProjects(filepath.Join(envHome("VIBE_HOME", filepath.Join(home, ".vibe")), "logs", "session"), cutoff, observe)
 	discoverClineProjects(filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), cutoff, observe)
+	for _, path := range rooProjectIndexes(home) {
+		discoverRooProjects(path, cutoff, observe)
+	}
+	discoverGooseProjects(gooseProjectsPath(home), cutoff, observe)
+	discoverOpenCodeProjects(openCodeDatabasePath(home), cutoff, observe)
+	discoverOpenCodeProjects(kiloDatabasePath(home), cutoff, observe)
+	discoverQwenProjects(filepath.Join(envHome("QWEN_RUNTIME_DIR", envHome("QWEN_HOME", filepath.Join(home, ".qwen"))), "projects"), cutoff, observe)
 
 	projects := make([]workspaceObservation, 0, len(observed))
 	for path, modifiedAt := range observed {
@@ -71,6 +79,164 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 		paths = append(paths, project.path)
 	}
 	return paths
+}
+
+func discoverQwenProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".runtime.json") {
+			return nil
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil || info.ModTime().Before(cutoff) {
+			return nil
+		}
+		file, openErr := os.Open(path)
+		if openErr != nil {
+			return nil
+		}
+		var status struct {
+			SchemaVersion int     `json:"schema_version"`
+			WorkDir       string  `json:"work_dir"`
+			StartedAt     float64 `json:"started_at"`
+		}
+		decodeErr := json.NewDecoder(file).Decode(&status)
+		file.Close()
+		if decodeErr == nil && status.SchemaVersion == 1 {
+			active := time.Unix(0, int64(status.StartedAt*float64(time.Second)))
+			if active.IsZero() {
+				active = info.ModTime()
+			}
+			observe(status.WorkDir, active)
+		}
+		return nil
+	})
+}
+
+func rooProjectIndexes(home string) []string {
+	var roots []string
+	switch runtime.GOOS {
+	case "darwin":
+		base := filepath.Join(home, "Library", "Application Support")
+		for _, host := range []string{"Code", "Code - Insiders", "VSCodium", "Cursor", "Windsurf"} {
+			roots = append(roots, filepath.Join(base, host, "User", "globalStorage"))
+		}
+	case "windows":
+		base := envHome("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+		for _, host := range []string{"Code", "Code - Insiders", "VSCodium", "Cursor", "Windsurf"} {
+			roots = append(roots, filepath.Join(base, host, "User", "globalStorage"))
+		}
+	default:
+		base := envHome("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+		for _, host := range []string{"Code", "Code - Insiders", "VSCodium", "Cursor", "Windsurf"} {
+			roots = append(roots, filepath.Join(base, host, "User", "globalStorage"))
+		}
+	}
+	paths := make([]string, 0, len(roots)*2)
+	for _, root := range roots {
+		for _, extension := range []string{"rooveterinaryinc.roo-cline", "rooveterinaryinc.roo-cline-nightly"} {
+			paths = append(paths, filepath.Join(root, extension, "tasks", "_index.json"))
+		}
+	}
+	return paths
+}
+
+func discoverRooProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	file, active, ok := openRegistry(path)
+	if !ok {
+		return
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return
+	}
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return
+		}
+		if key != "entries" {
+			_ = skipJSONValue(decoder)
+			continue
+		}
+		if token, tokenErr := decoder.Token(); tokenErr != nil || token != json.Delim('[') {
+			return
+		}
+		for decoder.More() {
+			var entry struct {
+				Workspace string `json:"workspace"`
+				Timestamp int64  `json:"ts"`
+			}
+			if decoder.Decode(&entry) != nil {
+				return
+			}
+			entryActive := time.UnixMilli(entry.Timestamp)
+			if entry.Timestamp <= 0 {
+				entryActive = active
+			}
+			observe(entry.Workspace, entryActive)
+		}
+		_, _ = decoder.Token()
+	}
+}
+
+func gooseProjectsPath(home string) string {
+	if root := os.Getenv("GOOSE_PATH_ROOT"); filepath.IsAbs(root) {
+		return filepath.Join(root, "data", "projects.json")
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "Block", "goose", "data", "projects.json")
+	case "windows":
+		return filepath.Join(envHome("APPDATA", filepath.Join(home, "AppData", "Roaming")), "Block", "goose", "data", "projects.json")
+	default:
+		return filepath.Join(envHome("XDG_DATA_HOME", filepath.Join(home, ".local", "share")), "goose", "projects.json")
+	}
+}
+
+func discoverGooseProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	file, _, ok := openRegistry(path)
+	if !ok {
+		return
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return
+	}
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return
+		}
+		if key != "projects" {
+			_ = skipJSONValue(decoder)
+			continue
+		}
+		if token, tokenErr := decoder.Token(); tokenErr != nil || token != json.Delim('{') {
+			return
+		}
+		for decoder.More() {
+			if _, tokenErr := decoder.Token(); tokenErr != nil {
+				return
+			}
+			var project struct {
+				Path         string `json:"path"`
+				LastAccessed string `json:"last_accessed"`
+			}
+			if decoder.Decode(&project) != nil {
+				return
+			}
+			active, parseErr := time.Parse(time.RFC3339, project.LastAccessed)
+			if parseErr == nil {
+				observe(project.Path, active)
+			}
+		}
+		_, _ = decoder.Token()
+	}
 }
 
 func openRegistry(path string) (*os.File, time.Time, bool) {

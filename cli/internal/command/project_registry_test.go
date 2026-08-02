@@ -9,15 +9,18 @@ package command
 import (
 	"bytes"
 	"crypto/md5"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/config"
 	"github.com/stretchr/testify/require"
+	_ "modernc.org/sqlite"
 )
 
 func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
@@ -29,7 +32,12 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	continueWorkspace := filepath.Join(home, "work", "continue-demo")
 	vibeWorkspace := filepath.Join(home, "work", "vibe-demo")
 	clineWorkspace := filepath.Join(home, "work", "cline-demo")
-	for _, workspace := range []string{claudeWorkspace, codexWorkspace, geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace} {
+	rooWorkspace := filepath.Join(home, "work", "roo-demo")
+	gooseWorkspace := filepath.Join(home, "work", "goose-demo")
+	openCodeWorkspace := filepath.Join(home, "work", "opencode-demo")
+	qwenWorkspace := filepath.Join(home, "work", "qwen-demo")
+	kiloWorkspace := filepath.Join(home, "work", "kilo-demo")
+	for _, workspace := range []string{claudeWorkspace, codexWorkspace, geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace, rooWorkspace, gooseWorkspace, openCodeWorkspace, qwenWorkspace, kiloWorkspace} {
 		require.NoError(t, os.MkdirAll(workspace, 0o700))
 	}
 	claudeSession := filepath.Join(home, ".claude", "projects", "demo", "session.jsonl")
@@ -48,6 +56,15 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"1785628800000","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
 	writeProjectFixture(t, filepath.Join(home, ".vibe", "logs", "session", "session_1", "meta.json"), `{"environment":{"working_directory":`+quotedJSON(vibeWorkspace)+`}}`)
 	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1785628800000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
+	writeProjectFixture(t, rooIndexPath(home), `{"version":1,"updatedAt":1785628800000,"entries":[{"id":"1","ts":1785628800000,"workspace":`+quotedJSON(rooWorkspace)+`}]}`)
+	gooseRoot := filepath.Join(home, "goose-root")
+	writeProjectFixture(t, filepath.Join(gooseRoot, "data", "projects.json"), `{"projects":{"goose-demo":{"path":`+quotedJSON(gooseWorkspace)+`,"last_accessed":"2026-08-02T00:00:00Z"}}}`)
+	t.Setenv("GOOSE_PATH_ROOT", gooseRoot)
+	openCodeData := filepath.Join(home, "xdg-data")
+	writeOpenCodeFixture(t, filepath.Join(openCodeData, "opencode", "opencode.db"), openCodeWorkspace)
+	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "kilo.db"), kiloWorkspace)
+	t.Setenv("XDG_DATA_HOME", openCodeData)
+	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1785628800,"qwen_version":"1"}`)
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
@@ -55,19 +72,39 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	var report projectRegistryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
 	require.Equal(t, "project-bootstrap", report.Phase)
-	require.Len(t, report.Projects, 7)
+	require.Len(t, report.Projects, 12)
 	canonicalClaude, err := filepath.EvalSymlinks(claudeWorkspace)
 	require.NoError(t, err)
 	canonicalCodex, err := filepath.EvalSymlinks(codexWorkspace)
 	require.NoError(t, err)
 	expectedRoots := []string{canonicalClaude, canonicalCodex}
-	for _, workspace := range []string{geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace} {
+	for _, workspace := range []string{geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace, rooWorkspace, gooseWorkspace, openCodeWorkspace, qwenWorkspace, kiloWorkspace} {
 		canonical, err := filepath.EvalSymlinks(workspace)
 		require.NoError(t, err)
 		expectedRoots = append(expectedRoots, canonical)
 	}
 	require.ElementsMatch(t, expectedRoots, projectRoots(report.Projects))
 	require.FileExists(t, filepath.Join(home, ".skillsgo", "config.yaml"))
+}
+
+func rooIndexPath(home string) string {
+	configRoot := filepath.Join(home, ".config")
+	if runtime.GOOS == "darwin" {
+		configRoot = filepath.Join(home, "Library", "Application Support")
+	}
+	return filepath.Join(configRoot, "Code", "User", "globalStorage", "rooveterinaryinc.roo-cline", "tasks", "_index.json")
+}
+
+func writeOpenCodeFixture(t *testing.T, path, workspace string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	database, err := sql.Open("sqlite", path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+	_, err = database.Exec(`CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL, time_updated INTEGER NOT NULL)`)
+	require.NoError(t, err)
+	_, err = database.Exec(`INSERT INTO session (id, directory, time_updated) VALUES ('1', ?, 1785628800000)`, workspace)
+	require.NoError(t, err)
 }
 
 func writeProjectFixture(t *testing.T, path, content string) {
