@@ -33,7 +33,7 @@ func TestAssembleWritesCompleteImmutableManifest(t *testing.T) {
 	require.Equal(t, "https://github.com/skillsgo/skillsgo/releases/tag/cli/v1.2.3", manifest.GitHubRelease)
 	checksums, err := os.ReadFile(checksumsPath)
 	require.NoError(t, err)
-	require.Equal(t, 5, len(splitNonEmpty(string(checksums))))
+	require.Equal(t, 10, len(splitNonEmpty(string(checksums))))
 }
 
 func TestAssembleRejectsMissingOrUnexpectedArchive(t *testing.T) {
@@ -55,6 +55,8 @@ func writeFixtureArchives(t *testing.T, directory, version string) {
 	for platform, extension := range targetExtensions {
 		name := "skillsgo_" + version + "_" + platform + extension
 		require.NoError(t, os.WriteFile(filepath.Join(directory, name), []byte(platform), 0o600))
+		sbom := "skillsgo_" + version + "_" + platform + ".spdx.json"
+		require.NoError(t, os.WriteFile(filepath.Join(directory, sbom), []byte("{\"platform\":\""+platform+"\"}"), 0o600))
 	}
 }
 

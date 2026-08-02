@@ -44,3 +44,23 @@ func TestVersionJSONProvidesAppStartupHandshake(t *testing.T) {
 	require.NotEmpty(t, handshake.OS)
 	require.NotEmpty(t, handshake.Architecture)
 }
+
+func TestLegacyAppVersionInjectionRemainsBundled(t *testing.T) {
+	previousVersion := version
+	version = "0.0.2"
+	t.Cleanup(func() { version = previousVersion })
+
+	var stdout bytes.Buffer
+	err := Execute([]string{"version", "--output", "json"}, &stdout, &bytes.Buffer{})
+	require.NoError(t, err)
+
+	var handshake struct {
+		Version       string `json:"version"`
+		BundleVersion string `json:"bundleVersion"`
+		Distribution  string `json:"distribution"`
+	}
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &handshake))
+	require.Equal(t, "0.0.2", handshake.Version)
+	require.Equal(t, "0.0.2", handshake.BundleVersion)
+	require.Equal(t, "bundled", handshake.Distribution)
+}

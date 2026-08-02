@@ -28,6 +28,20 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// version remains the App bundling compatibility injection point. Standalone
+// releases inject internal/buildinfo directly and leave this value as "dev".
+var version = "dev"
+
+func currentBuildInfo() buildinfo.Info {
+	info := buildinfo.Current()
+	if bundledVersion := strings.TrimSpace(version); bundledVersion != "" && bundledVersion != "dev" {
+		info.Version = bundledVersion
+		info.BundleVersion = bundledVersion
+		info.Distribution = "bundled"
+	}
+	return info
+}
+
 func defaultHubURL() string {
 	if value := strings.TrimSpace(os.Getenv("SKILLSGO_HUB_URL")); value != "" {
 		return value
@@ -85,7 +99,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.SetErr(stderr)
 	cobra.AddTemplateFunc("localizedFlagUsages", localizedFlagUsages)
 	root.SetUsageTemplate(localizedUsageTemplate())
-	root.Version = buildinfo.Current().Version
+	root.Version = currentBuildInfo().Version
 	var languageOverride string
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))

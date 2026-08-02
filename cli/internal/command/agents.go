@@ -12,7 +12,6 @@ import (
 	"runtime"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
-	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
@@ -41,7 +40,7 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 			report := agentsReport{
 				SchemaVersion:      agentsSchemaVersion,
 				Product:            "skillsgo",
-				Version:            buildinfo.Current().Version,
+				Version:            currentBuildInfo().Version,
 				AppProtocolVersion: appProtocolVersion,
 				OS:                 runtime.GOOS,
 				Architecture:       runtime.GOARCH,

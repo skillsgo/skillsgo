@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +41,7 @@ func newVersionCommand() *cobra.Command {
 		Args:    cobra.NoArgs,
 		Example: "  skillsgo version\n  skillsgo version --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			build := buildinfo.Current()
+			build := currentBuildInfo()
 			if output == "json" {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(startupHandshake{
 					SchemaVersion:      startupHandshakeSchemaVersion,

@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/protocol/cloud"
 )
@@ -48,7 +47,7 @@ func reportHubInstall(ctx context.Context, hubURL string, fact hubInstallFact) {
 	body, err := json.Marshal(cloud.InstallEvent{
 		EventID: hex.EncodeToString(eventID), PackagePath: fact.PackagePath,
 		Version: fact.Version, Skills: fact.Skills, Agents: fact.Agents,
-		Scope: cloud.Scope(fact.Scope), CLIVersion: buildinfo.Current().Version, AppVersion: fact.AppVersion, OccurredAt: time.Now().UTC(),
+		Scope: cloud.Scope(fact.Scope), CLIVersion: currentBuildInfo().Version, AppVersion: fact.AppVersion, OccurredAt: time.Now().UTC(),
 	})
 	if err != nil {
 		return

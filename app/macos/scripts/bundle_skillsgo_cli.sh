@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Xcode build paths, target architectures, the CLI Go module, App bundle version, and an installed Go toolchain.
-# [OUTPUT]: Builds, verifies, and signs a distribution-identified bundled SkillsGo CLI inside the App Resources directory.
+# [INPUT]: Xcode build paths, target architectures, the CLI Go module, and an installed Go toolchain.
+# [OUTPUT]: Builds, verifies, and signs the platform-compatible SkillsGo CLI inside the App Resources directory.
 # [POS]: Serves as the macOS packaging bridge that keeps the App and its local mutation engine version-aligned.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -47,7 +47,7 @@ for architecture in "${architectures[@]}"; do
     cd "${cli_root}"
     CGO_ENABLED=0 GOOS=darwin GOARCH="${go_architecture}" "${go_binary}" build \
       -trimpath \
-      -ldflags "-s -w -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.version=${app_version} -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.bundleVersion=${app_version} -X github.com/skillsgo/skillsgo/cli/internal/buildinfo.distribution=bundled" \
+      -ldflags "-s -w -X github.com/skillsgo/skillsgo/cli/internal/command.version=${app_version}" \
       -o "${binary}" \
       ./cmd/skillsgo
   )
@@ -63,8 +63,8 @@ fi
 chmod 0755 "${destination}"
 
 handshake="$("${destination}" version --output json)"
-if [[ "${handshake}" != *"\"bundleVersion\":\"${app_version}\""* || "${handshake}" != *"\"distribution\":\"bundled\""* ]]; then
-  echo "error: Bundled SkillsGo CLI identity does not match App version ${app_version}." >&2
+if [[ "${handshake}" != *"\"version\":\"${app_version}\""* ]]; then
+  echo "error: Bundled SkillsGo CLI version does not match App version ${app_version}." >&2
   exit 1
 fi
 
