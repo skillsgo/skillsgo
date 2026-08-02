@@ -1,18 +1,18 @@
 /*
  * [INPUT]: Depends on Claude Code and Codex local session metadata, bounded file-head reads, canonical filesystem paths, and filesystem activity times.
- * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery without extracting prompts or session bodies.
+ * [OUTPUT]: Provides activity-prioritized recent Agent Workspace discovery that retains only structured cwd metadata and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package agent
 
 import (
+	"bufio"
 	"encoding/json"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -22,8 +22,6 @@ const (
 	projectDiscoveryWindow = 30 * 24 * time.Hour
 	projectDiscoveryLimit  = 12
 )
-
-var cwdPattern = regexp.MustCompile(`"cwd"\s*:\s*("(?:[^"\\]|\\.)*")`)
 
 type workspaceObservation struct {
 	path       string
@@ -91,7 +89,7 @@ func discoverClaudeProjects(root string, cutoff time.Time, observe func(string, 
 			}
 		}
 		if newest != nil && !newest.ModTime().Before(cutoff) {
-			observe(readSessionCWD(newestPath, 64*1024), newest.ModTime())
+			observe(readClaudeSessionCWD(newestPath, 64*1024), newest.ModTime())
 		}
 	}
 }
@@ -125,29 +123,53 @@ func discoverCodexProjects(root string, cutoff time.Time, observe func(string, t
 		files = files[:40]
 	}
 	for _, file := range files {
-		observe(readSessionCWD(file.path, 16*1024), file.modifiedAt)
+		observe(readCodexSessionCWD(file.path, 16*1024), file.modifiedAt)
 	}
 }
 
-func readSessionCWD(path string, limit int64) string {
+func readClaudeSessionCWD(path string, limit int64) string {
+	type record struct {
+		CWD string `json:"cwd"`
+	}
+	return readSessionRecords(path, limit, func(line []byte) string {
+		var value record
+		if json.Unmarshal(line, &value) == nil {
+			return value.CWD
+		}
+		return ""
+	})
+}
+
+func readCodexSessionCWD(path string, limit int64) string {
+	type record struct {
+		Type    string `json:"type"`
+		Payload struct {
+			CWD string `json:"cwd"`
+		} `json:"payload"`
+	}
+	return readSessionRecords(path, limit, func(line []byte) string {
+		var value record
+		if json.Unmarshal(line, &value) == nil && value.Type == "session_meta" {
+			return value.Payload.CWD
+		}
+		return ""
+	})
+}
+
+func readSessionRecords(path string, limit int64, cwdFromLine func([]byte) string) string {
 	file, err := os.Open(path)
 	if err != nil {
 		return ""
 	}
 	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, limit))
-	if err != nil {
-		return ""
+	scanner := bufio.NewScanner(io.LimitReader(file, limit))
+	scanner.Buffer(make([]byte, 4096), int(limit))
+	for scanner.Scan() {
+		if cwd := cwdFromLine(scanner.Bytes()); cwd != "" {
+			return cwd
+		}
 	}
-	match := cwdPattern.FindSubmatch(data)
-	if len(match) != 2 {
-		return ""
-	}
-	var cwd string
-	if json.Unmarshal(match[1], &cwd) != nil {
-		return ""
-	}
-	return cwd
+	return ""
 }
 
 func canonicalExistingDirectory(rawPath string) string {

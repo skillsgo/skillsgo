@@ -27,8 +27,8 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	codexSession := filepath.Join(home, ".codex", "sessions", "2026", "08", "02", "rollout.jsonl")
 	require.NoError(t, os.MkdirAll(filepath.Dir(claudeSession), 0o700))
 	require.NoError(t, os.MkdirAll(filepath.Dir(codexSession), 0o700))
-	require.NoError(t, os.WriteFile(claudeSession, []byte(`{"cwd":`+quotedJSON(claudeWorkspace)+`}`+"\n"), 0o600))
-	require.NoError(t, os.WriteFile(codexSession, []byte(`{"type":"session_meta","payload":{"cwd":`+quotedJSON(codexWorkspace)+`}}`+"\n"), 0o600))
+	require.NoError(t, os.WriteFile(claudeSession, []byte(`{"message":{"cwd":"/wrong-nested-path"}}`+"\n"+`{"cwd":`+quotedJSON(claudeWorkspace)+`}`+"\n"), 0o600))
+	require.NoError(t, os.WriteFile(codexSession, []byte(`{"type":"message","cwd":"/wrong-event-path"}`+"\n"+`{"type":"session_meta","payload":{"cwd":`+quotedJSON(codexWorkspace)+`}}`+"\n"), 0o600))
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
@@ -36,6 +36,7 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	var report projectRegistryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
 	require.Equal(t, "project-bootstrap", report.Phase)
+	require.Len(t, report.Projects, 2)
 	canonicalClaude, err := filepath.EvalSymlinks(claudeWorkspace)
 	require.NoError(t, err)
 	canonicalCodex, err := filepath.EvalSymlinks(codexWorkspace)
