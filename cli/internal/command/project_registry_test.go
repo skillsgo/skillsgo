@@ -22,8 +22,14 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	home := t.TempDir()
 	claudeWorkspace := filepath.Join(home, "work", "claude-demo")
 	codexWorkspace := filepath.Join(home, "work", "codex-demo")
-	require.NoError(t, os.MkdirAll(claudeWorkspace, 0o700))
-	require.NoError(t, os.MkdirAll(codexWorkspace, 0o700))
+	geminiWorkspace := filepath.Join(home, "work", "gemini-demo")
+	kimiWorkspace := filepath.Join(home, "work", "kimi-demo")
+	continueWorkspace := filepath.Join(home, "work", "continue-demo")
+	vibeWorkspace := filepath.Join(home, "work", "vibe-demo")
+	clineWorkspace := filepath.Join(home, "work", "cline-demo")
+	for _, workspace := range []string{claudeWorkspace, codexWorkspace, geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace} {
+		require.NoError(t, os.MkdirAll(workspace, 0o700))
+	}
 	claudeSession := filepath.Join(home, ".claude", "projects", "demo", "session.jsonl")
 	codexSession := filepath.Join(home, ".codex", "sessions", "2026", "08", "02", "rollout.jsonl")
 	require.NoError(t, os.MkdirAll(filepath.Dir(claudeSession), 0o700))
@@ -31,6 +37,11 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	require.NoError(t, os.WriteFile(claudeSession, []byte(`{"message":{"cwd":"/wrong-nested-path"}}`+"\n"+`{"cwd":`+quotedJSON(claudeWorkspace)+`}`+"\n"), 0o600))
 	oversizedMetadata := `{"type":"session_meta","payload":{"cwd":` + quotedJSON(codexWorkspace) + `,"environment":"` + strings.Repeat("x", 46*1024) + `"}}`
 	require.NoError(t, os.WriteFile(codexSession, []byte(oversizedMetadata+"\n"+`{"type":"message","cwd":"/wrong-event-path"}`+"\n"), 0o600))
+	writeProjectFixture(t, filepath.Join(home, ".gemini", "projects.json"), `{"projects":{`+quotedJSON(geminiWorkspace)+`:"gemini-demo"}}`)
+	writeProjectFixture(t, filepath.Join(home, ".kimi", "kimi.json"), `{"work_dirs":[{"path":`+quotedJSON(kimiWorkspace)+`,"kaos":"local"}]}`)
+	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"2026-08-02T00:00:00Z","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
+	writeProjectFixture(t, filepath.Join(home, ".vibe", "logs", "session", "session_1", "meta.json"), `{"environment":{"working_directory":`+quotedJSON(vibeWorkspace)+`}}`)
+	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1785628800000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
@@ -38,13 +49,33 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	var report projectRegistryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
 	require.Equal(t, "project-bootstrap", report.Phase)
-	require.Len(t, report.Projects, 2)
+	require.Len(t, report.Projects, 7)
 	canonicalClaude, err := filepath.EvalSymlinks(claudeWorkspace)
 	require.NoError(t, err)
 	canonicalCodex, err := filepath.EvalSymlinks(codexWorkspace)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{canonicalClaude, canonicalCodex}, []string{report.Projects[0].Root, report.Projects[1].Root})
+	expectedRoots := []string{canonicalClaude, canonicalCodex}
+	for _, workspace := range []string{geminiWorkspace, kimiWorkspace, continueWorkspace, vibeWorkspace, clineWorkspace} {
+		canonical, err := filepath.EvalSymlinks(workspace)
+		require.NoError(t, err)
+		expectedRoots = append(expectedRoots, canonical)
+	}
+	require.ElementsMatch(t, expectedRoots, projectRoots(report.Projects))
 	require.FileExists(t, filepath.Join(home, ".skillsgo", "config.yaml"))
+}
+
+func writeProjectFixture(t *testing.T, path, content string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+}
+
+func projectRoots(projects []config.Project) []string {
+	roots := make([]string, 0, len(projects))
+	for _, project := range projects {
+		roots = append(roots, project.Root)
+	}
+	return roots
 }
 
 func TestProjectBootstrapDoesNotExpandExistingRegistry(t *testing.T) {

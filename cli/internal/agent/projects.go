@@ -22,6 +22,7 @@ const (
 	projectDiscoveryWindow = 30 * 24 * time.Hour
 	projectDiscoveryLimit  = 12
 	codexMetadataReadLimit = 256 * 1024
+	registryReadLimit      = 4 * 1024 * 1024
 )
 
 type workspaceObservation struct {
@@ -49,6 +50,11 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 	}
 	discoverClaudeProjects(filepath.Join(home, ".claude", "projects"), cutoff, observe)
 	discoverCodexProjects(filepath.Join(home, ".codex", "sessions"), cutoff, observe)
+	discoverGeminiProjects(filepath.Join(home, ".gemini", "projects.json"), cutoff, observe)
+	discoverKimiProjects(filepath.Join(envHome("KIMI_SHARE_DIR", filepath.Join(home, ".kimi")), "kimi.json"), cutoff, observe)
+	discoverContinueProjects(filepath.Join(envHome("CONTINUE_GLOBAL_DIR", filepath.Join(home, ".continue")), "sessions", "sessions.json"), cutoff, observe)
+	discoverVibeProjects(filepath.Join(envHome("VIBE_HOME", filepath.Join(home, ".vibe")), "logs", "session"), cutoff, observe)
+	discoverClineProjects(filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), cutoff, observe)
 
 	projects := make([]workspaceObservation, 0, len(observed))
 	for path, modifiedAt := range observed {
@@ -63,6 +69,107 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 		paths = append(paths, project.path)
 	}
 	return paths
+}
+
+func readRegistry(path string, cutoff time.Time, target any) (time.Time, bool) {
+	info, err := os.Stat(path)
+	if err != nil || info.ModTime().Before(cutoff) || info.Size() > registryReadLimit {
+		return time.Time{}, false
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return time.Time{}, false
+	}
+	defer file.Close()
+	if json.NewDecoder(io.LimitReader(file, registryReadLimit)).Decode(target) != nil {
+		return time.Time{}, false
+	}
+	return info.ModTime(), true
+}
+
+func discoverGeminiProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	var registry struct {
+		Projects map[string]string `json:"projects"`
+	}
+	active, ok := readRegistry(path, cutoff, &registry)
+	if !ok {
+		return
+	}
+	for project := range registry.Projects {
+		observe(project, active)
+	}
+}
+
+func discoverKimiProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	var registry struct {
+		WorkDirs []struct{ Path, Kaos string } `json:"work_dirs"`
+	}
+	active, ok := readRegistry(path, cutoff, &registry)
+	if !ok {
+		return
+	}
+	for _, workDir := range registry.WorkDirs {
+		if workDir.Kaos == "" || workDir.Kaos == "local" {
+			observe(workDir.Path, active)
+		}
+	}
+}
+
+func discoverContinueProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	var sessions []struct {
+		WorkspaceDirectory string `json:"workspaceDirectory"`
+		DateCreated        string `json:"dateCreated"`
+	}
+	active, ok := readRegistry(path, cutoff, &sessions)
+	if !ok {
+		return
+	}
+	for _, session := range sessions {
+		sessionActive, err := time.Parse(time.RFC3339, session.DateCreated)
+		if err != nil {
+			sessionActive = active
+		}
+		observe(session.WorkspaceDirectory, sessionActive)
+	}
+}
+
+func discoverVibeProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	directories, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+	for _, directory := range directories {
+		if !directory.IsDir() || !strings.HasPrefix(directory.Name(), "session_") {
+			continue
+		}
+		var metadata struct {
+			Environment struct {
+				WorkingDirectory string `json:"working_directory"`
+			} `json:"environment"`
+		}
+		active, ok := readRegistry(filepath.Join(root, directory.Name(), "meta.json"), cutoff, &metadata)
+		if ok {
+			observe(metadata.Environment.WorkingDirectory, active)
+		}
+	}
+}
+
+func discoverClineProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	var history []struct {
+		CWD       string `json:"cwdOnTaskInitialization"`
+		Timestamp int64  `json:"ts"`
+	}
+	active, ok := readRegistry(path, cutoff, &history)
+	if !ok {
+		return
+	}
+	for _, item := range history {
+		itemActive := time.UnixMilli(item.Timestamp)
+		if item.Timestamp <= 0 {
+			itemActive = active
+		}
+		observe(item.CWD, itemActive)
+	}
 }
 
 func discoverClaudeProjects(root string, cutoff time.Time, observe func(string, time.Time)) {

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The App previously required a Personal User to select every Added Project through a directory picker before project-scoped Skill management became useful. Claude Code and Codex already retain a Workspace current directory in bounded local session records, so a clean installation can recover recent real project roots without crawling broad filesystem locations or retaining prompt content.
+The App previously required a Personal User to select every Added Project through a directory picker before project-scoped Skill management became useful. Agent tools already retain Workspace paths in bounded local registries or session metadata, so a clean installation can recover recent real project roots without crawling broad filesystem locations or retaining prompt content.
 
 Automatically repeating that discovery would conflict with project removal: a Workspace deliberately removed from SkillsGo could reappear while an old Agent session remained inside the discovery window.
 
@@ -14,7 +14,7 @@ Automatically repeating that discovery would conflict with project removal: a Wo
 
 The CLI exposes `skillsgo project bootstrap`. Before the configuration's one-time project-bootstrap marker is set, the command:
 
-- reads bounded local Claude Code and Codex session records through Agent-specific structured metadata fields;
+- reads bounded local Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, and Cline registries or session metadata through Agent-specific structured fields;
 - considers sessions active within the previous thirty days;
 - extracts only Workspace `cwd` and filesystem modification time;
 - excludes the user home, missing roots, and non-directories;
