@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Depends on Codex rollout JSONL files, filesystem metadata, the current time, and the disposable SkillsGo cache root.
- * [OUTPUT]: Provides session-deduplicated Codex Skill activation totals for rolling 45-day and 90-day windows backed by rebuildable per-day cache files.
+ * [OUTPUT]: Provides session-deduplicated Codex Skill trigger totals from trusted explicit activation and successful instruction-load evidence for rolling 45-day and 90-day windows backed by rebuildable per-day cache files.
  * [POS]: Serves as the Codex usage-evidence adapter consumed by local Library inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skillusage
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -15,14 +16,16 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	cacheSchemaVersion = 3
-	retentionDays      = 90
+	cacheSchemaVersion  = 6
+	retentionDays       = 90
+	maxRolloutLineBytes = 2 * 1024 * 1024
 )
 
 var collectCodexMu sync.Mutex
@@ -33,10 +36,12 @@ type Usage struct {
 }
 
 type fileRecord struct {
-	Size       int64             `json:"size"`
-	ModifiedNS int64             `json:"modifiedNs"`
-	PrefixHash string            `json:"prefixHash"`
-	Skills     map[string]string `json:"skills"`
+	Size         int64                        `json:"size"`
+	ParsedSize   int64                        `json:"parsedSize"`
+	ModifiedNS   int64                        `json:"modifiedNs"`
+	PrefixHash   string                       `json:"prefixHash"`
+	Skills       map[string]string            `json:"skills"`
+	PendingReads map[string]map[string]string `json:"pendingReads,omitempty"`
 }
 
 type cacheState struct {
@@ -93,17 +98,18 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 		}
 		start := int64(0)
 		skills := map[string]string{}
+		pendingReads := map[string]map[string]string{}
 		if exists && info.Size() >= previous.Size && prefixHash == previous.PrefixHash {
 			for name, day := range previous.Skills {
 				skills[name] = day
 			}
-			start = previous.Size - 8192
-			if start < 0 {
-				start = 0
+			for callID, candidates := range previous.PendingReads {
+				pendingReads[callID] = cloneStringMap(candidates)
 			}
+			start = previous.ParsedSize
 		}
-		fallbackDay := dayStart(info.ModTime()).Format(time.DateOnly)
-		observations, parseErr := codexSkillNames(clean, start, fallbackDay)
+		fallbackDay := dayStart(info.ModTime().In(now.Location())).Format(time.DateOnly)
+		observations, nextPendingReads, parsedSize, parseErr := codexSkillNames(clean, start, fallbackDay, now.Location(), pendingReads)
 		if parseErr != nil {
 			scanErrors = append(scanErrors, parseErr)
 			return nil
@@ -114,8 +120,8 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 			}
 		}
 		state.Files[clean] = fileRecord{
-			Size: info.Size(), ModifiedNS: info.ModTime().UnixNano(),
-			PrefixHash: prefixHash, Skills: skills,
+			Size: info.Size(), ParsedSize: parsedSize, ModifiedNS: info.ModTime().UnixNano(),
+			PrefixHash: prefixHash, Skills: skills, PendingReads: nextPendingReads,
 		}
 		changed = true
 		return nil
@@ -181,118 +187,303 @@ func loadState(path string) cacheState {
 	return decoded
 }
 
-func codexSkillNames(path string, start int64, fallbackDay string) (map[string]string, error) {
+type rolloutRecord struct {
+	Timestamp string          `json:"timestamp"`
+	Type      string          `json:"type"`
+	Payload   json.RawMessage `json:"payload"`
+}
+
+type rolloutPayload struct {
+	Type    string          `json:"type"`
+	Role    string          `json:"role"`
+	Name    string          `json:"name"`
+	CallID  string          `json:"call_id"`
+	ID      string          `json:"id"`
+	Input   json.RawMessage `json:"input"`
+	Content json.RawMessage `json:"content"`
+	Output  json.RawMessage `json:"output"`
+}
+
+var (
+	skillPathPattern      = regexp.MustCompile(`(?i)(?:^|[/\\])([A-Za-z0-9_.:@-]+)[/\\]SKILL\.md(?:\b|$)`)
+	explicitSkillPattern  = regexp.MustCompile(`(?s)<skill>\s*<name>\s*([A-Za-z0-9_.:-]+)\s*</name>.*?</skill>`)
+	shellSkillReadPattern = regexp.MustCompile(`(?i)(?:^|[\s;&|])(?:cat|sed|head|tail|awk)\b[^\n;&|]*[/\\][A-Za-z0-9_.:@-]+[/\\]SKILL\.md(?:\b|$)`)
+	nonzeroExitPattern    = regexp.MustCompile(`(?mi)^(?:script failed(?: with exit code)?|command failed(?: with exit code)?|process exited with code|exit[_ ]?code\s*[:=])\s*[1-9][0-9]*\s*$`)
+)
+
+func codexSkillNames(path string, start int64, fallbackDay string, location *time.Location, pendingReads map[string]map[string]string) (map[string]string, map[string]map[string]string, int64, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, start, err
 	}
 	defer file.Close()
 	if start > 0 {
 		if _, err := file.Seek(start, io.SeekStart); err != nil {
-			return nil, err
+			return nil, nil, start, err
 		}
 	}
-	prefix := []byte(`<skill>\n<name>`)
-	suffix := []byte(`</name>`)
-	timestampPrefix := []byte(`"timestamp":"`)
 	observations := map[string]string{}
-	matched := 0
-	timestampMatched := 0
-	readingTimestamp := false
-	timestamp := make([]byte, 0, 40)
-	currentDay := fallbackDay
-	readingName := false
-	name := make([]byte, 0, 128)
-	suffixMatched := 0
-	buffer := make([]byte, 64*1024)
+	if pendingReads == nil {
+		pendingReads = map[string]map[string]string{}
+	}
+	reader := bufio.NewReaderSize(file, 64*1024)
+	line := make([]byte, 0, 4096)
+	consumed := int64(0)
+	parsedSize := start
 	for {
-		read, readErr := file.Read(buffer)
-		for _, value := range buffer[:read] {
-			if value == '\n' {
-				timestampMatched = 0
-				readingTimestamp = false
-				timestamp = timestamp[:0]
-				currentDay = fallbackDay
-			} else if readingTimestamp {
-				if value == '"' {
-					if parsed, err := time.Parse(time.RFC3339Nano, string(timestamp)); err == nil {
-						currentDay = dayStart(parsed).Format(time.DateOnly)
-					}
-					readingTimestamp = false
-					timestampMatched = 0
-				} else if len(timestamp) < 64 {
-					timestamp = append(timestamp, value)
-				} else {
-					readingTimestamp = false
-					timestampMatched = 0
-				}
-			} else if value == timestampPrefix[timestampMatched] {
-				timestampMatched++
-				if timestampMatched == len(timestampPrefix) {
-					readingTimestamp = true
-					timestampMatched = 0
-					timestamp = timestamp[:0]
-				}
-			} else if value == timestampPrefix[0] {
-				timestampMatched = 1
-			} else {
-				timestampMatched = 0
+		fragment, readErr := reader.ReadSlice('\n')
+		consumed += int64(len(fragment))
+		if len(line) < maxRolloutLineBytes {
+			remaining := maxRolloutLineBytes - len(line)
+			if len(fragment) < remaining {
+				remaining = len(fragment)
 			}
-			if !readingName {
-				if value == prefix[matched] {
-					matched++
-					if matched == len(prefix) {
-						readingName = true
-						matched = 0
-						name = name[:0]
-					}
-				} else if value == prefix[0] {
-					matched = 1
-				} else {
-					matched = 0
-				}
-				continue
-			}
-			if suffixMatched > 0 {
-				if value == suffix[suffixMatched] {
-					suffixMatched++
-					if suffixMatched == len(suffix) {
-						canonical := stripSkillNamespace(string(name))
-						if _, exists := observations[canonical]; !exists {
-							observations[canonical] = currentDay
-						}
-						readingName = false
-						suffixMatched = 0
-					}
-					continue
-				}
-				readingName = false
-				suffixMatched = 0
-				continue
-			}
-			if value == suffix[0] && len(name) > 0 {
-				suffixMatched = 1
-				continue
-			}
-			if !validSkillNameByte(value) || len(name) >= 4096 {
-				readingName = false
-				continue
-			}
-			name = append(name, value)
+			line = append(line, fragment[:remaining]...)
 		}
+		if errors.Is(readErr, bufio.ErrBufferFull) {
+			continue
+		}
+		completeLine := len(fragment) > 0 && fragment[len(fragment)-1] == '\n'
+		if completeLine && len(line) > 0 {
+			processCodexRolloutLine(line, fallbackDay, location, observations, pendingReads)
+			parsedSize = start + consumed
+		}
+		line = line[:0]
 		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
-				break
+			if !errors.Is(readErr, io.EOF) {
+				return nil, nil, parsedSize, readErr
 			}
-			return nil, readErr
+			break
 		}
 	}
-	return observations, nil
+	return observations, pendingReads, parsedSize, nil
 }
 
-func validSkillNameByte(value byte) bool {
-	return value >= '0' && value <= '9' || value >= 'A' && value <= 'Z' ||
-		value >= 'a' && value <= 'z' || strings.ContainsRune("_.:-", rune(value))
+func processCodexRolloutLine(line []byte, fallbackDay string, location *time.Location, observations map[string]string, pendingReads map[string]map[string]string) {
+	var record rolloutRecord
+	if json.Unmarshal(line, &record) != nil || record.Type != "response_item" {
+		return
+	}
+	day := fallbackDay
+	if parsed, err := time.Parse(time.RFC3339Nano, record.Timestamp); err == nil {
+		day = dayStart(parsed.In(location)).Format(time.DateOnly)
+	}
+	var payload rolloutPayload
+	if json.Unmarshal(record.Payload, &payload) != nil {
+		return
+	}
+	if payload.Type == "message" && payload.Role == "user" {
+		for _, text := range jsonStrings(payload.Content) {
+			for _, match := range explicitSkillPattern.FindAllStringSubmatch(text, -1) {
+				observeSkill(observations, stripSkillNamespace(match[1]), day)
+			}
+		}
+		return
+	}
+	callID := payload.CallID
+	if callID == "" {
+		callID = payload.ID
+	}
+	if callID == "" {
+		return
+	}
+	if payload.Type == "custom_tool_call" || payload.Type == "function_call" {
+		candidates := map[string]string{}
+		for _, text := range jsonStrings(payload.Input) {
+			text = normalizeToolInput(text)
+			if !trustedSkillReadInput(payload.Name, text) {
+				continue
+			}
+			for _, match := range skillPathPattern.FindAllStringSubmatch(text, -1) {
+				candidates[stripSkillNamespace(match[1])] = day
+			}
+		}
+		if len(candidates) > 0 {
+			pendingReads[callID] = candidates
+		}
+		return
+	}
+	if !strings.HasSuffix(payload.Type, "_output") {
+		return
+	}
+	candidates := pendingReads[callID]
+	delete(pendingReads, callID)
+	if len(candidates) == 0 {
+		return
+	}
+	if jsonIndicatesToolFailure(payload.Content) || jsonIndicatesToolFailure(payload.Output) {
+		return
+	}
+	output := append(jsonStrings(payload.Content), jsonStrings(payload.Output)...)
+	for _, text := range output {
+		if failedToolOutput(text) {
+			return
+		}
+	}
+	for _, text := range output {
+		for _, declaredName := range frontmatterSkillNames(text) {
+			name := stripSkillNamespace(declaredName)
+			if observedDay, expected := candidates[name]; expected {
+				observeSkill(observations, name, observedDay)
+			}
+		}
+	}
+}
+
+func normalizeToolInput(value string) string {
+	return strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(value)
+}
+
+func jsonStrings(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return nil
+	}
+	result := []string{}
+	collectJSONStrings(value, &result)
+	return result
+}
+
+func collectJSONStrings(value any, result *[]string) {
+	switch typed := value.(type) {
+	case string:
+		*result = append(*result, typed)
+	case []any:
+		for _, item := range typed {
+			collectJSONStrings(item, result)
+		}
+	case map[string]any:
+		for _, item := range typed {
+			collectJSONStrings(item, result)
+		}
+	}
+}
+
+func trustedSkillReadInput(toolName, input string) bool {
+	name := strings.ToLower(strings.TrimSpace(toolName))
+	if name == "read_file" || name == "read_text_file" ||
+		strings.HasSuffix(name, "__read_file") || strings.HasSuffix(name, "__read_text_file") {
+		return skillPathPattern.MatchString(input)
+	}
+	if name == "exec" || name == "exec_command" || strings.HasSuffix(name, ".exec") {
+		return shellSkillReadPattern.MatchString(input)
+	}
+	return false
+}
+
+func failedToolOutput(value string) bool {
+	normalized := strings.ReplaceAll(value, "\r\n", "\n")
+	prefix := normalized
+	if strings.HasPrefix(strings.TrimLeft(normalized, " \t\n"), "---\n") {
+		prefix = ""
+	} else if index := strings.Index(normalized, "\n---\n"); index >= 0 {
+		prefix = normalized[:index]
+	}
+	return nonzeroExitPattern.MatchString(strings.TrimSpace(prefix))
+}
+
+func jsonIndicatesToolFailure(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return false
+	}
+	return valueIndicatesToolFailure(value)
+}
+
+func valueIndicatesToolFailure(value any) bool {
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			if valueIndicatesToolFailure(item) {
+				return true
+			}
+		}
+	case map[string]any:
+		for key, item := range typed {
+			normalized := strings.ToLower(strings.ReplaceAll(key, "_", ""))
+			if normalized == "exitcode" {
+				if code, ok := item.(float64); ok && code != 0 {
+					return true
+				}
+			}
+			if normalized == "success" {
+				if success, ok := item.(bool); ok && !success {
+					return true
+				}
+			}
+			if valueIndicatesToolFailure(item) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func frontmatterSkillNames(value string) []string {
+	lines := strings.Split(strings.ReplaceAll(value, "\r\n", "\n"), "\n")
+	result := []string{}
+	for index := 0; index < len(lines); index++ {
+		if strings.TrimSpace(lines[index]) != "---" {
+			continue
+		}
+		declaredName := ""
+		closed := false
+		for cursor := index + 1; cursor < len(lines) && cursor <= index+200; cursor++ {
+			line := strings.TrimSpace(lines[cursor])
+			if line == "---" {
+				closed = true
+				index = cursor
+				break
+			}
+			if strings.HasPrefix(line, "name:") {
+				candidate := strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "name:")), `"'`)
+				if validSkillName(candidate) {
+					declaredName = candidate
+				}
+			}
+		}
+		if closed && declaredName != "" {
+			result = append(result, declaredName)
+		}
+	}
+	return result
+}
+
+func validSkillName(value string) bool {
+	if value == "" || len(value) > 4096 {
+		return false
+	}
+	for _, character := range value {
+		if character >= '0' && character <= '9' || character >= 'A' && character <= 'Z' ||
+			character >= 'a' && character <= 'z' || strings.ContainsRune("_.:-", character) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func observeSkill(observations map[string]string, name, day string) {
+	if name == "" {
+		return
+	}
+	if _, exists := observations[name]; !exists {
+		observations[name] = day
+	}
+}
+
+func cloneStringMap(source map[string]string) map[string]string {
+	result := make(map[string]string, len(source))
+	for key, value := range source {
+		result[key] = value
+	}
+	return result
 }
 
 func stripSkillNamespace(name string) string {
