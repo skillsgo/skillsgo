@@ -120,6 +120,10 @@ func TestCollectCodexRequiresCorrelatedSkillReadOutput(t *testing.T) {
 		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"split-failed","output":["Script failed with exit code 1","---\nname: split-failed\n---"]}}`,
 		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"structured-failed","name":"exec","input":"cat /Users/test/.agents/skills/structured-failed/SKILL.md"}}`,
 		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"structured-failed","output":{"exit_code":1,"stdout":"---\nname: structured-failed\n---"}}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"decimal-failed","name":"exec","input":"cat /Users/test/.agents/skills/decimal-failed/SKILL.md"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"decimal-failed","output":{"exit_code":1.0,"stdout":"---\nname: decimal-failed\n---"}}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"exponent-failed","name":"exec","input":"cat /Users/test/.agents/skills/exponent-failed/SKILL.md"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"exponent-failed","output":{"exit_code":1e0,"stdout":"---\nname: exponent-failed\n---"}}}`,
 		`{"type":"response_item","payload":{"type":"function_call","call_id":"mcp","name":"read_mcp_resource","input":{"uri":"/Users/test/.agents/skills/mcp-only/SKILL.md"}}}`,
 		`{"type":"response_item","payload":{"type":"function_call_output","call_id":"mcp","output":"---\nname: mcp-only\n---"}}`,
 	})
@@ -127,6 +131,27 @@ func TestCollectCodexRequiresCorrelatedSkillReadOutput(t *testing.T) {
 	usage, err := CollectCodex(home, now)
 	require.NoError(t, err)
 	require.Empty(t, usage)
+}
+
+func TestCollectCodexUsesLastDuplicateJSONMember(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	writeRawRollout(t, home, "duplicate-members.jsonl", now, []string{
+		`{"type":"response_item","type":"ignored","payload":{"type":"message","role":"user","content":"<skill><name>ignored-root</name></skill>"}}`,
+		`{"type":"response_item","payload":{"type":"message","role":"user","role":"assistant","content":"<skill><name>ignored-role</name></skill>"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"last-success","name":"exec","input":"cat /Users/test/.agents/skills/last-success/SKILL.md"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"last-success","output":{"exit_code":1,"exit_code":0,"stdout":"---\nname: last-success\n---"}}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"last-failure","name":"exec","input":"cat /Users/test/.agents/skills/last-failure/SKILL.md"}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"last-failure","output":{"exit_code":0,"exit_code":1,"stdout":"---\nname: last-failure\n---"}}}`,
+	})
+
+	usage, err := CollectCodex(home, now)
+	require.NoError(t, err)
+	require.Equal(t, Usage{Hits45Days: 1, Hits90Days: 1}, usage["last-success"])
+	require.NotContains(t, usage, "ignored-root")
+	require.NotContains(t, usage, "ignored-role")
+	require.NotContains(t, usage, "last-failure")
 }
 
 func TestCollectCodexDeduplicatesExplicitAndLoadedEvidencePerSession(t *testing.T) {

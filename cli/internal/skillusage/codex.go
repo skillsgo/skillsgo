@@ -198,6 +198,10 @@ var (
 	nonzeroExitPattern    = regexp.MustCompile(`(?mi)^(?:script failed(?: with exit code)?|command failed(?: with exit code)?|process exited with code|exit[_ ]?code\s*[:=])\s*[1-9][0-9]*\s*$`)
 )
 
+type rolloutJSONFields struct {
+	timestamp, eventType, payload, role, name, callID, id, input, content, output *fastjson.Value
+}
+
 func codexSkillNames(path string, start int64, fallbackDay string, location *time.Location, pendingReads map[string]map[string]string) (map[string]string, map[string]map[string]string, int64, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -252,38 +256,40 @@ func processCodexRolloutLine(parser *fastjson.Parser, line []byte, fallbackDay s
 		return
 	}
 	record, err := parser.ParseBytes(line)
-	if err != nil || string(record.GetStringBytes("type")) != "response_item" {
+	recordFields := extractRolloutJSONFields(record)
+	if err != nil || fastJSONString(recordFields.eventType) != "response_item" {
 		return
 	}
-	payload := record.Get("payload")
+	payload := recordFields.payload
 	if payload == nil || payload.Type() != fastjson.TypeObject {
 		return
 	}
+	payloadFields := extractRolloutJSONFields(payload)
 	day := fallbackDay
-	if parsed, err := time.Parse(time.RFC3339Nano, string(record.GetStringBytes("timestamp"))); err == nil {
+	if parsed, err := time.Parse(time.RFC3339Nano, fastJSONString(recordFields.timestamp)); err == nil {
 		day = dayStart(parsed.In(location)).Format(time.DateOnly)
 	}
-	payloadType := string(payload.GetStringBytes("type"))
-	if payloadType == "message" && string(payload.GetStringBytes("role")) == "user" {
-		for _, text := range fastJSONStrings(payload.Get("content")) {
+	payloadType := fastJSONString(payloadFields.eventType)
+	if payloadType == "message" && fastJSONString(payloadFields.role) == "user" {
+		for _, text := range fastJSONStrings(payloadFields.content) {
 			for _, match := range explicitSkillPattern.FindAllStringSubmatch(text, -1) {
 				observeSkill(observations, stripSkillNamespace(match[1]), day)
 			}
 		}
 		return
 	}
-	callID := string(payload.GetStringBytes("call_id"))
+	callID := fastJSONString(payloadFields.callID)
 	if callID == "" {
-		callID = string(payload.GetStringBytes("id"))
+		callID = fastJSONString(payloadFields.id)
 	}
 	if callID == "" {
 		return
 	}
 	if payloadType == "custom_tool_call" || payloadType == "function_call" {
 		candidates := map[string]string{}
-		for _, text := range fastJSONStrings(payload.Get("input")) {
+		for _, text := range fastJSONStrings(payloadFields.input) {
 			text = normalizeToolInput(text)
-			if !trustedSkillReadInput(string(payload.GetStringBytes("name")), text) {
+			if !trustedSkillReadInput(fastJSONString(payloadFields.name), text) {
 				continue
 			}
 			for _, match := range skillPathPattern.FindAllStringSubmatch(text, -1) {
@@ -303,10 +309,10 @@ func processCodexRolloutLine(parser *fastjson.Parser, line []byte, fallbackDay s
 	if len(candidates) == 0 {
 		return
 	}
-	if fastJSONIndicatesToolFailure(payload.Get("content")) || fastJSONIndicatesToolFailure(payload.Get("output")) {
+	if fastJSONIndicatesToolFailure(payloadFields.content) || fastJSONIndicatesToolFailure(payloadFields.output) {
 		return
 	}
-	output := append(fastJSONStrings(payload.Get("content")), fastJSONStrings(payload.Get("output"))...)
+	output := append(fastJSONStrings(payloadFields.content), fastJSONStrings(payloadFields.output)...)
 	for _, text := range output {
 		if failedToolOutput(text) {
 			return
@@ -324,6 +330,45 @@ func processCodexRolloutLine(parser *fastjson.Parser, line []byte, fallbackDay s
 
 func normalizeToolInput(value string) string {
 	return strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(value)
+}
+
+func extractRolloutJSONFields(object *fastjson.Value) rolloutJSONFields {
+	var fields rolloutJSONFields
+	if object == nil || object.Type() != fastjson.TypeObject {
+		return fields
+	}
+	object.GetObject().Visit(func(key []byte, value *fastjson.Value) {
+		switch string(key) {
+		case "timestamp":
+			fields.timestamp = value
+		case "type":
+			fields.eventType = value
+		case "payload":
+			fields.payload = value
+		case "role":
+			fields.role = value
+		case "name":
+			fields.name = value
+		case "call_id":
+			fields.callID = value
+		case "id":
+			fields.id = value
+		case "input":
+			fields.input = value
+		case "content":
+			fields.content = value
+		case "output":
+			fields.output = value
+		}
+	})
+	return fields
+}
+
+func fastJSONString(value *fastjson.Value) string {
+	if value == nil || value.Type() != fastjson.TypeString {
+		return ""
+	}
+	return string(value.GetStringBytes())
 }
 
 func fastJSONStrings(value *fastjson.Value) []string {
@@ -344,9 +389,13 @@ func collectFastJSONStrings(value *fastjson.Value, result *[]string) {
 			collectFastJSONStrings(item, result)
 		}
 	case fastjson.TypeObject:
-		value.GetObject().Visit(func(_ []byte, item *fastjson.Value) {
-			collectFastJSONStrings(item, result)
+		members := map[string]*fastjson.Value{}
+		value.GetObject().Visit(func(key []byte, item *fastjson.Value) {
+			members[string(key)] = item
 		})
+		for _, item := range members {
+			collectFastJSONStrings(item, result)
+		}
 	}
 }
 
@@ -386,25 +435,29 @@ func fastJSONIndicatesToolFailure(value *fastjson.Value) bool {
 		}
 	case fastjson.TypeObject:
 		failed := false
+		members := map[string]*fastjson.Value{}
 		value.GetObject().Visit(func(key []byte, item *fastjson.Value) {
+			members[string(key)] = item
+		})
+		for key, item := range members {
 			if failed {
-				return
+				break
 			}
-			normalized := strings.ToLower(strings.ReplaceAll(string(key), "_", ""))
+			normalized := strings.ToLower(strings.ReplaceAll(key, "_", ""))
 			if normalized == "exitcode" {
-				if code, err := item.Int64(); err == nil && code != 0 {
+				if code, err := item.Float64(); err == nil && code != 0 {
 					failed = true
-					return
+					break
 				}
 			}
 			if normalized == "success" && item.Type() == fastjson.TypeFalse {
 				failed = true
-				return
+				break
 			}
 			if fastJSONIndicatesToolFailure(item) {
 				failed = true
 			}
-		})
+		}
 		return failed
 	}
 	return false
