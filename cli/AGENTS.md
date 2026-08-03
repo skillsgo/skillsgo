@@ -38,7 +38,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |
 | `internal/inventory/` | Package-managed and External Library reconciliation across YAML/Lock state, read-through exact metadata, Scope Package Trees, member Projections, optional content verification, and derived Agent visibility. |
-| `internal/skillusage/` | Read-only supported-Agent session evidence indexing and disposable rolling usage aggregates for local Library presentation. |
+| `internal/skillusage/` | Read-only supported-Agent session evidence indexing through bounded streaming and fast JSON field traversal, plus disposable rolling usage aggregates for local Library presentation. |
 | `internal/managementplan/` | Exact-path External Remove planning, in-command state binding, and target-specific execution. |
 | `internal/project/` | Strict Package dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
 | `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, including one-time Agent-session-bootstrapped and explicitly managed Workspace projects shared by CLI cross-Scope operations and the App. |

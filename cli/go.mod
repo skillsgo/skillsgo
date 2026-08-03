@@ -1,4 +1,4 @@
-// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, a pure-Go read-only SQLite adapter, the community Windows junction primitive, and test libraries.
+// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, fast JSON field traversal, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, a pure-Go read-only SQLite adapter, the community Windows junction primitive, and test libraries.
 // [OUTPUT]: Defines the reproducible SkillsGo CLI module dependency graph.
 // [POS]: Serves as the F2 build manifest for the CLI workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,6 +19,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	github.com/stretchr/testify v1.11.1
+	github.com/valyala/fastjson v1.6.10
 	golang.org/x/mod v0.37.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.40.0

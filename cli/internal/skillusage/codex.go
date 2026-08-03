@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Codex rollout JSONL files, filesystem metadata, the current time, and the disposable SkillsGo cache root.
+ * [INPUT]: Depends on Codex rollout JSONL files, fastjson field traversal, filesystem metadata, the current time, and the disposable SkillsGo cache root.
  * [OUTPUT]: Provides session-deduplicated Codex Skill trigger totals from trusted explicit activation and successful instruction-load evidence for rolling 45-day and 90-day windows backed by rebuildable per-day cache files.
  * [POS]: Serves as the Codex usage-evidence adapter consumed by local Library inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -8,6 +8,7 @@ package skillusage
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/valyala/fastjson"
 )
 
 const (
@@ -187,24 +190,8 @@ func loadState(path string) cacheState {
 	return decoded
 }
 
-type rolloutRecord struct {
-	Timestamp string          `json:"timestamp"`
-	Type      string          `json:"type"`
-	Payload   json.RawMessage `json:"payload"`
-}
-
-type rolloutPayload struct {
-	Type    string          `json:"type"`
-	Role    string          `json:"role"`
-	Name    string          `json:"name"`
-	CallID  string          `json:"call_id"`
-	ID      string          `json:"id"`
-	Input   json.RawMessage `json:"input"`
-	Content json.RawMessage `json:"content"`
-	Output  json.RawMessage `json:"output"`
-}
-
 var (
+	responseItemToken     = []byte("response_item")
 	skillPathPattern      = regexp.MustCompile(`(?i)(?:^|[/\\])([A-Za-z0-9_.:@-]+)[/\\]SKILL\.md(?:\b|$)`)
 	explicitSkillPattern  = regexp.MustCompile(`(?s)<skill>\s*<name>\s*([A-Za-z0-9_.:-]+)\s*</name>.*?</skill>`)
 	shellSkillReadPattern = regexp.MustCompile(`(?i)(?:^|[\s;&|])(?:cat|sed|head|tail|awk)\b[^\n;&|]*[/\\][A-Za-z0-9_.:@-]+[/\\]SKILL\.md(?:\b|$)`)
@@ -227,6 +214,7 @@ func codexSkillNames(path string, start int64, fallbackDay string, location *tim
 		pendingReads = map[string]map[string]string{}
 	}
 	reader := bufio.NewReaderSize(file, 64*1024)
+	var parser fastjson.Parser
 	line := make([]byte, 0, 4096)
 	consumed := int64(0)
 	parsedSize := start
@@ -245,7 +233,7 @@ func codexSkillNames(path string, start int64, fallbackDay string, location *tim
 		}
 		completeLine := len(fragment) > 0 && fragment[len(fragment)-1] == '\n'
 		if completeLine && len(line) > 0 {
-			processCodexRolloutLine(line, fallbackDay, location, observations, pendingReads)
+			processCodexRolloutLine(&parser, line, fallbackDay, location, observations, pendingReads)
 			parsedSize = start + consumed
 		}
 		line = line[:0]
@@ -259,39 +247,43 @@ func codexSkillNames(path string, start int64, fallbackDay string, location *tim
 	return observations, pendingReads, parsedSize, nil
 }
 
-func processCodexRolloutLine(line []byte, fallbackDay string, location *time.Location, observations map[string]string, pendingReads map[string]map[string]string) {
-	var record rolloutRecord
-	if json.Unmarshal(line, &record) != nil || record.Type != "response_item" {
+func processCodexRolloutLine(parser *fastjson.Parser, line []byte, fallbackDay string, location *time.Location, observations map[string]string, pendingReads map[string]map[string]string) {
+	if !bytes.Contains(line, responseItemToken) {
+		return
+	}
+	record, err := parser.ParseBytes(line)
+	if err != nil || string(record.GetStringBytes("type")) != "response_item" {
+		return
+	}
+	payload := record.Get("payload")
+	if payload == nil || payload.Type() != fastjson.TypeObject {
 		return
 	}
 	day := fallbackDay
-	if parsed, err := time.Parse(time.RFC3339Nano, record.Timestamp); err == nil {
+	if parsed, err := time.Parse(time.RFC3339Nano, string(record.GetStringBytes("timestamp"))); err == nil {
 		day = dayStart(parsed.In(location)).Format(time.DateOnly)
 	}
-	var payload rolloutPayload
-	if json.Unmarshal(record.Payload, &payload) != nil {
-		return
-	}
-	if payload.Type == "message" && payload.Role == "user" {
-		for _, text := range jsonStrings(payload.Content) {
+	payloadType := string(payload.GetStringBytes("type"))
+	if payloadType == "message" && string(payload.GetStringBytes("role")) == "user" {
+		for _, text := range fastJSONStrings(payload.Get("content")) {
 			for _, match := range explicitSkillPattern.FindAllStringSubmatch(text, -1) {
 				observeSkill(observations, stripSkillNamespace(match[1]), day)
 			}
 		}
 		return
 	}
-	callID := payload.CallID
+	callID := string(payload.GetStringBytes("call_id"))
 	if callID == "" {
-		callID = payload.ID
+		callID = string(payload.GetStringBytes("id"))
 	}
 	if callID == "" {
 		return
 	}
-	if payload.Type == "custom_tool_call" || payload.Type == "function_call" {
+	if payloadType == "custom_tool_call" || payloadType == "function_call" {
 		candidates := map[string]string{}
-		for _, text := range jsonStrings(payload.Input) {
+		for _, text := range fastJSONStrings(payload.Get("input")) {
 			text = normalizeToolInput(text)
-			if !trustedSkillReadInput(payload.Name, text) {
+			if !trustedSkillReadInput(string(payload.GetStringBytes("name")), text) {
 				continue
 			}
 			for _, match := range skillPathPattern.FindAllStringSubmatch(text, -1) {
@@ -303,7 +295,7 @@ func processCodexRolloutLine(line []byte, fallbackDay string, location *time.Loc
 		}
 		return
 	}
-	if !strings.HasSuffix(payload.Type, "_output") {
+	if !strings.HasSuffix(payloadType, "_output") {
 		return
 	}
 	candidates := pendingReads[callID]
@@ -311,10 +303,10 @@ func processCodexRolloutLine(line []byte, fallbackDay string, location *time.Loc
 	if len(candidates) == 0 {
 		return
 	}
-	if jsonIndicatesToolFailure(payload.Content) || jsonIndicatesToolFailure(payload.Output) {
+	if fastJSONIndicatesToolFailure(payload.Get("content")) || fastJSONIndicatesToolFailure(payload.Get("output")) {
 		return
 	}
-	output := append(jsonStrings(payload.Content), jsonStrings(payload.Output)...)
+	output := append(fastJSONStrings(payload.Get("content")), fastJSONStrings(payload.Get("output"))...)
 	for _, text := range output {
 		if failedToolOutput(text) {
 			return
@@ -334,31 +326,27 @@ func normalizeToolInput(value string) string {
 	return strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(value)
 }
 
-func jsonStrings(raw json.RawMessage) []string {
-	if len(raw) == 0 {
-		return nil
-	}
-	var value any
-	if json.Unmarshal(raw, &value) != nil {
-		return nil
-	}
+func fastJSONStrings(value *fastjson.Value) []string {
 	result := []string{}
-	collectJSONStrings(value, &result)
+	collectFastJSONStrings(value, &result)
 	return result
 }
 
-func collectJSONStrings(value any, result *[]string) {
-	switch typed := value.(type) {
-	case string:
-		*result = append(*result, typed)
-	case []any:
-		for _, item := range typed {
-			collectJSONStrings(item, result)
+func collectFastJSONStrings(value *fastjson.Value, result *[]string) {
+	if value == nil {
+		return
+	}
+	switch value.Type() {
+	case fastjson.TypeString:
+		*result = append(*result, string(value.GetStringBytes()))
+	case fastjson.TypeArray:
+		for _, item := range value.GetArray() {
+			collectFastJSONStrings(item, result)
 		}
-	case map[string]any:
-		for _, item := range typed {
-			collectJSONStrings(item, result)
-		}
+	case fastjson.TypeObject:
+		value.GetObject().Visit(func(_ []byte, item *fastjson.Value) {
+			collectFastJSONStrings(item, result)
+		})
 	}
 }
 
@@ -385,42 +373,39 @@ func failedToolOutput(value string) bool {
 	return nonzeroExitPattern.MatchString(strings.TrimSpace(prefix))
 }
 
-func jsonIndicatesToolFailure(raw json.RawMessage) bool {
-	if len(raw) == 0 {
+func fastJSONIndicatesToolFailure(value *fastjson.Value) bool {
+	if value == nil {
 		return false
 	}
-	var value any
-	if json.Unmarshal(raw, &value) != nil {
-		return false
-	}
-	return valueIndicatesToolFailure(value)
-}
-
-func valueIndicatesToolFailure(value any) bool {
-	switch typed := value.(type) {
-	case []any:
-		for _, item := range typed {
-			if valueIndicatesToolFailure(item) {
+	switch value.Type() {
+	case fastjson.TypeArray:
+		for _, item := range value.GetArray() {
+			if fastJSONIndicatesToolFailure(item) {
 				return true
 			}
 		}
-	case map[string]any:
-		for key, item := range typed {
-			normalized := strings.ToLower(strings.ReplaceAll(key, "_", ""))
+	case fastjson.TypeObject:
+		failed := false
+		value.GetObject().Visit(func(key []byte, item *fastjson.Value) {
+			if failed {
+				return
+			}
+			normalized := strings.ToLower(strings.ReplaceAll(string(key), "_", ""))
 			if normalized == "exitcode" {
-				if code, ok := item.(float64); ok && code != 0 {
-					return true
+				if code, err := item.Int64(); err == nil && code != 0 {
+					failed = true
+					return
 				}
 			}
-			if normalized == "success" {
-				if success, ok := item.(bool); ok && !success {
-					return true
-				}
+			if normalized == "success" && item.Type() == fastjson.TypeFalse {
+				failed = true
+				return
 			}
-			if valueIndicatesToolFailure(item) {
-				return true
+			if fastJSONIndicatesToolFailure(item) {
+				failed = true
 			}
-		}
+		})
+		return failed
 	}
 	return false
 }
