@@ -51,6 +51,7 @@ var messages = map[string][2]string{
 	"list.title":                        {"Installed Skills", "已安装的 Skill"},
 	"list.empty":                        {"No installed Skills found", "未找到已安装的 Skill"},
 	"list.flag.global":                  {"Include Global Scope", "包含全局安装范围"},
+	"list.flag.usage":                   {"Include local Skill usage evidence", "包含本地技能使用记录"},
 	"list.flag.project":                 {"Include one explicit Workspace root", "包含一个显式工作区根目录"},
 	"list.error.location":               {"list requires --global or at least one --project", "list 需要 --global 或至少一个 --project"},
 	"list.error.output":                 {"unsupported output format %q", "不支持的输出格式 %q"},

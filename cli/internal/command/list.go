@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, and the inventory domain report builder.
- * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external JSON serialization, and path-rich adaptive Human summaries.
+ * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, Codex Skill usage evidence, and the inventory domain report builder.
+ * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external usage-aware JSON serialization, and path-rich adaptive Human summaries.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,12 +15,14 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
 	"github.com/skillsgo/skillsgo/cli/internal/packageprovider"
+	"github.com/skillsgo/skillsgo/cli/internal/skillusage"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +34,7 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	var projects []string
 	var output string
 	var hubURL string
+	var includeUsage bool
 	cmd := &cobra.Command{
 		Use:     "list",
 		Short:   appi18n.T("list.short"),
@@ -50,12 +53,27 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 				return err
 			}
 			provider := packageprovider.Default("", client)
+			usage := map[string]inventory.Usage{}
+			if includeUsage {
+				home, err := os.UserHomeDir()
+				if err != nil {
+					return err
+				}
+				codexUsage, err := skillusage.CollectCodex(home, time.Now())
+				if err != nil {
+					return err
+				}
+				for name, totals := range codexUsage {
+					usage[name] = inventory.Usage{Hits45Days: totals.Hits45Days, Hits90Days: totals.Hits90Days}
+				}
+			}
 			report, err := inventory.Build(inventory.Options{
 				IncludeGlobal: includeGlobal,
 				Projects:      projects,
 				Catalog:       catalog,
 				Context:       cmd.Context(),
 				Packages:      &provider,
+				SkillUsage:    usage,
 			})
 			if errors.Is(err, inventory.ErrEmptyProjectRoot) {
 				return errors.New(appi18n.T("list.error.empty_project"))
@@ -107,5 +125,6 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("list.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
+	cmd.Flags().BoolVar(&includeUsage, "usage", false, appi18n.T("list.flag.usage"))
 	return cmd
 }
