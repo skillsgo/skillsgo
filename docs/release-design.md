@@ -136,8 +136,16 @@ npm install --global skillsgo
 ```
 
 The generated Homebrew Formula covers macOS arm64/x86_64 and Linux
-arm64/x86_64. Once the Formula is published to the official tap, installation
-is:
+arm64/x86_64. Once the Formula is published to the official tap, the
+recommended one-command installation is:
+
+```text
+brew install skillsgo/skillsgo/skillsgo
+```
+
+Homebrew automatically adds the tap for a fully qualified Formula. Users who
+manage several SkillsGo Formulae locally may tap it explicitly and then use
+the short name:
 
 ```text
 brew tap skillsgo/skillsgo
