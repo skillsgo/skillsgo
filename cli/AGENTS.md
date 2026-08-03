@@ -53,6 +53,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |
+| `npm/` | Unscoped `skillsgo` npm launcher and release-only platform package assembler for `npx skillsgo`. |
+| `homebrew/` | Homebrew distribution boundary and generated Formula publication contract. |
 
 ## Boundaries
 

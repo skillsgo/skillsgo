@@ -15,6 +15,7 @@
 - `smoke-app-update-rehearsal.sh`: drives a packaged macOS/Linux client through real local-feed check, download, replacement, restart, and next-patch bundled-CLI verification.
 - `build-cli-release.sh`: cross-compiles one supported standalone CLI target from GOWORK-independent dependencies and injects immutable release identity before archiving it.
 - `test-build-cli-release.sh`: black-box tests the Linux/amd64 standalone archive, LICENSE, and complete release handshake.
+- `generate-homebrew-formula.mjs`: derives a Homebrew Formula from the immutable macOS/Linux CLI archives and their SHA-256 digests.
 
 ## Architectural Boundary
 

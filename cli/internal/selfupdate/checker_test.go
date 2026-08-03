@@ -110,6 +110,11 @@ func TestBundledCheckStopsBeforeReadingUpdateMetadata(t *testing.T) {
 	require.ErrorContains(t, err, "owned by the SkillsGo App")
 }
 
+func TestPackageManagerUpgradeCommandsUsePublicSkillsgoPackage(t *testing.T) {
+	require.Equal(t, "npm install --global skillsgo@latest", upgradeCommandFor("npm"))
+	require.Equal(t, "npx skillsgo@latest", upgradeCommandFor("npx"))
+}
+
 func fixtureChecker(t *testing.T, manifest func(string) Manifest, tamper bool) *Checker {
 	t.Helper()
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)

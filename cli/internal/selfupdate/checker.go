@@ -225,9 +225,9 @@ func upgradeCommandFor(distribution string) string {
 	case "winget":
 		return "winget upgrade SkillsGo.CLI"
 	case "npm":
-		return "npm install --global @skillsgo/cli@latest"
+		return "npm install --global skillsgo@latest"
 	case "npx":
-		return "npx @skillsgo/cli@latest"
+		return "npx skillsgo@latest"
 	case "go-install":
 		return "go install github.com/skillsgo/skillsgo/cli/cmd/skillsgo@latest"
 	default:

@@ -21,7 +21,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
 | App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Windows x64 Setup, Linux x64 AppImage, separate macOS arm64/x86_64 downloads, Velopack feeds, and checksums; signing credentials upgrade Windows Setup and macOS PKGs, while unsigned downloads are labeled explicitly |
-| CLI | `cli/` | `cli/vX.Y.Z` | tag | Five platform archives, checksums, SBOMs, signed CDN Manifests, and GitHub Release |
+| CLI | `cli/` | `cli/vX.Y.Z` | tag | Five platform archives, npm `skillsgo` packages, a Homebrew Formula, checksums, SBOMs, signed CDN Manifests, and GitHub Release |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
 A repository-wide `vX.Y.Z` tag is not used because it cannot identify the released unit and would force unrelated components to share a version.
@@ -123,7 +123,31 @@ skillsgo_<version>_linux_amd64.tar.gz
 skillsgo_<version>_windows_amd64.zip
 ```
 
-The OSS workflow writes deterministic SHA-256 checksums, a schema-v1 provider-neutral Manifest payload, SBOMs, and attestations into the GitHub Release. The client embeds only the public verification key. An embedding publisher owns the signing key and makes the Manifest's artifacts available below its configured immutable version prefix. Official client builds use `https://cdn.skillsgo.ai/cli/versions/<version>/`.
+The OSS workflow writes deterministic SHA-256 checksums, a schema-v1 provider-neutral Manifest payload, SBOMs, and attestations for the archives, package-manager outputs, and release metadata into the GitHub Release. The client embeds only the public verification key. An embedding publisher owns the signing key and makes the Manifest's artifacts available below its configured immutable version prefix. Official client builds use `https://cdn.skillsgo.ai/cli/versions/<version>/`.
+
+The same release assembles the package-manager surfaces from those immutable
+archives. The unscoped npm package is a small Node launcher with optional
+platform packages, so both of these commands select the native binary for the
+current machine:
+
+```text
+npx skillsgo --help
+npm install --global skillsgo
+```
+
+The generated Homebrew Formula covers macOS arm64/x86_64 and Linux
+arm64/x86_64. Once the Formula is published to the official tap, installation
+is:
+
+```text
+brew tap skillsgo/skillsgo
+brew install skillsgo
+```
+
+Package publication is separately gated in CI and does not change the signed
+CLI update Origin. npm and Homebrew remain responsible for replacing their own
+installed files; `skillsgo self-update` reports the corresponding package
+manager command rather than attempting an executable replacement.
 
 Publication follows one fail-closed order:
 
