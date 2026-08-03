@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,8 @@ const (
 	cacheSchemaVersion = 3
 	retentionDays      = 90
 )
+
+var collectCodexMu sync.Mutex
 
 type Usage struct {
 	Hits45Days int `json:"hits45Days"`
@@ -50,6 +53,8 @@ type dayBucket struct {
 // CollectCodex returns best-effort local usage evidence. Callers should keep
 // inventory available when it returns an error.
 func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
+	collectCodexMu.Lock()
+	defer collectCodexMu.Unlock()
 	root := filepath.Join(codexHome(home), "sessions")
 	cacheRoot := filepath.Join(home, ".skillsgo", "cache", "skill-usage")
 	statePath := filepath.Join(cacheRoot, "codex-state.json")

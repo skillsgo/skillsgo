@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/buildinfo"
@@ -31,6 +32,8 @@ import (
 // version remains the App bundling compatibility injection point. Standalone
 // releases inject internal/buildinfo directly and leave this value as "dev".
 var version = "dev"
+
+var localizedTemplateFuncOnce sync.Once
 
 func currentBuildInfo() buildinfo.Info {
 	info := buildinfo.Current()
@@ -97,7 +100,9 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	cobra.AddTemplateFunc("localizedFlagUsages", localizedFlagUsages)
+	localizedTemplateFuncOnce.Do(func() {
+		cobra.AddTemplateFunc("localizedFlagUsages", localizedFlagUsages)
+	})
 	root.SetUsageTemplate(localizedUsageTemplate())
 	root.Version = currentBuildInfo().Version
 	var languageOverride string
