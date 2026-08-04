@@ -9,7 +9,7 @@ go 1.26.5
 tool github.com/sqlc-dev/sqlc/cmd/sqlc
 
 require (
-	ariga.io/atlas v1.2.3
+	ariga.io/atlas v1.3.0
 	cloud.google.com/go/storage v1.62.1
 	github.com/Azure/azure-pipeline-go v0.2.3
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
