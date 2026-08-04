@@ -60,7 +60,7 @@ dependencies:
   loading_animation_widget: ^1.3.0
   multi_dropdown: ^3.2.1
   url_launcher: ^6.3.2
-  portal_labs: ^0.34.0
+  portal_labs: ^0.38.0
   # Pin the Native Assets lifecycle guard until an upstream release contains it.
   velopack_flutter:
     git:
