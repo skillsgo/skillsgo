@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Codex rollout JSONL files, fastjson field traversal, filesystem metadata, the current time, and the disposable SkillsGo cache root.
- * [OUTPUT]: Provides session-deduplicated Codex Skill trigger totals from trusted explicit activation and successful instruction-load evidence for rolling 45-day and 90-day windows backed by rebuildable per-day cache files.
+ * [INPUT]: Depends on Codex rollout JSONL files, bounded file-level concurrency, fastjson field traversal, filesystem metadata, the current time, and the disposable SkillsGo cache root.
+ * [OUTPUT]: Provides session-deduplicated Codex Skill trigger totals from parallel independent-Session scans of trusted explicit activation and successful instruction-load evidence for rolling 45-day and 90-day windows backed by rebuildable per-day cache files.
  * [POS]: Serves as the Codex usage-evidence adapter consumed by local Library inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ const (
 	cacheSchemaVersion  = 6
 	retentionDays       = 90
 	maxRolloutLineBytes = 2 * 1024 * 1024
+	maxScanWorkers      = 4
 )
 
 var collectCodexMu sync.Mutex
@@ -58,6 +60,18 @@ type dayBucket struct {
 	Skills        map[string]int `json:"skills"`
 }
 
+type codexScanJob struct {
+	path     string
+	info     fs.FileInfo
+	previous fileRecord
+	exists   bool
+}
+
+type codexScanResult struct {
+	record fileRecord
+	err    error
+}
+
 // CollectCodex returns best-effort local usage evidence. Callers should keep
 // inventory available when it returns an error.
 func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
@@ -69,6 +83,7 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 	state := loadState(statePath)
 	cutoff := dayStart(now).AddDate(0, 0, -(retentionDays - 1))
 	live := map[string]bool{}
+	jobs := []codexScanJob{}
 	changed := false
 	var scanErrors []error
 
@@ -94,43 +109,19 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 		if exists && previous.Size == info.Size() && previous.ModifiedNS == info.ModTime().UnixNano() {
 			return nil
 		}
-		prefixHash, hashErr := filePrefixHash(clean)
-		if hashErr != nil {
-			scanErrors = append(scanErrors, hashErr)
-			return nil
-		}
-		start := int64(0)
-		skills := map[string]string{}
-		pendingReads := map[string]map[string]string{}
-		if exists && info.Size() >= previous.Size && prefixHash == previous.PrefixHash {
-			for name, day := range previous.Skills {
-				skills[name] = day
-			}
-			for callID, candidates := range previous.PendingReads {
-				pendingReads[callID] = cloneStringMap(candidates)
-			}
-			start = previous.ParsedSize
-		}
-		fallbackDay := dayStart(info.ModTime().In(now.Location())).Format(time.DateOnly)
-		observations, nextPendingReads, parsedSize, parseErr := codexSkillNames(clean, start, fallbackDay, now.Location(), pendingReads)
-		if parseErr != nil {
-			scanErrors = append(scanErrors, parseErr)
-			return nil
-		}
-		for name, observedDay := range observations {
-			if _, known := skills[name]; !known {
-				skills[name] = observedDay
-			}
-		}
-		state.Files[clean] = fileRecord{
-			Size: info.Size(), ParsedSize: parsedSize, ModifiedNS: info.ModTime().UnixNano(),
-			PrefixHash: prefixHash, Skills: skills, PendingReads: nextPendingReads,
-		}
-		changed = true
+		jobs = append(jobs, codexScanJob{path: clean, info: info, previous: previous, exists: exists})
 		return nil
 	})
 	if walkErr != nil && !errors.Is(walkErr, os.ErrNotExist) {
 		scanErrors = append(scanErrors, walkErr)
+	}
+	for index, result := range scanCodexFiles(jobs, now.Location()) {
+		if result.err != nil {
+			scanErrors = append(scanErrors, result.err)
+			continue
+		}
+		state.Files[jobs[index].path] = result.record
+		changed = true
 	}
 	for path := range state.Files {
 		if !live[path] {
@@ -155,6 +146,64 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 		}
 	}
 	return aggregateBuckets(buckets, now), errors.Join(scanErrors...)
+}
+
+func scanCodexFiles(jobs []codexScanJob, location *time.Location) []codexScanResult {
+	results := make([]codexScanResult, len(jobs))
+	if len(jobs) == 0 {
+		return results
+	}
+	workerCount := min(maxScanWorkers, runtime.GOMAXPROCS(0), len(jobs))
+	indexes := make(chan int)
+	var workers sync.WaitGroup
+	workers.Add(workerCount)
+	for range workerCount {
+		go func() {
+			defer workers.Done()
+			for index := range indexes {
+				results[index] = scanCodexFile(jobs[index], location)
+			}
+		}()
+	}
+	for index := range jobs {
+		indexes <- index
+	}
+	close(indexes)
+	workers.Wait()
+	return results
+}
+
+func scanCodexFile(job codexScanJob, location *time.Location) codexScanResult {
+	prefixHash, err := filePrefixHash(job.path)
+	if err != nil {
+		return codexScanResult{err: err}
+	}
+	start := int64(0)
+	skills := map[string]string{}
+	pendingReads := map[string]map[string]string{}
+	if job.exists && job.info.Size() >= job.previous.Size && prefixHash == job.previous.PrefixHash {
+		for name, day := range job.previous.Skills {
+			skills[name] = day
+		}
+		for callID, candidates := range job.previous.PendingReads {
+			pendingReads[callID] = cloneStringMap(candidates)
+		}
+		start = job.previous.ParsedSize
+	}
+	fallbackDay := dayStart(job.info.ModTime().In(location)).Format(time.DateOnly)
+	observations, nextPendingReads, parsedSize, err := codexSkillNames(job.path, start, fallbackDay, location, pendingReads)
+	if err != nil {
+		return codexScanResult{err: err}
+	}
+	for name, observedDay := range observations {
+		if _, known := skills[name]; !known {
+			skills[name] = observedDay
+		}
+	}
+	return codexScanResult{record: fileRecord{
+		Size: job.info.Size(), ParsedSize: parsedSize, ModifiedNS: job.info.ModTime().UnixNano(),
+		PrefixHash: prefixHash, Skills: skills, PendingReads: nextPendingReads,
+	}}
 }
 
 func filePrefixHash(path string) (string, error) {

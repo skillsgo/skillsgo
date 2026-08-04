@@ -34,6 +34,19 @@ func TestCollectCodexAggregatesSessionsAcrossRollingWindows(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCollectCodexAggregatesIndependentSessionsAcrossWorkerBatches(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	now := time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC)
+	for index := range 9 {
+		writeRollout(t, home, "parallel-"+string(rune('a'+index))+".jsonl", now, "shared")
+	}
+
+	usage, err := CollectCodex(home, now)
+	require.NoError(t, err)
+	require.Equal(t, Usage{Hits45Days: 9, Hits90Days: 9}, usage["shared"])
+}
+
 func writeTimedRollout(t *testing.T, home, name string, modified, occurred time.Time, skill string) string {
 	t.Helper()
 	root := filepath.Join(home, ".codex", "sessions", "2026", "08", "03")

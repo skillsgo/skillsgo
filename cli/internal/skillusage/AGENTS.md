@@ -3,8 +3,8 @@
 
 ## Members
 
-- `codex.go`: incrementally indexes trusted Codex rollout evidence from explicit user-role Skill injection and call-ID-correlated successful `SKILL.md` instruction loads into disposable per-day cache buckets, then returns 45/90-day aggregates.
-- `codex_test.go`: specifies trusted evidence classification, false-positive rejection, pending read correlation, session-level deduplication, rolling-window boundaries, cache reuse, and stale-session removal.
+- `codex.go`: incrementally indexes trusted Codex rollout evidence with bounded independent-Session workers while preserving per-Session event order, then merges explicit user-role Skill injection and call-ID-correlated successful `SKILL.md` instruction loads into disposable per-day cache buckets and returns 45/90-day aggregates.
+- `codex_test.go`: specifies trusted evidence classification, false-positive rejection, pending read correlation, session-level deduplication, multi-worker-batch aggregation, rolling-window boundaries, cache reuse, and stale-session removal.
 
 ## Architectural Boundary
 
