@@ -126,7 +126,7 @@ jobs:
         run: tar -C dist -czf "dist/${PACKAGE}.tar.gz" "$PACKAGE"
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: hub/dist/${{ steps.build.outputs.package }}.tar.gz
 
@@ -164,7 +164,7 @@ jobs:
         run: sha256sum *.tar.gz > checksums.txt
 
       - name: Attest checksums
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: release-assets/checksums.txt
 
