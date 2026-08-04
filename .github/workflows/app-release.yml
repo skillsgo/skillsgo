@@ -262,7 +262,7 @@ jobs:
           }
 
       - name: Attest release channel
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: app/build/velopack/${{ matrix.channel }}/SkillsGo-${{ needs.verify.outputs.version }}-${{ matrix.channel }}-full.nupkg
 
@@ -411,7 +411,7 @@ jobs:
             release-downloads
 
       - name: Attest release checksums
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: release-downloads/checksums.txt
 
