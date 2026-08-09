@@ -214,6 +214,9 @@ TaskQueue:
   # Bounds concurrent Repository snapshot materialization in each publisher.
   # Env override: SKILLSGO_HUB_REPOSITORY_MATERIALIZER_CAPACITY
   RepositoryMaterializerCapacity: 8
+  # Periodically resolve and publish a newly observed upstream latest Version.
+  # Set to 0 to disable. Env override: SKILLSGO_HUB_PACKAGE_LATEST_SYNC_INTERVAL_SECONDS
+  PackageLatestSyncIntervalSeconds: 3600
 
 # Optional OpenAI-compatible LLM used only for presentation descriptions and display-only Skill documents.
 # An empty APIKey disables the worker. For local development, prefer the

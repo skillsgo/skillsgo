@@ -41,7 +41,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `pkg/runtime/` | Complete exported Hub modules mounted symmetrically into caller-owned Fiber Apps. |
 | `pkg/skillcard/` | Reusable authoritative Catalog-to-protocol Skill card projection shared by Hub search and injected community ranking hydration. |
 | `pkg/translation/` | Optional OpenAI-compatible presentation translation workers for descriptions and display-only Skill documents. |
-| `pkg/taskqueue/` | Native leader-elected River periodic and queued PostgreSQL task execution for translation, Repository metadata refresh, and Package History Backfill, isolated from online traffic by a background Catalog pool while preserving caller-owned enqueue transactions. |
+| `pkg/taskqueue/` | Native leader-elected River periodic and queued PostgreSQL task execution for Package Latest Sync, translation, Repository metadata refresh, and Package History Backfill, isolated from online traffic by a background Catalog pool while preserving caller-owned enqueue transactions. |
 | `pkg/config/`, `config.dev.yaml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |

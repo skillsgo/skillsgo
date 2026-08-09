@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed River jobs plus Repository metadata and translation timeout semantics.
- * [OUTPUT]: Defines first-class observable metadata sweep/refresh, translation-dispatch, and single-localization job args with stable kinds and bounded execution timeouts.
+ * [INPUT]: Depends on typed River jobs plus Repository metadata, Package latest synchronization, and translation timeout semantics.
+ * [OUTPUT]: Defines first-class observable metadata sweep/refresh, Package latest sync, translation-dispatch, and single-localization job args with stable kinds and bounded execution timeouts.
  * [POS]: Serves as the business-job wiring boundary between HTTP-facing services and River transport.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,6 +28,20 @@ type repositorySourceMetadataSweepArgs struct{}
 
 func (repositorySourceMetadataSweepArgs) Kind() string { return "repository_source_metadata_sweep" }
 func (repositorySourceMetadataSweepArgs) JobTimeout() time.Duration {
+	return repositoryMetadataSweepTimeout
+}
+
+type packageLatestSyncArgs struct {
+	PackagePath string `json:"package_path" river:"unique"`
+}
+
+func (packageLatestSyncArgs) Kind() string              { return "package_latest_sync" }
+func (packageLatestSyncArgs) JobTimeout() time.Duration { return 15 * time.Minute }
+
+type packageLatestSyncSweepArgs struct{}
+
+func (packageLatestSyncSweepArgs) Kind() string { return "package_latest_sync_sweep" }
+func (packageLatestSyncSweepArgs) JobTimeout() time.Duration {
 	return repositoryMetadataSweepTimeout
 }
 

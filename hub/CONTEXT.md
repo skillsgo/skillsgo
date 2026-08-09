@@ -50,7 +50,11 @@ _Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source va
 
 **Package History Backfill**:
 An authenticated Hub administration operation that accepts one or more Package Paths and incrementally publishes at most the twenty highest canonical semantic-version Tags discovered from each Package's Source Repository. When a Repository has no canonical Tags, the run instead publishes up to the twenty most recent default-branch commits as immutable pseudo-versions. This keeps prewarming bounded without turning Backfill into unbounded commit crawling or branch subscription. Each Package owns an independent durable run that commits valid versions and retains diagnosable partial failures.
-_Avoid_: add option, commit crawl, branch subscription, automatic repository refresh
+_Avoid_: add option, commit crawl, branch subscription, Package Latest Sync
+
+**Package Latest Sync**:
+A leader-elected periodic Hub operation over every discovery-visible Package. It resolves the Source Repository's current `latest` to one immutable Version and commit, performs no publication when that exact observed identity already exists, rejects a moved published Version, and otherwise publishes only that exact newly observed Version through the ordinary Package Publication path. It never fills intermediate history; Package History Backfill remains the explicit bounded history operation.
+_Avoid_: Package History Backfill, branch subscription, mutable current artifact, full-history crawl
 
 **Backfill Request**:
 A bounded administration request that validates and submits a duplicate-free set of Package Paths while preserving one independent Backfill Run and result per Package.

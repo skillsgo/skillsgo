@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, current-Package and due-metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -25,6 +25,14 @@ WHERE current_version_id IS NOT NULL
   AND source_host = ANY(sqlc.arg(source_hosts)::text[])
   AND (source_checked_at IS NULL OR source_checked_at <= sqlc.arg(stale_before))
   AND (source_retry_at IS NULL OR source_retry_at <= sqlc.arg(now))
+  AND id > sqlc.arg(after_id)
+ORDER BY id
+LIMIT sqlc.arg(page_limit);
+
+-- name: PackagesForLatestSync :many
+SELECT id, path
+FROM packages
+WHERE current_version_id IS NOT NULL
   AND id > sqlc.arg(after_id)
 ORDER BY id
 LIMIT sqlc.arg(page_limit);

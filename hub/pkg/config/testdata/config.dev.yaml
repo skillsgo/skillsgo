@@ -206,6 +206,7 @@ TaskQueue:
   MaxWorkers: 10
   FetchPollSeconds: 10
   RepositoryMaterializerCapacity: 8
+  PackageLatestSyncIntervalSeconds: 3600
 
 # ShutdownTimeout sets the timeout (in seconds) for open connections when shutting down
 # (via SIGINT or SIGTERM). Connections still open after the timeout will be dropped.

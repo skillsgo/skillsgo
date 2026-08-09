@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, task execution, and translation schedule environment overrides.
- * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on Hub configuration defaults, YAML fixtures, environment decoding, validation, authentication, database pools, storage providers, and task/translation settings.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, default and overridden Package latest synchronization, task execution, and translation schedules.
+ * [POS]: Serves as behavior coverage for the Hub config package's complete loading and override contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package config
@@ -227,11 +227,18 @@ func TestTaskQueueEnvironmentOverride(t *testing.T) {
 	t.Setenv("SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS", "24")
 	t.Setenv("SKILLSGO_HUB_REPOSITORY_MATERIALIZER_CAPACITY", "32")
 	t.Setenv("SKILLSGO_HUB_TASK_QUEUE_FETCH_POLL_SECONDS", "15")
+	t.Setenv("SKILLSGO_HUB_PACKAGE_LATEST_SYNC_INTERVAL_SECONDS", "7200")
 	conf := defaultConfig()
 	require.NoError(t, envOverride(conf))
 	require.Equal(t, 24, conf.TaskQueue.MaxWorkers)
 	require.Equal(t, 32, conf.TaskQueue.RepositoryMaterializerCapacity)
 	require.Equal(t, 15, conf.TaskQueue.FetchPollSeconds)
+	require.Equal(t, 7200, conf.TaskQueue.PackageLatestSyncIntervalSeconds)
+}
+
+func TestPackageLatestSyncIsEnabledHourlyByDefault(t *testing.T) {
+	conf := defaultConfig()
+	require.Equal(t, 3600, conf.TaskQueue.PackageLatestSyncIntervalSeconds)
 }
 
 func TestDatabasePoolsHaveIndependentEnvironmentCapacity(t *testing.T) {

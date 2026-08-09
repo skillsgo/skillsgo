@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers, asynchronous Repository metadata maintenance, native Fiber routing, static disk delivery, and Huma documentation projection.
- * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, local static Git delivery, background Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, a generic embedding prewarm seam, and authenticated Backfill administration.
+ * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers, automatic latest and metadata maintenance, native Fiber routing, static disk delivery, and Huma documentation projection.
+ * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, local static Git delivery, background Package latest and Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, a generic embedding prewarm seam, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -109,6 +109,16 @@ func addProxyRoutesWithCatalog(
 				withArtifactRepositoryRoot(filepath.Join(c.SkillCacheDir, "artifacts")),
 				withRepositoryMaterializerCapacity(c.TaskQueue.RepositoryMaterializerCapacity),
 			)
+			latestSync := newPackageLatestSyncService(
+				backgroundMetadata,
+				taskRuntime,
+				repositoryFetcher,
+				backgroundPublisher,
+				time.Duration(c.TaskQueue.PackageLatestSyncIntervalSeconds)*time.Second,
+			)
+			if err := latestSync.Register(); err != nil {
+				return nil, fmt.Errorf("register Package latest synchronization: %w", err)
+			}
 			backfills = newRepositoryBackfillService(backgroundMetadata, taskRuntime, lister, backgroundPublisher, l)
 			if err := backfills.Register(); err != nil {
 				return nil, fmt.Errorf("register Package Backfill task: %w", err)

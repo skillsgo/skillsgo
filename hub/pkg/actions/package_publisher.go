@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on request-scoped structured logging, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-change observer.
- * [OUTPUT]: Materializes single or chunked Package content transitions with precise stage failures, computes version-independent Package content sums plus source digests and languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after effective current changes.
+ * [INPUT]: Depends on request-scoped structured logging, optional expected source commits, an explicitly leased Repository Backfill session, source-language analysis, the ordered immutable publication commit boundary, and an optional best-effort current-change observer.
+ * [OUTPUT]: Materializes single or expected-commit-pinned and chunked Package content transitions with precise stage failures, computes version-independent Package content sums plus source digests and languages once, prepares byte-stable Package Version Info plus content-addressed Skill objects, and notifies metadata enrichment after effective current changes.
  * [POS]: Serves as the observable cold-publication and bounded Backfill-session coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -84,7 +84,14 @@ func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backen
 }
 
 func (p *modulePublisher) Materialize(ctx context.Context, packagePath, query string) (string, error) {
-	return p.materializePublication(ctx, packagePath, query)
+	return p.materializePublication(ctx, packagePath, query, "")
+}
+
+func (p *modulePublisher) MaterializeExpected(ctx context.Context, packagePath, query, expectedCommitSHA string) (string, error) {
+	if expectedCommitSHA == "" {
+		return "", fmt.Errorf("expected Repository commit is required")
+	}
+	return p.materializePublication(ctx, packagePath, query, expectedCommitSHA)
 }
 
 const historicalPublicationChunkSize = 5
@@ -176,9 +183,12 @@ func (p *modulePublisher) VerifyHistorical(ctx context.Context, packagePath, que
 	return nil
 }
 
-func (p *modulePublisher) materializePublication(ctx context.Context, packagePath, query string) (string, error) {
+func (p *modulePublisher) materializePublication(ctx context.Context, packagePath, query, expectedCommitSHA string) (string, error) {
 	started := time.Now()
 	key := "publish:" + packagePath + "@" + query
+	if expectedCommitSHA != "" {
+		key += "#" + expectedCommitSHA
+	}
 	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
 		"component":     "package_publisher",
 		"package_path":  packagePath,
@@ -210,7 +220,7 @@ func (p *modulePublisher) materializePublication(ctx context.Context, packagePat
 			entry.Warnf("repository publication upstream capacity exhausted")
 			return "", huberrors.E("modulePublisher.Materialize", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
 		}
-		version, materializeErr := p.materialize(workCtx, packagePath, query)
+		version, materializeErr := p.materialize(workCtx, packagePath, query, expectedCommitSHA)
 		if materializeErr != nil && huberrors.IsNotFoundErr(materializeErr) {
 			p.mu.Lock()
 			p.negative[key] = negativePublication{expires: p.now().Add(p.negativeTTL), err: materializeErr}
@@ -247,11 +257,18 @@ func (p *modulePublisher) materializePublication(ctx context.Context, packagePat
 	}
 }
 
-func (p *modulePublisher) materialize(ctx context.Context, packagePath, query string) (string, error) {
+func (p *modulePublisher) materialize(ctx context.Context, packagePath, query, expectedCommitSHA string) (string, error) {
 	started := time.Now()
 	snapshot, err := p.fetcher.DiscoverRepository(ctx, packagePath, query)
 	if err != nil {
 		return "", err
+	}
+	if expectedCommitSHA != "" && snapshot.CommitSHA != expectedCommitSHA {
+		closeRepositorySnapshot(snapshot)
+		return "", fmt.Errorf(
+			"%w for %s@%s: expected commit %s, resolved commit %s",
+			errPackageLatestResolutionChanged, packagePath, query, expectedCommitSHA, snapshot.CommitSHA,
+		)
 	}
 	if snapshot.PackagePath != packagePath || snapshot.Version == "" || snapshot.CommitSHA == "" || len(snapshot.Members) == 0 {
 		closeRepositorySnapshot(snapshot)
