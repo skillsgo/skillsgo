@@ -289,7 +289,11 @@ func TestSourceVerifiedAgentsExposeNativeAndCompatibleDiscoveryRoots(t *testing.
 		globalRoots  []string
 		projectRoots []string
 	}{
+		{"astrbot", []string{filepath.Join(home, ".astrbot", "data", "skills")}, []string{filepath.Join(project, "data", "skills"), filepath.Join(project, "skills")}},
+		{"crush", []string{filepath.Join(config, "crush", "skills"), filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}, []string{filepath.Join(project, ".crush", "skills"), filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".claude", "skills")}},
 		{"gemini-cli", []string{filepath.Join(home, ".gemini", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".gemini", "skills")}},
+		{"kimi-code-cli", []string{filepath.Join(home, ".agents", "skills"), filepath.Join(config, "agents", "skills"), filepath.Join(home, ".kimi", "skills"), filepath.Join(home, ".claude", "skills"), filepath.Join(home, ".codex", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".kimi", "skills"), filepath.Join(project, ".claude", "skills"), filepath.Join(project, ".codex", "skills")}},
+		{"pi", []string{filepath.Join(home, ".pi", "agent", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".pi", "skills"), filepath.Join(project, ".agents", "skills")}},
 		{"qwen-code", []string{filepath.Join(home, ".qwen", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".qwen", "skills"), filepath.Join(project, ".agents", "skills")}},
 		{"goose", []string{filepath.Join(config, "goose", "skills"), filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}, []string{filepath.Join(project, ".goose", "skills"), filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".claude", "skills")}},
 		{"cline", []string{filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".cline", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".cline", "skills"), filepath.Join(project, ".clinerules", "skills"), filepath.Join(project, ".claude", "skills")}},
@@ -310,6 +314,18 @@ func TestSourceVerifiedAgentsExposeNativeAndCompatibleDiscoveryRoots(t *testing.
 			require.Equal(t, DiscoveryVerified, projectRoots.Verification)
 			require.Equal(t, test.projectRoots, projectRoots.DiscoveryRoots)
 		})
+	}
+
+	for _, id := range []string{"aider-desk"} {
+		global, ok := catalog.SkillRoots(id, ScopeGlobal, "")
+		require.True(t, ok)
+		require.Equal(t, DiscoveryVerified, global.Verification)
+		require.Equal(t, []string{global.ManagedRoot}, global.DiscoveryRoots)
+
+		projectRoots, ok := catalog.SkillRoots(id, ScopeProject, project)
+		require.True(t, ok)
+		require.Equal(t, DiscoveryVerified, projectRoots.Verification)
+		require.Equal(t, []string{projectRoots.ManagedRoot}, projectRoots.DiscoveryRoots)
 	}
 }
 
