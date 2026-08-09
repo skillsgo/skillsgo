@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with a temporary platform-shaped user home, real Workspace directories, JSON metadata, and SQLite fixtures.
+ * [INPUT]: Uses command.Execute with isolated platform/XDG user roots, real Workspace directories, JSON metadata, and SQLite fixtures.
  * [OUTPUT]: Specifies stable machine add/list/remove journeys plus one-time Agent-session bootstrap from bounded ordinary and oversized structured records into CLI-owned user configuration.
  * [POS]: Serves as executable command-contract coverage for App and terminal project registration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -67,6 +67,7 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	t.Setenv("OPENCODE_DB", openCodeOverride)
 	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "opencode-dev.db"), kiloWorkspace)
 	t.Setenv("XDG_DATA_HOME", openCodeData)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1785628800,"qwen_version":"1"}`)
 	t.Setenv("HOME", home)
 
