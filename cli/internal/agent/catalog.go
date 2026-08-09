@@ -177,7 +177,7 @@ func (c *Catalog) SkillRoots(id string, scope Scope, projectRoot string) (SkillR
 
 func discoveryVerification(id string, scope Scope) DiscoveryVerification {
 	switch id {
-	case "codex", "claude-code", "cursor", "opencode", "openclaw", "qclaw", "workbuddy":
+	case "cline", "codex", "claude-code", "cursor", "gemini-cli", "github-copilot", "goose", "kilo", "mistral-vibe", "opencode", "openclaw", "qclaw", "qwen-code", "roo", "workbuddy":
 		return DiscoveryVerified
 	case "hermes-agent":
 		if scope == ScopeGlobal {
@@ -190,11 +190,25 @@ func discoveryVerification(id string, scope Scope) DiscoveryVerification {
 func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot string) []string {
 	if scope == ScopeProject {
 		switch id {
+		case "cline":
+			return projectDiscoveryRoots(projectRoot, ".cline/skills", ".clinerules/skills", ".claude/skills")
+		case "codex":
+			return projectDiscoveryRoots(projectRoot, ".codex/skills")
 		case "cursor":
 			return projectDiscoveryRoots(projectRoot, ".cursor/skills", ".claude/skills", ".codex/skills")
+		case "gemini-cli":
+			return projectDiscoveryRoots(projectRoot, ".gemini/skills")
+		case "goose":
+			return projectDiscoveryRoots(projectRoot, ".agents/skills", ".claude/skills")
+		case "kilo":
+			return projectDiscoveryRoots(projectRoot, ".kilo/skills", ".agents/skills", ".claude/skills")
+		case "mistral-vibe":
+			return projectDiscoveryRoots(projectRoot, ".agents/skills")
 		case "opencode":
 			return projectDiscoveryRoots(projectRoot, ".opencode/skills", ".claude/skills")
 		case "openclaw":
+			return projectDiscoveryRoots(projectRoot, ".agents/skills")
+		case "qwen-code", "roo":
 			return projectDiscoveryRoots(projectRoot, ".agents/skills")
 		default:
 			return nil
@@ -203,6 +217,8 @@ func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot s
 
 	shared := filepath.Join(paths.Home, ".agents", "skills")
 	switch id {
+	case "cline":
+		return []string{filepath.Join(paths.Home, ".cline", "skills")}
 	case "codex":
 		return []string{shared, "/etc/codex/skills"}
 	case "cursor":
@@ -210,6 +226,16 @@ func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot s
 			shared,
 			filepath.Join(paths.Home, ".claude", "skills"),
 			filepath.Join(envHome("CODEX_HOME", filepath.Join(paths.Home, ".codex")), "skills"),
+		}
+	case "gemini-cli", "github-copilot", "mistral-vibe", "qwen-code", "roo":
+		return []string{shared}
+	case "goose":
+		return []string{shared, filepath.Join(paths.Home, ".claude", "skills")}
+	case "kilo":
+		return []string{
+			filepath.Join(paths.Home, ".kilo", "skills"),
+			shared,
+			filepath.Join(paths.Home, ".claude", "skills"),
 		}
 	case "opencode":
 		return []string{shared, filepath.Join(paths.Home, ".claude", "skills")}
