@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on YAML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including authentication, cache policy, first-class Cloudflare R2 storage, task execution, and optional translation.
- * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
+ * [OUTPUT]: Provides validated Hub configuration including authentication, cache policy, first-class Cloudflare R2 storage, task execution with automatic Package latest synchronization, and optional translation.
+ * [POS]: Serves as the Hub configuration composition and validation source in the config package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package config
@@ -197,7 +197,7 @@ func defaultConfig() *Config {
 			BackgroundMaxOpenConns: 40,
 			ConnMaxLifetime:        1800,
 		},
-		TaskQueue: &TaskQueueConfig{MaxWorkers: 10, FetchPollSeconds: 10, RepositoryMaterializerCapacity: 8},
+		TaskQueue: &TaskQueueConfig{MaxWorkers: 10, FetchPollSeconds: 10, RepositoryMaterializerCapacity: 8, PackageLatestSyncIntervalSeconds: 3600},
 		LLM: &LLMConfig{
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLangs: []string{"en", "zh-Hans-CN", "zh-Hant-TW", "zh-Hant-HK", "ja", "ko", "fr", "de", "it", "es", "pt-BR", "ru", "ar", "hi", "id", "tr", "nl", "pl", "th", "vi", "ms", "sv", "uk"}, TranslationInterval: 900,

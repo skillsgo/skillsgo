@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-name candidate query descriptions plus server-ranked match scores, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info with immutable Package size, immutable Package Version Skill content with size and translation provenance, canonical Skill and Package coordinates, and current Package Publication DTOs.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-name candidate query descriptions plus server-ranked match scores, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info with immutable Package size, immutable Package Version Skill content with size and translation provenance, canonical Skill and Package coordinates, current Package Publication DTOs, and user-triggered Package update-check DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/protocol/packageidentity"
 	"github.com/skillsgo/skillsgo/protocol/skillmanifest"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 const SchemaVersion = 1
@@ -150,4 +151,32 @@ type CurrentPackage struct {
 
 type CurrentPackagesResponse struct {
 	Packages []CurrentPackage `json:"packages"`
+}
+
+const (
+	PackageUpdateUpToDate = "up_to_date"
+	PackageUpdateUpdating = "updating"
+)
+
+type PackageUpdateCheckRequest struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	PackagePath   string `json:"packagePath"`
+}
+
+func (request PackageUpdateCheckRequest) Valid() bool {
+	return request.SchemaVersion == SchemaVersion && (PackageCoordinate{PackagePath: request.PackagePath}).Valid()
+}
+
+type PackageUpdateCheckResult struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	PackagePath   string `json:"packagePath"`
+	Status        string `json:"status"`
+	Version       string `json:"version"`
+}
+
+func (result PackageUpdateCheckResult) Valid() bool {
+	return result.SchemaVersion == SchemaVersion &&
+		(PackageCoordinate{PackagePath: result.PackagePath}).Valid() &&
+		(result.Status == PackageUpdateUpToDate || result.Status == PackageUpdateUpdating) &&
+		protocolversion.IsImmutable(result.Version)
 }

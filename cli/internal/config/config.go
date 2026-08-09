@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on one user home, explicit Workspace directory paths, canonical filesystem resolution, strict YAML input, and atomic file replacement.
- * [OUTPUT]: Provides deterministic project add, remove, and list operations over canonical path entries in the versioned user-level SkillsGo config.yaml document.
- * [POS]: Serves as the CLI-owned authority for shared user configuration, currently including explicitly managed Workspace projects.
+ * [INPUT]: Depends on one user home, explicit or locally observed Workspace directory paths, canonical filesystem resolution, strict YAML input, and atomic file replacement.
+ * [OUTPUT]: Provides deterministic project add, one-time bootstrap, remove, and list operations over canonical path entries in the versioned user-level SkillsGo config.yaml document.
+ * [POS]: Serves as the CLI-owned authority for shared user configuration, including managed Workspace projects seeded from recent Agent sessions on an empty registry.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package config
@@ -27,8 +27,9 @@ type Project struct {
 }
 
 type Document struct {
-	SchemaVersion int      `yaml:"schemaVersion"`
-	Projects      []string `yaml:"projects"`
+	SchemaVersion        int      `yaml:"schemaVersion"`
+	Projects             []string `yaml:"projects"`
+	ProjectsBootstrapped bool     `yaml:"projectsBootstrapped,omitempty"`
 }
 
 type Store struct{ Home string }
@@ -58,12 +59,49 @@ func (s Store) AddProject(rawRoot string) (Project, error) {
 	}
 	for _, projectRoot := range document.Projects {
 		if projectRoot == root {
+			if !document.ProjectsBootstrapped {
+				document.ProjectsBootstrapped = true
+				if err := s.write(document); err != nil {
+					return Project{}, err
+				}
+			}
 			return projectFromRoot(root), nil
 		}
 	}
 	project := projectFromRoot(root)
 	document.Projects = append(document.Projects, root)
+	document.ProjectsBootstrapped = true
 	return project, s.write(document)
+}
+
+func (s Store) BootstrapProjects(rawRoots []string) ([]Project, error) {
+	document, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	if document.ProjectsBootstrapped {
+		return projectsFromRoots(document.Projects), nil
+	}
+	document.ProjectsBootstrapped = true
+	if len(document.Projects) > 0 {
+		if err := s.write(document); err != nil {
+			return nil, err
+		}
+		return projectsFromRoots(document.Projects), nil
+	}
+	seen := map[string]bool{}
+	for _, rawRoot := range rawRoots {
+		root, canonicalErr := canonicalRoot(rawRoot)
+		if canonicalErr != nil || seen[root] {
+			continue
+		}
+		seen[root] = true
+		document.Projects = append(document.Projects, root)
+	}
+	if err := s.write(document); err != nil {
+		return nil, err
+	}
+	return projectsFromRoots(document.Projects), nil
 }
 
 func (s Store) RemoveProject(rawRoot string) (bool, error) {
@@ -172,6 +210,14 @@ func projectFromRoot(root string) Project {
 		name = root
 	}
 	return Project{Name: name, Root: root}
+}
+
+func projectsFromRoots(roots []string) []Project {
+	projects := make([]Project, 0, len(roots))
+	for _, root := range roots {
+		projects = append(projects, projectFromRoot(root))
+	}
+	return projects
 }
 
 func canonicalRoot(raw string) (string, error) {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on explicit Workspace roots, the CLI-owned general user configuration, user home resolution, Cobra, and stable JSON output.
- * [OUTPUT]: Provides `project add`, `project remove`, and `project list` commands for Managed Workspace Scopes.
+ * [INPUT]: Depends on explicit Workspace roots, recent local Agent session metadata, the CLI-owned general user configuration, user home resolution, Cobra, and stable JSON output.
+ * [OUTPUT]: Provides `project add`, `project bootstrap`, `project remove`, and `project list` commands for Managed Workspace Scopes.
  * [POS]: Serves as the command adapter over the projects section of durable user configuration shared by terminal and App callers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/config"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/spf13/cobra"
@@ -23,14 +25,38 @@ type projectRegistryReport struct {
 }
 
 func newProjectCommand() *cobra.Command {
-	root := &cobra.Command{Use: "project", Short: appi18n.Pick("Manage explicit Workspace Scopes", "管理显式工作区范围"), Example: "  skillsgo project add ./my-project\n  skillsgo project list", RunE: func(cmd *cobra.Command, args []string) error {
+	root := &cobra.Command{Use: "project", Short: appi18n.Pick("Manage Workspace Scopes", "管理工作区范围"), Example: "  skillsgo project bootstrap\n  skillsgo project add ./my-project\n  skillsgo project list", RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
 		}
 		return cmd.Help()
 	}}
-	root.AddCommand(newProjectAddCommand(), newProjectRemoveCommand(), newProjectListCommand())
+	root.AddCommand(newProjectAddCommand(), newProjectBootstrapCommand(), newProjectRemoveCommand(), newProjectListCommand())
 	return root
+}
+
+func newProjectBootstrapCommand() *cobra.Command {
+	var output string
+	cmd := &cobra.Command{Use: "bootstrap", Short: appi18n.Pick("Seed an empty project registry from recent Agent sessions", "从近期 Agent 会话初始化空项目列表"), Example: "  skillsgo project bootstrap --output json", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := validateProductOutput(output); err != nil {
+			return err
+		}
+		registry, err := userConfigStore()
+		if err != nil {
+			return err
+		}
+		projects, err := registry.BootstrapProjects(agent.DiscoverRecentProjects(registry.Home, time.Now()))
+		if err != nil {
+			return err
+		}
+		if output == "json" {
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(projectRegistryReport{SchemaVersion: 1, Phase: "project-bootstrap", Projects: projects})
+		}
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Managed Workspaces: %d.\n", len(projects))
+		return err
+	}}
+	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
+	return cmd
 }
 
 func userConfigStore() (config.Store, error) {

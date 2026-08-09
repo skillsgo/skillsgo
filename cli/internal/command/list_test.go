@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with isolated Agent roots plus default and explicit Global/Workspace listing scopes.
- * [OUTPUT]: Specifies the sole installed-Skill listing command's default-Workspace behavior, path-rich Human output, lock-backed External Adoption hints, mode-free External inventory, explicit-project privacy, and read-only filesystem behavior.
+ * [OUTPUT]: Specifies the sole installed-Skill listing command's default-Workspace behavior, path-rich Human output, Codex usage on External inventory, lock-backed External Adoption hints, mode-free External inventory, explicit-project privacy, and read-only Skill filesystem behavior.
  * [POS]: Serves as command-level coverage for Library discovery outside Repository-managed coordinates.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,14 +26,18 @@ func TestInventoryReportsExternalUserSkillWithoutClaimingIt(t *testing.T) {
 	target := filepath.Join(agentHome, "skills", "external-demo")
 	require.NoError(t, os.MkdirAll(target, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
+	rollout := filepath.Join(home, ".codex", "sessions", "2026", "08", "session.jsonl")
+	require.NoError(t, os.MkdirAll(filepath.Dir(rollout), 0o755))
+	require.NoError(t, os.WriteFile(rollout, []byte(`{"payload":"<skill>\n<name>external-demo</name>\n</skill>"}`+"\n"), 0o600))
 
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"list", "--global", "--output", "json"}, &output, &output), output.String())
+	require.NoError(t, Execute([]string{"list", "--global", "--usage", "--output", "json"}, &output, &output), output.String())
 	var report inventory.Report
 	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
 	require.Len(t, report.Entries, 1)
 	require.Equal(t, inventory.ProvenanceExternal, report.Entries[0].Provenance)
 	require.Equal(t, target, report.Entries[0].Targets[0].Path)
+	require.Equal(t, inventory.Usage{}, report.Entries[0].Usage)
 	require.NotContains(t, output.String(), `"mode"`)
 	require.FileExists(t, filepath.Join(target, "SKILL.md"))
 }

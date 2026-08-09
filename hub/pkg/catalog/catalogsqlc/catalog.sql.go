@@ -416,10 +416,10 @@ ranked AS (
                 ELSE similarity(mvs.description,input.description)::double precision END AS match_score,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
-                        CASE WHEN input.description='' THEN 0::double precision
-                             ELSE similarity(mvs.description,input.description)::double precision END DESC,
-                        CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
+                ORDER BY CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN 0 ELSE 1 END,
+                         CASE WHEN input.description='' THEN 0::double precision
+                              ELSE similarity(mvs.description,input.description)::double precision END DESC,
+                         CASE WHEN input.package_path<>'' AND m.path=input.package_path THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
@@ -1120,6 +1120,45 @@ func (q *Queries) PackagesDueForSourceMetadataRefresh(ctx context.Context, arg P
 	items := []PackagesDueForSourceMetadataRefreshRow{}
 	for rows.Next() {
 		var i PackagesDueForSourceMetadataRefreshRow
+		if err := rows.Scan(&i.ID, &i.Path); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const packagesForLatestSync = `-- name: PackagesForLatestSync :many
+SELECT id, path
+FROM packages
+WHERE current_version_id IS NOT NULL
+  AND id > $1
+ORDER BY id
+LIMIT $2
+`
+
+type PackagesForLatestSyncParams struct {
+	AfterID   int64 `json:"after_id"`
+	PageLimit int32 `json:"page_limit"`
+}
+
+type PackagesForLatestSyncRow struct {
+	ID   int64  `json:"id"`
+	Path string `json:"path"`
+}
+
+func (q *Queries) PackagesForLatestSync(ctx context.Context, arg PackagesForLatestSyncParams) ([]PackagesForLatestSyncRow, error) {
+	rows, err := q.db.Query(ctx, packagesForLatestSync, arg.AfterID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PackagesForLatestSyncRow{}
+	for rows.Next() {
+		var i PackagesForLatestSyncRow
 		if err := rows.Scan(&i.ID, &i.Path); err != nil {
 			return nil, err
 		}
@@ -2081,7 +2120,7 @@ type UpsertPackageParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, due metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Package, direct current and effective/equivalent Package Version resolution, publication, exact-path Skill history, one-query localized Card reads, Package-hint-prioritized and description-ranked exact-name candidate lookup, current-Package and due-metadata keyset scans, batch current-Package update projection, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertPackage(ctx context.Context, arg UpsertPackageParams) (Package, error) {

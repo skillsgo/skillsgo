@@ -101,7 +101,7 @@ The `~/.skillsgo` directory that owns user-level configuration, the protected Gl
 _Avoid_: Global Declaration Root, Agent configuration root
 
 **SkillsGo User Configuration**:
-The strict, versioned `~/.skillsgo/config.yaml` document that is the single extensible home for user-level SkillsGo settings. Its `projects` section is a minimal sorted sequence of canonical absolute Workspace paths used by the App and cross-Scope CLI operations; display names and UI identity are derived from those paths rather than persisted separately. The CLI is the only persistence owner; product callers use typed CLI commands rather than editing the file directly.
+The strict, versioned `~/.skillsgo/config.yaml` document that is the single extensible home for user-level SkillsGo settings. Its `projects` section is a minimal sorted sequence of canonical absolute Workspace paths used by the App and cross-Scope CLI operations; display names and UI identity are derived from those paths rather than persisted separately. Before its one-time project-bootstrap marker is set, one explicit CLI bootstrap command may seed existing Workspaces from bounded recent supported-Agent registries and session metadata; afterward only explicit add and remove operations change the sequence, even when it becomes empty. The CLI is the only persistence owner; product callers use typed CLI commands rather than editing the file directly.
 _Avoid_: Managed Scope registry file, App preferences, Workspace manifest, configuration fragments
 
 **Batch Adoption**:

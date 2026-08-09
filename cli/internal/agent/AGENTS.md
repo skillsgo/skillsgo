@@ -6,9 +6,12 @@
 - `catalog.go`: defines the complete supported Agent catalog, resolves platform-specific managed and read-only discovery roots, and exposes the Global root used by shared canonical Skill storage.
 - `catalog_test.go`: specifies catalog parity, managed/discovery root separation, special detection, universal visibility, and stable machine-report fields.
 - `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including Global Skill loading paths.
+- `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, and WorkBuddy registries or metadata records.
+- `projects_sqlite.go`: queries schema-guarded OpenCode, Kilo Code, Goose, and WorkBuddy project/session metadata through read-only SQLite connections.
+- `projects_test.go`: specifies complete-window streaming behavior for large supported-Agent project registries.
 
 ## Architectural Boundary
 
-This module owns Agent definitions, supported scopes, managed/discovery path resolution, discovery verification status, and read-only installation detection. Discovery roots describe visibility and never authorize installation writes; unverified managed-path fallbacks must not be presented as confirmed Agent behavior. The module must not serialize CLI envelopes, mutate installation targets, read localized human output, or depend on App presentation concepts.
+This module owns Agent definitions, supported scopes, managed/discovery path resolution, discovery verification status, read-only installation detection, and bounded local Agent project evidence. Discovery roots describe visibility and never authorize installation writes; unverified managed-path fallbacks must not be presented as confirmed Agent behavior. The module must not serialize CLI envelopes, mutate installation targets, read localized human output, or depend on App presentation concepts.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

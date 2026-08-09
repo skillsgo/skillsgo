@@ -5,7 +5,7 @@
 
 - `id.go`, `id_test.go`: adapt the shared Protocol public Repository ID grammar to Hub source-resolution call sites and specify Hub-supported repository constraints.
 - `manifest.go`, `manifest_test.go`: adapt shared Protocol `SKILL.md` extraction and validation to Hub source publication.
-- `fetcher.go`: defines source resolution, complete Repository Artifact snapshots, ordered validated Skill membership, explicit leased Backfill sessions, and upstream version-listing contracts.
+- `fetcher.go`: defines lightweight immutable source resolution, complete Repository Artifact snapshots, ordered validated Skill membership, explicit leased Backfill sessions, and upstream version-listing contracts.
 - `source_failure.go`, `source_failure_test.go`: define and verify stable non-sensitive Source Failure Codes shared with Package History Backfill without exposing Git transport details.
 - `discovery.go`, `discovery_test.go`: implement and specify the pure skills.sh-compatible convention-first candidate tiers, bounded recursive fallback, and minimal accepted Skill directory unions with optional authored root README preservation.
 - `plugin_manifest.go`, `plugin_manifest_test.go`: preserve authored root plugin identity, reject conflicting Agent namespaces, and deterministically complete missing Codex, Claude, and Cursor manifests from Package identity and accepted Skill paths.

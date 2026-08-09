@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, static Git Artifact repositories, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, dumb-HTTP Git Artifact reads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed current Package Publication reads, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, dumb-HTTP Git Artifact reads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed current Package Publication reads, user-triggered Package update checks, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -352,6 +352,39 @@ func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (jso
 
 func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
 	return c.Discover(ctx, "search", "skillsgo-settings-probe", 0, 1)
+}
+
+func (c *Client) CheckPackageUpdate(ctx context.Context, packagePath string) (json.RawMessage, error) {
+	requestDocument := protocolapi.PackageUpdateCheckRequest{SchemaVersion: protocolapi.SchemaVersion, PackagePath: packagePath}
+	if !requestDocument.Valid() {
+		return nil, fmt.Errorf("invalid canonical Package Path %q", packagePath)
+	}
+	requestBody, err := json.Marshal(requestDocument)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/packages/update-checks", bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := c.http.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Hub: %w", err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, 4<<20))
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
+	}
+	var result protocolapi.PackageUpdateCheckResult
+	if json.Unmarshal(body, &result) != nil || !result.Valid() || result.PackagePath != packagePath {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Package update-check response")}
+	}
+	return json.RawMessage(body), nil
 }
 
 func (c *Client) CurrentPackages(ctx context.Context, packagePaths []string) ([]CurrentPackage, error) {

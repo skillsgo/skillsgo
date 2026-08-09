@@ -1,5 +1,5 @@
 # [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, GitHub Releases, SBOM generation, and artifact attestations.
-# [OUTPUT]: Publishes five standalone CLI archives, SBOMs, checksums, an unsigned provider-neutral CDN Manifest payload, attestations, and one immutable GitHub Release.
+# [OUTPUT]: Publishes five standalone CLI archives, npm packages, a Homebrew Formula, SBOMs, checksums, an unsigned provider-neutral CDN Manifest payload, attestations, and one immutable GitHub Release.
 # [POS]: Serves as the public verify-build-assemble control plane; an embedding publisher owns Manifest signing, immutable hosting, read-back, and stable-pointer publication.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: CLI Release
@@ -195,6 +195,11 @@ jobs:
           go-version: '1.26.5'
           cache-dependency-path: cli/go.sum
 
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+
       - name: Download platform releases
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -214,12 +219,45 @@ jobs:
             --manifest "${GITHUB_WORKSPACE}/release-metadata/manifest.json" \
             --checksums "${GITHUB_WORKSPACE}/release-metadata/checksums.txt"
 
+      - name: Assemble npm packages and Homebrew Formula
+        shell: bash
+        run: |
+          node cli/npm/assemble.mjs \
+            --version "${RELEASE_VERSION}" \
+            --artifacts "${GITHUB_WORKSPACE}/release-assets" \
+            --output "${GITHUB_WORKSPACE}/npm-packages"
+          node scripts/generate-homebrew-formula.mjs \
+            --version "${RELEASE_VERSION}" \
+            --artifacts "${GITHUB_WORKSPACE}/release-assets" \
+            --output "${GITHUB_WORKSPACE}/homebrew/Formula/skillsgo.rb"
+          cp npm-packages/*.tgz release-metadata/
+          cp homebrew/Formula/skillsgo.rb release-metadata/skillsgo.rb
+          rm -rf package-manager-outputs
+          mkdir -p package-manager-outputs
+          cp npm-packages/*.tgz package-manager-outputs/
+          cp homebrew/Formula/skillsgo.rb package-manager-outputs/skillsgo.rb
+
+      - name: Upload package-manager outputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cli-package-manager-outputs
+          path: package-manager-outputs/*
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Attest release metadata
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:
           subject-path: |
             release-metadata/checksums.txt
             release-metadata/manifest.json
+
+      - name: Attest package-manager outputs
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            npm-packages/*.tgz
+            homebrew/Formula/skillsgo.rb
 
       - name: Publish immutable GitHub Release
         env:
@@ -235,3 +273,75 @@ jobs:
             --verify-tag \
             --title "SkillsGo CLI ${RELEASE_VERSION}" \
             --generate-notes
+
+  publish-npm:
+    name: Publish npm packages
+    if: github.event_name == 'push' && vars.NPM_PUBLISH_ENABLED == 'true'
+    needs: [verify, assemble]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Download package-manager outputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: cli-package-manager-outputs
+          path: package-manager-outputs
+
+      - name: Publish platform packages before the launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          main_package="${GITHUB_WORKSPACE}/package-manager-outputs/skillsgo-${RELEASE_VERSION#v}.tgz"
+          for package in "${GITHUB_WORKSPACE}"/package-manager-outputs/skillsgo-*.tgz; do
+            if [[ "${package}" != "${main_package}" ]]; then
+              npm publish "${package}" --access public
+            fi
+          done
+          npm publish "${main_package}" --access public
+
+  publish-homebrew:
+    name: Publish Homebrew Formula
+    if: github.event_name == 'push' && vars.HOMEBREW_PUBLISH_ENABLED == 'true'
+    needs: [verify, assemble]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      HOMEBREW_TAP_REPOSITORY: ${{ vars.HOMEBREW_TAP_REPOSITORY || 'skillsgo/homebrew-skillsgo' }}
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - name: Download package-manager outputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: cli-package-manager-outputs
+          path: package-manager-outputs
+
+      - name: Publish Formula to the Homebrew tap
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPOSITORY}.git" tap
+          mkdir -p tap/Formula
+          cp package-manager-outputs/skillsgo.rb tap/Formula/skillsgo.rb
+          git -C tap config user.name "github-actions[bot]"
+          git -C tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C tap add Formula/skillsgo.rb
+          if git -C tap diff --cached --quiet; then
+            echo "Formula is already current."
+            exit 0
+          fi
+          git -C tap commit -m "skillsgo ${RELEASE_VERSION}"
+          git -C tap push origin HEAD

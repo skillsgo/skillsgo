@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary user homes, real Workspace directories, and the public user configuration Store API.
- * [OUTPUT]: Specifies strict YAML persistence, canonical idempotent project registration, deterministic listing, and non-destructive removal.
+ * [OUTPUT]: Specifies strict YAML persistence, canonical idempotent project registration, one-time project bootstrap, deterministic listing, and non-destructive removal.
  * [POS]: Serves as persistence contract coverage for the CLI-owned general user configuration document.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,4 +56,25 @@ func TestStoreRejectsUnknownConfigurationKeys(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte("schemaVersion: 1\nprojects: []\nunknown: true\n"), 0o600))
 	_, err := (Store{Home: home}).ListProjects()
 	require.ErrorContains(t, err, "invalid SkillsGo configuration")
+}
+
+func TestStoreBootstrapProjectsPersistsItsMarkerAndRemainsEmpty(t *testing.T) {
+	home := t.TempDir()
+	discovered := filepath.Join(home, "work", "discovered")
+	require.NoError(t, os.MkdirAll(discovered, 0o700))
+	store := Store{Home: home}
+
+	projects, err := store.BootstrapProjects([]string{discovered})
+	require.NoError(t, err)
+	require.Len(t, projects, 1)
+	removed, err := store.RemoveProject(projects[0].Root)
+	require.NoError(t, err)
+	require.True(t, removed)
+	projects, err = store.BootstrapProjects([]string{discovered})
+	require.NoError(t, err)
+	require.Empty(t, projects)
+
+	data, err := os.ReadFile(filepath.Join(home, ".skillsgo", "config.yaml"))
+	require.NoError(t, err)
+	require.Contains(t, string(data), "projectsBootstrapped: true")
 }

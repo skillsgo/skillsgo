@@ -73,6 +73,18 @@ var exampleCurrentPackagesResponse = protocolapi.CurrentPackagesResponse{
 	}},
 }
 
+var examplePackageUpdateCheckRequest = protocolapi.PackageUpdateCheckRequest{
+	SchemaVersion: protocolapi.SchemaVersion,
+	PackagePath:   examplePackagePath,
+}
+
+var examplePackageUpdateCheckResult = protocolapi.PackageUpdateCheckResult{
+	SchemaVersion: protocolapi.SchemaVersion,
+	PackagePath:   examplePackagePath,
+	Status:        protocolapi.PackageUpdateUpToDate,
+	Version:       exampleVersion,
+}
+
 var examplePackageVersions = protocolapi.PackageVersionsResponse{
 	Versions: []string{"v1.0.0", exampleVersion},
 }

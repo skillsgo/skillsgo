@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, business/extension-schema-fixed pgx pooling, versioned Atlas migrations, canonical Package membership, and SHA-256 description/document digests.
- * [OUTPUT]: Provides Package/Version/Skill persistence, content-equivalent observed Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, durable translation-provider admission, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, server-ranked exact-name candidate confidence, ID-keyset due metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
+ * [OUTPUT]: Provides Package/Version/Skill persistence, exact observed and content-equivalent Version resolution, direct current-Package Version lookup, independently constructible zero-minimum PostgreSQL pools, digest-addressed global localization state with terminal-or-cooldown failure recovery, durable translation-provider admission, immutable publication with transactionally recomputed stable/prerelease/pseudo effective current selection after every observed-Version write, one-query localized Card read models, server-ranked exact-name candidate confidence, ID-keyset current-Package and due-metadata selection, ordered current-Package updates, Package Info, shared pgx transactions, and source metadata state.
  * [POS]: Serves as the Hub identity, search, and localization-index boundary while content-addressed Markdown bytes, Package artifacts, and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -691,6 +691,26 @@ func (c *Catalog) PackageVersionByCoordinate(ctx context.Context, packagePath, v
 	}, true, nil
 }
 
+// ObservedPackageVersionByCoordinate returns the exact immutable source
+// identity, including for an artifact-free equivalent observed Version.
+func (c *Catalog) ObservedPackageVersionByCoordinate(ctx context.Context, packagePath, version string) (PackageVersion, bool, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return PackageVersion{}, false, fmt.Errorf("invalid canonical Package ID %q", packagePath)
+	}
+	stored, err := c.queries.ObservedPackageVersion(ctx, catalogsqlc.ObservedPackageVersionParams{PackagePath: packagePath, Version: version})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PackageVersion{}, false, nil
+	}
+	if err != nil {
+		return PackageVersion{}, false, err
+	}
+	return PackageVersion{
+		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
+		ContentSum: stored.ContentSum, EquivalentVersion: textValue(stored.EquivalentVersion), Sum: textValue(stored.Sum), PackageSizeBytes: stored.PackageSizeBytes, CommitTime: stored.CommitTime,
+	}, true, nil
+}
+
 type SearchSkill struct {
 	Skill
 	MatchScore float64
@@ -766,12 +786,12 @@ func (c *Catalog) CurrentPackageVersion(ctx context.Context, packagePath string)
 // PackagesDueForSourceMetadataRefresh returns one stable keyset page of
 // discovery-visible Packages whose provider metadata is missing or stale and
 // whose retry window no longer blocks work.
-type DuePackage struct {
+type PackageCursor struct {
 	ID   int64
 	Path string
 }
 
-func (c *Catalog) PackagesDueForSourceMetadataRefresh(ctx context.Context, sourceHosts []string, staleBefore, now time.Time, afterID int64, limit int) ([]DuePackage, error) {
+func (c *Catalog) PackagesDueForSourceMetadataRefresh(ctx context.Context, sourceHosts []string, staleBefore, now time.Time, afterID int64, limit int) ([]PackageCursor, error) {
 	if len(sourceHosts) == 0 || limit < 1 {
 		return nil, nil
 	}
@@ -781,9 +801,26 @@ func (c *Catalog) PackagesDueForSourceMetadataRefresh(ctx context.Context, sourc
 	if err != nil {
 		return nil, err
 	}
-	result := make([]DuePackage, 0, len(rows))
+	result := make([]PackageCursor, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, DuePackage{ID: row.ID, Path: row.Path})
+		result = append(result, PackageCursor{ID: row.ID, Path: row.Path})
+	}
+	return result, nil
+}
+
+// PackagesForLatestSync returns one stable keyset page of Packages that have
+// at least one effective publication and are therefore visible to clients.
+func (c *Catalog) PackagesForLatestSync(ctx context.Context, afterID int64, limit int) ([]PackageCursor, error) {
+	if limit < 1 {
+		return nil, nil
+	}
+	rows, err := c.queries.PackagesForLatestSync(ctx, catalogsqlc.PackagesForLatestSyncParams{AfterID: afterID, PageLimit: int32(limit)})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]PackageCursor, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, PackageCursor{ID: row.ID, Path: row.Path})
 	}
 	return result, nil
 }

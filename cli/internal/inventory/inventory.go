@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, and supported skills.sh lock records.
- * [OUTPUT]: Provides backward-compatible inventory v7 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, and Discovery-Root-derived visibility.
+ * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, and local 45/90-day Skill usage totals.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,7 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
 
-const SchemaVersion = 7
+const SchemaVersion = 8
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -60,6 +60,12 @@ type Entry struct {
 	Targets             []Target     `json:"targets"`
 	Visibility          []Visibility `json:"visibility"`
 	AdoptionPackagePath string       `json:"adoptionPackagePath,omitempty"`
+	Usage               Usage        `json:"usage"`
+}
+
+type Usage struct {
+	Hits45Days int `json:"hits45Days"`
+	Hits90Days int `json:"hits90Days"`
 }
 
 type Visibility struct {
@@ -87,6 +93,7 @@ type Options struct {
 	Context       context.Context
 	Packages      *packageprovider.Provider
 	VerifyContent bool
+	SkillUsage    map[string]Usage
 }
 
 func Build(options Options) (Report, error) {
@@ -135,6 +142,7 @@ func Build(options Options) (Report, error) {
 	)
 	addExternalAdoptionPackageHints(entries, home)
 	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
+	applyCodexUsage(entries, options.SkillUsage)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -174,6 +182,34 @@ func Build(options Options) (Report, error) {
 		return report.Entries[i].InventoryKey < report.Entries[j].InventoryKey
 	})
 	return report, nil
+}
+
+func applyCodexUsage(entries map[string]*Entry, usage map[string]Usage) {
+	codexEntriesByName := map[string][]*Entry{}
+	for _, entry := range entries {
+		if entryVisibleToAgent(entry, "codex") {
+			codexEntriesByName[entry.Name] = append(codexEntriesByName[entry.Name], entry)
+		}
+	}
+	for name, matching := range codexEntriesByName {
+		if len(matching) == 1 {
+			matching[0].Usage = usage[name]
+		}
+	}
+}
+
+func entryVisibleToAgent(entry *Entry, agentID string) bool {
+	for _, installed := range entry.Agents {
+		if installed == agentID {
+			return true
+		}
+	}
+	for _, visibility := range entry.Visibility {
+		if visibility.Agent == agentID {
+			return true
+		}
+	}
+	return false
 }
 
 func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeGlobal bool, projectRoots []string) {

@@ -19,11 +19,12 @@
 - `0015-make-package-updates-scope-aware.md`: makes `Scope × Package Path` the update target, unifies preview and execution under `skillsgo update`, and replaces Skill-level availability checks with Package-level Hub reads.
 - `0016-distribute-package-artifacts-as-static-git-repositories.md`: proposes replacing immutable per-version ZIPs with Hub-authored bare Git Artifact Repositories distributed from Cloudflare-backed R2 over dumb HTTP.
 - `0017-rebuild-disposable-package-caches-and-materialize-scope-trees.md`: makes exact metadata/Git state disposable read-through cache, separates Global declarations under `~/.agents` from the Global Package Tree under the SkillsGo State Root, and preserves complete Scope Trees plus protected platform-native member links.
-- `0018-use-a-long-lived-cli-server-for-the-app.md`: keeps one sequential NDJSON CLI process behind the App so Go HTTP connections survive across operations, with explicit crash recovery and non-replay semantics.
+- `0018-use-a-long-lived-cli-server-for-the-app.md`: keeps one bounded-read/exclusive-write NDJSON CLI process behind the App so Go HTTP connections survive across operations, with serialized response frames, explicit crash recovery, and non-replay semantics.
 - `0019-publish-conventional-skill-directory-subtrees.md`: adopts skills.sh-compatible convention-first discovery and limits each filtered Package Artifact to accepted self-contained Skill directory subtrees plus applicable plugin manifests.
 - `0020-publish-only-package-content-transitions.md`: publishes only filtered Package content transitions while retaining duplicate upstream revisions as exact, artifact-free equivalent Versions.
 - `0021-report-package-installs-as-batch-events.md`: reports one Package transaction as one best-effort event with embedded Skill facts, CLI version, and optional App version.
 - `0022-publish-authenticated-standalone-cli-releases.md`: establishes independent CLI tags, exact cross-platform archives, signed CDN Manifests, fixed update trust, and check-only source-aware self-update behavior.
+- `0023-bootstrap-projects-from-agent-sessions.md`: seeds an empty CLI-owned project registry from bounded local supported-Agent registries and session metadata before the App loads Added Projects.
 
 ## Architectural Boundary
 

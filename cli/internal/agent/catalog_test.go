@@ -213,6 +213,15 @@ func TestVerifiedPriorityAgentsExposeOnlyDocumentedCompatibilityRoots(t *testing
 	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
 
+	codexProject, ok := catalog.SkillRoots("codex", ScopeProject, projectRoot)
+	require.True(t, ok)
+	require.Equal(t, filepath.Join(projectRoot, ".agents", "skills"), codexProject.ManagedRoot)
+	require.Equal(t, []string{
+		filepath.Join(projectRoot, ".agents", "skills"),
+		filepath.Join(projectRoot, ".codex", "skills"),
+	}, codexProject.DiscoveryRoots)
+	require.Equal(t, DiscoveryVerified, codexProject.Verification)
+
 	cursorUser, ok := catalog.SkillRoots("cursor", ScopeGlobal, "")
 	require.True(t, ok)
 	require.Equal(t, []string{
@@ -267,6 +276,57 @@ func TestProjectSkillRootsAreResolvedWithoutChangingManagedTarget(t *testing.T) 
 	expected := filepath.Join(projectRoot, ".claude", "skills")
 	require.Equal(t, expected, roots.ManagedRoot)
 	require.Equal(t, []string{expected}, roots.DiscoveryRoots)
+}
+
+func TestSourceVerifiedAgentsExposeNativeAndCompatibleDiscoveryRoots(t *testing.T) {
+	home := filepath.Join(string(filepath.Separator), "home", "user")
+	config := filepath.Join(home, ".config")
+	project := filepath.Join(home, "project")
+	catalog := NewCatalog(Paths{Home: home, ConfigHome: config, CWD: project})
+
+	tests := []struct {
+		id           string
+		globalRoots  []string
+		projectRoots []string
+	}{
+		{"astrbot", []string{filepath.Join(home, ".astrbot", "data", "skills")}, []string{filepath.Join(project, "data", "skills"), filepath.Join(project, "skills")}},
+		{"crush", []string{filepath.Join(config, "crush", "skills"), filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}, []string{filepath.Join(project, ".crush", "skills"), filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".claude", "skills")}},
+		{"gemini-cli", []string{filepath.Join(home, ".gemini", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".gemini", "skills")}},
+		{"kimi-code-cli", []string{filepath.Join(home, ".agents", "skills"), filepath.Join(config, "agents", "skills"), filepath.Join(home, ".kimi", "skills"), filepath.Join(home, ".claude", "skills"), filepath.Join(home, ".codex", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".kimi", "skills"), filepath.Join(project, ".claude", "skills"), filepath.Join(project, ".codex", "skills")}},
+		{"pi", []string{filepath.Join(home, ".pi", "agent", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".pi", "skills"), filepath.Join(project, ".agents", "skills")}},
+		{"qwen-code", []string{filepath.Join(home, ".qwen", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".qwen", "skills"), filepath.Join(project, ".agents", "skills")}},
+		{"goose", []string{filepath.Join(config, "goose", "skills"), filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}, []string{filepath.Join(project, ".goose", "skills"), filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".claude", "skills")}},
+		{"cline", []string{filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".cline", "skills")}, []string{filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".cline", "skills"), filepath.Join(project, ".clinerules", "skills"), filepath.Join(project, ".claude", "skills")}},
+		{"kilo", []string{filepath.Join(home, ".kilocode", "skills"), filepath.Join(home, ".kilo", "skills"), filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}, []string{filepath.Join(project, ".kilocode", "skills"), filepath.Join(project, ".kilo", "skills"), filepath.Join(project, ".agents", "skills"), filepath.Join(project, ".claude", "skills")}},
+		{"roo", []string{filepath.Join(home, ".roo", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".roo", "skills"), filepath.Join(project, ".agents", "skills")}},
+		{"mistral-vibe", []string{filepath.Join(home, ".vibe", "skills"), filepath.Join(home, ".agents", "skills")}, []string{filepath.Join(project, ".vibe", "skills"), filepath.Join(project, ".agents", "skills")}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.id, func(t *testing.T) {
+			global, ok := catalog.SkillRoots(test.id, ScopeGlobal, "")
+			require.True(t, ok)
+			require.Equal(t, DiscoveryVerified, global.Verification)
+			require.Equal(t, test.globalRoots, global.DiscoveryRoots)
+
+			projectRoots, ok := catalog.SkillRoots(test.id, ScopeProject, project)
+			require.True(t, ok)
+			require.Equal(t, DiscoveryVerified, projectRoots.Verification)
+			require.Equal(t, test.projectRoots, projectRoots.DiscoveryRoots)
+		})
+	}
+
+	for _, id := range []string{"aider-desk"} {
+		global, ok := catalog.SkillRoots(id, ScopeGlobal, "")
+		require.True(t, ok)
+		require.Equal(t, DiscoveryVerified, global.Verification)
+		require.Equal(t, []string{global.ManagedRoot}, global.DiscoveryRoots)
+
+		projectRoots, ok := catalog.SkillRoots(id, ScopeProject, project)
+		require.True(t, ok)
+		require.Equal(t, DiscoveryVerified, projectRoots.Verification)
+		require.Equal(t, []string{projectRoots.ManagedRoot}, projectRoots.DiscoveryRoots)
+	}
 }
 
 func TestEverySupportedScopeDefaultsToDiscoveringItsManagedRoot(t *testing.T) {

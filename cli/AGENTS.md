@@ -33,14 +33,15 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `osv-scanner.toml` | Evidence-backed exceptions for unfixable advisories whose vulnerable package is absent from the CLI build graph. |
 | `internal/buildinfo/` | Immutable linker-injected CLI product, App bundle, distribution, commit, and build-time identity. |
 | `bin/skillsgo` | Ignored local development binary produced by `make build`. |
-| `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
+| `internal/agent/` | Supported Agent definitions, detection, installation locations, and bounded local Agent project evidence. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |
 | `internal/inventory/` | Package-managed and External Library reconciliation across YAML/Lock state, read-through exact metadata, Scope Package Trees, member Projections, optional content verification, and derived Agent visibility. |
+| `internal/skillusage/` | Read-only supported-Agent session evidence indexing through bounded independent-file concurrency, streaming, and fast JSON field traversal, plus disposable rolling usage aggregates for local Library presentation. |
 | `internal/managementplan/` | Exact-path External Remove planning, in-command state binding, and target-specific execution. |
 | `internal/project/` | Strict Package dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
-| `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, currently including explicit Managed Workspace projects shared by CLI cross-Scope operations and the App. |
+| `internal/config/` | Strict, atomic user-level `~/.skillsgo/config.yaml` ownership, including one-time Agent-session-bootstrapped and explicitly managed Workspace projects shared by CLI cross-Scope operations and the App. |
 | `internal/selfupdate/` | Signed CDN Manifest verification and installation-source-aware CLI update checks. |
 | `internal/releasemanifest/` | Exact five-target CLI archive validation plus deterministic CDN Manifest and checksum assembly. |
 | `internal/packagemutation/` | Ordered local Package mutation commits spanning prepared Scope Tree/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
@@ -52,12 +53,14 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |
+| `npm/` | Unscoped `skillsgo` npm launcher and release-only platform package assembler for `npx skillsgo`. |
+| `homebrew/` | Homebrew distribution boundary and generated Formula publication contract. |
 
 ## Boundaries
 
 - The CLI is the only product boundary that mutates local skill installations.
 - Hub interaction must use the public SkillsGo protocol rather than server internals.
-- The CLI exposes stable machine-readable output and availability exit codes through both one-shot commands and the App's sequential CLI Server; human output and localized stderr are not integration contracts.
+- The CLI exposes stable machine-readable output and availability exit codes through both one-shot commands and the App's bounded-read/exclusive-write CLI Server; human output and localized stderr are not integration contracts.
 - Do not place Flutter UI state, layout, navigation, or visual policy in this workspace.
 - Preserve artifact integrity and deterministic restoration without introducing a dependency lock graph.
 

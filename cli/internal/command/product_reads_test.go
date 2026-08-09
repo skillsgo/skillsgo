@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
- * [OUTPUT]: Specifies App-facing keyword Find fallback, immutable-resolution-preserving explicit-source Find, canonical Package Version Skill detail, and grouped source-language Hub candidate reads through CLI-owned requests.
+ * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, Package update checks, and grouped Hub service reads.
+ * [OUTPUT]: Specifies App-facing keyword Find fallback, immutable-resolution-preserving explicit-source Find, canonical Package Version Skill detail, user-triggered Package update checks, and grouped source-language Hub candidate reads through CLI-owned requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package command
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -154,6 +155,34 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10}` ||
 		!strings.HasPrefix(requests[2], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)
+	}
+}
+
+func TestHubCheckUpdateUsesTheStableMachineContract(t *testing.T) {
+	var method, path, requestBody string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		method = request.Method
+		path = request.URL.Path
+		body, _ := io.ReadAll(request.Body)
+		requestBody = string(body)
+		writer.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(writer, `{"schemaVersion":1,"packagePath":"github.com/acme/skills","status":"up_to_date","version":"v1.1.0"}`)
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	err := Execute([]string{"hub", "check-update", "github.com/acme/skills", "--hub", server.URL, "--output", "json"}, &stdout, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if method != http.MethodPost || path != "/api/v1/packages/update-checks" {
+		t.Fatalf("unexpected request %s %s", method, path)
+	}
+	if requestBody != `{"schemaVersion":1,"packagePath":"github.com/acme/skills"}` {
+		t.Fatalf("unexpected request body %q", requestBody)
+	}
+	if strings.TrimSpace(stdout.String()) != `{"schemaVersion":1,"packagePath":"github.com/acme/skills","status":"up_to_date","version":"v1.1.0"}` {
+		t.Fatalf("unexpected machine output %q", stdout.String())
 	}
 }
 

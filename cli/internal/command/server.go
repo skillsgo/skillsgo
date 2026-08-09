@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on versioned NDJSON requests, command.ExecuteWithInput, and stable command exit-code classification.
- * [OUTPUT]: Provides a sequential long-lived CLI Server that returns one isolated machine response per request and remains available after request failures.
+ * [OUTPUT]: Provides a writer-preferring long-lived CLI Server with bounded concurrent reads, exclusive mutations, serialized response frames, and isolated machine responses.
  * [POS]: Serves as the reusable App process boundary above ordinary CLI command execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,13 +13,105 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 )
 
 const (
 	serverSchemaVersion         = 1
 	serverProtocolErrorExitCode = 64
 	serverMaxRequestBytes       = 16 * 1024 * 1024
+	serverMaxConcurrentReads    = 4
 )
+
+type serverExecuteFunc func([]string, io.Reader, io.Writer, io.Writer) error
+
+type serverEncoder struct {
+	mu      sync.Mutex
+	encoder *json.Encoder
+	err     error
+	failed  chan struct{}
+}
+
+func (e *serverEncoder) Encode(value any) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.err == nil {
+		e.err = e.encoder.Encode(value)
+		if e.err != nil {
+			close(e.failed)
+		}
+	}
+	return e.err
+}
+
+func (e *serverEncoder) Failed() <-chan struct{} { return e.failed }
+
+func (e *serverEncoder) Err() error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.err
+}
+
+type serverScheduler struct {
+	access sync.RWMutex
+	reads  chan struct{}
+	locale sync.RWMutex
+	lang   string
+}
+
+func newServerScheduler() *serverScheduler {
+	return &serverScheduler{
+		reads: make(chan struct{}, serverMaxConcurrentReads),
+		lang:  serverRequestLanguage(nil),
+	}
+}
+
+func (s *serverScheduler) run(arguments []string, action func()) {
+	release := s.acquire(arguments)
+	defer release()
+	action()
+}
+
+func (s *serverScheduler) acquire(arguments []string) func() {
+	language := serverRequestLanguage(arguments)
+	s.locale.RLock()
+	if s.lang == language {
+		return s.acquireAccess(arguments, s.locale.RUnlock)
+	}
+	s.locale.RUnlock()
+	s.locale.Lock()
+	s.lang = language
+	return s.acquireAccess(arguments, s.locale.Unlock)
+}
+
+func (s *serverScheduler) acquireAccess(arguments []string, releaseLocale func()) func() {
+	if serverRequestIsReadOnly(arguments) {
+		s.reads <- struct{}{}
+		s.access.RLock()
+		return func() {
+			s.access.RUnlock()
+			<-s.reads
+			releaseLocale()
+		}
+	}
+	s.access.Lock()
+	return func() {
+		s.access.Unlock()
+		releaseLocale()
+	}
+}
+
+func serverRequestLanguage(arguments []string) string {
+	for index, argument := range arguments {
+		if strings.HasPrefix(argument, "--lang=") {
+			return strings.TrimSpace(strings.TrimPrefix(argument, "--lang="))
+		}
+		if argument == "--lang" && index+1 < len(arguments) {
+			return strings.TrimSpace(arguments[index+1])
+		}
+	}
+	return "__environment_default__"
+}
 
 type serverRequest struct {
 	SchemaVersion int      `json:"schemaVersion"`
@@ -39,22 +131,69 @@ type serverResponse struct {
 }
 
 func Serve(input io.Reader, output io.Writer) error {
+	return serveWithExecutor(input, output, ExecuteWithInput)
+}
+
+func serveWithExecutor(input io.Reader, output io.Writer, execute serverExecuteFunc) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 64*1024), serverMaxRequestBytes)
-	encoder := json.NewEncoder(output)
-	for scanner.Scan() {
-		response := executeServerRequest(scanner.Bytes(), encoder)
-		if err := encoder.Encode(response); err != nil {
-			return fmt.Errorf("encode CLI Server response: %w", err)
+	encoder := &serverEncoder{encoder: json.NewEncoder(output), failed: make(chan struct{})}
+	scheduler := newServerScheduler()
+	documents := make(chan []byte)
+	scanFinished := make(chan error, 1)
+	go func() {
+		defer close(documents)
+		for scanner.Scan() {
+			select {
+			case documents <- bytes.Clone(scanner.Bytes()):
+			case <-encoder.Failed():
+				scanFinished <- nil
+				return
+			}
 		}
+		scanFinished <- scanner.Err()
+	}()
+	var requests sync.WaitGroup
+	var inputErr error
+accepting:
+	for {
+		var document []byte
+		select {
+		case <-encoder.Failed():
+			break accepting
+		case next, ok := <-documents:
+			if !ok {
+				inputErr = <-scanFinished
+				break accepting
+			}
+			document = next
+		}
+		var request serverRequest
+		_ = json.Unmarshal(document, &request)
+		release := scheduler.acquire(request.Arguments)
+		if encoder.Err() != nil {
+			release()
+			break accepting
+		}
+		requests.Add(1)
+		go func() {
+			defer requests.Done()
+			defer release()
+			response := executeServerRequest(document, encoder, execute)
+			_ = encoder.Encode(response)
+		}()
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("read CLI Server request: %w", err)
+	requests.Wait()
+	if err := encoder.Err(); err != nil {
+		return fmt.Errorf("encode CLI Server response: %w", err)
+	}
+	if inputErr != nil {
+		return fmt.Errorf("read CLI Server request: %w", inputErr)
 	}
 	return nil
 }
 
-func executeServerRequest(document []byte, encoder *json.Encoder) serverResponse {
+func executeServerRequest(document []byte, encoder *serverEncoder, execute serverExecuteFunc) serverResponse {
 	response := serverResponse{SchemaVersion: serverSchemaVersion, Type: "result"}
 	var request serverRequest
 	if err := json.Unmarshal(document, &request); err != nil {
@@ -70,7 +209,7 @@ func executeServerRequest(document []byte, encoder *json.Encoder) serverResponse
 	}
 	var stderr bytes.Buffer
 	stdout := &serverStdoutWriter{id: request.ID, stream: request.StreamStdout, encoder: encoder}
-	err := ExecuteWithInput(request.Arguments, strings.NewReader(request.Stdin), stdout, &stderr)
+	err := execute(request.Arguments, strings.NewReader(request.Stdin), stdout, &stderr)
 	if flushErr := stdout.Flush(); err == nil && flushErr != nil {
 		err = flushErr
 	}
@@ -89,10 +228,46 @@ func executeServerRequest(document []byte, encoder *json.Encoder) serverResponse
 type serverStdoutWriter struct {
 	id      string
 	stream  bool
-	encoder *json.Encoder
+	encoder *serverEncoder
 	all     bytes.Buffer
 	pending bytes.Buffer
 	err     error
+}
+
+func serverRequestIsReadOnly(arguments []string) bool {
+	command, child := serverCommandPath(arguments)
+	switch command {
+	case "version", "agents", "list", "verify", "why", "show", "find", "rankings", "hub", "self-update", "help", "completion":
+		return true
+	case "project":
+		return child == "list"
+	case "recovery":
+		return child == "list"
+	default:
+		return false
+	}
+}
+
+func serverCommandPath(arguments []string) (string, string) {
+	values := make([]string, 0, 2)
+	for index := 0; index < len(arguments) && len(values) < 2; index++ {
+		argument := arguments[index]
+		if argument == "--lang" || argument == "--ui" || argument == "--color" {
+			index++
+			continue
+		}
+		if strings.HasPrefix(argument, "-") {
+			continue
+		}
+		values = append(values, argument)
+	}
+	if len(values) == 0 {
+		return "", ""
+	}
+	if len(values) == 1 {
+		return values[0], ""
+	}
+	return values[0], values[1]
 }
 
 func (w *serverStdoutWriter) Write(value []byte) (int, error) {

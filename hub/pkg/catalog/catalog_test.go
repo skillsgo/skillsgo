@@ -431,7 +431,7 @@ func TestPostgresCatalogPackagesDueForSourceMetadataRefreshUsesStableIDCursorAnd
 	require.Equal(t, paths[0], first[0].Path)
 	second, err := c.PackagesDueForSourceMetadataRefresh(ctx, []string{"github.com"}, now.Add(-18*time.Hour), now, first[0].ID, 10)
 	require.NoError(t, err)
-	require.Equal(t, []DuePackage{{ID: second[0].ID, Path: paths[3]}}, second)
+	require.Equal(t, []PackageCursor{{ID: second[0].ID, Path: paths[3]}}, second)
 
 	_, err = c.pool.Exec(ctx, `
 INSERT INTO packages(source_host,source_path,path,created_at,updated_at)
