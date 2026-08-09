@@ -32,7 +32,9 @@ func (repositorySourceMetadataSweepArgs) JobTimeout() time.Duration {
 }
 
 type packageLatestSyncArgs struct {
-	PackagePath string `json:"package_path" river:"unique"`
+	PackagePath     string `json:"package_path" river:"unique"`
+	ExpectedVersion string `json:"expected_version,omitempty"`
+	ExpectedCommit  string `json:"expected_commit,omitempty"`
 }
 
 func (packageLatestSyncArgs) Kind() string              { return "package_latest_sync" }

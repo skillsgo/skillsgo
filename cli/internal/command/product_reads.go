@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, bounded file/stdin candidate input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides keyword and immutable-version-preserving explicit-source `find`, including best-effort cold Package publication before version-scoped reads, plus grouped Hub service commands including source-language `find-candidates` with Human-default and explicit JSON results.
+ * [OUTPUT]: Provides keyword and immutable-version-preserving explicit-source `find`, including best-effort cold Package publication before version-scoped reads, plus grouped Hub service commands for connectivity, user-triggered Package update checks, and source-language `find-candidates` with Human-default and explicit JSON results.
  * [POS]: Serves as the deep read-only product boundary that owns source normalization and hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -306,6 +306,49 @@ func newHubCommand() *cobra.Command {
 	}
 	check.Flags().String("hub", defaultHubURL(), "Hub origin")
 	check.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(check, newHubFindCandidatesCommand())
+	checkUpdate := &cobra.Command{
+		Use:     "check-update <Package>",
+		Short:   appi18n.Pick("Check a Package for updates", "检查 Package 更新"),
+		Args:    cobra.ExactArgs(1),
+		Example: "  skillsgo hub check-update github.com/owner/repo --output json",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			output, _ := cmd.Flags().GetString("output")
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
+			reference, err := source.Parse(args[0])
+			if err != nil {
+				return err
+			}
+			if reference.Version != "latest" {
+				return fmt.Errorf("Package update checks do not accept a Version selector")
+			}
+			hubURL, _ := cmd.Flags().GetString("hub")
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			document, err := client.CheckPackageUpdate(cmd.Context(), reference.PackagePath)
+			if err != nil {
+				return err
+			}
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
+			var result protocolapi.PackageUpdateCheckResult
+			if err := json.Unmarshal(document, &result); err != nil {
+				return err
+			}
+			if result.Status == protocolapi.PackageUpdateUpToDate {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), appi18n.Pick("Already up to date.", "已是最新。"))
+			} else {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), appi18n.Pick("Preparing %s...\n", "正在准备 %s…\n"), result.Version)
+			}
+			return err
+		},
+	}
+	checkUpdate.Flags().String("hub", defaultHubURL(), "Hub origin")
+	checkUpdate.Flags().String("output", "human", "output format: human or json")
+	root.AddCommand(check, checkUpdate, newHubFindCandidatesCommand())
 	return root
 }

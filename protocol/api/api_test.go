@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses representative complete and optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, Find wire documents, Package-level Sum, immutable Package size and Artifact identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
+ * [OUTPUT]: Specifies risk validation, Find and Package update-check wire documents, Package-level Sum, immutable Package size and Artifact identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -93,6 +93,26 @@ func TestCurrentPackagesJSONContract(t *testing.T) {
 	}
 	if strings.Contains(string(updateJSON), `"version":""`) {
 		t.Fatalf("empty current publications were not omitted: %s", updateJSON)
+	}
+}
+
+func TestPackageUpdateCheckContractValidatesCanonicalImmutableResults(t *testing.T) {
+	request := PackageUpdateCheckRequest{SchemaVersion: SchemaVersion, PackagePath: "github.com/o/r"}
+	if !request.Valid() {
+		t.Fatal("canonical Package update-check request was rejected")
+	}
+	result := PackageUpdateCheckResult{
+		SchemaVersion: SchemaVersion,
+		PackagePath:   request.PackagePath,
+		Status:        PackageUpdateUpdating,
+		Version:       "v1.2.0",
+	}
+	if !result.Valid() {
+		t.Fatal("immutable Package update-check result was rejected")
+	}
+	result.Version = "latest"
+	if result.Valid() {
+		t.Fatal("movable Package update-check result was accepted")
 	}
 }
 

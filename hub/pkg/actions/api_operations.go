@@ -19,7 +19,7 @@ import (
 func documentHubOperations(api huma.API, adminEnabled bool) {
 	api.OpenAPI().Tags = []*huma.Tag{
 		{Name: "skills", Description: "Find, hydrate, inspect, and check updates for Skills."},
-		{Name: "packages", Description: "Resolve Package revisions to metadata and read immutable Package Version resources."},
+		{Name: "packages", Description: "Resolve Package revisions, check for updates, and read immutable Package Version resources."},
 		{Name: "community", Description: "Record installation facts and read community ranking projections."},
 		{Name: "service", Description: "Deployment discovery, liveness, readiness, and build identity."},
 	}
@@ -70,6 +70,8 @@ func documentSkillOperations(api huma.API) {
 func documentPackageOperations(api huma.API) {
 	addJSONOperation(api, http.MethodPost, "/api/v1/packages/current", "getCurrentPackages", "Get current Package Publications", "packages",
 		schemaFor[protocolapi.CurrentPackagesRequest](api), exampleCurrentPackagesRequest, schemaFor[protocolapi.CurrentPackagesResponse](api), exampleCurrentPackagesResponse)
+	addJSONOperation(api, http.MethodPost, "/api/v1/packages/update-checks", "checkPackageUpdate", "Check a Package for updates", "packages",
+		schemaFor[protocolapi.PackageUpdateCheckRequest](api), examplePackageUpdateCheckRequest, schemaFor[protocolapi.PackageUpdateCheckResult](api), examplePackageUpdateCheckResult)
 	packagePath := pathParameter("packagePath", "Canonical Package Path.", examplePackagePath)
 	version := pathParameter("version", "Version or Go-compatible Version Query: canonical version, prefix, comparison, latest, branch, tag, or commit. Movable queries are resolved without caching.", "latest")
 	api.OpenAPI().AddOperation(&huma.Operation{

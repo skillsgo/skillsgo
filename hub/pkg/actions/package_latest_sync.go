@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on current Package keyset pages, exact observed-Version identity, source latest resolution, immutable Package materialization, and River periodic jobs.
- * [OUTPUT]: Provides leader-elected periodic dispatch and idempotent per-Package publication of only a newly resolved upstream latest Version.
- * [POS]: Serves as the automatic upstream synchronization boundary beside explicit Package History Backfill.
+ * [INPUT]: Depends on current Package keyset pages, exact observed-Version identity, source latest resolution, immutable Package materialization, and River periodic or user-triggered jobs.
+ * [OUTPUT]: Provides leader-elected periodic dispatch, user-triggered exact-Version enqueueing, and idempotent per-Package publication of only a newly resolved upstream latest Version.
+ * [POS]: Serves as the shared automatic and manual upstream synchronization boundary beside explicit Package History Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -52,14 +52,14 @@ func newPackageLatestSyncService(packageCatalog packageLatestSyncCatalog, tasks 
 }
 
 func (service *packageLatestSyncService) Register() error {
-	if service.interval <= 0 {
-		return nil
-	}
 	if service.catalog == nil || service.tasks == nil || service.resolver == nil || service.materializer == nil {
 		return fmt.Errorf("Package latest synchronization dependencies are required")
 	}
 	if err := taskqueue.Register(service.tasks, service.syncLatest); err != nil {
 		return err
+	}
+	if service.interval <= 0 {
+		return nil
 	}
 	if err := taskqueue.Register(service.tasks, func(ctx context.Context, _ packageLatestSyncSweepArgs) error {
 		return service.enqueueAll(ctx)
@@ -72,6 +72,43 @@ func (service *packageLatestSyncService) Register() error {
 		service.interval,
 		true,
 	)
+}
+
+func (service *packageLatestSyncService) CheckUpdate(ctx context.Context, packagePath string) (packageUpdateCheckResult, error) {
+	result := packageUpdateCheckResult{PackagePath: packagePath}
+	parsed, err := skill.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return result, fmt.Errorf("invalid canonical Package Path %q", packagePath)
+	}
+	resolved, err := service.resolveLatest(ctx, packageLatestSyncArgs{PackagePath: packagePath})
+	if err != nil {
+		return result, err
+	}
+	result.Version = resolved.Version
+	observed, found, err := service.catalog.ObservedPackageVersionByCoordinate(ctx, packagePath, resolved.Version)
+	if err != nil {
+		return result, err
+	}
+	if found {
+		if observed.CommitSHA != resolved.CommitSHA {
+			return result, fmt.Errorf(
+				"immutable Package Version conflict for %s@%s: published commit %s, upstream commit %s",
+				packagePath, resolved.Version, observed.CommitSHA, resolved.CommitSHA,
+			)
+		}
+		result.Status = packageUpdateCheckUpToDate
+		return result, nil
+	}
+	if service.tasks == nil {
+		return result, fmt.Errorf("Package update checking requires the task runtime")
+	}
+	if err := service.tasks.EnqueueAsync(ctx, packageLatestSyncArgs{
+		PackagePath: packagePath, ExpectedVersion: resolved.Version, ExpectedCommit: resolved.CommitSHA,
+	}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource}); err != nil {
+		return result, err
+	}
+	result.Status = packageUpdateCheckUpdating
+	return result, nil
 }
 
 func (service *packageLatestSyncService) enqueueAll(ctx context.Context) error {
@@ -99,12 +136,9 @@ func (service *packageLatestSyncService) syncLatest(ctx context.Context, args pa
 	if args.PackagePath == "" {
 		return fmt.Errorf("Package latest sync requires package_path")
 	}
-	resolved, err := service.resolver.Resolve(ctx, args.PackagePath, "latest")
+	resolved, err := service.resolveLatest(ctx, args)
 	if err != nil {
 		return err
-	}
-	if resolved == nil || resolved.Version == "" || resolved.CommitSHA == "" {
-		return fmt.Errorf("Repository source returned an invalid latest resolution for %s", args.PackagePath)
 	}
 	observed, found, err := service.catalog.ObservedPackageVersionByCoordinate(ctx, args.PackagePath, resolved.Version)
 	if err != nil {
@@ -124,4 +158,21 @@ func (service *packageLatestSyncService) syncLatest(ctx context.Context, args pa
 		return river.JobCancel(err)
 	}
 	return err
+}
+
+func (service *packageLatestSyncService) resolveLatest(ctx context.Context, args packageLatestSyncArgs) (*skill.Resolution, error) {
+	if args.ExpectedVersion != "" || args.ExpectedCommit != "" {
+		if args.ExpectedVersion == "" || args.ExpectedCommit == "" {
+			return nil, fmt.Errorf("Package latest sync expected Version and commit must be provided together")
+		}
+		return &skill.Resolution{Version: args.ExpectedVersion, CommitSHA: args.ExpectedCommit}, nil
+	}
+	resolved, err := service.resolver.Resolve(ctx, args.PackagePath, "latest")
+	if err != nil {
+		return nil, err
+	}
+	if resolved == nil || resolved.Version == "" || resolved.CommitSHA == "" {
+		return nil, fmt.Errorf("Repository source returned an invalid latest resolution for %s", args.PackagePath)
+	}
+	return resolved, nil
 }
