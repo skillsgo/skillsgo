@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J15 managed and External inventory.
+ * [OUTPUT]: Provides black-box coverage for the J15 inventory v8 managed and External contract.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -54,7 +54,7 @@ func TestJ15Inventory(t *testing.T) {
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
-	require.Equal(t, 7, report.SchemaVersion)
+	require.Equal(t, 8, report.SchemaVersion)
 	entries := make(map[string]struct {
 		PackagePath string
 		Provenance  string
