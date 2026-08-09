@@ -373,6 +373,12 @@ jobs:
           $feedLog = Join-Path $runtimeDir 'feed.log'
           $feedErrorLog = Join-Path $runtimeDir 'feed-error.log'
           $appLog = Join-Path $runtimeDir 'app.log'
+          $baselineVersion = ((Select-String -Path app/pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value)
+          if ($baselineVersion -notmatch '^(\d+)\.(\d+)\.(\d+)(?:-.+)?$') {
+            throw "Unsupported App version for update rehearsal: $baselineVersion"
+          }
+          $updateVersion = "$($Matches[1]).$($Matches[2]).$([int]$Matches[3] + 1)"
+          $expectedCliVersion = "skillsgo version $updateVersion"
           $server = $null
           $appProcess = $null
 
@@ -405,7 +411,7 @@ jobs:
             for ($attempt = 0; $attempt -lt 180; $attempt++) {
               if (Test-Path $cli) {
                 $cliVersion = (& $cli --version 2>$null | Out-String).Trim()
-                if ($cliVersion -eq 'skillsgo version 0.0.2') {
+                if ($cliVersion -eq $expectedCliVersion) {
                   $updated = $true
                   break
                 }
@@ -416,7 +422,7 @@ jobs:
               if (Test-Path $feedLog) { Get-Content $feedLog }
               if (Test-Path $feedErrorLog) { Get-Content $feedErrorLog }
               if (Test-Path $appLog) { Get-Content $appLog }
-              throw 'Timed out waiting for SkillsGo win-x64 to update to 0.0.2.'
+              throw "Timed out waiting for SkillsGo win-x64 to update to $updateVersion."
             }
             $restarted = $null
             for ($attempt = 0; $attempt -lt 20; $attempt++) {
@@ -429,7 +435,7 @@ jobs:
             if (-not $restarted) {
               throw 'Velopack replaced win-x64 but did not restart the updated App.'
             }
-            Write-Host 'Updated and restarted SkillsGo 0.0.1 -> 0.0.2 for win-x64.'
+            Write-Host "Updated and restarted SkillsGo $baselineVersion -> $updateVersion for win-x64."
           } finally {
             Remove-Item Env:SKILLSGO_APP_UPDATE_REHEARSAL_URL -ErrorAction SilentlyContinue
             if ($appProcess -and -not $appProcess.HasExited) {
