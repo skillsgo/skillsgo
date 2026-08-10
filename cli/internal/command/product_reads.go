@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, bounded file/stdin candidate input, the source coordinate parser, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides keyword and immutable-version-preserving explicit-source `find`, including best-effort cold Package publication before version-scoped reads, plus grouped Hub service commands for connectivity, user-triggered Package update checks, and source-language `find-candidates` with Human-default and explicit JSON results.
+ * [OUTPUT]: Provides keyword and immutable-version-preserving explicit-source `find`, including best-effort cold Package publication before version-scoped reads, plus grouped Hub service commands for connectivity, capability discovery, user-triggered Package update checks, and source-language `find-candidates` with Human-default and explicit JSON results.
  * [POS]: Serves as the deep read-only product boundary that owns source normalization and hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -278,6 +278,42 @@ func newHubFindCandidatesCommand() *cobra.Command {
 
 func newHubCommand() *cobra.Command {
 	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub check"}
+	info := &cobra.Command{
+		Use:     "info",
+		Short:   appi18n.Pick("Read Hub capabilities", "读取 Hub 能力"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo hub info --output json",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			output, _ := cmd.Flags().GetString("output")
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
+			hubURL, _ := cmd.Flags().GetString("hub")
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			document, err := client.HubInfo(cmd.Context())
+			if err != nil {
+				return err
+			}
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
+			var decoded protocolapi.HubInfo
+			if err := json.Unmarshal(document, &decoded); err != nil {
+				return err
+			}
+			if decoded.ImageProxyOrigin == "" {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), "Hub image proxy is not configured.")
+			} else {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Hub image proxy: %s\n", decoded.ImageProxyOrigin)
+			}
+			return err
+		},
+	}
+	info.Flags().String("hub", defaultHubURL(), "Hub origin")
+	info.Flags().String("output", "human", "output format: human or json")
 	check := &cobra.Command{
 		Use:     "check",
 		Short:   appi18n.Pick("Check Hub connectivity", "检查 Hub 连通性"),
@@ -349,6 +385,6 @@ func newHubCommand() *cobra.Command {
 	}
 	checkUpdate.Flags().String("hub", defaultHubURL(), "Hub origin")
 	checkUpdate.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(check, checkUpdate, newHubFindCandidatesCommand())
+	root.AddCommand(info, check, checkUpdate, newHubFindCandidatesCommand())
 	return root
 }

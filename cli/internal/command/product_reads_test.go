@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub, source aliases, and the public Execute seam for find, version-scoped detail, Package update checks, and grouped Hub service reads.
- * [OUTPUT]: Specifies App-facing keyword Find fallback, immutable-resolution-preserving explicit-source Find, canonical Package Version Skill detail, user-triggered Package update checks, and grouped source-language Hub candidate reads through CLI-owned requests.
+ * [OUTPUT]: Specifies App-facing keyword Find fallback, immutable-resolution-preserving explicit-source Find, canonical Package Version Skill detail, Hub capability discovery, user-triggered Package update checks, and grouped source-language Hub candidate reads through CLI-owned requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -182,6 +182,28 @@ func TestHubCheckUpdateUsesTheStableMachineContract(t *testing.T) {
 		t.Fatalf("unexpected request body %q", requestBody)
 	}
 	if strings.TrimSpace(stdout.String()) != `{"schemaVersion":1,"packagePath":"github.com/acme/skills","status":"up_to_date","version":"v1.1.0"}` {
+		t.Fatalf("unexpected machine output %q", stdout.String())
+	}
+}
+
+func TestHubInfoUsesTheStableMachineContract(t *testing.T) {
+	var path string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		path = request.URL.Path
+		writer.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(writer, `{"schemaVersion":1,"imageProxyOrigin":"https://images.skillsgo.ai"}`)
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	err := Execute([]string{"hub", "info", "--hub", server.URL, "--output", "json"}, &stdout, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "/api/v1/info" {
+		t.Fatalf("unexpected request path %q", path)
+	}
+	if strings.TrimSpace(stdout.String()) != `{"schemaVersion":1,"imageProxyOrigin":"https://images.skillsgo.ai"}` {
 		t.Fatalf("unexpected machine output %q", stdout.String())
 	}
 }

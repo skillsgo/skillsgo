@@ -15,7 +15,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 | Path | Responsibility |
 | --- | --- |
 | `artifact/` | Package Artifact entry validation, immutable limits, safe paths and internal symlinks, legacy normalized ZIP traversal, version-independent content Sums, and coordinate-bound Sums shared by producers and consumers. |
-| `api/` | Public CLI-to-Hub JSON DTOs, including canonical zero-based pagination, Package Version collections, single/batch Find documents with server-ranked candidate confidence, current Package Publications, user-triggered Package update checks, Package-level Sum, immutable Package size and Artifact Repository identity, canonical Package-member coordinates, Skill path metadata, schema constants, and statuses. |
+| `api/` | Public CLI-to-Hub JSON DTOs, including Hub capability discovery, canonical zero-based pagination, Package Version collections, single/batch Find documents with server-ranked candidate confidence, current Package Publications, user-triggered Package update checks, Package-level Sum, immutable Package size and Artifact Repository identity, canonical Package-member coordinates, Skill path metadata, schema constants, and statuses. |
 | `cloud/` | Legacy package path for public Hub community JSON DTOs, endpoint paths, Hub-card-plus-metric ranking vocabulary, and batch Package install-event semantics. The path name is not an architecture or deployment boundary. |
 | `cloudtest/` | Test-only Hub community HTTP mock and executable conformance verifier; never imported by production packages. |
 | `locale/` | Canonical presentation-language normalization and the supported content-language registry. |

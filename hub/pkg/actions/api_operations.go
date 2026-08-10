@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Huma OpenAPI models plus Hub action and shared Protocol DTOs.
- * [OUTPUT]: Projects every public Hub operation into typed OpenAPI schemas without registering runtime handlers.
+ * [OUTPUT]: Projects every public Hub operation, including capability discovery, into typed OpenAPI schemas without registering runtime handlers.
  * [POS]: Serves as the Huma documentation model parallel to the native Fiber execution model.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -94,6 +94,8 @@ func documentPackageOperations(api huma.API) {
 }
 
 func documentServiceOperations(api huma.API) {
+	addJSONOperation(api, http.MethodGet, "/api/v1/info", "getHubInfo", "Get Hub capabilities", "service", nil, nil,
+		schemaFor[protocolapi.HubInfo](api), map[string]any{"schemaVersion": protocolapi.SchemaVersion})
 	addJSONOperation(api, http.MethodGet, "/version", "getHubVersion", "Get Hub build version", "service", nil, nil,
 		schemaFor[build.Details](api), map[string]any{})
 	for _, operation := range []*huma.Operation{
