@@ -6,8 +6,8 @@
 - `catalog.go`: defines the complete supported Agent catalog, resolves platform-specific managed and read-only discovery roots, and exposes the Global root used by shared canonical Skill storage.
 - `catalog_test.go`: specifies catalog parity, managed/discovery root separation, platform-specific Agent homes, special detection, universal visibility, and stable machine-report fields.
 - `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including Global Skill loading paths.
-- `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, and WorkBuddy registries or metadata records.
-- `projects_sqlite.go`: queries schema-guarded OpenCode, Kilo Code, Goose, and WorkBuddy project/session metadata through read-only SQLite connections.
+- `projects.go`: extracts, canonicalizes, deduplicates, and activity-prioritizes recent Workspace paths from Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, WorkBuddy, Pi, Crush, Reasonix, OpenClaw, and Copilot registries or structured Session metadata.
+- `projects_sqlite.go`: queries schema-guarded OpenCode, Kilo Code, Goose, WorkBuddy, and Hermes project/session metadata through read-only SQLite connections.
 - `projects_test.go`: specifies complete-window streaming behavior for large supported-Agent project registries.
 
 ## Architectural Boundary

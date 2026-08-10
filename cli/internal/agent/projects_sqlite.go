@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on OpenCode, Kilo Code, Goose, and WorkBuddy platform data locations plus their schema-guarded read-only SQLite project/session records.
- * [OUTPUT]: Provides recent OpenCode, Kilo Code, Goose, and WorkBuddy Workspace observations without reading message content or mutating any database.
+ * [INPUT]: Depends on OpenCode, Kilo Code, Goose, WorkBuddy, and Hermes platform data locations plus their schema-guarded read-only SQLite project/session records.
+ * [OUTPUT]: Provides recent OpenCode, Kilo Code, Goose, WorkBuddy, and Hermes Workspace observations without reading message content or mutating any database.
  * [POS]: Serves as the SQLite-backed Agent project-evidence adapter used by project discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -88,6 +88,39 @@ func discoverWorkBuddyDatabase(path string, cutoff time.Time, observe func(strin
 			  AND s.deleted_at IS NULL
 			  AND COALESCE(s.is_playground, 0) = 0
 		  )`, []any{cutoff.UnixMilli()}, observe)
+}
+
+func discoverHermesDatabase(path string, cutoff time.Time, observe func(string, time.Time)) {
+	if _, err := os.Stat(path); err != nil {
+		return
+	}
+	uriPath := filepath.ToSlash(path)
+	if filepath.VolumeName(path) != "" && !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	dsn := (&url.URL{Scheme: "file", Path: uriPath, RawQuery: "mode=ro&_pragma=busy_timeout(250)"}).String()
+	database, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return
+	}
+	defer database.Close()
+	rows, err := database.Query(`
+		SELECT cwd, MAX(COALESCE(last_activity_at, ended_at, started_at))
+		FROM sessions
+		WHERE cwd IS NOT NULL AND cwd != ''
+		  AND COALESCE(last_activity_at, ended_at, started_at) >= ?
+		GROUP BY cwd`, float64(cutoff.Unix()))
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cwd string
+		var active float64
+		if rows.Scan(&cwd, &active) == nil && active > 0 {
+			observe(cwd, time.Unix(0, int64(active*float64(time.Second))))
+		}
+	}
 }
 
 func discoverSQLiteProjects(path, query string, args []any, observe func(string, time.Time)) {

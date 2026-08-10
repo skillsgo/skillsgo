@@ -3,8 +3,8 @@
 
 ## Members
 
-- `config.go`: owns strict, versioned, atomic `~/.skillsgo/config.yaml` persistence, its canonical-path-only `projects` section, and the durable one-time project-bootstrap marker.
-- `config_test.go`: specifies strict YAML parsing, minimal canonical project paths, idempotent registration, one-time bootstrap, removal, and preservation of the shared configuration document.
+- `config.go`: owns strict, versioned, atomic `~/.skillsgo/config.yaml` persistence, its canonical-path-only `projects` section, and the durable lazy one-time project-bootstrap gate.
+- `config_test.go`: specifies strict YAML parsing, minimal canonical project paths, idempotent registration, lazy one-time bootstrap gating, removal, and preservation of the shared configuration document.
 
 ## Architectural Boundary
 
