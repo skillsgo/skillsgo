@@ -193,6 +193,11 @@ NetworkMode: "strict"
 # Env override: SKILLSGO_HUB_ARTIFACT_ORIGIN
 ArtifactOrigin: ""
 
+# ImageProxyOrigin publishes the optional avatar proxy used by App clients.
+# Set it to an empty string to let clients use source image URLs directly.
+# Env override: SKILLSGO_HUB_IMAGE_PROXY_ORIGIN
+ImageProxyOrigin: "https://images.skillsgo.ai"
+
 # Database stores searchable Skill metadata. Foreground and background pools
 # share the database while retaining independent zero-minimum capacity limits.
 # PostgreSQL is started by the repository Process Compose development topology.

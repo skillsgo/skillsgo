@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, public Hub capability discovery, canonical Package/Skill identities, typed add-time Version Queries through unified Package metadata, exact Package Version resources, typed Package Info, static Git Artifact repositories, and optional progress reporting.
- * [OUTPUT]: Provides single-read revision-to-immutable Package metadata resolution, dumb-HTTP Git Artifact reads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed current Package Publication reads, user-triggered Package update checks, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides Hub capability discovery, single-read revision-to-immutable Package metadata resolution, dumb-HTTP Git Artifact reads, direct Package Version Skill content reads, path-unique membership validation and deterministic member selection, Catalog-backed current Package Publication reads, user-triggered Package update checks, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

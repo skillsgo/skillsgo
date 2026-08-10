@@ -185,6 +185,7 @@ func TestArtifactOriginConfiguration(t *testing.T) {
 }
 
 func TestImageProxyOriginConfiguration(t *testing.T) {
+	require.Equal(t, "https://images.skillsgo.ai", defaultConfig().ImageProxyOrigin)
 	require.NoError(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "", false))
 	require.NoError(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "https://images.skillsgo.ai", false))
 	require.Error(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "images.skillsgo.ai", false))
@@ -413,6 +414,7 @@ func TestParseExampleConfig(t *testing.T) {
 		TraceSamplingFraction: 1.0,
 		StatsExporter:         "prometheus",
 		ArtifactOrigin:        "",
+		ImageProxyOrigin:      "https://images.skillsgo.ai",
 		RobotsFile:            "robots.txt",
 		ShutdownTimeout:       60,
 		SkillCacheDir:         filepath.Join(home, ".skillsgo", "hub", "cache"),

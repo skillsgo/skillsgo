@@ -184,6 +184,7 @@ func defaultConfig() *Config {
 		TraceExporterURL:        "http://localhost:4317",
 		TraceSamplingFraction:   1.0,
 		ArtifactOrigin:          "",
+		ImageProxyOrigin:        "https://images.skillsgo.ai",
 		NetworkMode:             "strict",
 		RobotsFile:              "robots.txt",
 		ShutdownTimeout:         60,
