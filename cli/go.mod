@@ -15,7 +15,7 @@ require (
 	github.com/gofrs/flock v0.13.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/nyaosorg/go-windows-junction v0.2.0
-	github.com/skillsgo/skillsgo/protocol v0.0.0-20260809095001-2ce42acd5f6f
+	github.com/skillsgo/skillsgo/protocol v0.0.0-20260810082224-4c04092230d8
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.9
 	github.com/stretchr/testify v1.11.1
