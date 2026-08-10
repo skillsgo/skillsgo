@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses in-memory managed and External inventory entries with Codex and non-Codex visibility plus caller-supplied usage totals.
- * [OUTPUT]: Specifies unique Codex-visible usage attribution and conservative handling of ambiguous same-name entries.
+ * [INPUT]: Uses in-memory managed and External inventory entries with multi-Agent visibility plus caller-supplied per-Agent usage totals.
+ * [OUTPUT]: Specifies unique Agent-visible usage attribution, cross-Agent aggregation, and conservative handling of ambiguous same-name entries.
  * [POS]: Serves as the focused usage-attribution contract inside Library reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,4 +26,16 @@ func TestApplyCodexUsageRequiresOneCodexVisibleEntry(t *testing.T) {
 	applyCodexUsage(entries, map[string]Usage{"pdf": {Hits45Days: 3, Hits90Days: 6}})
 	require.Equal(t, Usage{}, codex.Usage)
 	require.Equal(t, Usage{}, duplicate.Usage)
+}
+
+func TestApplyAgentUsageAggregatesOnlyUniquelyVisibleEvidence(t *testing.T) {
+	shared := &Entry{Name: "review", Agents: []string{"codex", "reasonix"}}
+	other := &Entry{Name: "other", Agents: []string{"reasonix"}}
+	entries := map[string]*Entry{"shared": shared, "other": other}
+	applyAgentUsage(entries, map[string]map[string]Usage{
+		"codex":    {"review": {Hits45Days: 2, Hits90Days: 3}},
+		"reasonix": {"review": {Hits45Days: 4, Hits90Days: 5}, "other": {Hits45Days: 1, Hits90Days: 1}},
+	})
+	require.Equal(t, Usage{Hits45Days: 6, Hits90Days: 8}, shared.Usage)
+	require.Equal(t, Usage{Hits45Days: 1, Hits90Days: 1}, other.Usage)
 }

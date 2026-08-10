@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the assembled Fiber proxy routes, path-prefix configuration, in-memory storage, and public OpenAPI document.
- * [OUTPUT]: Specifies prefixed health, version, landing, not-found, and OpenAPI availability.
+ * [OUTPUT]: Specifies prefixed health, capability discovery, version, landing, not-found, and OpenAPI availability.
  * [POS]: Serves as Router-composition coverage for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -41,6 +41,7 @@ func TestProxyRoutes(t *testing.T) {
 	c, err := config.Load("")
 	require.NoError(t, err)
 	c.PathPrefix = "/prefix"
+	c.ImageProxyOrigin = "https://images.skillsgo.ai"
 	subRouter := r.Group(c.PathPrefix)
 	err = addProxyRoutes(r, subRouter, s, l, c)
 	require.NoError(t, err)
@@ -88,6 +89,12 @@ func TestProxyRoutes(t *testing.T) {
 			err := json.NewDecoder(resp.Body).Decode(&details)
 			require.NoError(t, err)
 			assert.EqualValues(t, build.Data(), details)
+		}},
+		{"GET", "/api/v1/info", "", func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			var info protocolapi.HubInfo
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&info))
+			assert.Equal(t, protocolapi.HubInfo{SchemaVersion: 1, ImageProxyOrigin: "https://images.skillsgo.ai"}, info)
 		}},
 		{"GET", "/openapi.json", "", func(t *testing.T, req *http.Request, resp *http.Response) {
 			assert.Equal(t, http.StatusOK, resp.StatusCode)

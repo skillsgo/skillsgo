@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on YAML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including authentication, cache policy, first-class Cloudflare R2 storage, task execution with automatic Package latest synchronization, and optional translation.
+ * [OUTPUT]: Provides validated Hub configuration including authentication, cache policy, optional public image-proxy discovery, first-class Cloudflare R2 storage, task execution with automatic Package latest synchronization, and optional translation.
  * [POS]: Serves as the Hub configuration composition and validation source in the config package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -59,6 +59,7 @@ type Config struct {
 	TLSCertFile             string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
 	TLSKeyFile              string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
 	ArtifactOrigin          string    `envconfig:"SKILLSGO_HUB_ARTIFACT_ORIGIN"`
+	ImageProxyOrigin        string    `envconfig:"SKILLSGO_HUB_IMAGE_PROXY_ORIGIN"`
 	NetworkMode             string    `envconfig:"SKILLSGO_HUB_NETWORK_MODE"            validate:"oneof=strict offline fallback"`
 	RobotsFile              string    `envconfig:"SKILLSGO_HUB_ROBOTS_FILE"`
 	ShutdownTimeout         int       `envconfig:"SKILLSGO_HUB_SHUTDOWN_TIMEOUT"        validate:"min=0"`
@@ -183,6 +184,7 @@ func defaultConfig() *Config {
 		TraceExporterURL:        "http://localhost:4317",
 		TraceSamplingFraction:   1.0,
 		ArtifactOrigin:          "",
+		ImageProxyOrigin:        "https://images.skillsgo.ai",
 		NetworkMode:             "strict",
 		RobotsFile:              "robots.txt",
 		ShutdownTimeout:         60,
@@ -370,7 +372,10 @@ func envOverride(config *Config) error {
 		config.Port = defaultPort
 	}
 	config.Port = ensurePortFormat(config.Port)
-	return validateArtifactOrigin(config.ArtifactOrigin)
+	if err := validateHTTPOrigin("SKILLSGO_HUB_ARTIFACT_ORIGIN", config.ArtifactOrigin, true); err != nil {
+		return err
+	}
+	return validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", config.ImageProxyOrigin, false)
 }
 
 func ensurePortFormat(s string) string {
@@ -399,7 +404,10 @@ func validateConfig(config Config) error {
 	if err := validateCredentialPair("Admin Basic Auth", config.AdminAuthUser, config.AdminAuthPass); err != nil {
 		return err
 	}
-	if err := validateArtifactOrigin(config.ArtifactOrigin); err != nil {
+	if err := validateHTTPOrigin("SKILLSGO_HUB_ARTIFACT_ORIGIN", config.ArtifactOrigin, true); err != nil {
+		return err
+	}
+	if err := validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", config.ImageProxyOrigin, false); err != nil {
 		return err
 	}
 	if config.TaskQueue == nil {
@@ -412,13 +420,17 @@ func validateConfig(config Config) error {
 }
 
 func validateArtifactOrigin(origin string) error {
+	return validateHTTPOrigin("SKILLSGO_HUB_ARTIFACT_ORIGIN", origin, true)
+}
+
+func validateHTTPOrigin(name, origin string, allowPath bool) error {
 	if strings.TrimSpace(origin) == "" {
 		return nil
 	}
 	parsed, err := url.Parse(origin)
 	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" ||
-		(parsed.Scheme != "http" && parsed.Scheme != "https") {
-		return fmt.Errorf("SKILLSGO_HUB_ARTIFACT_ORIGIN must be an absolute HTTP(S) URL without credentials, query, or fragment")
+		(parsed.Scheme != "http" && parsed.Scheme != "https") || (!allowPath && parsed.Path != "") {
+		return fmt.Errorf("%s must be an absolute HTTP(S) URL without credentials, query, fragment%s", name, map[bool]string{true: "", false: ", or path"}[allowPath])
 	}
 	return nil
 }

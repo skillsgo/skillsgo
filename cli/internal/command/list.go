@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, Codex Skill usage evidence, and the inventory domain report builder.
- * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external usage-aware JSON serialization, and path-rich adaptive Human summaries.
+ * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, supported-Agent Skill usage evidence, and the inventory domain report builder.
+ * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external multi-Agent-usage-aware JSON serialization, and path-rich adaptive Human summaries.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -53,27 +53,41 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 				return err
 			}
 			provider := packageprovider.Default("", client)
-			usage := map[string]inventory.Usage{}
+			usageByAgent := map[string]map[string]inventory.Usage{}
 			if includeUsage {
 				home, err := os.UserHomeDir()
 				if err != nil {
 					return err
 				}
-				codexUsage, err := skillusage.CollectCodex(home, time.Now())
-				if err != nil {
-					return err
+				now := time.Now()
+				collectors := []struct {
+					agentID string
+					collect func(string, time.Time) (map[string]skillusage.Usage, error)
+				}{
+					{"codex", skillusage.CollectCodex},
+					{"claude-code", skillusage.CollectClaude},
+					{"github-copilot", skillusage.CollectCopilot},
+					{"reasonix", skillusage.CollectReasonix},
+					{"opencode", skillusage.CollectOpenCode},
 				}
-				for name, totals := range codexUsage {
-					usage[name] = inventory.Usage{Hits45Days: totals.Hits45Days, Hits90Days: totals.Hits90Days}
+				for _, collector := range collectors {
+					observed, collectErr := collector.collect(home, now)
+					if collectErr != nil {
+						continue
+					}
+					usageByAgent[collector.agentID] = map[string]inventory.Usage{}
+					for name, totals := range observed {
+						usageByAgent[collector.agentID][name] = inventory.Usage{Hits45Days: totals.Hits45Days, Hits90Days: totals.Hits90Days}
+					}
 				}
 			}
 			report, err := inventory.Build(inventory.Options{
-				IncludeGlobal: includeGlobal,
-				Projects:      projects,
-				Catalog:       catalog,
-				Context:       cmd.Context(),
-				Packages:      &provider,
-				SkillUsage:    usage,
+				IncludeGlobal:   includeGlobal,
+				Projects:        projects,
+				Catalog:         catalog,
+				Context:         cmd.Context(),
+				Packages:        &provider,
+				AgentSkillUsage: usageByAgent,
 			})
 			if errors.Is(err, inventory.ErrEmptyProjectRoot) {
 				return errors.New(appi18n.T("list.error.empty_project"))

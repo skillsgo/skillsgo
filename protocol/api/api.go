@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Package Path plus Skill Name or exact Skill Path validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, exact-name candidate query descriptions plus server-ranked match scores, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info with immutable Package size, immutable Package Version Skill content with size and translation provenance, canonical Skill and Package coordinates, current Package Publication DTOs, and user-triggered Package update-check DTOs.
+ * [OUTPUT]: Provides shared schema constants, Hub capability discovery, canonical pagination, search cards, exact-name candidate query descriptions plus server-ranked match scores, exact-path candidate DTOs with stable-first versions and repository avatar URLs, standalone Package Info with immutable Package size, immutable Package Version Skill content with size and translation provenance, canonical Skill and Package coordinates, current Package Publication DTOs, and user-triggered Package update-check DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package api
 
 import (
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -23,6 +24,23 @@ const (
 	PackagePublished   = "published"
 	PackageUnavailable = "unavailable"
 )
+
+type HubInfo struct {
+	SchemaVersion    int    `json:"schemaVersion"`
+	ImageProxyOrigin string `json:"imageProxyOrigin,omitempty"`
+}
+
+func (info HubInfo) Valid() bool {
+	if info.SchemaVersion != SchemaVersion || strings.TrimSpace(info.ImageProxyOrigin) != info.ImageProxyOrigin {
+		return false
+	}
+	if info.ImageProxyOrigin == "" {
+		return true
+	}
+	parsed, err := url.Parse(info.ImageProxyOrigin)
+	return err == nil && parsed.Host != "" && parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" && parsed.Path == "" &&
+		(parsed.Scheme == "http" || parsed.Scheme == "https")
+}
 
 type PackageSkill struct {
 	Name string `json:"name" yaml:"name"`

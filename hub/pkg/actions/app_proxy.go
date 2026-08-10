@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, Git Artifact and Skill-content storage, isolated foreground/background Catalogs, Source Repository fetchers, automatic latest and metadata maintenance, native Fiber routing, static disk delivery, and Huma documentation projection.
- * [OUTPUT]: Assembles health, side-effect-free discovery reads, unified Package Version Queries, user-triggered Package update checks, local static Git delivery, background Package latest and Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, a generic embedding prewarm seam, and authenticated Backfill administration.
+ * [OUTPUT]: Assembles health, public capability discovery, side-effect-free discovery reads, unified Package Version Queries, user-triggered Package update checks, local static Git delivery, background Package latest and Repository metadata jobs, version-scoped Skill content, OpenAPI documentation, a generic embedding prewarm seam, and authenticated Backfill administration.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -58,6 +58,7 @@ func addProxyRoutesWithCatalog(
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", getReadinessHandler(s, metadata, backgroundMetadata, communityStore))
 	r.Get("/version", versionHandler)
+	r.Get("/api/v1/info", hubInfoHandler(c))
 	r.Get("/robots.txt", robotsHandler(c))
 	registerCommunityRoutes(r, communityStore, func() time.Time { return time.Now().UTC() })
 	if c.StorageType == "disk" && c.Storage.Disk != nil {

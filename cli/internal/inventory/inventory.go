@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, and supported skills.sh lock records.
- * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, and local 45/90-day Skill usage totals.
+ * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, supported skills.sh lock records, and per-Agent Skill usage observations.
+ * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, and aggregated local 45/90-day Skill usage totals.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -87,13 +87,14 @@ type Target struct {
 }
 
 type Options struct {
-	IncludeGlobal bool
-	Projects      []string
-	Catalog       *agent.Catalog
-	Context       context.Context
-	Packages      *packageprovider.Provider
-	VerifyContent bool
-	SkillUsage    map[string]Usage
+	IncludeGlobal   bool
+	Projects        []string
+	Catalog         *agent.Catalog
+	Context         context.Context
+	Packages        *packageprovider.Provider
+	VerifyContent   bool
+	SkillUsage      map[string]Usage
+	AgentSkillUsage map[string]map[string]Usage
 }
 
 func Build(options Options) (Report, error) {
@@ -143,6 +144,7 @@ func Build(options Options) (Report, error) {
 	addExternalAdoptionPackageHints(entries, home)
 	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
 	applyCodexUsage(entries, options.SkillUsage)
+	applyAgentUsage(entries, options.AgentSkillUsage)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -185,15 +187,27 @@ func Build(options Options) (Report, error) {
 }
 
 func applyCodexUsage(entries map[string]*Entry, usage map[string]Usage) {
-	codexEntriesByName := map[string][]*Entry{}
+	applyOneAgentUsage(entries, "codex", usage)
+}
+
+func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[string]Usage) {
+	for agentID, usage := range usageByAgent {
+		applyOneAgentUsage(entries, agentID, usage)
+	}
+}
+
+func applyOneAgentUsage(entries map[string]*Entry, agentID string, usage map[string]Usage) {
+	entriesByName := map[string][]*Entry{}
 	for _, entry := range entries {
-		if entryVisibleToAgent(entry, "codex") {
-			codexEntriesByName[entry.Name] = append(codexEntriesByName[entry.Name], entry)
+		if entryVisibleToAgent(entry, agentID) {
+			entriesByName[entry.Name] = append(entriesByName[entry.Name], entry)
 		}
 	}
-	for name, matching := range codexEntriesByName {
+	for name, matching := range entriesByName {
 		if len(matching) == 1 {
-			matching[0].Usage = usage[name]
+			observed := usage[name]
+			matching[0].Usage.Hits45Days += observed.Hits45Days
+			matching[0].Usage.Hits90Days += observed.Hits90Days
 		}
 	}
 }

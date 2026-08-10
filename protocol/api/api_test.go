@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses representative complete and optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, Find and Package update-check wire documents, Package-level Sum, immutable Package size and Artifact identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
+ * [OUTPUT]: Specifies Hub capability discovery, risk validation, Find and Package update-check wire documents, Package-level Sum, immutable Package size and Artifact identity, Skill PackagePath/path membership and translation provenance, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,6 +31,25 @@ func TestFindJSONContract(t *testing.T) {
 	}
 	if string(document) != `{"candidates":[[{"packagePath":"github.com/o/r","versions":["v1.1.0","v1.0.0"],"name":"demo","path":"skills/demo","description":"","matchScore":0}]]}` {
 		t.Fatalf("unexpected Find response %s", document)
+	}
+}
+
+func TestHubInfoContract(t *testing.T) {
+	configured := HubInfo{SchemaVersion: SchemaVersion, ImageProxyOrigin: "https://images.skillsgo.ai"}
+	if !configured.Valid() {
+		t.Fatal("configured Hub Info was rejected")
+	}
+	document, err := json.Marshal(configured)
+	if err != nil || string(document) != `{"schemaVersion":1,"imageProxyOrigin":"https://images.skillsgo.ai"}` {
+		t.Fatalf("unexpected Hub Info document %s, %v", document, err)
+	}
+	if !((HubInfo{SchemaVersion: SchemaVersion}).Valid()) {
+		t.Fatal("unconfigured Hub Info was rejected")
+	}
+	for _, origin := range []string{"images.skillsgo.ai", "ftp://images.skillsgo.ai", "https://images.skillsgo.ai/path", "https://user@images.skillsgo.ai", "https://images.skillsgo.ai?token=x"} {
+		if (HubInfo{SchemaVersion: SchemaVersion, ImageProxyOrigin: origin}).Valid() {
+			t.Fatalf("invalid image proxy origin accepted: %q", origin)
+		}
 	}
 }
 

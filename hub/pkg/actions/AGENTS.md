@@ -24,6 +24,7 @@
 - `package_backfill.go`, `package_backfill_test.go`: validate and expose bounded `/api/v1/admin/package-backfills` batches, persist one independent Run per Package, prepare and close one leased source session per River job, preserve the highest-twenty Revision selection even when a Revision contains no Skills, execute the selected Tags or default-branch pseudo-versions through one chunked Publisher session, persist explicit per-Version outcomes, and retry only transient failures.
 - `repository_metadata.go`, `repository_metadata_test.go`: maintain Repository About descriptions and popularity metadata exclusively through publication-triggered unique refresh jobs and an ID-keyset periodic stale-Package sweep, sharing TTL/ETag/Singleflight/backoff state while implementing sticky GitHub-token failover and safe diagnostics outside public read paths.
 - `health.go`, `readiness.go`: expose service health and readiness probes.
+- `info.go`: exposes optional public client capabilities, including a configured image-proxy Origin, without leaking deployment internals.
 - `home.go`, `robots.go`, `version.go`: serve the human landing, crawler policy, and service version surfaces.
 - `storage.go`, `storage_test.go`: wire artifact storage providers into the service, including first-class Cloudflare R2 configuration through the shared S3-compatible backend.
 

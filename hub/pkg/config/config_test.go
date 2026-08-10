@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration defaults, YAML fixtures, environment decoding, validation, authentication, database pools, storage providers, and task/translation settings.
- * [OUTPUT]: Specifies Hub configuration including deployment discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, default and overridden Package latest synchronization, task execution, and translation schedules.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, optional image-proxy discovery, database schema, GitHub authentication, first-class Cloudflare R2 storage, default and overridden Package latest synchronization, task execution, and translation schedules.
  * [POS]: Serves as behavior coverage for the Hub config package's complete loading and override contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -182,6 +182,21 @@ func TestArtifactOriginConfiguration(t *testing.T) {
 	require.Error(t, validateArtifactOrigin("ftp://artifact-store.internal"))
 	require.Error(t, validateArtifactOrigin("https://user:pass@artifact-store.internal"))
 	require.Error(t, validateArtifactOrigin("https://artifact-store.internal?token=secret"))
+}
+
+func TestImageProxyOriginConfiguration(t *testing.T) {
+	require.Equal(t, "https://images.skillsgo.ai", defaultConfig().ImageProxyOrigin)
+	require.NoError(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "", false))
+	require.NoError(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "https://images.skillsgo.ai", false))
+	require.Error(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "images.skillsgo.ai", false))
+	require.Error(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "https://images.skillsgo.ai/github", false))
+	require.Error(t, validateHTTPOrigin("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "https://images.skillsgo.ai?token=secret", false))
+
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_IMAGE_PROXY_ORIGIN", "https://images.skillsgo.ai")
+	conf := defaultConfig()
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, "https://images.skillsgo.ai", conf.ImageProxyOrigin)
 }
 
 func TestEnvOverrides(t *testing.T) {
@@ -399,6 +414,7 @@ func TestParseExampleConfig(t *testing.T) {
 		TraceSamplingFraction: 1.0,
 		StatsExporter:         "prometheus",
 		ArtifactOrigin:        "",
+		ImageProxyOrigin:      "https://images.skillsgo.ai",
 		RobotsFile:            "robots.txt",
 		ShutdownTimeout:       60,
 		SkillCacheDir:         filepath.Join(home, ".skillsgo", "hub", "cache"),
