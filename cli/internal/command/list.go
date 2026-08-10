@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, the Hub origin, supported-Agent Skill usage evidence, and the inventory domain report builder.
- * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external multi-Agent-usage-aware JSON serialization, and path-rich adaptive Human summaries.
+ * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, concurrently collected managed/external multi-Agent usage, stable JSON serialization, and path-rich adaptive Human summaries.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
@@ -72,9 +73,32 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 					{"opencode", skillusage.CollectOpenCode},
 					{"hermes-agent", skillusage.CollectHermes},
 					{"openclaw", skillusage.CollectOpenClaw},
+					{"gemini-cli", skillusage.CollectGemini},
+					{"qwen-code", func(home string, now time.Time) (map[string]skillusage.Usage, error) {
+						return skillusage.CollectQwenProjects(home, projects, now)
+					}},
+					{"goose", skillusage.CollectGoose},
+					{"mistral-vibe", skillusage.CollectVibe},
+					{"pi", skillusage.CollectPi},
+					{"crush", skillusage.CollectCrush},
 				}
-				for _, collector := range collectors {
-					observed, collectErr := collector.collect(home, now)
+				type collectionResult struct {
+					observed map[string]skillusage.Usage
+					err      error
+				}
+				results := make([]collectionResult, len(collectors))
+				var wait sync.WaitGroup
+				wait.Add(len(collectors))
+				for index, collector := range collectors {
+					go func() {
+						defer wait.Done()
+						results[index].observed, results[index].err = collector.collect(home, now)
+					}()
+				}
+				wait.Wait()
+				for index, collector := range collectors {
+					observed := results[index].observed
+					collectErr := results[index].err
 					usageCompleteByAgent[collector.agentID] = collectErr == nil
 					usageByAgent[collector.agentID] = map[string]inventory.Usage{}
 					for name, totals := range observed {

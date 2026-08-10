@@ -17,8 +17,20 @@
 - `hermes_test.go`: specifies Hermes successful-load correlation, failure rejection, expanded-command attribution, Session deduplication, profile aggregation, and rolling windows.
 - `openclaw.go`: incrementally indexes the active OpenClaw state directory's durable current/reset/deleted Session transcripts, preserves pending read correlation in a disposable cache, and counts only successful `read` results using the returned `SKILL.md` frontmatter name as authoritative identity.
 - `openclaw_test.go`: specifies OpenClaw incidental-path and failed-read rejection, authoritative frontmatter identity, Session deduplication, archived Session inclusion, path portability, rolling windows, and append-only cache continuation.
+- `gemini.go`: incrementally caches Gemini CLI Session JSONL snapshots with bounded independent-file workers, preserves trusted prefixes while marking corruption incomplete, deduplicates Sessions across files, and counts only final successful `activate_skill` states after applying transcript rewinds.
+- `gemini_test.go`: specifies Gemini CLI successful-state attribution, repeated-snapshot replacement, rewind handling, configured-home resolution, incremental-cache recovery, trusted corrupt prefixes, cross-file Session deduplication, and rolling windows.
+- `qwen.go`: incrementally caches Qwen Code Session JSONL with bounded independent-file workers and counts only call-ID-correlated successful `skill` results across JSONC-configured runtime roots, conservatively marking unresolved relative cross-Workspace roots incomplete.
+- `qwen_test.go`: specifies Qwen Code successful-result correlation, failure rejection, JSONC and environment runtime resolution, conservative relative-root completeness, corruption completeness, Session deduplication, path portability, and rolling windows.
+- `goose.go`: queries Goose Session databases read-only and counts only call-ID-correlated successful `load_skill` request/response blocks across platform-native and configured data roots.
+- `goose_test.go`: specifies Goose schema guarding, successful-result correlation, failure and unmatched-response rejection, supporting-file normalization, Session deduplication, timestamp compatibility, and rolling windows.
+- `vibe.go`: incrementally caches Mistral Vibe Session messages with metadata-aware signatures and bounded workers, counts only correlated structured `skill` results, and conservatively reports approximate Session-time windows or unresolved relative roots as incomplete.
+- `vibe_test.go`: specifies Mistral Vibe structured-result attribution, failure rejection, metadata cache invalidation, absolute/relative root completeness, Session deduplication, and rolling Session windows.
+- `pi.go`: incrementally caches Pi Session JSONL with bounded workers, preserves trusted prefixes while marking corruption incomplete, and counts successful expanded Skill commands plus correlated successful `SKILL.md` reads with authoritative frontmatter names.
+- `pi_test.go`: specifies Pi direct expansion and read-result attribution, failure rejection, configured Session roots, corruption and timestamp completeness, path portability, Session deduplication, and event-level rolling windows.
+- `crush.go`: queries every registered Crush project database read-only and counts only call-ID-correlated successful View results whose structured metadata identifies a Skill.
+- `crush_test.go`: specifies Crush project-registry resolution, schema guarding, structured Skill-result attribution, failure and unmatched-result rejection, Session deduplication, and rolling windows.
 - `paths.go`: normalizes configured Agent state paths with cross-platform user-home expansion shared by usage adapters.
-- `sessions.go`: provides latest-observation Session deduplication shared by transcript-backed usage adapters.
+- `sessions.go`: discovers recent transcript files, runs bounded independent-file workers, maintains disposable per-file/per-day incremental caches, and provides latest-observation Session deduplication plus rolling-window aggregation shared by transcript-backed usage adapters.
 - `cache_replace_unix.go` and `cache_replace_windows.go`: publish unique temporary usage-cache files with platform-native replace semantics.
 
 ## Architectural Boundary

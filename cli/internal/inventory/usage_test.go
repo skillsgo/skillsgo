@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses in-memory managed and External inventory entries with multi-Agent visibility plus caller-supplied per-Agent usage totals.
- * [OUTPUT]: Specifies unique Agent-visible usage attribution, cross-Agent aggregation, and conservative handling of ambiguous same-name entries.
+ * [OUTPUT]: Specifies unique Agent-visible usage attribution, cross-Agent aggregation, and conservative handling of ambiguous names, incomplete collectors, and unsupported visible Agents.
  * [POS]: Serves as the focused usage-attribution contract inside Library reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -69,5 +69,16 @@ func TestApplyAgentUsageRequiresEveryVisibleSupportedAgentToBeComplete(t *testin
 		map[string]bool{"codex": true, "hermes-agent": false},
 	)
 	require.Equal(t, Usage{Hits45Days: 3, Hits90Days: 4}, entry.Usage)
+	require.False(t, entry.UsageAvailable)
+}
+
+func TestApplyAgentUsageKeepsUnsupportedVisibleAgentUnavailable(t *testing.T) {
+	entry := &Entry{Name: "review", Agents: []string{"codex", "cursor"}}
+	applyAgentUsage(
+		map[string]*Entry{"review": entry},
+		map[string]map[string]Usage{"codex": {"review": {Hits45Days: 2, Hits90Days: 3}}},
+		map[string]bool{"codex": true},
+	)
+	require.Equal(t, Usage{Hits45Days: 2, Hits90Days: 3}, entry.Usage)
 	require.False(t, entry.UsageAvailable)
 }

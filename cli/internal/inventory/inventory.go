@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, supported skills.sh lock records, and per-Agent Skill usage observations.
- * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, and aggregated local 45/90-day Skill usage totals.
+ * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, aggregated local 45/90-day Skill usage totals, and all-visible-Agent completeness.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -206,8 +206,16 @@ func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[stri
 	for _, entry := range entries {
 		matchedAny := false
 		complete := true
-		for agentID := range usageByAgent {
-			if !entryVisibleToAgent(entry, agentID) {
+		visibleAgents := map[string]bool{}
+		for _, agentID := range entry.Agents {
+			visibleAgents[agentID] = true
+		}
+		for _, visibility := range entry.Visibility {
+			visibleAgents[visibility.Agent] = true
+		}
+		for agentID := range visibleAgents {
+			if _, supported := usageByAgent[agentID]; !supported {
+				complete = false
 				continue
 			}
 			matchedAny = true

@@ -48,6 +48,7 @@ type fileRecord struct {
 	PrefixHash   string                       `json:"prefixHash"`
 	Skills       map[string]string            `json:"skills"`
 	PendingReads map[string]map[string]string `json:"pendingReads,omitempty"`
+	Sessions     map[string]map[string]string `json:"sessions,omitempty"`
 }
 
 type cacheState struct {
@@ -604,8 +605,27 @@ func stripSkillNamespace(name string) string {
 
 func buildBuckets(state cacheState) map[string]dayBucket {
 	buckets := map[string]dayBucket{}
+	sessions := map[string]map[string]string{}
 	for _, record := range state.Files {
+		if record.Sessions != nil {
+			for sessionID, skills := range record.Sessions {
+				for name, day := range skills {
+					observeSessionSkill(sessions, sessionID, name, day)
+				}
+			}
+			continue
+		}
 		for name, day := range record.Skills {
+			bucket := buckets[day]
+			if bucket.Skills == nil {
+				bucket = dayBucket{SchemaVersion: cacheSchemaVersion, Date: day, Skills: map[string]int{}}
+			}
+			bucket.Skills[name]++
+			buckets[day] = bucket
+		}
+	}
+	for _, skills := range sessions {
+		for name, day := range skills {
 			bucket := buckets[day]
 			if bucket.Skills == nil {
 				bucket = dayBucket{SchemaVersion: cacheSchemaVersion, Date: day, Skills: map[string]int{}}
