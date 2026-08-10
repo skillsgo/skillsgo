@@ -45,7 +45,15 @@ func newProjectBootstrapCommand() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		projects, err := registry.BootstrapProjects(agent.DiscoverRecentProjects(registry.Home, time.Now()))
+		bootstrapNeeded, err := registry.ProjectBootstrapNeeded()
+		if err != nil {
+			return err
+		}
+		var discovered []string
+		if bootstrapNeeded {
+			discovered = agent.DiscoverRecentProjects(registry.Home, time.Now())
+		}
+		projects, err := registry.BootstrapProjects(discovered)
 		if err != nil {
 			return err
 		}

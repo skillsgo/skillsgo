@@ -25,6 +25,30 @@ func TestCatalogContainsOfficialSupportedAgents(t *testing.T) {
 	require.Empty(t, eve.GlobalDir)
 }
 
+func TestHermesCatalogUsesTheUpstreamWindowsHome(t *testing.T) {
+	home := filepath.Join("C:", "Users", "freeman")
+	localAppData := filepath.Join(home, "AppData", "Local")
+	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config"), LocalAppData: localAppData, GOOS: "windows"})
+	hermes, ok := catalog.Get("hermes-agent")
+	require.True(t, ok)
+	require.Equal(t, filepath.Join(localAppData, "hermes", "skills"), hermes.GlobalDir)
+}
+
+func TestConfiguredAgentHomesExpandTildeAndOpenClawState(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HERMES_HOME", "~/.custom-hermes")
+	t.Setenv("OPENCLAW_STATE_DIR", "~/.custom-openclaw")
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".custom-openclaw"), 0o755))
+	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})
+	hermes, ok := catalog.Get("hermes-agent")
+	require.True(t, ok)
+	require.Equal(t, filepath.Join(home, ".custom-hermes", "skills"), hermes.GlobalDir)
+	openclaw, ok := catalog.Get("openclaw")
+	require.True(t, ok)
+	require.Equal(t, filepath.Join(home, ".custom-openclaw", "skills"), openclaw.GlobalDir)
+	require.True(t, catalog.DetectInstalled("openclaw"))
+}
+
 func TestSkillDeckAgentsExposeVerifiedRoots(t *testing.T) {
 	home := t.TempDir()
 	catalog := NewCatalog(Paths{Home: home, ConfigHome: filepath.Join(home, ".config")})

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, and Qwen Code registries or metadata plus schema-guarded OpenCode, Kilo Code, and WorkBuddy SQLite metadata, canonical filesystem paths, and activity times.
+ * [INPUT]: Depends on dedicated Claude Code, Codex, Gemini CLI, Kimi Code CLI, Continue, Mistral Vibe, Cline, Roo Code, Goose, Qwen Code, Pi, Crush, Reasonix, OpenClaw, and Copilot registries or Session metadata plus schema-guarded OpenCode, Kilo Code, WorkBuddy, and Hermes SQLite metadata, canonical filesystem paths, and activity times.
  * [OUTPUT]: Provides complete-window, activity-prioritized recent Agent Workspace discovery while retaining only structured project paths and filesystem activity.
  * [POS]: Serves as the Agent-owned local project-evidence adapter consumed by project bootstrap command orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -71,6 +73,16 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 	}
 	discoverQwenProjects(filepath.Join(envHome("QWEN_RUNTIME_DIR", envHome("QWEN_HOME", filepath.Join(home, ".qwen"))), "projects"), cutoff, observe)
 	discoverWorkBuddyDatabase(filepath.Join(workBuddyHome(home), "workbuddy.db"), cutoff, observe)
+	discoverPiProjects(piProjectSessionsRoot(home), cutoff, observe)
+	discoverCrushProjects(crushProjectsRegistry(home), cutoff, observe)
+	discoverReasonixProjects(filepath.Join(envHome("REASONIX_HOME", filepath.Join(home, ".reasonix")), "sessions"), cutoff, observe)
+	for _, path := range hermesProjectDatabases(home) {
+		discoverHermesDatabase(path, cutoff, observe)
+	}
+	for _, root := range openClawProjectRoots(home) {
+		discoverSessionHeaderProjects(root, cutoff, observe)
+	}
+	discoverCopilotProjects(filepath.Join(home, ".copilot", "session-state"), cutoff, observe)
 
 	projects := make([]workspaceObservation, 0, len(observed))
 	for path, modifiedAt := range observed {
@@ -85,6 +97,200 @@ func DiscoverRecentProjects(home string, now time.Time) []string {
 		paths = append(paths, project.path)
 	}
 	return paths
+}
+
+func piProjectSessionsRoot(home string) string {
+	if configured := strings.TrimSpace(os.Getenv("PI_CODING_AGENT_SESSION_DIR")); configured != "" {
+		return expandProjectHome(configured, home)
+	}
+	agentDir := filepath.Join(home, ".pi", "agent")
+	if configured := strings.TrimSpace(os.Getenv("PI_CODING_AGENT_DIR")); configured != "" {
+		agentDir = expandProjectHome(configured, home)
+	}
+	return filepath.Join(agentDir, "sessions")
+}
+
+func expandProjectHome(value, home string) string {
+	value = strings.TrimSpace(value)
+	if value == "~" {
+		return home
+	}
+	if strings.HasPrefix(value, "~/") || strings.HasPrefix(value, `~\`) {
+		return filepath.Join(home, filepath.FromSlash(strings.ReplaceAll(value[2:], `\`, "/")))
+	}
+	return value
+}
+
+func discoverPiProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	discoverSessionHeaderProjects(root, cutoff, observe)
+}
+
+func discoverSessionHeaderProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	_ = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil || entry.IsDir() || !strings.Contains(entry.Name(), ".jsonl") {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil || info.ModTime().Before(cutoff) {
+			return nil
+		}
+		cwd := readSessionRecords(path, 64*1024, func(line []byte) string {
+			var header struct {
+				Type string `json:"type"`
+				Kind string `json:"kind"`
+				CWD  string `json:"cwd"`
+			}
+			if json.Unmarshal(line, &header) != nil {
+				return ""
+			}
+			if header.Type == "session" || header.Kind == "header" {
+				return header.CWD
+			}
+			return ""
+		})
+		observe(cwd, info.ModTime())
+		return nil
+	})
+}
+
+func crushProjectsRegistry(home string) string {
+	return crushProjectsRegistryForOS(home, runtime.GOOS, os.Getenv("LOCALAPPDATA"), os.Getenv("XDG_DATA_HOME"), os.Getenv("CRUSH_GLOBAL_DATA"))
+}
+
+func crushProjectsRegistryForOS(home, goos, localAppData, xdgDataHome, configuredRoot string) string {
+	if configured := expandProjectHome(configuredRoot, home); configured != "" {
+		return filepath.Join(configured, "projects.json")
+	}
+	if dataHome := expandProjectHome(xdgDataHome, home); dataHome != "" {
+		return filepath.Join(dataHome, "crush", "projects.json")
+	}
+	if goos == "windows" {
+		if strings.TrimSpace(localAppData) == "" {
+			localAppData = filepath.Join(home, "AppData", "Local")
+		}
+		return filepath.Join(localAppData, "crush", "projects.json")
+	}
+	return filepath.Join(home, ".local", "share", "crush", "projects.json")
+}
+
+func discoverCrushProjects(path string, cutoff time.Time, observe func(string, time.Time)) {
+	file, _, ok := openRegistry(path)
+	if !ok {
+		return
+	}
+	defer file.Close()
+	var registry struct {
+		Projects []struct {
+			Path         string    `json:"path"`
+			LastAccessed time.Time `json:"last_accessed"`
+		} `json:"projects"`
+	}
+	if json.NewDecoder(file).Decode(&registry) != nil {
+		return
+	}
+	for _, project := range registry.Projects {
+		if !project.LastAccessed.Before(cutoff) {
+			observe(project.Path, project.LastAccessed)
+		}
+	}
+}
+
+func discoverReasonixProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".meta.json") {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".meta.json")
+		sessionPath := filepath.Join(root, name+".jsonl")
+		info, err := os.Stat(sessionPath)
+		if err != nil || info.ModTime().Before(cutoff) {
+			continue
+		}
+		var metadata struct {
+			Workspace string `json:"workspace"`
+		}
+		file, _, ok := openRegistry(filepath.Join(root, entry.Name()))
+		if ok && json.NewDecoder(file).Decode(&metadata) == nil {
+			observe(metadata.Workspace, info.ModTime())
+		}
+		if ok {
+			file.Close()
+		}
+	}
+}
+
+func hermesProjectDatabases(home string) []string {
+	root := hermesProjectRootForOS(home, runtime.GOOS, os.Getenv("LOCALAPPDATA"), os.Getenv("HERMES_HOME"))
+	paths := []string{filepath.Join(root, "state.db")}
+	profiles, _ := filepath.Glob(filepath.Join(root, "profiles", "*", "state.db"))
+	return append(paths, profiles...)
+}
+
+func hermesProjectRootForOS(home, goos, localAppData, configuredHome string) string {
+	root := filepath.Join(home, ".hermes")
+	if goos == "windows" {
+		if strings.TrimSpace(localAppData) == "" {
+			localAppData = filepath.Join(home, "AppData", "Local")
+		}
+		root = filepath.Join(localAppData, "hermes")
+	}
+	if configured := expandProjectHome(configuredHome, home); configured != "" {
+		root = configured
+		if filepath.Base(filepath.Dir(root)) == "profiles" {
+			root = filepath.Dir(filepath.Dir(root))
+		}
+	}
+	return root
+}
+
+func openClawProjectRoots(home string) []string {
+	if configured := expandProjectHome(os.Getenv("OPENCLAW_STATE_DIR"), home); configured != "" {
+		return []string{filepath.Join(configured, "agents")}
+	}
+	return []string{
+		filepath.Join(home, ".openclaw", "agents"),
+		filepath.Join(home, ".clawdbot", "agents"),
+		filepath.Join(home, ".moldbot", "agents"),
+		filepath.Join(home, ".moltbot", "agents"),
+	}
+}
+
+func discoverCopilotProjects(root string, cutoff time.Time, observe func(string, time.Time)) {
+	directories, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+	for _, directory := range directories {
+		if !directory.IsDir() {
+			continue
+		}
+		sessionRoot := filepath.Join(root, directory.Name())
+		active := newestFileActivity(sessionRoot, cutoff)
+		if active.IsZero() {
+			continue
+		}
+		var workspace struct {
+			CWD     string `yaml:"cwd"`
+			GitRoot string `yaml:"git_root"`
+		}
+		manifest, _, ok := openRegistry(filepath.Join(sessionRoot, "workspace.yaml"))
+		if !ok {
+			continue
+		}
+		decodeErr := yaml.NewDecoder(io.LimitReader(manifest, 64*1024)).Decode(&workspace)
+		manifest.Close()
+		if decodeErr != nil {
+			continue
+		}
+		if workspace.CWD == "" {
+			workspace.CWD = workspace.GitRoot
+		}
+		observe(workspace.CWD, active)
+	}
 }
 
 func discoverQwenProjects(root string, cutoff time.Time, observe func(string, time.Time)) {

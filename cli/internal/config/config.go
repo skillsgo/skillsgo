@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one user home, explicit or locally observed Workspace directory paths, canonical filesystem resolution, strict YAML input, and atomic file replacement.
- * [OUTPUT]: Provides deterministic project add, one-time bootstrap, remove, and list operations over canonical path entries in the versioned user-level SkillsGo config.yaml document.
+ * [OUTPUT]: Provides deterministic project add, lazy one-time bootstrap gating, remove, and list operations over canonical path entries in the versioned user-level SkillsGo config.yaml document.
  * [POS]: Serves as the CLI-owned authority for shared user configuration, including managed Workspace projects seeded from recent Agent sessions on an empty registry.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -46,6 +46,14 @@ func (s Store) ListProjects() ([]Project, error) {
 		projects = append(projects, projectFromRoot(root))
 	}
 	return projects, nil
+}
+
+func (s Store) ProjectBootstrapNeeded() (bool, error) {
+	document, err := s.load()
+	if err != nil {
+		return false, err
+	}
+	return !document.ProjectsBootstrapped, nil
 }
 
 func (s Store) AddProject(rawRoot string) (Project, error) {

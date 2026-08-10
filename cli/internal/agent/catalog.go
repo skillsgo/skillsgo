@@ -9,6 +9,7 @@ package agent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -43,6 +44,8 @@ type Paths struct {
 	ConfigHome        string
 	CWD               string
 	AppData           string
+	LocalAppData      string
+	GOOS              string
 	FlatpakConfigHome string
 }
 
@@ -79,12 +82,15 @@ func DefaultPaths() (Paths, error) {
 	if err != nil {
 		return Paths{}, err
 	}
-	return Paths{Home: home, ConfigHome: configHome, CWD: cwd, AppData: os.Getenv("APPDATA"), FlatpakConfigHome: os.Getenv("FLATPAK_XDG_CONFIG_HOME")}, nil
+	return Paths{Home: home, ConfigHome: configHome, CWD: cwd, AppData: os.Getenv("APPDATA"), LocalAppData: os.Getenv("LOCALAPPDATA"), GOOS: runtime.GOOS, FlatpakConfigHome: os.Getenv("FLATPAK_XDG_CONFIG_HOME")}, nil
 }
 
 func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 	if paths.CWD == "" {
 		paths.CWD, _ = os.Getwd()
+	}
+	if paths.GOOS == "" {
+		paths.GOOS = runtime.GOOS
 	}
 	items := make(map[string]Definition, len(rawCatalog))
 	for _, raw := range rawCatalog {
@@ -93,17 +99,17 @@ func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 		case "config":
 			base = paths.ConfigHome
 		case "codex":
-			base = envHome("CODEX_HOME", filepath.Join(paths.Home, ".codex"))
+			base = envHomeFor("CODEX_HOME", filepath.Join(paths.Home, ".codex"), paths.Home)
 		case "claude":
-			base = envHome("CLAUDE_CONFIG_DIR", filepath.Join(paths.Home, ".claude"))
+			base = envHomeFor("CLAUDE_CONFIG_DIR", filepath.Join(paths.Home, ".claude"), paths.Home)
 		case "vibe":
-			base = envHome("VIBE_HOME", filepath.Join(paths.Home, ".vibe"))
+			base = envHomeFor("VIBE_HOME", filepath.Join(paths.Home, ".vibe"), paths.Home)
 		case "hermes":
-			base = envHome("HERMES_HOME", filepath.Join(paths.Home, ".hermes"))
+			base = envHomeFor("HERMES_HOME", hermesHome(paths), paths.Home)
 		case "autohand":
-			base = envHome("AUTOHAND_HOME", filepath.Join(paths.Home, ".autohand"))
+			base = envHomeFor("AUTOHAND_HOME", filepath.Join(paths.Home, ".autohand"), paths.Home)
 		case "grok":
-			base = envHome("GROK_HOME", filepath.Join(paths.Home, ".grok"))
+			base = envHomeFor("GROK_HOME", filepath.Join(paths.Home, ".grok"), paths.Home)
 		case "workbuddy":
 			base = workBuddyHome(paths.Home)
 		case "none":
@@ -125,10 +131,27 @@ func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 }
 
 func envHome(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 		return value
 	}
 	return fallback
+}
+
+func envHomeFor(key, fallback, home string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return expandAgentHome(value, home)
+	}
+	return fallback
+}
+
+func expandAgentHome(value, home string) string {
+	if value == "~" {
+		return home
+	}
+	if strings.HasPrefix(value, "~/") || strings.HasPrefix(value, `~\`) {
+		return filepath.Join(home, filepath.FromSlash(strings.ReplaceAll(value[2:], `\`, "/")))
+	}
+	return value
 }
 
 func workBuddyHome(home string) string {
@@ -138,6 +161,17 @@ func workBuddyHome(home string) string {
 		}
 	}
 	return filepath.Join(home, ".workbuddy")
+}
+
+func hermesHome(paths Paths) string {
+	if paths.GOOS != "windows" {
+		return filepath.Join(paths.Home, ".hermes")
+	}
+	base := strings.TrimSpace(paths.LocalAppData)
+	if base == "" {
+		base = filepath.Join(paths.Home, "AppData", "Local")
+	}
+	return filepath.Join(base, "hermes")
 }
 
 func (c *Catalog) Get(id string) (Definition, bool) { value, ok := c.definitions[id]; return value, ok }
@@ -235,7 +269,7 @@ func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot s
 		return []string{
 			shared,
 			filepath.Join(paths.Home, ".claude", "skills"),
-			filepath.Join(envHome("CODEX_HOME", filepath.Join(paths.Home, ".codex")), "skills"),
+			filepath.Join(envHomeFor("CODEX_HOME", filepath.Join(paths.Home, ".codex"), paths.Home), "skills"),
 		}
 	case "gemini-cli", "github-copilot", "mistral-vibe", "qwen-code", "roo":
 		return []string{shared}

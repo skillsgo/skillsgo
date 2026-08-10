@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary user homes, real Workspace directories, and the public user configuration Store API.
- * [OUTPUT]: Specifies strict YAML persistence, canonical idempotent project registration, one-time project bootstrap, deterministic listing, and non-destructive removal.
+ * [OUTPUT]: Specifies strict YAML persistence, canonical idempotent project registration, lazy one-time project bootstrap gating, deterministic listing, and non-destructive removal.
  * [POS]: Serves as persistence contract coverage for the CLI-owned general user configuration document.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -77,4 +77,18 @@ func TestStoreBootstrapProjectsPersistsItsMarkerAndRemainsEmpty(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(home, ".skillsgo", "config.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(data), "projectsBootstrapped: true")
+}
+
+func TestStoreProjectBootstrapNeededTracksDurableMarker(t *testing.T) {
+	home := t.TempDir()
+	store := Store{Home: home}
+	needed, err := store.ProjectBootstrapNeeded()
+	require.NoError(t, err)
+	require.True(t, needed)
+
+	_, err = store.BootstrapProjects(nil)
+	require.NoError(t, err)
+	needed, err = store.ProjectBootstrapNeeded()
+	require.NoError(t, err)
+	require.False(t, needed)
 }
