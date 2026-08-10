@@ -20,7 +20,7 @@ The dependency-light `protocol/` Go module is a shared source and compatibility 
 
 | Unit | Source | Tag | Version source | Production artifacts |
 | --- | --- | --- | --- | --- |
-| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Windows x64 Setup, Linux x64 AppImage, separate macOS arm64/x86_64 downloads, Velopack feeds, and checksums; signing credentials upgrade Windows Setup and macOS PKGs, while unsigned downloads are labeled explicitly |
+| App | `app/` | `app/vX.Y.Z` | `app/pubspec.yaml` | Windows x64 Setup, Linux x64 AppImage, separate drag-install macOS arm64/x86_64 DMGs, Velopack feeds, and checksums; signing credentials upgrade Windows Setup and macOS DMGs, while unsigned downloads are labeled explicitly |
 | CLI | `cli/` | `cli/vX.Y.Z` | tag | Five platform archives, npm `skillsgo` packages, a Homebrew Formula, checksums, SBOMs, signed CDN Manifests, and GitHub Release |
 | Hub | `hub/` | `hub/vX.Y.Z` | tag | Linux and macOS binaries, checksums, and GHCR image |
 
@@ -172,7 +172,7 @@ An existing immutable object may be reused only when its stored SHA-256 identity
 
 Every maintained native App Desktop CI job packages its verified Release bundle as an expiring, explicitly unsigned Velopack candidate and then exercises an ephemeral two-version update feed. Candidate builds do not create GitHub Releases and must not be presented as production downloads.
 
-The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, portable package, and platform installer, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App for smoke coverage while also verifying that each architecture produced a PKG.
+The candidate build compiles the bundled SkillsGo CLI for the App architecture from the same commit and verifies its version and executable contract before packaging. It emits independent `win-x64`, `linux-x64`, `osx-arm64`, and `osx-x64` Velopack channels, verifies each channel's release index, full update package, portable package, and platform installer, then performs a post-package startup smoke. Windows additionally installs the unsigned per-user `Setup.exe` and starts the installed App. Linux starts the generated AppImage. macOS starts the extracted portable App for smoke coverage, verifies that each architecture produced Velopack's native PKG, and creates and mounts a DMG containing the update-capable `SkillsGo.app` plus an `/Applications` drag target.
 
 Each platform job then preserves its packaged `0.0.1` launcher, rebuilds the same source as `0.0.2`, and appends the later full package to the channel feed. A traversal-safe loopback HTTP server provides that feed only inside the runner. The packaged `0.0.1` App uses the community `velopack_flutter` bridge, which embeds Velopack Rust SDK 1.2.0, to check, download, verify, apply, and restart into `0.0.2`; the bundled CLI version proves the installed or portable payload actually changed. The loopback source accepts no remote host, credentials, query, or fragment. This gate proves update mechanics without hosting fees, certificates, or release publication, but it does not establish production publisher trust. Successful CI runs retain all four two-version candidate feeds for seven days.
 
@@ -189,11 +189,13 @@ not reachable from `main`. It then:
    retains prior full packages.
 3. Signs Windows executables and Setup when the publisher certificate is
    configured; otherwise publishes an unsigned Windows channel.
-4. Signs the two macOS Apps and installer packages when Developer ID
+4. Signs the two macOS Apps and Velopack installer packages when Developer ID
    identities are configured, submits them to Apple Notary Service through
-   Velopack, staples the result, and validates the signed PKG. Without those
-   identities, it publishes the unsigned macOS update channel and exposes a
-   clearly labeled unsigned PKG as the user-facing download.
+   Velopack, creates the two drag-install DMGs from the resulting update-capable
+   portable Apps, signs and notarizes each DMG, staples the result, and validates
+   both the internal PKG and user-facing DMG. Without those identities, it
+   publishes the unsigned macOS update channel and exposes a clearly labeled
+   unsigned DMG as the user-facing download.
 5. Generates provenance attestations and SHA-256 checksums.
 6. Uploads only the current version's immutable update packages to R2 before
    publishing the mutable `releases.<channel>.json` indexes. Prior packages
@@ -201,11 +203,13 @@ not reachable from `main`. It then:
    clients from observing a release whose package is not yet available.
 7. Creates an immutable GitHub Release containing one user-facing download per
    architecture and checksums. Both signed and unsigned macOS channels
-   contribute PKGs; unsigned installer names carry an `unsigned` suffix.
+   contribute DMGs; unsigned installer names carry an `unsigned` suffix. The
+   Velopack PKGs remain channel-internal artifacts and are not GitHub downloads.
 
-The workflow uses Velopack's native PKG output on macOS rather than inventing a
-separate DMG packaging layer, then signs and notarizes it when credentials are
-available. macOS architectures remain separate; there is no Universal binary.
+The workflow retains Velopack's native PKG as an internal build artifact, while
+the first-install surface is a native DMG assembled from the Velopack portable
+App so drag installation does not bypass the full-package update integration.
+macOS architectures remain separate; there is no Universal binary.
 
 The workflow exists in source but cannot publish until the protected
 `app-release` GitHub Environment contains the R2 configuration and public URL
