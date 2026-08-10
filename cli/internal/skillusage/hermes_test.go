@@ -20,6 +20,7 @@ import (
 
 func TestCollectHermesCountsTrustedSkillLoadsOncePerSession(t *testing.T) {
 	home := t.TempDir()
+	t.Setenv("HERMES_HOME", filepath.Join(home, ".hermes"))
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	databasePath := filepath.Join(home, ".hermes", "state.db")
 	writeHermesUsageFixture(t, databasePath, []hermesFixtureMessage{
@@ -41,6 +42,7 @@ func TestCollectHermesCountsTrustedSkillLoadsOncePerSession(t *testing.T) {
 
 func TestCollectHermesAggregatesProfileDatabasesAcrossRollingWindows(t *testing.T) {
 	home := t.TempDir()
+	t.Setenv("HERMES_HOME", filepath.Join(home, ".hermes"))
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	profileDatabase := filepath.Join(home, ".hermes", "profiles", "research", "state.db")
 	observedAt := now.AddDate(0, 0, -60)
@@ -52,6 +54,31 @@ func TestCollectHermesAggregatesProfileDatabasesAcrossRollingWindows(t *testing.
 	usage, err := CollectHermes(home, now)
 	require.NoError(t, err)
 	require.Equal(t, Usage{Hits45Days: 0, Hits90Days: 1}, usage["research"])
+}
+
+func TestCollectHermesExpandsActiveProfileToTheProfileFamily(t *testing.T) {
+	home := t.TempDir()
+	root := filepath.Join(home, ".hermes")
+	t.Setenv("HERMES_HOME", filepath.Join(root, "profiles", "active"))
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	writeHermesUsageFixture(t, filepath.Join(root, "state.db"), []hermesFixtureMessage{
+		{sessionID: "default", role: "user", content: `[IMPORTANT: The user has invoked the "default-skill" skill, indicating they want you to follow its instructions.]`, timestamp: now},
+	})
+	writeHermesUsageFixture(t, filepath.Join(root, "profiles", "sibling", "state.db"), []hermesFixtureMessage{
+		{sessionID: "sibling", role: "user", content: `[IMPORTANT: The user has invoked the "sibling-skill" skill, indicating they want you to follow its instructions.]`, timestamp: now},
+	})
+
+	usage, err := CollectHermes(home, now)
+	require.NoError(t, err)
+	require.Equal(t, Usage{Hits45Days: 1, Hits90Days: 1}, usage["default-skill"])
+	require.Equal(t, Usage{Hits45Days: 1, Hits90Days: 1}, usage["sibling-skill"])
+}
+
+func TestHermesDefaultHomeMatchesUpstreamPlatformRules(t *testing.T) {
+	home := filepath.Join("users", "freeman")
+	require.Equal(t, filepath.Join(home, ".hermes"), hermesDefaultHome(home, "darwin", ""))
+	require.Equal(t, filepath.Join("local", "hermes"), hermesDefaultHome(home, "windows", "local"))
+	require.Equal(t, filepath.Join(home, "AppData", "Local", "hermes"), hermesDefaultHome(home, "windows", ""))
 }
 
 type hermesFixtureMessage struct {

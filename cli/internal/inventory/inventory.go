@@ -61,6 +61,7 @@ type Entry struct {
 	Visibility          []Visibility `json:"visibility"`
 	AdoptionPackagePath string       `json:"adoptionPackagePath,omitempty"`
 	Usage               Usage        `json:"usage"`
+	UsageAvailable      bool         `json:"usageAvailable"`
 }
 
 type Usage struct {
@@ -87,14 +88,15 @@ type Target struct {
 }
 
 type Options struct {
-	IncludeGlobal   bool
-	Projects        []string
-	Catalog         *agent.Catalog
-	Context         context.Context
-	Packages        *packageprovider.Provider
-	VerifyContent   bool
-	SkillUsage      map[string]Usage
-	AgentSkillUsage map[string]map[string]Usage
+	IncludeGlobal      bool
+	Projects           []string
+	Catalog            *agent.Catalog
+	Context            context.Context
+	Packages           *packageprovider.Provider
+	VerifyContent      bool
+	SkillUsage         map[string]Usage
+	AgentSkillUsage    map[string]map[string]Usage
+	AgentUsageComplete map[string]bool
 }
 
 func Build(options Options) (Report, error) {
@@ -144,7 +146,7 @@ func Build(options Options) (Report, error) {
 	addExternalAdoptionPackageHints(entries, home)
 	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
 	applyCodexUsage(entries, options.SkillUsage)
-	applyAgentUsage(entries, options.AgentSkillUsage)
+	applyAgentUsage(entries, options.AgentSkillUsage, options.AgentUsageComplete)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -187,29 +189,53 @@ func Build(options Options) (Report, error) {
 }
 
 func applyCodexUsage(entries map[string]*Entry, usage map[string]Usage) {
-	applyOneAgentUsage(entries, "codex", usage)
+	if usage == nil {
+		return
+	}
+	applyAgentUsage(entries, map[string]map[string]Usage{"codex": usage}, map[string]bool{"codex": true})
 }
 
-func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[string]Usage) {
+func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[string]Usage, completeByAgent map[string]bool) {
+	if len(usageByAgent) == 0 {
+		return
+	}
+	uniqueByAgent := map[string]map[string]bool{}
 	for agentID, usage := range usageByAgent {
-		applyOneAgentUsage(entries, agentID, usage)
+		uniqueByAgent[agentID] = applyOneAgentUsage(entries, agentID, usage)
+	}
+	for _, entry := range entries {
+		matchedAny := false
+		complete := true
+		for agentID := range usageByAgent {
+			if !entryVisibleToAgent(entry, agentID) {
+				continue
+			}
+			matchedAny = true
+			if !completeByAgent[agentID] || !uniqueByAgent[agentID][entry.Name] {
+				complete = false
+			}
+		}
+		entry.UsageAvailable = matchedAny && complete
 	}
 }
 
-func applyOneAgentUsage(entries map[string]*Entry, agentID string, usage map[string]Usage) {
+func applyOneAgentUsage(entries map[string]*Entry, agentID string, usage map[string]Usage) map[string]bool {
 	entriesByName := map[string][]*Entry{}
 	for _, entry := range entries {
 		if entryVisibleToAgent(entry, agentID) {
 			entriesByName[entry.Name] = append(entriesByName[entry.Name], entry)
 		}
 	}
+	unique := map[string]bool{}
 	for name, matching := range entriesByName {
 		if len(matching) == 1 {
+			unique[name] = true
 			observed := usage[name]
 			matching[0].Usage.Hits45Days += observed.Hits45Days
 			matching[0].Usage.Hits90Days += observed.Hits90Days
 		}
 	}
+	return unique
 }
 
 func entryVisibleToAgent(entry *Entry, agentID string) bool {

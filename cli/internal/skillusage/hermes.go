@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -74,15 +75,29 @@ func hermesObservationName(key string) string {
 }
 
 func hermesDatabasePaths(home string) []string {
-	root := filepath.Join(home, ".hermes")
+	root := hermesDefaultHome(home, runtime.GOOS, os.Getenv("LOCALAPPDATA"))
 	if configured := strings.TrimSpace(os.Getenv("HERMES_HOME")); configured != "" {
-		root = configured
+		root = expandConfiguredHome(configured, home)
+		if filepath.Base(filepath.Dir(root)) == "profiles" {
+			root = filepath.Dir(filepath.Dir(root))
+		}
 	}
 	paths := []string{filepath.Join(root, "state.db")}
 	profiles, _ := filepath.Glob(filepath.Join(root, "profiles", "*", "state.db"))
 	paths = append(paths, profiles...)
 	sort.Strings(paths)
 	return paths
+}
+
+func hermesDefaultHome(home, goos, localAppData string) string {
+	if goos != "windows" {
+		return filepath.Join(home, ".hermes")
+	}
+	base := strings.TrimSpace(localAppData)
+	if base == "" {
+		base = filepath.Join(home, "AppData", "Local")
+	}
+	return filepath.Join(base, "hermes")
 }
 
 func collectHermesDatabase(path string, now time.Time) (map[string]string, error) {
@@ -128,14 +143,15 @@ func collectHermesDatabase(path string, now time.Time) (map[string]string, error
 		switch role {
 		case "assistant":
 			for callID, name := range hermesSkillViewCalls(toolCalls) {
-				pending[callID] = hermesPendingSkill{sessionID: sessionID, name: name}
+				pending[sessionID+"\x00"+callID] = hermesPendingSkill{sessionID: sessionID, name: name}
 			}
 		case "tool":
 			if !strings.EqualFold(toolName, "skill_view") || toolCallID == "" || !hermesSkillViewSucceeded(content) {
 				continue
 			}
-			candidate, ok := pending[toolCallID]
-			delete(pending, toolCallID)
+			pendingKey := sessionID + "\x00" + toolCallID
+			candidate, ok := pending[pendingKey]
+			delete(pending, pendingKey)
 			if !ok || candidate.sessionID != sessionID {
 				continue
 			}
@@ -225,20 +241,6 @@ func hermesExpandedSkillNames(content string) []string {
 		return []string{name}
 	}
 	return nil
-}
-
-func observeSessionSkill(sessions map[string]map[string]string, sessionID, name, day string) {
-	if sessionID == "" || name == "" || day == "" {
-		return
-	}
-	observed := sessions[sessionID]
-	if observed == nil {
-		observed = map[string]string{}
-		sessions[sessionID] = observed
-	}
-	if previous := observed[name]; previous == "" || day > previous {
-		observed[name] = day
-	}
 }
 
 func flattenSessionObservations(sessions map[string]map[string]string) map[string]string {

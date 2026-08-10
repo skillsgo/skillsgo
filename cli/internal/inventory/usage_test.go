@@ -18,14 +18,19 @@ func TestApplyCodexUsageRequiresOneCodexVisibleEntry(t *testing.T) {
 	entries := map[string]*Entry{"codex": codex, "claude": claude}
 	applyCodexUsage(entries, map[string]Usage{"pdf": {Hits45Days: 2, Hits90Days: 5}})
 	require.Equal(t, Usage{Hits45Days: 2, Hits90Days: 5}, codex.Usage)
+	require.True(t, codex.UsageAvailable)
 	require.Equal(t, Usage{}, claude.Usage)
+	require.False(t, claude.UsageAvailable)
 
 	duplicate := &Entry{Name: "pdf", Visibility: []Visibility{{Agent: "codex"}}}
 	entries["duplicate"] = duplicate
 	codex.Usage = Usage{}
+	codex.UsageAvailable = false
 	applyCodexUsage(entries, map[string]Usage{"pdf": {Hits45Days: 3, Hits90Days: 6}})
 	require.Equal(t, Usage{}, codex.Usage)
 	require.Equal(t, Usage{}, duplicate.Usage)
+	require.False(t, codex.UsageAvailable)
+	require.False(t, duplicate.UsageAvailable)
 }
 
 func TestApplyAgentUsageAggregatesOnlyUniquelyVisibleEvidence(t *testing.T) {
@@ -35,7 +40,34 @@ func TestApplyAgentUsageAggregatesOnlyUniquelyVisibleEvidence(t *testing.T) {
 	applyAgentUsage(entries, map[string]map[string]Usage{
 		"codex":    {"review": {Hits45Days: 2, Hits90Days: 3}},
 		"reasonix": {"review": {Hits45Days: 4, Hits90Days: 5}, "other": {Hits45Days: 1, Hits90Days: 1}},
-	})
+	}, map[string]bool{"codex": true, "reasonix": true})
 	require.Equal(t, Usage{Hits45Days: 6, Hits90Days: 8}, shared.Usage)
 	require.Equal(t, Usage{Hits45Days: 1, Hits90Days: 1}, other.Usage)
+	require.True(t, shared.UsageAvailable)
+	require.True(t, other.UsageAvailable)
+}
+
+func TestApplyAgentUsageKeepsPartialCountsUnavailable(t *testing.T) {
+	entry := &Entry{Name: "review", Agents: []string{"hermes-agent"}}
+	applyAgentUsage(
+		map[string]*Entry{"review": entry},
+		map[string]map[string]Usage{"hermes-agent": {"review": {Hits45Days: 2, Hits90Days: 3}}},
+		map[string]bool{"hermes-agent": false},
+	)
+	require.Equal(t, Usage{Hits45Days: 2, Hits90Days: 3}, entry.Usage)
+	require.False(t, entry.UsageAvailable)
+}
+
+func TestApplyAgentUsageRequiresEveryVisibleSupportedAgentToBeComplete(t *testing.T) {
+	entry := &Entry{Name: "review", Agents: []string{"codex", "hermes-agent"}}
+	applyAgentUsage(
+		map[string]*Entry{"review": entry},
+		map[string]map[string]Usage{
+			"codex":        {"review": {Hits45Days: 2, Hits90Days: 3}},
+			"hermes-agent": {"review": {Hits45Days: 1, Hits90Days: 1}},
+		},
+		map[string]bool{"codex": true, "hermes-agent": false},
+	)
+	require.Equal(t, Usage{Hits45Days: 3, Hits90Days: 4}, entry.Usage)
+	require.False(t, entry.UsageAvailable)
 }

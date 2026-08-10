@@ -41,12 +41,20 @@ func exists(path string) bool {
 }
 
 func openClawSkillsDir(home string) string {
-	for _, name := range []string{".openclaw", ".clawdbot", ".moltbot"} {
-		if exists(filepath.Join(home, name)) {
-			return filepath.Join(home, name, "skills")
+	return filepath.Join(openClawStateDir(home), "skills")
+}
+
+func openClawStateDir(home string) string {
+	if configured := strings.TrimSpace(os.Getenv("OPENCLAW_STATE_DIR")); configured != "" {
+		return expandAgentHome(configured, home)
+	}
+	for _, name := range []string{".openclaw", ".clawdbot", ".moldbot", ".moltbot"} {
+		candidate := filepath.Join(home, name)
+		if exists(candidate) {
+			return candidate
 		}
 	}
-	return filepath.Join(home, ".openclaw", "skills")
+	return filepath.Join(home, ".openclaw")
 }
 
 // DetectInstalled reports whether the Agent is installed using the same
@@ -61,7 +69,7 @@ func (c *Catalog) DetectInstalled(id string) bool {
 	case "universal":
 		return false
 	case "openclaw":
-		return exists(filepath.Join(home, ".openclaw")) || exists(filepath.Join(home, ".clawdbot")) || exists(filepath.Join(home, ".moltbot"))
+		return exists(openClawStateDir(home))
 	case "codex":
 		return exists(strings.TrimSuffix(d.GlobalDir, string(filepath.Separator)+"skills")) || exists("/etc/codex")
 	case "amp":

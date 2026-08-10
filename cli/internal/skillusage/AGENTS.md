@@ -15,8 +15,11 @@
 - `opencode_test.go`: specifies OpenCode completed-state filtering, Session deduplication, rolling windows, configured database resolution, and missing-database behavior.
 - `hermes.go`: queries Hermes Agent state databases read-only and counts only call-ID-correlated successful `skill_view` loads plus explicit expanded Skill-command scaffolding across the default profile and named profiles.
 - `hermes_test.go`: specifies Hermes successful-load correlation, failure rejection, expanded-command attribution, Session deduplication, profile aggregation, and rolling windows.
-- `openclaw.go`: scans the active OpenClaw state directory for durable current/reset/deleted Session transcripts and counts only successful `read` results whose returned `SKILL.md` frontmatter verifies the requested Skill.
-- `openclaw_test.go`: specifies OpenClaw incidental-path and failed-read rejection, frontmatter verification, Session deduplication, archived Session inclusion, path portability, and rolling windows.
+- `openclaw.go`: incrementally indexes the active OpenClaw state directory's durable current/reset/deleted Session transcripts, preserves pending read correlation in a disposable cache, and counts only successful `read` results using the returned `SKILL.md` frontmatter name as authoritative identity.
+- `openclaw_test.go`: specifies OpenClaw incidental-path and failed-read rejection, authoritative frontmatter identity, Session deduplication, archived Session inclusion, path portability, rolling windows, and append-only cache continuation.
+- `paths.go`: normalizes configured Agent state paths with cross-platform user-home expansion shared by usage adapters.
+- `sessions.go`: provides latest-observation Session deduplication shared by transcript-backed usage adapters.
+- `cache_replace_unix.go` and `cache_replace_windows.go`: publish unique temporary usage-cache files with platform-native replace semantics.
 
 ## Architectural Boundary
 

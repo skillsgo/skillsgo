@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/flock"
 	"github.com/valyala/fastjson"
 )
 
@@ -85,10 +86,15 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 	live := map[string]bool{}
 	jobs := []codexScanJob{}
 	changed := false
+	completeWalk := true
 	var scanErrors []error
 
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil
+			}
+			completeWalk = false
 			scanErrors = append(scanErrors, err)
 			return nil
 		}
@@ -97,6 +103,7 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 		}
 		info, infoErr := entry.Info()
 		if infoErr != nil {
+			completeWalk = false
 			scanErrors = append(scanErrors, infoErr)
 			return nil
 		}
@@ -113,6 +120,7 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 		return nil
 	})
 	if walkErr != nil && !errors.Is(walkErr, os.ErrNotExist) {
+		completeWalk = false
 		scanErrors = append(scanErrors, walkErr)
 	}
 	for index, result := range scanCodexFiles(jobs, now.Location()) {
@@ -125,13 +133,15 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 	}
 	for path := range state.Files {
 		if !live[path] {
-			delete(state.Files, path)
-			changed = true
+			if completeWalk {
+				delete(state.Files, path)
+				changed = true
+			}
 			continue
 		}
 		record := state.Files[path]
 		for name, day := range record.Skills {
-			recordDay, err := time.Parse(time.DateOnly, day)
+			recordDay, err := time.ParseInLocation(time.DateOnly, day, now.Location())
 			if err != nil || recordDay.Before(cutoff) {
 				delete(record.Skills, name)
 				changed = true
@@ -141,7 +151,7 @@ func CollectCodex(home string, now time.Time) (map[string]Usage, error) {
 	}
 	buckets := buildBuckets(state)
 	if changed {
-		if err := persistCache(cacheRoot, statePath, state, buckets); err != nil {
+		if err := persistCache(cacheRoot, "codex", statePath, state, buckets); err != nil {
 			scanErrors = append(scanErrors, err)
 		}
 	}
@@ -181,7 +191,15 @@ func scanCodexFile(job codexScanJob, location *time.Location) codexScanResult {
 	start := int64(0)
 	skills := map[string]string{}
 	pendingReads := map[string]map[string]string{}
-	if job.exists && job.info.Size() >= job.previous.Size && prefixHash == job.previous.PrefixHash {
+	previousPrefixMatches := false
+	if job.exists && job.info.Size() >= job.previous.Size {
+		previousHash, hashErr := filePrefixHashLimit(job.path, min(job.previous.Size, int64(4096)))
+		if hashErr != nil {
+			return codexScanResult{err: hashErr}
+		}
+		previousPrefixMatches = previousHash == job.previous.PrefixHash
+	}
+	if previousPrefixMatches {
 		for name, day := range job.previous.Skills {
 			skills[name] = day
 		}
@@ -207,13 +225,17 @@ func scanCodexFile(job codexScanJob, location *time.Location) codexScanResult {
 }
 
 func filePrefixHash(path string) (string, error) {
+	return filePrefixHashLimit(path, 4096)
+}
+
+func filePrefixHashLimit(path string, limit int64) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 	hash := sha256.New()
-	if _, err := io.CopyN(hash, file, 4096); err != nil && !errors.Is(err, io.EOF) {
+	if _, err := io.CopyN(hash, file, limit); err != nil && !errors.Is(err, io.EOF) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
@@ -617,15 +639,20 @@ func aggregateBuckets(buckets map[string]dayBucket, now time.Time) map[string]Us
 	return result
 }
 
-func persistCache(root, statePath string, state cacheState, buckets map[string]dayBucket) error {
+func persistCache(root, prefix, statePath string, state cacheState, buckets map[string]dayBucket) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
+	cacheLock := flock.New(filepath.Join(root, prefix+".lock"))
+	if err := cacheLock.Lock(); err != nil {
+		return err
+	}
+	defer func() { _ = cacheLock.Unlock() }()
 	if err := writeJSONAtomically(statePath, state); err != nil {
 		return err
 	}
 	for day, bucket := range buckets {
-		if err := writeJSONAtomically(filepath.Join(root, "codex-"+day+".json"), bucket); err != nil {
+		if err := writeJSONAtomically(filepath.Join(root, prefix+"-"+day+".json"), bucket); err != nil {
 			return err
 		}
 	}
@@ -635,10 +662,10 @@ func persistCache(root, statePath string, state cacheState, buckets map[string]d
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasPrefix(name, "codex-") || !strings.HasSuffix(name, ".json") || name == "codex-state.json" {
+		if entry.IsDir() || !strings.HasPrefix(name, prefix+"-") || !strings.HasSuffix(name, ".json") || name == filepath.Base(statePath) {
 			continue
 		}
-		day := strings.TrimSuffix(strings.TrimPrefix(name, "codex-"), ".json")
+		day := strings.TrimSuffix(strings.TrimPrefix(name, prefix+"-"), ".json")
 		if _, keep := buckets[day]; !keep {
 			if err := os.Remove(filepath.Join(root, name)); err != nil && !errors.Is(err, os.ErrNotExist) {
 				return err
@@ -653,11 +680,24 @@ func writeJSONAtomically(path string, value any) error {
 	if err != nil {
 		return err
 	}
-	temporary := path + ".tmp"
-	if err := os.WriteFile(temporary, append(data, '\n'), 0o600); err != nil {
+	temporary, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(temporary, path)
+	temporaryPath := temporary.Name()
+	defer func() { _ = os.Remove(temporaryPath) }()
+	if err := temporary.Chmod(0o600); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if _, err := temporary.Write(append(data, '\n')); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	return replaceCacheFile(temporaryPath, path)
 }
 
 func dayStart(value time.Time) time.Time {

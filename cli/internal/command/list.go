@@ -54,6 +54,7 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			provider := packageprovider.Default("", client)
 			usageByAgent := map[string]map[string]inventory.Usage{}
+			usageCompleteByAgent := map[string]bool{}
 			if includeUsage {
 				home, err := os.UserHomeDir()
 				if err != nil {
@@ -74,9 +75,7 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 				}
 				for _, collector := range collectors {
 					observed, collectErr := collector.collect(home, now)
-					if collectErr != nil {
-						continue
-					}
+					usageCompleteByAgent[collector.agentID] = collectErr == nil
 					usageByAgent[collector.agentID] = map[string]inventory.Usage{}
 					for name, totals := range observed {
 						usageByAgent[collector.agentID][name] = inventory.Usage{Hits45Days: totals.Hits45Days, Hits90Days: totals.Hits90Days}
@@ -84,12 +83,13 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 				}
 			}
 			report, err := inventory.Build(inventory.Options{
-				IncludeGlobal:   includeGlobal,
-				Projects:        projects,
-				Catalog:         catalog,
-				Context:         cmd.Context(),
-				Packages:        &provider,
-				AgentSkillUsage: usageByAgent,
+				IncludeGlobal:      includeGlobal,
+				Projects:           projects,
+				Catalog:            catalog,
+				Context:            cmd.Context(),
+				Packages:           &provider,
+				AgentSkillUsage:    usageByAgent,
+				AgentUsageComplete: usageCompleteByAgent,
 			})
 			if errors.Is(err, inventory.ErrEmptyProjectRoot) {
 				return errors.New(appi18n.T("list.error.empty_project"))
