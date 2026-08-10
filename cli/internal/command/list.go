@@ -69,6 +69,8 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 					{"github-copilot", skillusage.CollectCopilot},
 					{"reasonix", skillusage.CollectReasonix},
 					{"opencode", skillusage.CollectOpenCode},
+					{"hermes-agent", skillusage.CollectHermes},
+					{"openclaw", skillusage.CollectOpenClaw},
 				}
 				for _, collector := range collectors {
 					observed, collectErr := collector.collect(home, now)

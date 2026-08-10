@@ -13,6 +13,10 @@
 - `reasonix_test.go`: specifies Reasonix sidecar exclusion, successful-tool correlation, failure rejection, Session deduplication, configured-home resolution, and rolling-window boundaries.
 - `opencode.go`: queries only completed OpenCode Skill-tool metadata from schema-guarded read-only SQLite databases and aggregates unique Session/name observations without reading conversation content.
 - `opencode_test.go`: specifies OpenCode completed-state filtering, Session deduplication, rolling windows, configured database resolution, and missing-database behavior.
+- `hermes.go`: queries Hermes Agent state databases read-only and counts only call-ID-correlated successful `skill_view` loads plus explicit expanded Skill-command scaffolding across the default profile and named profiles.
+- `hermes_test.go`: specifies Hermes successful-load correlation, failure rejection, expanded-command attribution, Session deduplication, profile aggregation, and rolling windows.
+- `openclaw.go`: scans the active OpenClaw state directory for durable current/reset/deleted Session transcripts and counts only successful `read` results whose returned `SKILL.md` frontmatter verifies the requested Skill.
+- `openclaw_test.go`: specifies OpenClaw incidental-path and failed-read rejection, frontmatter verification, Session deduplication, archived Session inclusion, path portability, and rolling windows.
 
 ## Architectural Boundary
 
