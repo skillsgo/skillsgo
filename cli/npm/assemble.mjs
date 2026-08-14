@@ -101,6 +101,7 @@ function makePlatformPackage(outputDirectory, version, target, binarySource) {
     os: [target.goos === 'windows' ? 'win32' : target.goos],
     cpu: [target.goarch === 'amd64' ? 'x64' : target.goarch],
     license: 'Apache-2.0',
+    repository: { type: 'git', url: 'https://github.com/skillsgo/skillsgo.git' },
   });
   writeFileSync(
     join(packageDirectory, 'index.js'),
@@ -125,6 +126,7 @@ function makeMainPackage(outputDirectory, version, platformPackages) {
     optionalDependencies: Object.fromEntries(platformPackages.map((name) => [name, version])),
     engines: { node: '>=18' },
     license: 'Apache-2.0',
+    repository: { type: 'git', url: 'https://github.com/skillsgo/skillsgo.git' },
   });
   return packageDirectory;
 }
