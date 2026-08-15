@@ -282,15 +282,16 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      id-token: write
     env:
       RELEASE_VERSION: ${{ needs.verify.outputs.version }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Download package-manager outputs
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -305,10 +306,10 @@ jobs:
           main_package="${GITHUB_WORKSPACE}/package-manager-outputs/skillsgo-${RELEASE_VERSION#v}.tgz"
           for package in "${GITHUB_WORKSPACE}"/package-manager-outputs/skillsgo-*.tgz; do
             if [[ "${package}" != "${main_package}" ]]; then
-              npm publish "${package}" --access public
+              npm publish "${package}" --access public --provenance
             fi
           done
-          npm publish "${main_package}" --access public
+          npm publish "${main_package}" --access public --provenance
 
   publish-homebrew:
     name: Publish Homebrew Formula
