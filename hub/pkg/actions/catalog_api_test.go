@@ -207,6 +207,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	require.Equal(t, "github.com/mattpocock/skills", packageResponse.Package.PackagePath)
 	require.Equal(t, packageDescription, packageResponse.Package.Description)
 	require.Equal(t, "v0.0.0-test", packageResponse.Package.LatestVersion)
+	require.Equal(t, "https://cdn.jsdelivr.net/gh/mattpocock/skills@commit-abc/README.md", packageResponse.Package.ReadmeURL)
 	require.Len(t, packageResponse.Skills, 1)
 
 	localizedPackageFind := httptest.NewRecorder()
@@ -228,6 +229,7 @@ func TestCatalogAPIListAndFind(t *testing.T) {
 	var versionedResponse skillsResponse
 	require.NoError(t, json.NewDecoder(versionedFind.Body).Decode(&versionedResponse))
 	require.Equal(t, historicalVersion, versionedResponse.Package.LatestVersion)
+	require.Equal(t, "https://cdn.jsdelivr.net/gh/mattpocock/skills@commit-historical/README.md", versionedResponse.Package.ReadmeURL)
 	require.Equal(t, "真实工程师的技能。", versionedResponse.Package.Description)
 	require.True(t, time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC).Equal(versionedResponse.Package.UpdatedAt))
 	require.Len(t, versionedResponse.Skills, 1)

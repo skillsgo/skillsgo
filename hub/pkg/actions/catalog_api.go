@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog's set-based localized read models, canonical presentation languages, freshness-cached Package artifact resolution, and request validation.
- * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries, description-ranked exact-name candidate lookup with match confidence, stable-first exact-path versions and Package avatar metadata, constant-query ordered batch Skill-card hydration, Catalog-backed current Package Publication reads, and correlated private diagnostics.
+ * [OUTPUT]: Provides stable current Skill Find, localized current and immutable-version Package Publication summaries with source-pinned README presentation, description-ranked exact-name candidate lookup with match confidence, stable-first exact-path versions and Package avatar metadata, constant-query ordered batch Skill-card hydration, Catalog-backed current Package Publication reads, and correlated private diagnostics.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,6 +37,14 @@ type packageFindSummary struct {
 	Stars         int64     `json:"stars"`
 	LatestVersion string    `json:"latestVersion"`
 	UpdatedAt     time.Time `json:"updatedAt"`
+	ReadmeURL     string    `json:"readmeUrl,omitempty"`
+}
+
+func packageReadmeURL(sourceHost, sourcePath, commitSHA string) string {
+	if sourceHost != "github.com" || commitSHA == "" || len(strings.Split(sourcePath, "/")) != 2 {
+		return ""
+	}
+	return "https://cdn.jsdelivr.net/gh/" + sourcePath + "@" + commitSHA + "/README.md"
 }
 
 type skillBatchRequest struct {
@@ -192,7 +200,7 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 			return writeJSON(c, fiber.StatusOK, skillsResponse{
 				Skills: cards,
 				Package: &packageFindSummary{PackagePath: stored.Path, Description: localizedPackageDescription(c.Context(), metadata, stored.Path, stored.Description, lang), Stars: stored.Stars,
-					LatestVersion: version, UpdatedAt: identity.CommitTime},
+					LatestVersion: version, UpdatedAt: identity.CommitTime, ReadmeURL: packageReadmeURL(stored.SourceHost, stored.SourcePath, identity.CommitSHA)},
 				Pagination: pagination(page, perPage, start+len(cards) < len(members)),
 			})
 		}
@@ -219,7 +227,17 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 				if len(ranked) > 0 {
 					latestVersion = ranked[0].LatestVersion
 				}
-				response.Package = &packageFindSummary{PackagePath: stored.Path, Description: localizedPackageDescription(c.Context(), metadata, stored.Path, stored.Description, lang), Stars: stored.Stars, LatestVersion: latestVersion, UpdatedAt: stored.UpdatedAt}
+				readmeURL := ""
+				if latestVersion != "" {
+					identity, found, identityErr := metadata.PackageVersionByCoordinate(c.Context(), packagePath, latestVersion)
+					if identityErr != nil {
+						return writeInternalAPIError(c, "catalog.find_package", fiber.StatusInternalServerError, "internal_error", "Find failed", identityErr)
+					}
+					if found {
+						readmeURL = packageReadmeURL(stored.SourceHost, stored.SourcePath, identity.CommitSHA)
+					}
+				}
+				response.Package = &packageFindSummary{PackagePath: stored.Path, Description: localizedPackageDescription(c.Context(), metadata, stored.Path, stored.Description, lang), Stars: stored.Stars, LatestVersion: latestVersion, UpdatedAt: stored.UpdatedAt, ReadmeURL: readmeURL}
 				return writeJSON(c, fiber.StatusOK, response)
 			}
 			coordinate := protocolapi.SkillCoordinate{PackagePath: packagePath, Name: query}

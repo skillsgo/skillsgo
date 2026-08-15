@@ -88,6 +88,10 @@ _Avoid_: Skill artifact, live repository directory, mutable cache entry
 Author-maintained Source Repository description, Skill description, or canonical `SKILL.md` document. It may be displayed and indexed and remains the fallback for every presentation language, but it is never rewritten by Hub enrichment.
 _Avoid_: generated source, localized artifact, inferred canonical language
 
+**Package README Presentation**:
+The optional source-pinned HTTPS URL returned with an exact current or immutable-version Package Find summary. For supported public GitHub sources it addresses the root `README.md` through an immutable commit-specific CDN path; it is presentation-only, may be unavailable independently, and never enters Package Info, Package Sum, installation, or execution.
+_Avoid_: Package Artifact contract, mutable branch README, Hub-proxied document, required installation metadata
+
 **Hub Enrichment**:
 Presentation-only Package Description, Skill Description, or Skill document body produced by Hub analysis for one source digest and language. Description text belongs to the Hub catalog; localized document bodies use deterministic `SKILL.{lang}.md` sidecars. Neither changes Package Info, Sum, installation, or execution semantics.
 _Avoid_: artifact translation, localized Skill version, source rewrite
