@@ -57,7 +57,7 @@ The Hub has a Maven-like role for Agent Skills—coordinates, immutable versions
 The desktop App connects discovery, source evidence, installation targets, and local inventory in one human-friendly journey. Personal use is accountless.
 
 <p align="center">
-  <img src="./assets/readme/discover-ranking.png" width="100%" alt="SkillsGo desktop App showing Agent Skills from the public Hub ranking">
+  <img src="./assets/readme/discover-live-online.png" width="100%" alt="SkillsGo desktop App connected to the online Hub showing live Agent Skills">
 </p>
 
 ### Discover and inspect
