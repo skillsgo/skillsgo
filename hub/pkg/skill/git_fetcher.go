@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs, skills.sh-compatible tiered Skill discovery with complete SKILL.md bytes, filtered Package Artifact assembly with applicable plugin manifests, precise Source Failure Codes, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, one-sync multi-revision discovery, Go-compatible ancestor-based immutable revision resolution with canonical refs and exact-Tag recovery, skills.sh-compatible tiered Skill discovery with complete SKILL.md bytes, filtered Package Artifact assembly with applicable plugin manifests, precise Source Failure Codes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,7 +47,7 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-	return resolveGitRevision(ctx, repoDir, skillID, revision)
+	return g.resolveGitRevision(ctx, repoDir, skillID, revision)
 }
 
 // DiscoverRepository synchronizes and resolves a Repository once, scans the
@@ -99,7 +99,7 @@ func (g *gitFetcher) VisitRepositorySnapshots(ctx context.Context, packagePath s
 
 func (g *gitFetcher) discoverRepositorySnapshot(ctx context.Context, packagePath, revision string, repository PackagePath, repoDir string) (*RepositorySnapshot, error) {
 	const op errors.Op = "gitFetcher.DiscoverRepository"
-	resolution, err := resolveGitRevision(ctx, repoDir, repository, revision)
+	resolution, err := g.resolveGitRevision(ctx, repoDir, repository, revision)
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureRevisionResolution, err)
 	}
@@ -471,7 +471,7 @@ func isGitRepository(repoDir string) bool {
 	return cmd.Run() == nil
 }
 
-func resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath, revision string) (*Resolution, error) {
+func (g *gitFetcher) resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	requestedRevision := revision
 	query, err := protocolversion.ParseQuery(revision)
@@ -516,6 +516,14 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID PackagePath
 		}
 	}
 	commitSHA, err := gitOutput(ctx, repoDir, "rev-parse", resolvedRevision+"^{commit}")
+	if err != nil && isCanonicalSemanticVersion(revision) {
+		upstreamRef := "refs/skillsgo/upstream-tags/" + revision
+		refspec := "+refs/tags/" + revision + ":" + upstreamRef
+		if _, fetchErr := g.runGitTransport(ctx, repoDir, "-c", "http.followRedirects=false", "fetch", "--no-tags", "origin", refspec); fetchErr == nil {
+			resolvedRevision = upstreamRef
+			commitSHA, err = gitOutput(ctx, repoDir, "rev-parse", resolvedRevision+"^{commit}")
+		}
+	}
 	if err != nil {
 		return nil, withSourceFailure(SourceFailureRevisionNotFound, errors.E(op,
 			fmt.Sprintf("revision %q not found for Skill %q", revision, skillID.String()),

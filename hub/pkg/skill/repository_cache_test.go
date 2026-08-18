@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned Artifact tree assembly.
- * [OUTPUT]: Specifies shared repository caching, skills.sh-compatible discovery precedence, one-sync multi-revision visitation with precise source failure codes, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, bounded no-Tag default-branch backfill selection, selected Skill-subtree Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, skills.sh-compatible discovery precedence, one-sync multi-revision visitation with precise source failure codes, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions and exact-Tag recovery, bounded no-Tag default-branch backfill selection, selected Skill-subtree Artifact trees with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -107,6 +107,26 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	require.NotEqual(t, first.TreeSHA, second.TreeSHA)
 	require.NotEqual(t, first.Version, second.Version)
 	require.True(t, module.IsPseudoVersion(second.Version), second.Version)
+}
+
+func TestRepositoryResolutionRecoversMissingWildcardFetchedTag(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	original := f.fetcher.runGitCommand
+	f.fetcher.runGitCommand = func(ctx context.Context, dir string, args []string, environment []string) ([]byte, error) {
+		for _, arg := range args {
+			if arg == "+refs/tags/*:refs/skillsgo/upstream-tags/*" {
+				return nil, nil
+			}
+		}
+		return original(ctx, dir, args, environment)
+	}
+
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "v1.0.0")
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", resolved.Version)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
+	require.NoError(t, err)
+	require.NotEmpty(t, strings.TrimSpace(runGit(t, repositoryDir, "rev-parse", "refs/skillsgo/upstream-tags/v1.0.0^{commit}")))
 }
 
 func TestRepositoryBackfillListingPreparesOneSyncForMultipleSnapshotVisits(t *testing.T) {
