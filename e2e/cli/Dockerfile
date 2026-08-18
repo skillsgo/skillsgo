@@ -2,7 +2,7 @@
 # [OUTPUT]: Produces one reusable Linux image containing real CLI/Hub binaries and runtime VCS tools.
 # [POS]: Serves as the disposable single-container runtime for every cross-product e2e scenario.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-ARG GO_VERSION=1.26.5
+ARG GO_VERSION=1.26.6
 
 FROM golang:${GO_VERSION}-alpine AS cli-builder
 WORKDIR /src

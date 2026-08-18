@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.25.12', '1.26.6']
+        go: ['1.26.6']
     defaults:
       run:
         working-directory: cli
