@@ -2,6 +2,8 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="SkillsGo — discover, version, and operate Agent Skills">
 </p>
 
+**One workflow for Agent Skills —** Discover source-verifiable Skills, pin immutable versions, and operate the same installations through a desktop App or automation-friendly CLI.
+
 <!-- README-I18N:START -->
 
   <p>
@@ -33,6 +35,14 @@
 
 SkillsGo is a source-verifiable ecosystem for discovering, versioning, and operating Agent Skills. Use the desktop App to explore and manage Skills, the CLI to make installations reproducible, and the Hub as the shared or self-hosted distribution origin for immutable Package Versions.
 
+> **Think npm, Homebrew, or Maven—but for Agent Skills.** GitHub remains the source of truth for code; the SkillsGo Hub turns supported sources into discoverable, immutable, checksum-verifiable Skill Packages that the App and CLI can install consistently across Agents and machines.
+
+<p align="center">
+  <img src="./assets/readme/hub-registry.svg" width="100%" alt="Source repositories flow through the SkillsGo Hub into consistent App, CLI, and Coding Agent installations">
+</p>
+
+**From moving source to stable dependency —** The Hub gives people intent-based discovery while giving machines exact Package identity, immutable versions, accepted Skill membership, and checksums.
+
 ## Choose your operating model
 
 | Mode | Best for | What SkillsGo provides |
@@ -41,7 +51,16 @@ SkillsGo is a source-verifiable ecosystem for discovering, versioning, and opera
 | **CLI and CI/CD** | Repeatable developer environments and automation | Machine-readable commands, exact Skill selection, `skills.yaml`, `skills-lock.yaml`, checksum verification, offline cache recovery, and scope-aware updates |
 | **Self-hosted Hub** | Teams that need a controlled Skill catalog | A configurable Hub Origin with the same public protocol, immutable Package Versions, searchable metadata, static Git artifacts, and optional access control |
 
-The Hub has a Maven-like role for Agent Skills—coordinates, immutable versions, artifacts, checksums, and a registry origin—but it is a Skill-specific distribution protocol rather than a Maven-compatible repository.
+The comparison is about the role, not protocol compatibility:
+
+| Familiar model | What the SkillsGo Hub brings to Agent Skills |
+| --- | --- |
+| **npm registry** | Searchable Package identity and explicit immutable versions instead of copying an unknown folder from a moving branch |
+| **Homebrew tap** | One trusted distribution origin that the App or CLI can use across developer machines |
+| **Maven repository** | Stable coordinates, immutable artifacts, checksums, and lockable dependency resolution |
+| **Skill-specific layer** | Source evidence, accepted Skill membership, exact member selection, supported-Agent metadata, and installation targets |
+
+The Hub does not replace GitHub or pretend to be npm, Homebrew, or Maven compatible. It gives Agent Skills the registry and distribution guarantees those ecosystems made familiar for other kinds of software.
 
 ## Why SkillsGo
 
@@ -60,6 +79,8 @@ The desktop App connects discovery, source evidence, installation targets, and l
   <img src="./assets/readme/discover-live-online.png" width="100%" alt="SkillsGo desktop App connected to the online Hub showing live Agent Skills">
 </p>
 
+**Live Hub discovery —** Browse a continuously updated catalog without signing in, so useful Skills are visible before any local installation or configuration change.
+
 ### Discover and inspect
 
 Search by Skill or source repository, explore ranking and search results, and inspect the source repository, immutable release, supported Agents, translated summary, and rendered `SKILL.md` before installation.
@@ -68,9 +89,13 @@ Search by Skill or source repository, explore ranking and search results, and in
   <img src="./assets/readme/discover-find.png" width="100%" alt="SkillsGo Discover search showing a source repository and its available Agent Skills">
 </p>
 
+**Source-aware search —** Find Skills by capability or repository and see their Package context, helping you compare related Skills instead of trusting an isolated snippet.
+
 <p align="center">
   <img src="./assets/readme/discover-skill-detail.png" width="100%" alt="SkillsGo Skill detail showing source evidence, version, supported Agents, and rendered instructions">
 </p>
+
+**Inspect before installing —** Review the immutable version, supported Agents, source files, and rendered instructions first, reducing supply-chain surprises and accidental machine changes.
 
 ### Install and govern local Skills
 
@@ -80,21 +105,29 @@ Install globally or into selected projects, choose the Agent targets that should
   <img src="./assets/readme/discover-install-skill.png" width="100%" alt="SkillsGo installation target picker with selected projects and multiple Agent targets">
 </p>
 
+**Explicit installation targets —** Choose global or project scope and the exact Agents that receive a Skill, keeping one release consistent without copying files by hand.
+
 <p align="center">
   <img src="./assets/readme/library-update-skills.png" width="100%" alt="SkillsGo Library update preview showing a version transition and Skills that will be removed">
 </p>
 
-<details>
-  <summary><strong>See a project-scoped Library</strong></summary>
-  <br>
-  <p align="center">
-    <img src="./assets/readme/library-project.png" width="100%" alt="SkillsGo Library showing Skills installed for a selected project">
-  </p>
-</details>
+**Impact-aware updates —** See version transitions and removed Skills before applying an update, so dependency changes remain deliberate and recoverable.
+
+<p align="center">
+  <img src="./assets/readme/library-global-skills.png" width="100%" alt="SkillsGo global Library showing installed Skills, local usage evidence, and Agent visibility">
+</p>
+
+**Global Library insights —** Compare 45/90-day local usage, context footprint, and Agent visibility in one inventory, making unused Skills and resident context easier to govern.
+
+<p align="center">
+  <img src="./assets/readme/library-project.png" width="100%" alt="SkillsGo Library showing Skills installed for a selected project">
+</p>
+
+**Project-scoped governance —** Narrow the same inventory to one project, so its installations, usage evidence, and unmanaged Skills can be reviewed without global noise.
 
 ## Versioned distribution through CLI and Hub
 
-The CLI and Hub form the engineering surface of SkillsGo. A Package is the distribution unit; each Package Version is an immutable snapshot of one source revision and its complete accepted Skill membership.
+The CLI and Hub form the engineering surface of SkillsGo. The Hub converts a moving source repository into a stable dependency boundary: a Package is the distribution unit, and each Package Version is an immutable snapshot of one source revision and its complete accepted Skill membership. This lets people discover by intent while machines install by exact identity.
 
 ```yaml
 dependencies:
@@ -150,6 +183,8 @@ The public Hub contract currently focuses on supported public Skill Sources. A p
 <p align="center">
   <img src="./assets/readme/workflow.svg" width="100%" alt="SkillsGo workflow: source evidence, immutable Hub Package Version, App or CLI, and Agent targets">
 </p>
+
+**A shared immutable protocol —** The Hub resolves source evidence once, while the App and CLI consume the same Package Version and checksum, giving interactive and automated installs the same result.
 
 1. A supported source is resolved to one immutable Package Version.
 2. The Hub publishes Package metadata, accepted Skill membership, a static Git artifact, and a verifiable Package sum.
