@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, macOS 14 GUI E2E isolation, and blocking known-vulnerability enforcement.
+# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, and three-platform cold/ warm App E2E Runner reuse verification.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.25.12', '1.26.5']
+        go: ['1.25.12', '1.26.6']
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.25.12', '1.26.5']
+        go: ['1.25.12', '1.26.6']
     defaults:
       run:
         working-directory: cli
@@ -109,7 +109,7 @@ jobs:
         run: GOWORK=off go build -trimpath -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
 
       - name: Test standalone release build contract
-        if: matrix.go == '1.26.5'
+        if: matrix.go == '1.26.6'
         working-directory: .
         run: ./scripts/test-build-cli-release.sh
 
@@ -138,7 +138,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: cli/go.sum
 
       - name: Build standalone candidate
@@ -170,7 +170,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: |
             hub/go.sum
             protocol/go.sum
@@ -256,7 +256,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: |
             cli/go.sum
             protocol/go.sum
@@ -498,7 +498,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: e2e/cli/go.sum
 
       - name: Set up Docker Buildx
@@ -545,7 +545,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: |
             cli/go.sum
             hub/go.sum
@@ -584,11 +584,21 @@ jobs:
           $postgresBin = $env:PGBIN.Replace('\', '/')
           "SKILLSGO_E2E_POSTGRES_BIN_DIR=$postgresBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Run rendered desktop journeys
+      - name: Run rendered desktop journeys and verify Runner reuse
         shell: bash
         env:
           SKILLSGO_E2E_HUB_RUNTIME: native
-        run: ./e2e/app/run.sh
+        run: |
+          trap './e2e/app/run.sh --shutdown' EXIT
+          ./e2e/app/run.sh
+          runner_pid_before="$(<app/build/e2e-runner/host.pid)"
+          ./e2e/app/run.sh app/integration_test/machine_failure_recovery_test.dart
+          runner_pid_after="$(<app/build/e2e-runner/host.pid)"
+          if [[ "${runner_pid_before}" != "${runner_pid_after}" ]]; then
+            echo "App E2E Runner restarted instead of reusing PID ${runner_pid_before}." >&2
+            exit 1
+          fi
+          echo "Reused App E2E Runner PID ${runner_pid_before} on ${{ matrix.name }}."
 
   required:
     name: Required
