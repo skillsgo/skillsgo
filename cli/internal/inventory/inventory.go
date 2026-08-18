@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict Package YAML/Lock state, read-through exact Package metadata, direct Agent Projections, the Agent Catalog, read-only target filesystem metadata, supported skills.sh lock records, and per-Agent Skill usage observations.
- * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, aggregated local 45/90-day Skill usage totals, and all-visible-Agent completeness.
+ * [OUTPUT]: Provides inventory v8 Package-managed and External Library reconciliation with optional lock-backed External Adoption Package hints, explicit projects, direct-Projection target health, Discovery-Root-derived visibility, best-effort aggregate and per-Agent Skill usage evidence, and collector error details.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -62,11 +62,22 @@ type Entry struct {
 	AdoptionPackagePath string       `json:"adoptionPackagePath,omitempty"`
 	Usage               Usage        `json:"usage"`
 	UsageAvailable      bool         `json:"usageAvailable"`
+	UsagePending        bool         `json:"usagePending"`
+	// UsageByAgent is emitted as an empty object when usage collection ran but
+	// none of the visible Agents are supported. That lets clients distinguish
+	// "collection completed; this Agent is not supported yet" from an older
+	// CLI that did not return usage evidence at all.
+	UsageByAgent map[string]AgentUsage `json:"usageByAgent"`
 }
 
 type Usage struct {
 	Hits45Days int `json:"hits45Days"`
 	Hits90Days int `json:"hits90Days"`
+}
+
+type AgentUsage struct {
+	Usage
+	Error string `json:"error,omitempty"`
 }
 
 type Visibility struct {
@@ -97,6 +108,8 @@ type Options struct {
 	SkillUsage         map[string]Usage
 	AgentSkillUsage    map[string]map[string]Usage
 	AgentUsageComplete map[string]bool
+	AgentUsageErrors   map[string]string
+	UsagePending       bool
 }
 
 func Build(options Options) (Report, error) {
@@ -146,7 +159,17 @@ func Build(options Options) (Report, error) {
 	addExternalAdoptionPackageHints(entries, home)
 	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
 	applyCodexUsage(entries, options.SkillUsage)
-	applyAgentUsage(entries, options.AgentSkillUsage, options.AgentUsageComplete)
+	applyAgentUsage(
+		entries,
+		options.AgentSkillUsage,
+		options.AgentUsageComplete,
+		options.AgentUsageErrors,
+	)
+	if options.UsagePending {
+		for _, entry := range entries {
+			entry.UsagePending = true
+		}
+	}
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -192,12 +215,26 @@ func applyCodexUsage(entries map[string]*Entry, usage map[string]Usage) {
 	if usage == nil {
 		return
 	}
-	applyAgentUsage(entries, map[string]map[string]Usage{"codex": usage}, map[string]bool{"codex": true})
+	applyAgentUsage(
+		entries,
+		map[string]map[string]Usage{"codex": usage},
+		map[string]bool{"codex": true},
+		nil,
+	)
 }
 
-func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[string]Usage, completeByAgent map[string]bool) {
+func applyAgentUsage(
+	entries map[string]*Entry,
+	usageByAgent map[string]map[string]Usage,
+	completeByAgent map[string]bool,
+	usageErrors ...map[string]string,
+) {
 	if len(usageByAgent) == 0 {
 		return
+	}
+	errorsByAgent := map[string]string{}
+	if len(usageErrors) > 0 && usageErrors[0] != nil {
+		errorsByAgent = usageErrors[0]
 	}
 	uniqueByAgent := map[string]map[string]bool{}
 	for agentID, usage := range usageByAgent {
@@ -214,11 +251,27 @@ func applyAgentUsage(entries map[string]*Entry, usageByAgent map[string]map[stri
 			visibleAgents[visibility.Agent] = true
 		}
 		for agentID := range visibleAgents {
-			if _, supported := usageByAgent[agentID]; !supported {
+			observedBySkill, supported := usageByAgent[agentID]
+			if entry.UsageByAgent == nil {
+				entry.UsageByAgent = map[string]AgentUsage{}
+			}
+			if !supported {
 				complete = false
 				continue
 			}
 			matchedAny = true
+			observed := observedBySkill[entry.Name]
+			entry.UsageByAgent[agentID] = AgentUsage{
+				Usage: observed,
+				Error: errorsByAgent[agentID],
+			}
+			// Aggregate only uniquely attributable observations. The per-Agent
+			// evidence above remains useful even when duplicate Skill names make
+			// attribution ambiguous, but it must not inflate the total.
+			if uniqueByAgent[agentID][entry.Name] {
+				entry.Usage.Hits45Days += observed.Hits45Days
+				entry.Usage.Hits90Days += observed.Hits90Days
+			}
 			if !completeByAgent[agentID] || !uniqueByAgent[agentID][entry.Name] {
 				complete = false
 			}
@@ -238,9 +291,6 @@ func applyOneAgentUsage(entries map[string]*Entry, agentID string, usage map[str
 	for name, matching := range entriesByName {
 		if len(matching) == 1 {
 			unique[name] = true
-			observed := usage[name]
-			matching[0].Usage.Hits45Days += observed.Hits45Days
-			matching[0].Usage.Hits90Days += observed.Hits90Days
 		}
 	}
 	return unique

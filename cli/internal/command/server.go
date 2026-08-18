@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on versioned NDJSON requests, command.ExecuteWithInput, and stable command exit-code classification.
- * [OUTPUT]: Provides a writer-preferring long-lived CLI Server with bounded concurrent reads, exclusive mutations, serialized response frames, and isolated machine responses.
+ * [INPUT]: Depends on versioned NDJSON requests, command.ExecuteWithInput, stable command exit-code classification, and process-local analytics invalidations.
+ * [OUTPUT]: Provides a writer-preferring long-lived CLI Server with bounded concurrent reads, exclusive mutations, serialized response frames, isolated machine responses, and unsolicited versioned analytics invalidations.
  * [POS]: Serves as the reusable App process boundary above ordinary CLI command execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,8 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/skillsgo/skillsgo/cli/internal/skillusage"
 )
 
 const (
@@ -130,14 +132,47 @@ type serverResponse struct {
 	Stderr        string `json:"stderr"`
 }
 
+type serverAnalyticsInvalidation struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	Type          string `json:"type"`
+	Revision      uint64 `json:"revision"`
+}
+
 func Serve(input io.Reader, output io.Writer) error {
 	return serveWithExecutor(input, output, ExecuteWithInput)
 }
 
 func serveWithExecutor(input io.Reader, output io.Writer, execute serverExecuteFunc) error {
+	analyticsEvents, cancelAnalyticsEvents := skillusage.SubscribeAnalyticsInvalidations()
+	return serveWithExecutorAndAnalytics(
+		input, output, execute, analyticsEvents, cancelAnalyticsEvents,
+	)
+}
+
+func serveWithExecutorAndAnalytics(
+	input io.Reader,
+	output io.Writer,
+	execute serverExecuteFunc,
+	analyticsEvents <-chan skillusage.AnalyticsInvalidation,
+	cancelAnalyticsEvents func(),
+) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 64*1024), serverMaxRequestBytes)
 	encoder := &serverEncoder{encoder: json.NewEncoder(output), failed: make(chan struct{})}
+	var notifications sync.WaitGroup
+	notifications.Add(1)
+	go func() {
+		defer notifications.Done()
+		for event := range analyticsEvents {
+			if encoder.Encode(serverAnalyticsInvalidation{
+				SchemaVersion: serverSchemaVersion,
+				Type:          "analytics.invalidated",
+				Revision:      event.Revision,
+			}) != nil {
+				return
+			}
+		}
+	}()
 	scheduler := newServerScheduler()
 	documents := make(chan []byte)
 	scanFinished := make(chan error, 1)
@@ -184,6 +219,8 @@ accepting:
 		}()
 	}
 	requests.Wait()
+	cancelAnalyticsEvents()
+	notifications.Wait()
 	if err := encoder.Err(); err != nil {
 		return fmt.Errorf("encode CLI Server response: %w", err)
 	}

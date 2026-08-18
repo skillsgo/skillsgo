@@ -3,7 +3,7 @@
 
 ## Members
 
-- `inventory.go`: composes Package-managed and External state, optional lock-backed Adoption hints, target health, Discovery-Root-derived visibility, and caller-supplied local usage totals with explicit evidence availability into the mode-free inventory v8 Library report.
+- `inventory.go`: composes Package-managed and External state, optional lock-backed Adoption hints, target health, Discovery-Root-derived visibility, and caller-supplied local usage totals with explicit pending and evidence-availability states into the mode-free inventory v8 Library report.
 - `package_reconciliation.go`: resolves exact locked metadata through the read-through Provider, verifies Scope Package Trees and member-symlink Projections, and optionally reacquires content for explicit verification commands.
 - `visibility_test.go`: specifies Discovery-Root-derived Agent visibility without introducing managed targets or persisted visibility state.
 - `usage_test.go`: specifies unique Agent-visible usage attribution and evidence availability without assigning ambiguous same-name evidence to multiple entries.

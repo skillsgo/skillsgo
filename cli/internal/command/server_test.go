@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Serve plus NDJSON request and response documents over in-memory streams.
- * [OUTPUT]: Specifies reusable CLI Server execution, stdin forwarding, command-failure isolation, and malformed-request recovery.
+ * [OUTPUT]: Specifies reusable CLI Server execution, stdin forwarding, command-failure isolation, malformed-request recovery, and analytics invalidation frames.
  * [POS]: Serves as the long-lived App-to-CLI session contract suite at the command boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,11 +13,14 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/skillsgo/skillsgo/cli/internal/skillusage"
 )
 
 func TestServeExecutesMultipleRequestsInOneSession(t *testing.T) {
@@ -253,6 +256,48 @@ func TestServeStreamsStdoutBeforeTheFinalResult(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(lines[1]), &result))
 	require.Equal(t, "result", result.Type)
 	require.Zero(t, result.ExitCode)
+}
+
+func TestServePublishesAnalyticsInvalidation(t *testing.T) {
+	inputReader, inputWriter := io.Pipe()
+	events := make(chan skillusage.AnalyticsInvalidation, 1)
+	var output lockedBuffer
+	done := make(chan error, 1)
+	go func() {
+		done <- serveWithExecutorAndAnalytics(
+			inputReader, &output,
+			func(_ []string, _ io.Reader, _, _ io.Writer) error { return nil },
+			events, func() { close(events) },
+		)
+	}()
+	require.NoError(t, json.NewEncoder(inputWriter).Encode(serverRequest{
+		SchemaVersion: serverSchemaVersion, ID: "ready", Arguments: []string{"list"},
+	}))
+	require.Eventually(t, func() bool { return strings.Contains(output.String(), `"id":"ready"`) }, time.Second, time.Millisecond)
+	events <- skillusage.AnalyticsInvalidation{Revision: 42}
+	require.Eventually(t, func() bool {
+		return strings.Contains(output.String(), `"type":"analytics.invalidated"`) &&
+			strings.Contains(output.String(), `"revision":42`)
+	}, time.Second, time.Millisecond)
+	require.NoError(t, inputWriter.Close())
+	require.NoError(t, <-done)
+}
+
+type lockedBuffer struct {
+	sync.Mutex
+	bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(value []byte) (int, error) {
+	b.Lock()
+	defer b.Unlock()
+	return b.Buffer.Write(value)
+}
+
+func (b *lockedBuffer) String() string {
+	b.Lock()
+	defer b.Unlock()
+	return b.Buffer.String()
 }
 
 func decodeServerResponses(t *testing.T, value string) []serverResponse {

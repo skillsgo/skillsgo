@@ -15,12 +15,14 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
+	"github.com/skillsgo/skillsgo/cli/internal/skillusage"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInventoryReportsExternalUserSkillWithoutClaimingIt(t *testing.T) {
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "agent")
+	t.Cleanup(func() { skillusage.CloseArchive(home) })
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	target := filepath.Join(agentHome, "skills", "external-demo")

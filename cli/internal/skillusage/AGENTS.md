@@ -3,6 +3,8 @@
 
 ## Members
 
+- `agentsview.go`: is the active and sole Library usage source; it owns the private `~/.skillsgo/sessions/sessions.db` archive lifecycle, coordinates one non-blocking process-local AgentsView sync, protects SQLite sidecars, publishes the latest `CallCount` snapshot or an explicit pending state, and emits coalesced process-wide analytics revisions after successful snapshots.
+- `agentsview_test.go`: specifies immediate pending results, eventual isolated archive creation, private directory permissions, the stable empty per-Agent usage shape, and monotonic analytics invalidations.
 - `codex.go`: incrementally indexes trusted Codex rollout evidence with bounded independent-Session workers while preserving per-Session event order, then merges explicit user-role Skill injection and call-ID-correlated successful `SKILL.md` instruction loads into disposable per-day cache buckets and returns 45/90-day aggregates.
 - `codex_test.go`: specifies trusted evidence classification, false-positive rejection, pending read correlation, session-level deduplication, multi-worker-batch aggregation, rolling-window boundaries, cache reuse, and stale-session removal.
 - `copilot.go`: scans GitHub Copilot CLI durable Session events and counts only explicit `skill.invoked` records with a resolved Skill path, deduplicated per Session.

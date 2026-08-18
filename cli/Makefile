@@ -7,11 +7,11 @@
 
 build: ## build the local SkillsGo CLI binary
 	mkdir -p ./bin
-	go build -trimpath -o ./bin/skillsgo ./cmd/skillsgo
+	CGO_ENABLED=0 go build -trimpath -o ./bin/skillsgo ./cmd/skillsgo
 
 build-standalone: ## prove the CLI builds without the repository go.work
 	mkdir -p ./bin
-	GOWORK=off go build -trimpath -o ./bin/skillsgo ./cmd/skillsgo
+	CGO_ENABLED=0 GOWORK=off go build -trimpath -o ./bin/skillsgo ./cmd/skillsgo
 
 clean: ## delete local CLI build artifacts
 	rm -rf ./bin

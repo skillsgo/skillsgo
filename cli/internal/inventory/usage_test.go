@@ -82,3 +82,23 @@ func TestApplyAgentUsageKeepsUnsupportedVisibleAgentUnavailable(t *testing.T) {
 	require.Equal(t, Usage{Hits45Days: 2, Hits90Days: 3}, entry.Usage)
 	require.False(t, entry.UsageAvailable)
 }
+
+func TestApplyAgentUsageEmitsBestEffortPerAgentEvidence(t *testing.T) {
+	entry := &Entry{Name: "review", Agents: []string{"codex", "workbuddy"}}
+	applyAgentUsage(
+		map[string]*Entry{"review": entry},
+		map[string]map[string]Usage{
+			"codex": {"review": {Hits45Days: 2, Hits90Days: 4}},
+		},
+		map[string]bool{"codex": false},
+		map[string]string{"codex": "collector database is locked"},
+	)
+	require.Equal(t, Usage{Hits45Days: 2, Hits90Days: 4}, entry.Usage)
+	require.Equal(t, AgentUsage{
+		Usage: Usage{Hits45Days: 2, Hits90Days: 4},
+		Error: "collector database is locked",
+	}, entry.UsageByAgent["codex"])
+	_, supported := entry.UsageByAgent["workbuddy"]
+	require.False(t, supported)
+	require.False(t, entry.UsageAvailable)
+}
