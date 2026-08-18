@@ -591,9 +591,9 @@ jobs:
         run: |
           trap './e2e/app/run.sh --shutdown' EXIT
           ./e2e/app/run.sh
-          runner_pid_before="$(<app/build/e2e-runner/host.pid)"
+          runner_pid_before="$(dart e2e/app/runner_client.dart app/build/e2e-runner/control.json --pid)"
           ./e2e/app/run.sh app/integration_test/machine_failure_recovery_test.dart
-          runner_pid_after="$(<app/build/e2e-runner/host.pid)"
+          runner_pid_after="$(dart e2e/app/runner_client.dart app/build/e2e-runner/control.json --pid)"
           if [[ "${runner_pid_before}" != "${runner_pid_after}" ]]; then
             echo "App E2E Runner restarted instead of reusing PID ${runner_pid_before}." >&2
             exit 1
