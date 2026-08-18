@@ -272,7 +272,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: app/.dart_tool/hooks_runner/shared
-          key: app-native-hooks-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+          key: app-native-hooks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/pubspec.lock') }}
 
       - name: Warm the Rust toolchain with bounded retries
         shell: bash
@@ -578,7 +578,7 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: app/.dart_tool/hooks_runner/shared
-          key: app-native-hooks-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+          key: app-native-hooks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/pubspec.lock') }}
 
       - name: Warm the Rust toolchain with bounded retries
         shell: bash
