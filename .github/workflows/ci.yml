@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, and three-platform cold/ warm App E2E Runner reuse verification.
+# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target cached desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, and three-platform cold/warm App E2E Runner reuse verification with bounded Rust toolchain recovery.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -267,6 +267,21 @@ jobs:
           flutter-version: 3.44.6
           channel: stable
           cache: true
+
+      - name: Restore native-hook build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: app/.dart_tool/hooks_runner/shared
+          key: app-native-hooks-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+
+      - name: Warm the Rust toolchain with bounded retries
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if rustup show active-toolchain; then exit 0; fi
+            if [[ "${attempt}" == "3" ]]; then exit 1; fi
+            sleep $((attempt * 5))
+          done
 
       - name: Set up .NET for Velopack
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
@@ -558,6 +573,21 @@ jobs:
           flutter-version: 3.44.6
           channel: stable
           cache: true
+
+      - name: Restore native-hook build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: app/.dart_tool/hooks_runner/shared
+          key: app-native-hooks-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+
+      - name: Warm the Rust toolchain with bounded retries
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            if rustup show active-toolchain; then exit 0; fi
+            if [[ "${attempt}" == "3" ]]; then exit 1; fi
+            sleep $((attempt * 5))
+          done
 
       - name: Install App dependencies
         working-directory: app
