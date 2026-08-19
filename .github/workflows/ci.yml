@@ -1,6 +1,6 @@
-# [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation, standalone five-target CLI release candidates, four-target cached desktop build/smoke coverage, release-download collection contracts, pinned-stable Velopack candidate packaging plus real update gates, and three-platform cold/warm App E2E Runner reuse verification with bounded Rust toolchain recovery.
-# [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
+# [INPUT]: Depends on the Protocol, CLI, Hub, Web, CLI E2E validation commands, and OSV-supported dependency lockfiles.
+# [OUTPUT]: Validates every public workspace and exposes one stable Required job for repository rulesets.
+# [POS]: Serves as the repository-wide continuous integration workflow.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
 
@@ -32,86 +32,26 @@ jobs:
       fail-on-vuln: true
       upload-sarif: false
 
-  protocol:
-    name: Protocol (Go ${{ matrix.go }})
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        go: ['1.25.12', '1.26.6']
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ matrix.go }}
-          cache-dependency-path: |
-            protocol/go.sum
-
-      - name: Create compatibility workspace
-        run: |
-          cd "$RUNNER_TEMP"
-          go work init "$GITHUB_WORKSPACE/protocol"
-          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
-
-      - name: Check formatting
-        run: test -z "$(gofmt -l protocol)"
-
-      - name: Test coverage contract
-        run: make test-protocol
-
-  cli:
-    name: CLI (Go ${{ matrix.go }})
+  go:
+    name: ${{ matrix.workspace }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.26.6']
-    defaults:
-      run:
-        working-directory: cli
+        workspace: [protocol, cli, hub]
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: ${{ matrix.go }}
-          cache-dependency-path: |
-            cli/go.sum
-            protocol/go.sum
-
-      - name: Create compatibility workspace
-        run: |
-          cd "$RUNNER_TEMP"
-          go work init "$GITHUB_WORKSPACE/cli"
-          go work edit -replace github.com/skillsgo/skillsgo/protocol="$GITHUB_WORKSPACE/protocol"
-          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
-
-      - name: Download dependencies
-        run: go mod download
-
+          go-version: '1.26.6'
+          cache-dependency-path: ${{ matrix.workspace }}/go.sum
       - name: Check formatting
-        run: test -z "$(gofmt -l .)"
-
-      - name: Vet
-        run: go vet ./...
-
+        run: test -z "$(gofmt -l ${{ matrix.workspace }})"
       - name: Test
-        run: go test -race ./...
-
-      - name: Build CLI
-        run: GOWORK=off go build -trimpath -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
-
-      - name: Test standalone release build contract
-        if: matrix.go == '1.26.6'
-        working-directory: .
-        run: ./scripts/test-build-cli-release.sh
+        run: make test-${{ matrix.workspace }}
 
   cli-release-candidate:
     name: CLI Candidate (${{ matrix.goos }}/${{ matrix.goarch }})
@@ -121,138 +61,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - goos: darwin
-            goarch: arm64
-          - goos: darwin
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: linux
-            goarch: amd64
-          - goos: windows
-            goarch: amd64
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: '1.26.6'
-          cache-dependency-path: cli/go.sum
-
-      - name: Build standalone candidate
-        env:
-          SKILLSGO_CLI_BUILD_DATE: '2026-01-01T00:00:00Z'
-        run: ./scripts/build-cli-release.sh v0.0.0-ci.${{ github.run_number }} ${{ matrix.goos }} ${{ matrix.goarch }} "$RUNNER_TEMP/cli-candidate" direct
-
-      - name: Upload standalone candidate
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: cli-candidate-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: |
-            ${{ runner.temp }}/cli-candidate/*.tar.gz
-            ${{ runner.temp }}/cli-candidate/*.zip
-          if-no-files-found: error
-          retention-days: 7
-
-  hub:
-    name: Hub
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: hub
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: '1.26.6'
-          cache-dependency-path: |
-            hub/go.sum
-            protocol/go.sum
-            go.work.sum
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Check formatting
-        run: test -z "$(gofmt -l .)"
-
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test
-        run: go test -race ./...
-
-      - name: Build Hub
-        run: go build -trimpath -o "$RUNNER_TEMP/skillsgo-hub" ./cmd/skillsgo-hub
-
-  app:
-    name: App
-    runs-on: macos-15
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: 3.44.6
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Analyze
-        run: flutter analyze
-
-      - name: Test
-        run: flutter test
-
-  app-desktop:
-    name: App Desktop (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS arm64
-            os: macos-15
-            target: macos
-            architecture: arm64
-            channel: osx-arm64
-          - name: macOS x64
-            os: macos-15-intel
-            target: macos
-            architecture: x86_64
-            channel: osx-x64
-          - name: Windows x64
-            os: windows-2025
-            target: windows
-            architecture: x64
-            channel: win-x64
-          - name: Linux x64
-            os: ubuntu-24.04
-            target: linux
-            architecture: x64
-            channel: linux-x64
-    defaults:
-      run:
-        working-directory: app
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -260,390 +76,63 @@ jobs:
           cache-dependency-path: |
             cli/go.sum
             protocol/go.sum
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: 3.44.6
-          channel: stable
-          cache: true
-
-      - name: Restore native-hook build cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: app/.dart_tool/hooks_runner/shared
-          key: app-native-hooks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/pubspec.lock') }}
-
-      - name: Warm the Rust toolchain with bounded retries
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if rustup show active-toolchain; then exit 0; fi
-            if [[ "${attempt}" == "3" ]]; then exit 1; fi
-            sleep $((attempt * 5))
-          done
-
-      - name: Set up .NET for Velopack
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Install Linux desktop dependencies
-        if: matrix.target == 'linux'
-        working-directory: .
-        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb
-
-      - name: Test App release download collection
-        if: matrix.target == 'linux'
-        working-directory: .
-        run: ./scripts/test-collect-app-release-downloads.sh
-
-      - name: Install App dependencies
-        run: flutter pub get
-
-      - name: Build architecture-specific macOS App
-        if: matrix.target == 'macos'
-        run: make -C .. build-app-macos-${{ matrix.architecture }}
-
-      - name: Build desktop App
-        if: matrix.target != 'macos'
-        run: flutter build ${{ matrix.target }} --release
-
-      - name: Run bundled CLI smoke journey
-        if: matrix.target != 'linux'
-        run: flutter test -d ${{ matrix.target }} integration_test/bundled_cli_smoke_test.dart
-
-      - name: Run bundled CLI smoke journey under Xvfb
-        if: matrix.target == 'linux'
-        run: xvfb-run -a flutter test -d linux integration_test/bundled_cli_smoke_test.dart
-
-      - name: Install pinned Velopack CLI
-        working-directory: .
-        run: dotnet tool install --global vpk --version 1.2.0
-
-      - name: Package unsigned Velopack candidate
-        shell: bash
-        working-directory: .
-        run: ./scripts/package-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
-
-      - name: Smoke packaged macOS or Linux candidate
-        if: matrix.target != 'windows'
-        shell: bash
-        working-directory: .
-        run: ./scripts/smoke-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
-
-      - name: Install and smoke packaged Windows candidate
-        if: matrix.target == 'windows'
-        shell: pwsh
-        working-directory: .
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $candidateDir = Join-Path $env:GITHUB_WORKSPACE 'app/build/velopack/win-x64'
-          $setup = Get-Item (Join-Path $candidateDir 'SkillsGo-win-x64-Setup.exe')
-          $installation = Start-Process -FilePath $setup.FullName -ArgumentList '--silent' -Wait -PassThru
-          if ($installation.ExitCode -ne 0) { throw "Velopack Setup exited with $($installation.ExitCode)" }
-
-          $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
-          $app = Join-Path $current 'skillsgo.exe'
-          $cli = Join-Path $current 'data/bin/skillsgo.exe'
-          if (-not (Test-Path $app)) { throw "Installed App is missing: $app" }
-          if (-not (Test-Path $cli)) { throw "Installed bundled CLI is missing: $cli" }
-
-          $expectedVersion = ((Select-String -Path app/pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value)
-          $cliVersion = (& $cli --version | Out-String).Trim()
-          $expectedCliVersion = "skillsgo version $expectedVersion"
-          if ($LASTEXITCODE -ne 0 -or $cliVersion -ne $expectedCliVersion) {
-            throw "Installed bundled CLI reported '$cliVersion', expected '$expectedCliVersion'"
-          }
-
-          $process = Start-Process -FilePath $app -PassThru
-          Start-Sleep -Seconds 8
-          if ($process.HasExited) { throw "Installed App exited during startup smoke with $($process.ExitCode)" }
-          Stop-Process -Id $process.Id -Force
-          Write-Host "Installed and started SkillsGo $expectedVersion from Velopack Setup."
-
-      - name: Prepare unsigned Velopack update rehearsal
-        shell: bash
-        working-directory: .
-        run: ./scripts/prepare-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
-
-      - name: Apply and verify packaged macOS or Linux update
-        if: matrix.target != 'windows'
-        shell: bash
-        working-directory: .
-        run: ./scripts/smoke-app-update-rehearsal.sh ${{ matrix.target }} ${{ matrix.architecture }}
-
-      - name: Apply and verify packaged Windows update
-        if: matrix.target == 'windows'
-        shell: pwsh
-        working-directory: .
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $channel = 'win-x64'
-          $port = 38127
-          $updateUrl = "http://127.0.0.1:$port/"
-          $feedDir = Join-Path $env:GITHUB_WORKSPACE "app/build/velopack/$channel"
-          $runtimeDir = Join-Path $env:GITHUB_WORKSPACE "app/build/update-rehearsal/$channel/runtime"
-          New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
-          $feedLog = Join-Path $runtimeDir 'feed.log'
-          $feedErrorLog = Join-Path $runtimeDir 'feed-error.log'
-          $appLog = Join-Path $runtimeDir 'app.log'
-          $baselineVersion = ((Select-String -Path app/pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value)
-          if ($baselineVersion -notmatch '^(\d+)\.(\d+)\.(\d+)(?:-.+)?$') {
-            throw "Unsupported App version for update rehearsal: $baselineVersion"
-          }
-          $updateVersion = "$($Matches[1]).$($Matches[2]).$([int]$Matches[3] + 1)"
-          $expectedCliVersion = "skillsgo version $updateVersion"
-          $server = $null
-          $appProcess = $null
-
-          try {
-            $server = Start-Process -FilePath 'dart' -ArgumentList @(
-              (Join-Path $env:GITHUB_WORKSPACE 'scripts/serve-update-feed.dart'),
-              $feedDir,
-              $port
-            ) -RedirectStandardOutput $feedLog -RedirectStandardError $feedErrorLog -PassThru
-
-            $feedReady = $false
-            for ($attempt = 0; $attempt -lt 50; $attempt++) {
-              try {
-                Invoke-WebRequest -UseBasicParsing -Uri "${updateUrl}releases.$channel.json" | Out-Null
-                $feedReady = $true
-                break
-              } catch {
-                Start-Sleep -Milliseconds 200
-              }
-            }
-            if (-not $feedReady) { throw 'The local Velopack feed did not become ready.' }
-
-            $current = Join-Path $env:LOCALAPPDATA 'SkillsGo/current'
-            $app = Join-Path $current 'skillsgo.exe'
-            $cli = Join-Path $current 'data/bin/skillsgo.exe'
-            $env:SKILLSGO_APP_UPDATE_REHEARSAL_URL = $updateUrl
-            $appProcess = Start-Process -FilePath $app -RedirectStandardOutput $appLog -RedirectStandardError (Join-Path $runtimeDir 'app-error.log') -PassThru
-
-            $updated = $false
-            for ($attempt = 0; $attempt -lt 180; $attempt++) {
-              if (Test-Path $cli) {
-                $cliVersion = (& $cli --version 2>$null | Out-String).Trim()
-                if ($cliVersion -eq $expectedCliVersion) {
-                  $updated = $true
-                  break
-                }
-              }
-              Start-Sleep -Seconds 1
-            }
-            if (-not $updated) {
-              if (Test-Path $feedLog) { Get-Content $feedLog }
-              if (Test-Path $feedErrorLog) { Get-Content $feedErrorLog }
-              if (Test-Path $appLog) { Get-Content $appLog }
-              throw "Timed out waiting for SkillsGo win-x64 to update to $updateVersion."
-            }
-            $restarted = $null
-            for ($attempt = 0; $attempt -lt 20; $attempt++) {
-              $restarted = Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
-                Where-Object { $_.Id -ne $appProcess.Id -and -not $_.HasExited } |
-                Select-Object -First 1
-              if ($restarted) { break }
-              Start-Sleep -Milliseconds 250
-            }
-            if (-not $restarted) {
-              throw 'Velopack replaced win-x64 but did not restart the updated App.'
-            }
-            Write-Host "Updated and restarted SkillsGo $baselineVersion -> $updateVersion for win-x64."
-          } finally {
-            Remove-Item Env:SKILLSGO_APP_UPDATE_REHEARSAL_URL -ErrorAction SilentlyContinue
-            if ($appProcess -and -not $appProcess.HasExited) {
-              Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
-            }
-            Get-Process -Name skillsgo -ErrorAction SilentlyContinue |
-              Stop-Process -Force -ErrorAction SilentlyContinue
-            if ($server -and -not $server.HasExited) {
-              Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
-            }
-          }
-
-      - name: Upload unsigned Velopack candidate
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: app-candidate-${{ matrix.channel }}
-          path: app/build/velopack/${{ matrix.channel }}
-          if-no-files-found: error
-          retention-days: 7
+      - name: Build standalone candidate
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: ./scripts/build-cli-release.sh v0.0.0 "${{ matrix.goos }}" "${{ matrix.goarch }}" "$RUNNER_TEMP"
 
   web:
     name: Web
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Enable pnpm
-        run: corepack enable
-
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Type-check content and routes
+      - name: Typecheck
         run: pnpm typecheck
-
-      - name: Build prerendered site
+      - name: Build
         run: pnpm build
 
   e2e-cli:
     name: CLI E2E
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    defaults:
-      run:
-        working-directory: e2e/cli
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: '1.26.6'
-          cache-dependency-path: e2e/cli/go.sum
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-
-      - name: Build reusable E2E runtime
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          file: e2e/cli/Dockerfile
-          load: true
-          tags: skillsgo-e2e:ci
-          cache-from: type=gha,scope=e2e-cli
-          cache-to: type=gha,mode=max,scope=e2e-cli,ignore-error=true
-
-      - name: Run cross-product journeys
-        env:
-          SKILLSGO_E2E_IMAGE: skillsgo-e2e:ci
-        run: GOWORK=off go tool gotestsum --format github-actions -- -count=1 -timeout=15m ./...
-
-  e2e-app:
-    name: App E2E (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS
-            # Flutter #176850 hangs desktop tests on GitHub's macos-15 runner
-            # after LaunchServices fails to foreground the already-started App.
-            os: macos-14
-            target: macos
-          - name: Windows
-            os: windows-2025
-            target: windows
-          - name: Linux
-            os: ubuntu-24.04
-            target: linux
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.26.6'
           cache-dependency-path: |
+            e2e/cli/go.sum
             cli/go.sum
             hub/go.sum
             protocol/go.sum
-            go.work.sum
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: 3.44.6
-          channel: stable
-          cache: true
-
-      - name: Restore native-hook build cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: app/.dart_tool/hooks_runner/shared
-          key: app-native-hooks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('app/pubspec.lock') }}
-
-      - name: Warm the Rust toolchain with bounded retries
-        shell: bash
-        run: |
-          for attempt in 1 2 3; do
-            if rustup show active-toolchain; then exit 0; fi
-            if [[ "${attempt}" == "3" ]]; then exit 1; fi
-            sleep $((attempt * 5))
-          done
-
-      - name: Install App dependencies
-        working-directory: app
-        run: flutter pub get
-
-      - name: Install macOS PostgreSQL
-        if: matrix.target == 'macos'
-        run: |
-          brew install postgresql@18
-          echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(brew --prefix postgresql@18)/bin" >> "$GITHUB_ENV"
-
-      - name: Install Linux desktop and PostgreSQL dependencies
-        if: matrix.target == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev xvfb postgresql postgresql-client
-          echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(pg_config --bindir)" >> "$GITHUB_ENV"
-
-      - name: Configure Windows PostgreSQL
-        if: matrix.target == 'windows'
-        shell: pwsh
-        run: |
-          if (-not $env:PGBIN) { throw "The Windows runner does not expose its bundled PostgreSQL binaries." }
-          $postgresBin = $env:PGBIN.Replace('\', '/')
-          "SKILLSGO_E2E_POSTGRES_BIN_DIR=$postgresBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Run rendered desktop journeys and verify Runner reuse
-        shell: bash
-        env:
-          SKILLSGO_E2E_HUB_RUNTIME: native
-        run: |
-          trap './e2e/app/run.sh --shutdown' EXIT
-          ./e2e/app/run.sh
-          runner_pid_before="$(dart e2e/app/runner_client.dart app/build/e2e-runner/control.json --pid)"
-          ./e2e/app/run.sh app/integration_test/machine_failure_recovery_test.dart
-          runner_pid_after="$(dart e2e/app/runner_client.dart app/build/e2e-runner/control.json --pid)"
-          if [[ "${runner_pid_before}" != "${runner_pid_after}" ]]; then
-            echo "App E2E Runner restarted instead of reusing PID ${runner_pid_before}." >&2
-            exit 1
-          fi
-          echo "Reused App E2E Runner PID ${runner_pid_before} on ${{ matrix.name }}."
+      - name: Run journeys
+        run: make test-e2e-cli
 
   required:
     name: Required
-    if: ${{ always() }}
-    needs: [dependency-vulnerabilities, protocol, cli, cli-release-candidate, hub, app, app-desktop, web, e2e-cli, e2e-app]
+    if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    env:
-      RESULTS: ${{ join(needs.*.result, ' ') }}
+    needs: [dependency-vulnerabilities, go, cli-release-candidate, web, e2e-cli]
     steps:
-      - name: Require every maintained boundary
-        run: |
-          for result in ${RESULTS}; do
-            if [[ "${result}" != "success" ]]; then
-              echo "A required validation job finished with: ${result}" >&2
-              exit 1
-            fi
-          done
+      - name: Require successful jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: test "$RESULTS" = "success success success success success"

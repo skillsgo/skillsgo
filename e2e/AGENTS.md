@@ -1,27 +1,13 @@
-# Cross-Product End-to-End Tests
-> F1 Domain Map | Parent: `/AGENTS.md`
+# End-to-End Tests
 
-This domain owns black-box release journeys across SkillsGo product boundaries.
+> F1 | Parent: `AGENTS.md`
 
-## Workspaces
+## Members
 
-- `cli/`: Linux container journeys spanning the released CLI, Hub, public HTTP/JSON contracts, and isolated filesystem state.
-- `app/`: four-target desktop startup smoke coverage plus complete macOS, Windows, and Linux journeys spanning the real Flutter App, released CLI process, disposable Hub, and isolated Agent/project state.
+- `cli/`: black-box journeys spanning the released CLI contract, disposable Hub, isolated Agent/project state, and real persistence boundaries.
 
-## Commands
+## Validation
 
-Run from the repository root:
+Run `make test-e2e` from the repository root. Tests must exercise public process or HTTP boundaries and must not replace those boundaries with in-process fakes.
 
-```bash
-make test-e2e-cli
-make test-e2e-app
-make test-e2e
-```
-
-CLI journeys stream individual test events through the workspace-pinned `gotestsum` tool and print a consolidated failure summary after the complete run.
-
-## Boundary
-
-App startup smoke coverage must execute the packaged CLI and render the real desktop product on every maintained runner target. Complete Journeys run independently on macOS, Windows, and Linux and additionally use real CLI and Hub boundaries. The suite may compile one aggregate Flutter test executable per platform, but every complete Journey must retain isolated local paths, a real process-configured Gateway, and an independent Hub database schema. Widget tests with a fake `SkillsGateway` are App component tests and must not be presented as E2E coverage.
-
-[PROTOCOL]: Update this map when E2E workspaces, commands, or cross-product boundaries change.
+[PROTOCOL]: Update this map when the workspace structure or validation boundary changes, then review AGENTS.md

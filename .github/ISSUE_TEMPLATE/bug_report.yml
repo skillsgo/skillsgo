@@ -23,7 +23,6 @@ body:
       label: Affected surface
       description: Choose the surface where you observed the problem, even if the root cause may be elsewhere.
       options:
-        - Desktop App
         - CLI
         - Local installation, Vendor, or Agent Projection
         - Hub publishing, search, or artifact download

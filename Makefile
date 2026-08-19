@@ -1,9 +1,9 @@
-# [INPUT]: Depends on scripts/dev.sh plus the Protocol, App, CLI, Hub, and Web workspace build and validation entry points.
-# [OUTPUT]: Provides unified or Hub-only macOS development sessions plus repository-level local builds including separate macOS App architectures, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
+# [INPUT]: Depends on scripts/dev.sh plus the Protocol, CLI, Hub, and Web workspace build and validation entry points.
+# [OUTPUT]: Provides unified or Hub-only development sessions plus repository-level builds, unit tests, CLI E2E tests, and formatting commands.
 # [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
-.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs build-app-macos build-app-macos-arm64 build-app-macos-x86_64 test test-protocol test-app test-cli test-hub test-web test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-protocol format-cli format-hub
+.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs test test-protocol test-cli test-hub test-web test-docs test-e2e test-e2e-cli format-protocol format-cli format-hub
 
 dev:
 	./scripts/dev.sh
@@ -29,15 +29,7 @@ build-web:
 
 build-docs: build-web
 
-build-app-macos: build-app-macos-arm64 build-app-macos-x86_64
-
-build-app-macos-arm64:
-	./app/macos/scripts/build_arch.sh arm64
-
-build-app-macos-x86_64:
-	./app/macos/scripts/build_arch.sh x86_64
-
-test: test-protocol test-hub test-cli test-app test-web
+test: test-protocol test-hub test-cli test-web
 
 test-protocol:
 	@coverage_file=$$(mktemp); \
@@ -49,9 +41,6 @@ test-protocol:
 test-hub:
 	cd hub && go test ./...
 
-test-app:
-	cd app && flutter test
-
 test-cli:
 	cd cli && go test ./...
 
@@ -60,16 +49,10 @@ test-web:
 
 test-docs: test-web
 
-test-e2e: test-e2e-cli test-e2e-app
+test-e2e: test-e2e-cli
 
 test-e2e-cli:
 	cd e2e/cli && GOWORK=off go tool gotestsum --format standard-verbose -- -count=1 -timeout=15m ./...
-
-test-e2e-app:
-	./e2e/app/run.sh
-
-analyze-app:
-	cd app && flutter analyze
 
 format-hub:
 	cd hub && gofmt -w $$(find . -name '*.go' -type f)

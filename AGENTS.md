@@ -2,8 +2,6 @@
 
 ## Mandatory Routing
 
-Before changing any file under `app/**`, read `app/AGENTS.md`.
-
 Before changing any file under `cli/**`, read `cli/AGENTS.md`.
 
 Before changing any file under `hub/**`, read `hub/AGENTS.md`. When the path is inside a nested Go module, also read that module's nearest `AGENTS.md`.
@@ -20,7 +18,7 @@ The nearest `AGENTS.md` adds local constraints but never cancels a parent rule u
 
 All repository documentation must be written in English. This includes README files, GEB maps, File Contracts, domain glossaries, context maps, ADRs, specifications, implementation plans, release notes, and issue tracker content.
 
-Do not add non-English documentation. When modifying an existing document, leave the complete edited document in English. User-facing application copy is not repository documentation and must continue to use the App's i18n system.
+Do not add non-English documentation. When modifying an existing document, leave the complete edited document in English. User-facing product copy is not repository documentation and follows the owning surface's localization rules.
 
 ## Working-Tree Safety
 
@@ -33,15 +31,14 @@ Do not add non-English documentation. When modifying an existing document, leave
 ```text
 skillsgo/
 ├── protocol/  Shared executable Go contracts for CLI and Hub
-├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
 ├── hub/       Go Hub, artifact protocol, identity, and search
 ├── web/       Public product, Hub, and documentation Web surface
-├── e2e/       Split CLI/Hub container and App desktop end-to-end workspaces
+├── e2e/       CLI/Hub end-to-end workspace
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- After a one-shot bundled-CLI compatibility handshake, the App routes every Hub and local business operation through one long-lived CLI Server session. It persists one Hub Origin and never calls Hub HTTP directly.
+- Embedding applications may route Hub and local operations through the CLI's stable machine-readable contracts without importing CLI internals.
 - The CLI owns local filesystem mutations, Agent Adapters, derived Scope Package Trees, Package Projections, Installation Targets, Workspace Manifests, Workspace Locks, and disposable read-through Package caches.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and the complete v1 route surface. Its standalone App injects empty community data, while an embedding application may inject another implementation through the exported public seam. The public repository does not document private consumers or production topology.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
@@ -50,15 +47,13 @@ skillsgo/
 ## Toolchain
 
 - Root validation entry: `make test`.
-- Unified macOS development entry: `make dev`; startup removes stale development processes owned by the current checkout, Process Compose supervises the topology, Air owns Hub rebuild/restart, the CLI is built before App startup, and `flutter run` owns App Hot Reload and terminal controls.
-- App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
+- Unified development entry: `make dev`; Process Compose supervises PostgreSQL, Hub rebuild/restart, and the CLI build.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
 - Protocol: Go; use `gofmt` and `go test ./...` from `protocol/`.
 - Web: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `web/`.
-- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for the host desktop App+CLI+Hub journeys on macOS, Windows, or Linux, or `make test-e2e` for both suites.
-- Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
-- Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
+- E2E: use `make test-e2e` for containerized CLI+Hub journeys.
+- Prefer the highest existing behavior seam: the CLI root execution entry for CLI behavior and the HTTP Router for Hub behavior.
 
 Release architecture, tags, signing, and artifact matrices are defined in `docs/release-design.md`.
 
@@ -74,7 +69,7 @@ This repository uses the default five-role triage vocabulary. See `docs/agents/t
 
 ### Domain Docs
 
-This repository uses a multi-context domain documentation layout for the App, CLI, and Hub. See `docs/agents/domain.md`.
+This repository uses a multi-context domain documentation layout for the CLI, Hub, and Web. See `docs/agents/domain.md`.
 
 ## GEB Monorepo Fractal Documentation Protocol
 
@@ -87,21 +82,20 @@ Code is the executable representation; documentation is the semantic representat
 | Level | Name | SkillsGo anchor | Responsibility |
 | --- | --- | --- | --- |
 | F0 | Repo Constitution | `/AGENTS.md` | Repository-wide routing, architecture, toolchain, language, and protocol |
-| F1 | Domain Map | `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
-| F2 | Workspace Map | Every maintained `pubspec.yaml`, `go.mod`, or standalone `package.json` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
+| F1 | Domain Map | `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
+| F2 | Workspace Map | Every maintained `go.mod` or standalone `package.json` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
 | F3 | Module Map | Stable multi-file source-module directories | Member inventory, local dependency direction, and invariants |
 | F4 | File Contract | Header of semantic source or configuration files | INPUT, OUTPUT, and POS contract |
 
 F2 is determined by a build manifest, not directory depth. In this repository:
 
-- `app/pubspec.yaml` defines the Flutter workspace.
 - `cli/go.mod` defines the CLI Go module.
 - `hub/go.mod` defines the Hub Go module.
 - `hub/scripts/liveness_probe/go.mod` defines a nested utility Go module.
 - `web/package.json` defines the public Web workspace.
 - `protocol/go.mod` defines the shared Protocol Go module.
 
-Because each top-level product or protocol domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, and `protocol/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
+Because each top-level product or protocol domain currently contains one primary workspace, `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, and `protocol/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
 
 ### F3 Module Map Template
 
@@ -157,7 +151,7 @@ Before work:
 ```text
 Target file
   -> find and read the nearest AGENTS.md
-  -> find the nearest pubspec.yaml or go.mod workspace boundary
+  -> find the nearest go.mod or standalone package.json workspace boundary
   -> read the workspace/domain AGENTS.md
   -> read the relevant CONTEXT.md and ADRs
   -> check the target file's F4 contract or documented exemption
@@ -182,7 +176,7 @@ Do not mechanically add F3 maps or F4 headers across the repository. Migrate on 
 
 - when changing a semantic source file without F4, add an accurate F4 in the same change;
 - when a touched stable module lacks F3 and understanding depends on several cooperating files, add its F3 map;
-- when adding a new `pubspec.yaml` or `go.mod`, add or update the owning F1 and create an F2 map;
+- when adding a new `go.mod` or standalone `package.json`, add or update the owning F1 and create an F2 map;
 - when moving or deleting a file listed by F3, update the F3 member inventory in the same change.
 
 ### Forbidden States
@@ -190,7 +184,7 @@ Do not mechanically add F3 maps or F4 headers across the repository. Migrate on 
 - **FATAL-001 — Isolated code change**: code changed without checking the documentation loop.
 - **FATAL-002 — Missing on-touch F4**: a touched semantic file lacks a File Contract and is not exempt.
 - **FATAL-003 — Stale F3 inventory**: a listed file was moved, deleted, or repurposed without updating its Package Map.
-- **FATAL-004 — Unmapped workspace**: a maintained `pubspec.yaml` or `go.mod` was added without an F2 map and owning F1 update.
+- **FATAL-004 — Unmapped workspace**: a maintained `go.mod` or standalone `package.json` was added without an F2 map and owning F1 update.
 - **SEVERE-001 — Stale contract**: F4 no longer describes imports, exports, role, or consumers.
 - **SEVERE-002 — Broken parent chain**: an F2/F3 map cannot reach its parent `AGENTS.md`.
 - **SEVERE-003 — Wrong protocol target**: a File Contract points anywhere other than `AGENTS.md`.

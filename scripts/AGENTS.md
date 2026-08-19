@@ -1,24 +1,17 @@
-# Development Scripts/
-> F3 | Parent: `../AGENTS.md` | Workspace: `skillsgo`
+# Repository Scripts
+
+> F3 | Parent: `AGENTS.md`
 
 ## Members
 
-- `dev.sh`: validates the macOS development toolchain, removes stale repository-owned development processes, and starts either the complete Process Compose topology or a named dependency-closed subset such as Hub plus PostgreSQL.
-- `cleanup-dev.sh`: discovers and terminates stale SkillsGo development process trees without affecting unrelated processes.
-- `watch-flutter.sh`: watches maintained App sources and assets and requests Flutter Hot Reload through its PID file.
-- `package-app-candidate.sh`: converts one native Flutter Release bundle into a versioned, architecture-isolated Velopack candidate or production channel, signs when publisher identities are available and otherwise publishes the unsigned channel, can append a later version to the same rehearsal feed, verifies its release manifest, full package, portable package, and platform installer, and creates a verified drag-install DMG from the update-capable portable macOS App.
-- `collect-app-release-downloads.sh`: converts four verified production channels into exactly four user-facing GitHub Release installers, selecting macOS DMGs instead of Velopack PKGs, preserving signed artifact names, labeling unsigned Windows and macOS downloads explicitly, and emitting SHA-256 checksums.
-- `test-collect-app-release-downloads.sh`: exercises the release-download collector with unsigned, signed, checksum, missing-DMG, update-PKG exclusion, and mixed-signing fixtures on Linux CI.
-- `smoke-app-candidate.sh`: extracts and starts packaged macOS/Linux candidates and verifies the packaged bundled CLI reports the App version; Windows installation smoke remains native PowerShell in CI.
-- `prepare-app-update-rehearsal.sh`: preserves the packaged version from `app/pubspec.yaml`, rebuilds the same source as the next patch version, and appends the later full package to one local Velopack feed.
-- `serve-update-feed.dart`: exposes one exact Velopack release directory through a traversal-safe loopback-only HTTP origin for update E2E.
-- `smoke-app-update-rehearsal.sh`: drives a packaged macOS/Linux client through real local-feed check, download, replacement, restart, and next-patch bundled-CLI verification.
-- `build-cli-release.sh`: cross-compiles one supported standalone CLI target from GOWORK-independent dependencies and injects immutable release identity before archiving it.
-- `test-build-cli-release.sh`: black-box tests the Linux/amd64 standalone archive, LICENSE, and complete release handshake.
-- `generate-homebrew-formula.mjs`: derives a Homebrew Formula from the immutable macOS/Linux CLI archives and their SHA-256 digests.
+- `dev.sh`: starts the repository-owned PostgreSQL, Hub, and CLI development topology.
+- `cleanup-dev.sh`: safely stops stale development processes owned by this checkout.
+- `build-cli-release.sh`: builds standalone CLI release artifacts for supported targets.
+- `test-build-cli-release.sh`: validates the standalone CLI release contract.
+- `generate-homebrew-formula.mjs`: renders the Homebrew formula from released CLI metadata.
 
-## Architectural Boundary
+## Boundary
 
-This module owns repository-level development lifecycle automation, unsigned App candidate packaging/rehearsal, credential-gated App release signing and notarization, deterministic production-download collection, and the standalone CLI build contract. Development cleanup may identify processes only when their command and repository ownership can both be established, and it must not terminate unrelated port owners or development sessions from other checkouts. Candidate scripts may assemble, locally serve, update, and validate ephemeral CI artifacts; the loopback source is not a production endpoint. Release scripts may sign, notarize, select, identify, and archive verified outputs, while protected credentials, publication, and update hosting remain workflow responsibilities.
+Scripts orchestrate public repository workspaces and release artifacts. Product behavior belongs in the owning workspace rather than shell orchestration.
 
-[PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+[PROTOCOL]: Update this map when a maintained script is added, removed, or changes responsibility, then review AGENTS.md

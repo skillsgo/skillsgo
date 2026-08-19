@@ -1,6 +1,6 @@
 # Contributing to SkillsGo
 
-Thank you for helping improve SkillsGo. Contributions may affect the desktop App, CLI, Hub, shared Protocol, public Web surface, or cross-product journeys, so begin with the smallest product boundary that can demonstrate the desired behavior.
+Thank you for helping improve SkillsGo. Contributions may affect the CLI, Hub, shared Protocol, public Web surface, or cross-product journeys, so begin with the smallest product boundary that can demonstrate the desired behavior.
 
 ## Before You Start
 
@@ -16,7 +16,7 @@ Maintainers may ask for an issue or Architecture Decision Record before acceptin
 
 Read [AGENTS.md](AGENTS.md) and [CONTEXT-MAP.md](CONTEXT-MAP.md) before changing domain behavior. Then read the nearest `AGENTS.md` for every path you touch. These maps define workspace commands, architectural ownership, required File Contracts, and the documentation loop.
 
-Repository documentation, issue content, and pull requests are written in English. User-facing App copy must use the App's localization system.
+Repository documentation, issue content, and pull requests are written in English. User-facing product copy follows the owning surface's localization rules.
 
 ## Development
 
@@ -30,17 +30,15 @@ During focused work, use the owning workspace's checks:
 
 | Workspace | Validation |
 | --- | --- |
-| App | `cd app && flutter analyze && flutter test` |
 | CLI | `cd cli && gofmt -w <changed-go-files> && go test ./...` |
 | Hub | `cd hub && gofmt -w <changed-go-files> && go test ./...` |
 | Protocol | `cd protocol && gofmt -w <changed-go-files> && go test ./...` |
 | Web | `cd web && pnpm typecheck && pnpm build` |
 | CLI + Hub E2E | `make test-e2e-cli` |
-| Desktop E2E | `make test-e2e-app` |
 
-Use `make dev` for the unified macOS development topology.
+Use `make dev` for the unified PostgreSQL, Hub, and CLI development topology.
 
-Tests should exercise the highest stable behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior. Add cross-product E2E coverage when a contract spans product boundaries.
+Tests should exercise the highest stable behavior seam: the CLI root execution entry for CLI behavior and the HTTP Router for Hub behavior. Add cross-product E2E coverage when a contract spans product boundaries.
 
 ## Pull Requests
 

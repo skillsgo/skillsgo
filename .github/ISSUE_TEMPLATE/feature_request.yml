@@ -35,7 +35,6 @@ body:
     attributes:
       label: Product surface
       options:
-        - Desktop App
         - CLI
         - Local dependency management or Agent Projection
         - Hub publishing, identity, artifacts, or search

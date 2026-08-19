@@ -1,4 +1,4 @@
-# [INPUT]: Depends on every maintained GitHub Actions, Go, Flutter, and npm dependency manifest in the monorepo.
+# [INPUT]: Depends on every maintained GitHub Actions, Go, and npm dependency manifest in the monorepo.
 # [OUTPUT]: Schedules bounded weekly dependency update proposals for all maintained workspaces.
 # [POS]: Serves as the repository-wide automated dependency maintenance policy.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -36,12 +36,6 @@ updates:
 
   - package-ecosystem: gomod
     directory: /e2e/cli
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-
-  - package-ecosystem: pub
-    directory: /app
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

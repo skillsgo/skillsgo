@@ -15,7 +15,6 @@ If one of these files does not exist, proceed silently. Create or update glossar
 
 ## Contexts
 
-- `app/CONTEXT.md`: product experience, library views, projects, external installations, and installation plans.
 - `cli/CONTEXT.md`: local execution, Agent adapters, Repository dependencies, Scope Package Store, Repository Projections, and Workspace Locks.
 - `hub/CONTEXT.md`: public Skill identity, immutable artifacts, indexing, ranking, and install events.
 - `docs/adr/`: decisions that cross two or more contexts.

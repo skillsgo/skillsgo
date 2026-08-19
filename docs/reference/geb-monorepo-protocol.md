@@ -12,8 +12,8 @@ A single-package repository can often use project, module, and file documentatio
 
 SkillsGo boundaries are semantic rather than depth-based:
 
-- `app/`, `cli/`, and `hub/` define product and runtime domains.
-- `pubspec.yaml`, `go.mod`, and standalone `package.json` manifests define buildable and testable workspaces.
+- `cli/`, `hub/`, and `web/` define product and runtime domains.
+- `go.mod` and standalone `package.json` manifests define buildable and testable workspaces.
 - stable multi-file source directories define modules.
 - source headers define individual file contracts.
 
@@ -25,7 +25,7 @@ The protocol therefore uses five levels.
 | --- | --- | --- | --- | --- |
 | F0 | Repo Constitution | root `AGENTS.md` | Global routing, architecture, tools, language, and workflow | Top-level domain, delivery, or global workflow changes |
 | F1 | Domain Map | Domain `AGENTS.md` files | Domain boundary, workspace index, and cross-context rules | Workspace or domain responsibility changes |
-| F2 | Workspace Map | Every maintained `pubspec.yaml`, `go.mod`, or standalone `package.json` root | Runtime, public entry, commands, dependencies, and top-level structure | Entry, dependency, runtime, script, export, or delivery changes |
+| F2 | Workspace Map | Every maintained `go.mod` or standalone `package.json` root | Runtime, public entry, commands, dependencies, and top-level structure | Entry, dependency, runtime, script, export, or delivery changes |
 | F3 | Package Map | Stable multi-file module directory | Member inventory, dependency direction, and local invariants | File membership, responsibility, or local interface changes |
 | F4 | File Contract | Semantic file header | INPUT, OUTPUT, and POS | Dependency, surface, role, or consumer changes |
 
@@ -33,13 +33,12 @@ F2 is always selected from the nearest build manifest, never from an assumed dir
 
 ## SkillsGo Workspace Anchors
 
-- `app/pubspec.yaml`: Flutter desktop App workspace.
 - `cli/go.mod`: standalone and bundled CLI workspace.
 - `hub/go.mod`: Hub service workspace.
 - `hub/scripts/liveness_probe/go.mod`: nested CI liveness utility workspace.
 - `web/package.json`: public product, Hub, and documentation Node.js workspace.
 
-A future nested `go.mod`, `pubspec.yaml`, or standalone `package.json` creates another F2 boundary even when it sits inside an existing F1 domain.
+A future nested `go.mod` or standalone `package.json` creates another F2 boundary even when it sits inside an existing F1 domain.
 
 ## F0: Repo Constitution
 
@@ -149,7 +148,7 @@ The nearest F2 or F3 may refine exemptions. If an exempt file becomes semantic, 
 ```text
 Select target
   -> walk upward to the nearest AGENTS.md
-  -> locate the nearest pubspec.yaml or go.mod
+  -> locate the nearest go.mod or standalone package.json
   -> read the workspace and domain maps
   -> read relevant CONTEXT.md and ADRs
   -> validate F4 or the documented exemption
@@ -176,7 +175,7 @@ Only update levels whose facts changed.
 - Modify semantic code without checking the nearest maps and File Contract.
 - Touch a semantic source without creating or correcting its on-touch F4.
 - Delete, move, rename, or repurpose an F3 member without updating the member inventory.
-- Add a maintained `pubspec.yaml` or `go.mod` without mapping the F2 workspace and F1 owner.
+- Add a maintained `go.mod` or standalone `package.json` without mapping the F2 workspace and F1 owner.
 - Change entry points, dependencies, runtime boundaries, or release scripts without updating F2.
 - Point the fixed protocol line to `CLAUDE.md`, a README, or any target other than `AGENTS.md`.
 - Create empty AGENTS files for directories without stable boundaries.
@@ -193,7 +192,7 @@ The repository predates GEB, so migration is on touch rather than a mechanical r
 
 ## Quality Check
 
-- Can every maintained workspace be found from `pubspec.yaml` or `go.mod`, with vendored manifests explicitly classified? If not, F2 anchoring is wrong.
+- Can every maintained workspace be found from `go.mod` or standalone `package.json`, with vendored manifests explicitly classified? If not, F2 anchoring is wrong.
 - Does an F1 list ordinary implementation files? If so, it is too detailed.
 - Does a stable multi-file module require whole-repository archaeology? If so, add F3.
 - Does each touched F4 match real dependencies, outputs, and consumers? If not, it has decayed.

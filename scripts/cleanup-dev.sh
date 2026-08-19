@@ -8,7 +8,6 @@ set -euo pipefail
 
 readonly root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 readonly grace_seconds="${SKILLSGO_DEV_CLEANUP_GRACE_SECONDS:-5}"
-readonly flutter_pid_file="/tmp/skillsgo-flutter.pid"
 dry_run=false
 
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -49,27 +48,11 @@ is_known_dev_command() {
       [[ "${command}" == *process-compose.yaml* ]]
       return
       ;;
-    "bash ./scripts/watch-flutter.sh" | \
-      "/bin/bash ./scripts/watch-flutter.sh" | \
-      "${root_dir}/scripts/watch-flutter.sh")
-      return 0
-      ;;
     air\ * | */air\ *)
       [[ "${command}" == *" -c .air.toml"* ]]
       return
       ;;
     "${root_dir}/hub/bin/skillsgo-hub "* | "${root_dir}/hub/bin/skillsgo-hub")
-      return 0
-      ;;
-    flutter\ * | */flutter\ *)
-      [[ "${command}" == *" run "* && "${command}" == *" -d macos"* ]]
-      return
-      ;;
-    dart\ * | */dart\ *)
-      [[ "${command}" == *flutter_tools.snapshot*" run "* && "${command}" == *" -d macos"* ]]
-      return
-      ;;
-    "${root_dir}/app/build/macos/"*skillsgo.app/Contents/MacOS/skillsgo*)
       return 0
       ;;
   esac
@@ -145,19 +128,8 @@ live_targets() {
   done
 }
 
-remove_stale_flutter_pid_file() {
-  local pid
-
-  [[ -e "${flutter_pid_file}" ]] || return 0
-  pid="$(<"${flutter_pid_file}")"
-  if ! [[ "${pid}" =~ ^[0-9]+$ ]] || ! kill -0 "${pid}" 2>/dev/null; then
-    rm -f "${flutter_pid_file}"
-  fi
-}
-
 discover_candidates
 if [[ ${#candidate_pids[@]} -eq 0 ]]; then
-  remove_stale_flutter_pid_file
   exit 0
 fi
 
@@ -187,5 +159,3 @@ if [[ ${#remaining_pids[@]} -gt 0 ]]; then
   echo "Force stopping unresponsive SkillsGo development processes: ${remaining_pids[*]}"
   kill -KILL "${remaining_pids[@]}" 2>/dev/null || true
 fi
-
-remove_stale_flutter_pid_file
