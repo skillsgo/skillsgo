@@ -32,12 +32,13 @@ type ArchiveUsage struct {
 }
 
 type archiveState struct {
-	mu         sync.Mutex
-	started    bool
-	syncing    bool
-	snapshot   *ArchiveUsage
-	archive    *avsdk.Archive
-	background *avsdk.BackgroundSync
+	mu          sync.Mutex
+	started     bool
+	syncing     bool
+	snapshot    *ArchiveUsage
+	archive     *avsdk.Archive
+	background  *avsdk.BackgroundSync
+	startedDone chan struct{}
 }
 
 var archiveStates sync.Map
@@ -105,6 +106,12 @@ func closeArchiveState(dbPath string) {
 	}
 	state := value.(*archiveState)
 	state.mu.Lock()
+	startedDone := state.startedDone
+	state.mu.Unlock()
+	if startedDone != nil {
+		<-startedDone
+	}
+	state.mu.Lock()
 	background := state.background
 	archive := state.archive
 	state.mu.Unlock()
@@ -132,6 +139,7 @@ func CollectArchive(ctx context.Context, home string, now time.Time) (ArchiveUsa
 	if !state.started {
 		state.started = true
 		state.syncing = true
+		state.startedDone = make(chan struct{})
 		go startArchive(state, dbPath, now)
 	}
 	if state.snapshot == nil {
@@ -145,6 +153,7 @@ func CollectArchive(ctx context.Context, home string, now time.Time) (ArchiveUsa
 }
 
 func startArchive(state *archiveState, dbPath string, now time.Time) {
+	defer close(state.startedDone)
 	archive, err := avsdk.Open(avsdk.Config{DatabasePath: dbPath})
 	if err != nil {
 		publishArchiveError(state, err)
