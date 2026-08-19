@@ -1,4 +1,4 @@
-# [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, GitHub Releases, SBOM generation, and artifact attestations.
+# [INPUT]: Depends on cli/v* tags reachable from main, the unified CLI build contract, GitHub Releases, npm publishing credentials, SBOM generation, and artifact attestations.
 # [OUTPUT]: Publishes five standalone CLI archives, npm packages, a Homebrew Formula, SBOMs, checksums, an unsigned provider-neutral CDN Manifest payload, attestations, and one immutable GitHub Release.
 # [POS]: Serves as the public verify-build-assemble control plane; an embedding publisher owns Manifest signing, immutable hosting, read-back, and stable-pointer publication.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -40,7 +40,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: cli/go.sum
 
       - name: Resolve and validate version
@@ -126,7 +126,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: cli/go.sum
 
       - name: Build release archive
@@ -192,7 +192,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.5'
+          go-version: '1.26.6'
           cache-dependency-path: cli/go.sum
 
       - name: Set up Node.js
@@ -285,6 +285,7 @@ jobs:
       id-token: write
     env:
       RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
