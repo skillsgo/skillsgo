@@ -12,7 +12,7 @@ require (
 	ariga.io/atlas v1.2.3
 	cloud.google.com/go/storage v1.62.1
 	github.com/Azure/azure-pipeline-go v0.2.3
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/aws/aws-sdk-go-v2 v1.43.6
