@@ -20,7 +20,7 @@ const TARGETS = [
   { goos: 'darwin', goarch: 'amd64', packageName: 'skillsgo-darwin-x64', archiveExt: 'tar.gz', binary: 'skillsgo' },
   { goos: 'linux', goarch: 'arm64', packageName: 'skillsgo-linux-arm64', archiveExt: 'tar.gz', binary: 'skillsgo' },
   { goos: 'linux', goarch: 'amd64', packageName: 'skillsgo-linux-x64', archiveExt: 'tar.gz', binary: 'skillsgo' },
-  { goos: 'windows', goarch: 'amd64', packageName: 'skillsgo-win32-x64', archiveExt: 'zip', binary: 'skillsgo.exe' },
+  { goos: 'windows', goarch: 'amd64', packageName: 'skillsgo-windows-x64', archiveExt: 'zip', binary: 'skillsgo.exe' },
 ];
 
 function argument(name, fallback) {
