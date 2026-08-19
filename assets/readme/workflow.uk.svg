@@ -1,0 +1,87 @@
+<svg xml:lang="uk" xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="430" viewBox="0 0 1200 430"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Як працює SkillsGo</title>
+  <desc id="desc">П’ять етапів шляху Skill: App слугує людям, CLI — автоматизації CI/CD та узгодженим середовищам; обидва підключаються до SkillsGo Hub.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#2D683D"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="430" rx="28" fill="#181A18"/>
+  <rect x="1" y="1" width="1198" height="428" rx="27"
+        fill="none" stroke="#343834" stroke-width="2"/>
+
+  <text x="60" y="66"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="15" font-weight="650" letter-spacing="1"
+        fill="#89B893">КЕРОВАНИЙ ШЛЯХ SKILL</text>
+  <text x="60" y="115"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="34" font-weight="720" letter-spacing="-1"
+        fill="#F7F6F1">Від публічного випуску до явних локальних цілей.</text>
+
+  <path d="M150 215H1050" stroke="#4B514C" stroke-width="3"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <g transform="translate(60 170)">
+      <circle cx="90" cy="45" r="32" fill="#DDE9E0"/>
+      <text x="90" y="53" text-anchor="middle" font-size="22" font-weight="750" fill="#214C2D">01</text>
+      <text x="0" y="116" font-size="18" font-weight="700" fill="#FFFFFF">Пошук</text>
+      <text x="0" y="146" font-size="13" fill="#B6BCB7">Пошук, рейтинг,</text>
+      <text x="0" y="170" font-size="13" fill="#B6BCB7">тренди й Hot.</text>
+    </g>
+
+    <path d="M210 215H270" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(270 170)">
+      <circle cx="90" cy="45" r="32" fill="#DDE9E0"/>
+      <text x="90" y="53" text-anchor="middle" font-size="22" font-weight="750" fill="#214C2D">02</text>
+      <text x="0" y="116" font-size="18" font-weight="700" fill="#FFFFFF">Перевірка</text>
+      <text x="0" y="146" font-size="13" fill="#B6BCB7">Перевірте джерело, версію,</text>
+      <text x="0" y="170" font-size="13" fill="#B6BCB7">файли та ризики.</text>
+    </g>
+
+    <path d="M420 215H480" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(480 170)">
+      <circle cx="90" cy="45" r="32" fill="#DDE9E0"/>
+      <text x="90" y="53" text-anchor="middle" font-size="22" font-weight="750" fill="#214C2D">03</text>
+      <text x="0" y="116" font-size="18" font-weight="700" fill="#FFFFFF">Вибір цілей</text>
+      <text x="0" y="146" font-size="13" fill="#B6BCB7">Виберіть Global або проєктні</text>
+      <text x="0" y="170" font-size="13" fill="#B6BCB7">цілі Agent.</text>
+    </g>
+
+    <path d="M630 215H690" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(690 170)">
+      <circle cx="90" cy="45" r="32" fill="#2D683D"/>
+      <path d="M69 45L83 58L105 34" fill="none" stroke="#FFFFFF"
+            stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="0" y="116" font-size="18" font-weight="700" fill="#FFFFFF">Установлення</text>
+      <text x="0" y="146" font-size="13" fill="#B6BCB7">Локально перевірте</text>
+      <text x="0" y="170" font-size="13" fill="#B6BCB7">незмінний артефакт.</text>
+    </g>
+
+    <path d="M840 215H900" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(900 170)">
+      <circle cx="90" cy="45" r="32" fill="#DDE9E0"/>
+      <text x="90" y="53" text-anchor="middle" font-size="22" font-weight="750" fill="#214C2D">05</text>
+      <text x="0" y="116" font-size="18" font-weight="700" fill="#FFFFFF">Керування</text>
+      <text x="0" y="146" font-size="13" fill="#B6BCB7">Перевіряйте, оновлюйте, видаляйте</text>
+      <text x="0" y="170" font-size="13" fill="#B6BCB7">або приймайте зовнішні Skills.</text>
+    </g>
+  </g>
+
+  <g transform="translate(60 382)"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     font-size="11" font-weight="600" fill="#8F9690">
+    <text x="0" y="0">НАСТІЛЬНИЙ APP → ЛЮДИ</text>
+    <text x="276" y="0">CLI → CI/CD + УЗГОДЖЕНІ СЕРЕДОВИЩА</text>
+    <text x="1080" y="0" text-anchor="end" fill="#89B893">ОБИДВА ШЛЯХИ → SKILLSGO HUB</text>
+  </g>
+</svg>
