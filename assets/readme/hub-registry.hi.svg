@@ -1,0 +1,94 @@
+<svg xml:lang="hi" xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="520" viewBox="0 0 1200 520"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SkillsGo Hub, Agent Skills के लिए एक पैकेज रजिस्ट्री है</title>
+  <desc id="desc">स्रोत रिपॉज़िटरी SkillsGo Hub में जाती हैं, जो App और CLI द्वारा Coding Agents में सटीक Skills इंस्टॉल करने से पहले खोज-योग्यता, अपरिवर्तनीय संस्करण, स्रोत साक्ष्य और चेकसम जोड़ता है।</desc>
+
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8F7F3"/>
+      <stop offset="1" stop-color="#EFEEE9"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#2D683D"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="520" rx="28" fill="url(#surface)"/>
+  <rect x="1" y="1" width="1198" height="518" rx="27"
+        fill="none" stroke="#D7D7D0" stroke-width="2"/>
+
+  <text x="60" y="58"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="14" font-weight="650" letter-spacing="1"
+        fill="#2D683D">AGENT SKILLS के लिए पैकेज रजिस्ट्री</text>
+  <text x="60" y="105"
+        font-family="'Noto Sans Devanagari', 'Kohinoor Devanagari', Mangal, -apple-system, sans-serif"
+        font-size="36" font-weight="740" letter-spacing="-1"
+        fill="#181A18">Skills के लिए npm, Homebrew या Maven जैसा।</text>
+
+  <g font-family="'Noto Sans Devanagari', 'Kohinoor Devanagari', Mangal, -apple-system, sans-serif">
+    <g transform="translate(60 158)">
+      <rect width="250" height="240" rx="20" fill="#FFFFFF" stroke="#D7D7D0" stroke-width="2"/>
+      <circle cx="42" cy="42" r="18" fill="#ECECE7"/>
+      <path d="M34 42h16M42 34v16" stroke="#555B56" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="72" y="49" font-size="20" font-weight="720" fill="#181A18">स्रोत रिपॉज़िटरी</text>
+      <text x="26" y="91" font-size="15" fill="#666C67">GitHub सत्य का स्रोत बना रहता है।</text>
+      <path d="M26 116H224" stroke="#E3E3DD" stroke-width="2"/>
+      <text x="26" y="151" font-size="16" font-weight="650" fill="#343934">Branches बदलती रहती हैं</text>
+      <text x="26" y="181" font-size="16" font-weight="650" fill="#343934">Tags और commits अलग होते हैं</text>
+      <text x="26" y="211" font-size="16" font-weight="650" fill="#343934">Folders की registry पहचान नहीं होती</text>
+    </g>
+
+    <path d="M326 278H390" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(410 138)">
+      <rect width="380" height="280" rx="24" fill="#181A18" stroke="#343834" stroke-width="2"/>
+      <rect x="24" y="24" width="150" height="28" rx="14" fill="#DDE9E0"/>
+      <circle cx="40" cy="38" r="5" fill="#2D683D"/>
+      <text x="54" y="43" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="12" font-weight="650" fill="#244D30">SKILLSGO HUB</text>
+      <text x="24" y="91" font-size="25" font-weight="740" fill="#FFFFFF">स्थिर Package सीमा</text>
+      <g font-size="16" fill="#D5D9D5">
+        <text x="24" y="132">✓ खोजने योग्य Package पहचान</text>
+        <text x="24" y="166">✓ अपरिवर्तनीय Package Version</text>
+        <text x="24" y="200">✓ स्रोत साक्ष्य + स्वीकृत सदस्य</text>
+        <text x="24" y="234">✓ सत्यापन योग्य h1: checksum</text>
+      </g>
+      <text x="24" y="260" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="11" font-weight="600" fill="#89B893">मंशा से खोजें · सटीक पहचान से इंस्टॉल करें</text>
+    </g>
+
+    <path d="M810 278H874" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(894 158)">
+      <rect width="246" height="240" rx="20" fill="#FFFFFF" stroke="#D7D7D0" stroke-width="2"/>
+      <text x="24" y="48" font-size="20" font-weight="720" fill="#181A18">सुसंगत उपभोक्ता</text>
+      <g transform="translate(24 72)">
+        <rect width="198" height="42" rx="12" fill="#DDE9E0"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#214C2D">डेस्कटॉप App · लोग</text>
+      </g>
+      <g transform="translate(24 124)">
+        <rect width="198" height="42" rx="12" fill="#ECECE7"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#343934">CLI · प्रोजेक्ट + CI/CD</text>
+      </g>
+      <g transform="translate(24 176)">
+        <rect width="198" height="42" rx="12" fill="#ECECE7"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#343934">सटीक Agent लक्ष्य</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(60 452)"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     font-size="13" font-weight="650">
+    <rect width="132" height="34" rx="17" fill="#ECECE7"/>
+    <text x="66" y="22" text-anchor="middle" fill="#555B56">npm registry</text>
+    <rect x="144" width="142" height="34" rx="17" fill="#ECECE7"/>
+    <text x="215" y="22" text-anchor="middle" fill="#555B56">Homebrew tap</text>
+    <rect x="298" width="168" height="34" rx="17" fill="#ECECE7"/>
+    <text x="382" y="22" text-anchor="middle" fill="#555B56">Maven repository</text>
+    <text x="1120" y="22" text-anchor="end" font-size="11" fill="#2D683D">परिचित भूमिका · SKILL-विशिष्ट प्रोटोकॉल</text>
+  </g>
+</svg>
