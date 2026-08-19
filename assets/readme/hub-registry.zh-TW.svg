@@ -1,0 +1,94 @@
+<svg xml:lang="zh-TW" xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="520" viewBox="0 0 1200 520"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SkillsGo Hub 是 Agent Skills 的 Package 登錄中心</title>
+  <desc id="desc">原始碼儲存庫進入 SkillsGo Hub 後，獲得可探索性、不可變版本、來源證據與校驗和；App 與 CLI 再把指定 Skill 安裝至 Coding Agent。</desc>
+
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F8F7F3"/>
+      <stop offset="1" stop-color="#EFEEE9"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4"
+            markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#2D683D"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="520" rx="28" fill="url(#surface)"/>
+  <rect x="1" y="1" width="1198" height="518" rx="27"
+        fill="none" stroke="#D7D7D0" stroke-width="2"/>
+
+  <text x="60" y="58"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="14" font-weight="650" letter-spacing="1"
+        fill="#2D683D">AGENT SKILLS 的 PACKAGE 登錄中心</text>
+  <text x="60" y="105"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="36" font-weight="740" letter-spacing="-1"
+        fill="#181A18">可以把它想成 Skills 的 npm、Homebrew 或 Maven。</text>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <g transform="translate(60 158)">
+      <rect width="250" height="240" rx="20" fill="#FFFFFF" stroke="#D7D7D0" stroke-width="2"/>
+      <circle cx="42" cy="42" r="18" fill="#ECECE7"/>
+      <path d="M34 42h16M42 34v16" stroke="#555B56" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="72" y="49" font-size="20" font-weight="720" fill="#181A18">原始碼儲存庫</text>
+      <text x="26" y="91" font-size="15" fill="#666C67">GitHub 仍是事實來源。</text>
+      <path d="M26 116H224" stroke="#E3E3DD" stroke-width="2"/>
+      <text x="26" y="151" font-size="16" font-weight="650" fill="#343934">分支持續變動</text>
+      <text x="26" y="181" font-size="16" font-weight="650" fill="#343934">標籤與提交各不相同</text>
+      <text x="26" y="211" font-size="16" font-weight="650" fill="#343934">資料夾沒有登錄中心識別</text>
+    </g>
+
+    <path d="M326 278H390" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(410 138)">
+      <rect width="380" height="280" rx="24" fill="#181A18" stroke="#343834" stroke-width="2"/>
+      <rect x="24" y="24" width="150" height="28" rx="14" fill="#DDE9E0"/>
+      <circle cx="40" cy="38" r="5" fill="#2D683D"/>
+      <text x="54" y="43" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="12" font-weight="650" fill="#244D30">SKILLSGO HUB</text>
+      <text x="24" y="91" font-size="25" font-weight="740" fill="#FFFFFF">穩定的 Package 邊界</text>
+      <g font-size="16" fill="#D5D9D5">
+        <text x="24" y="132">✓ 可探索的 Package 識別</text>
+        <text x="24" y="166">✓ 不可變 Package Version</text>
+        <text x="24" y="200">✓ 來源證據 + 已收錄成員</text>
+        <text x="24" y="234">✓ 可驗證的 h1: 校驗和</text>
+      </g>
+      <text x="24" y="260" font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+            font-size="11" font-weight="600" fill="#89B893">按意圖探索 · 按精確識別安裝</text>
+    </g>
+
+    <path d="M810 278H874" stroke="#2D683D" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <g transform="translate(894 158)">
+      <rect width="246" height="240" rx="20" fill="#FFFFFF" stroke="#D7D7D0" stroke-width="2"/>
+      <text x="24" y="48" font-size="20" font-weight="720" fill="#181A18">一致的使用端</text>
+      <g transform="translate(24 72)">
+        <rect width="198" height="42" rx="12" fill="#DDE9E0"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#214C2D">桌面 App · 使用者</text>
+      </g>
+      <g transform="translate(24 124)">
+        <rect width="198" height="42" rx="12" fill="#ECECE7"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#343934">CLI · 專案 + CI/CD</text>
+      </g>
+      <g transform="translate(24 176)">
+        <rect width="198" height="42" rx="12" fill="#ECECE7"/>
+        <text x="16" y="27" font-size="16" font-weight="700" fill="#343934">精確的 Agent 目標</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(60 452)"
+     font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+     font-size="13" font-weight="650">
+    <rect width="132" height="34" rx="17" fill="#ECECE7"/>
+    <text x="66" y="22" text-anchor="middle" fill="#555B56">npm 登錄中心</text>
+    <rect x="144" width="142" height="34" rx="17" fill="#ECECE7"/>
+    <text x="215" y="22" text-anchor="middle" fill="#555B56">Homebrew tap</text>
+    <rect x="298" width="168" height="34" rx="17" fill="#ECECE7"/>
+    <text x="382" y="22" text-anchor="middle" fill="#555B56">Maven 儲存庫</text>
+    <text x="1120" y="22" text-anchor="end" font-size="11" fill="#2D683D">熟悉的角色 · SKILL 專用協定</text>
+  </g>
+</svg>
