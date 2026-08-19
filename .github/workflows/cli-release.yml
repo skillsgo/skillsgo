@@ -146,18 +146,18 @@ jobs:
 
       - name: Attest Unix release archive
         if: matrix.goos != 'windows'
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.tar.gz
 
       - name: Attest Windows release archive
         if: matrix.goos == 'windows'
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
       - name: Attest generated SBOM
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.spdx.json
 
@@ -246,14 +246,14 @@ jobs:
           retention-days: 14
 
       - name: Attest release metadata
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             release-metadata/checksums.txt
             release-metadata/manifest.json
 
       - name: Attest package-manager outputs
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: |
             npm-packages/*.tgz
