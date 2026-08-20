@@ -9,7 +9,6 @@
 - `0004-separate-package-and-api-surfaces.md`: records the superseded `/mod`, `skillsgo.mod`, and `skillsgo.sum` separation design that was replaced before public launch.
 - `0005-route-app-through-cli-and-stabilize-machine-failures.md`: makes the CLI the App's only business-integration boundary and establishes the minimal public machine-failure contract for App and automation callers.
 - `0006-trust-skills-sh-locks-for-batch-takeover.md`: records the superseded exact-lock and immutable-byte-verification takeover design replaced by ADR-0013.
-- `0007-host-public-web-on-cloudflare.md`: establishes the independent SkillsGo Web workspace and Cloudflare deployment boundary for product, Hub discovery, and documentation pages.
 - `0008-backfill-repository-history.md`: establishes authenticated Hub-admin Repository Backfill, independent asynchronous runs, and shared Catalog current recomputation.
 - `0009-freeze-hub-v1-distribution-contract.md`: records the superseded per-Skill artifact and installation-mode design that was replaced before public launch.
 - `0010-distribute-repository-versions-and-project-selected-skills.md`: makes Repository Version the artifact, Sum, download, lock, and Package Store unit while preserving Skill-level Agent visibility through deterministic Repository Projections.

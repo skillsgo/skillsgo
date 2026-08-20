@@ -1,6 +1,6 @@
 # Contributing to SkillsGo
 
-Thank you for helping improve SkillsGo. Contributions may affect the CLI, Hub, shared Protocol, public Web surface, or cross-product journeys, so begin with the smallest product boundary that can demonstrate the desired behavior.
+Thank you for helping improve SkillsGo. Contributions may affect the CLI, Hub, shared Protocol, or cross-product journeys, so begin with the smallest product boundary that can demonstrate the desired behavior.
 
 ## Before You Start
 
@@ -33,7 +33,6 @@ During focused work, use the owning workspace's checks:
 | CLI | `cd cli && gofmt -w <changed-go-files> && go test ./...` |
 | Hub | `cd hub && gofmt -w <changed-go-files> && go test ./...` |
 | Protocol | `cd protocol && gofmt -w <changed-go-files> && go test ./...` |
-| Web | `cd web && pnpm typecheck && pnpm build` |
 | CLI + Hub E2E | `make test-e2e-cli` |
 
 Use `make dev` for the unified PostgreSQL, Hub, and CLI development topology.

@@ -1,9 +1,9 @@
-# [INPUT]: Depends on scripts/dev.sh plus the Protocol, CLI, Hub, and Web workspace build and validation entry points.
+# [INPUT]: Depends on scripts/dev.sh plus the Protocol, CLI, and Hub workspace build and validation entry points.
 # [OUTPUT]: Provides unified or Hub-only development sessions plus repository-level builds, unit tests, CLI E2E tests, and formatting commands.
 # [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
-.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs test test-protocol test-cli test-hub test-web test-docs test-e2e test-e2e-cli format-protocol format-cli format-hub
+.PHONY: dev dev-hub build build-cli build-hub test test-protocol test-cli test-hub test-e2e test-e2e-cli format-protocol format-cli format-hub
 
 dev:
 	./scripts/dev.sh
@@ -11,12 +11,7 @@ dev:
 dev-hub:
 	./scripts/dev.sh hub
 
-dev-web:
-	cd web && pnpm dev
-
-dev-docs: dev-web
-
-build: build-cli build-hub build-web
+build: build-cli build-hub
 
 build-cli:
 	$(MAKE) -C cli build
@@ -24,12 +19,7 @@ build-cli:
 build-hub:
 	$(MAKE) -C hub build
 
-build-web:
-	cd web && pnpm build
-
-build-docs: build-web
-
-test: test-protocol test-hub test-cli test-web
+test: test-protocol test-hub test-cli
 
 test-protocol:
 	@coverage_file=$$(mktemp); \
@@ -43,11 +33,6 @@ test-hub:
 
 test-cli:
 	cd cli && go test ./...
-
-test-web:
-	cd web && pnpm typecheck
-
-test-docs: test-web
 
 test-e2e: test-e2e-cli
 

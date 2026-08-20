@@ -12,7 +12,7 @@ A single-package repository can often use project, module, and file documentatio
 
 SkillsGo boundaries are semantic rather than depth-based:
 
-- `cli/`, `hub/`, and `web/` define product and runtime domains.
+- `cli/` and `hub/` define product and runtime domains.
 - `go.mod` and standalone `package.json` manifests define buildable and testable workspaces.
 - stable multi-file source directories define modules.
 - source headers define individual file contracts.
@@ -36,7 +36,6 @@ F2 is always selected from the nearest build manifest, never from an assumed dir
 - `cli/go.mod`: standalone and bundled CLI workspace.
 - `hub/go.mod`: Hub service workspace.
 - `hub/scripts/liveness_probe/go.mod`: nested CI liveness utility workspace.
-- `web/package.json`: public product, Hub, and documentation Node.js workspace.
 
 A future nested `go.mod` or standalone `package.json` creates another F2 boundary even when it sits inside an existing F1 domain.
 
