@@ -162,7 +162,7 @@ jobs:
           subject-path: ${{ runner.temp }}/cli-release/skillsgo_${{ needs.verify.outputs.version_number }}_${{ matrix.goos }}_${{ matrix.goarch }}.spdx.json
 
       - name: Upload platform release
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cli-release-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
@@ -238,7 +238,7 @@ jobs:
           cp homebrew/Formula/skillsgo.rb package-manager-outputs/skillsgo.rb
 
       - name: Upload package-manager outputs
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cli-package-manager-outputs
           path: package-manager-outputs/*
