@@ -33,7 +33,6 @@ skillsgo/
 ├── protocol/  Shared executable Go contracts for CLI and Hub
 ├── cli/       Go CLI and local Skill execution engine
 ├── hub/       Go Hub, artifact protocol, identity, and search
-├── web/       Public product, Hub, and documentation Web surface
 ├── e2e/       CLI/Hub end-to-end workspace
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
@@ -51,7 +50,6 @@ skillsgo/
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
 - Protocol: Go; use `gofmt` and `go test ./...` from `protocol/`.
-- Web: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `web/`.
 - E2E: use `make test-e2e` for containerized CLI+Hub journeys.
 - Prefer the highest existing behavior seam: the CLI root execution entry for CLI behavior and the HTTP Router for Hub behavior.
 
@@ -69,7 +67,7 @@ This repository uses the default five-role triage vocabulary. See `docs/agents/t
 
 ### Domain Docs
 
-This repository uses a multi-context domain documentation layout for the CLI, Hub, and Web. See `docs/agents/domain.md`.
+This repository uses a multi-context domain documentation layout for the CLI and Hub. See `docs/agents/domain.md`.
 
 ## GEB Monorepo Fractal Documentation Protocol
 
@@ -82,7 +80,7 @@ Code is the executable representation; documentation is the semantic representat
 | Level | Name | SkillsGo anchor | Responsibility |
 | --- | --- | --- | --- |
 | F0 | Repo Constitution | `/AGENTS.md` | Repository-wide routing, architecture, toolchain, language, and protocol |
-| F1 | Domain Map | `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
+| F1 | Domain Map | `cli/AGENTS.md`, `hub/AGENTS.md`, `protocol/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
 | F2 | Workspace Map | Every maintained `go.mod` or standalone `package.json` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
 | F3 | Module Map | Stable multi-file source-module directories | Member inventory, local dependency direction, and invariants |
 | F4 | File Contract | Header of semantic source or configuration files | INPUT, OUTPUT, and POS contract |
@@ -92,10 +90,9 @@ F2 is determined by a build manifest, not directory depth. In this repository:
 - `cli/go.mod` defines the CLI Go module.
 - `hub/go.mod` defines the Hub Go module.
 - `hub/scripts/liveness_probe/go.mod` defines a nested utility Go module.
-- `web/package.json` defines the public Web workspace.
 - `protocol/go.mod` defines the shared Protocol Go module.
 
-Because each top-level product or protocol domain currently contains one primary workspace, `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, and `protocol/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
+Because each top-level product or protocol domain currently contains one primary workspace, `cli/AGENTS.md`, `hub/AGENTS.md`, and `protocol/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
 
 ### F3 Module Map Template
 

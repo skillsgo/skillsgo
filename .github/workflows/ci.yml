@@ -1,4 +1,4 @@
-# [INPUT]: Depends on the Protocol, CLI, Hub, Web, CLI E2E validation commands, and OSV-supported dependency lockfiles.
+# [INPUT]: Depends on the Protocol, CLI, Hub, CLI E2E validation commands, and OSV-supported dependency lockfiles.
 # [OUTPUT]: Validates every public workspace and exposes one stable Required job for repository rulesets.
 # [POS]: Serves as the repository-wide continuous integration workflow.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -82,33 +82,6 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: ./scripts/build-cli-release.sh v0.0.0 "${{ matrix.goos }}" "${{ matrix.goarch }}" "$RUNNER_TEMP"
 
-  web:
-    name: Web
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: web
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.33.2
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Build
-        run: pnpm build
-
   e2e-cli:
     name: CLI E2E
     runs-on: ubuntu-24.04
@@ -132,9 +105,9 @@ jobs:
     name: Required
     if: always()
     runs-on: ubuntu-24.04
-    needs: [dependency-vulnerabilities, go, cli-release-candidate, web, e2e-cli]
+    needs: [dependency-vulnerabilities, go, cli-release-candidate, e2e-cli]
     steps:
       - name: Require successful jobs
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: test "$RESULTS" = "success success success success success"
+        run: test "$RESULTS" = "success success success success"
