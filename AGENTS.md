@@ -67,7 +67,7 @@ This repository uses the default five-role triage vocabulary. See `docs/agents/t
 
 ### Domain Docs
 
-This repository uses a multi-context domain documentation layout for the CLI, Hub, and Web. See `docs/agents/domain.md`.
+This repository uses a multi-context domain documentation layout for the CLI and Hub. See `docs/agents/domain.md`.
 
 ## GEB Monorepo Fractal Documentation Protocol
 
