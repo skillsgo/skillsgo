@@ -173,7 +173,12 @@ jobs:
         run: flutter build linux --release
       - name: Run bundled CLI smoke journey
         working-directory: app
-        run: flutter test -d ${{ matrix.target }} integration_test/bundled_cli_smoke_test.dart
+        run: |
+          if [[ "${{ matrix.target }}" == "linux" ]]; then
+            xvfb-run -a flutter test -d linux integration_test/bundled_cli_smoke_test.dart
+          else
+            flutter test -d "${{ matrix.target }}" integration_test/bundled_cli_smoke_test.dart
+          fi
 
   required:
     name: Required
