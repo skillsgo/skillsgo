@@ -1511,7 +1511,11 @@ void main() {
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
      final refreshButton = find.byKey(const Key('refresh-local-library'));
-     await tester.ensureVisible(refreshButton);
+     await Scrollable.ensureVisible(
+       tester.element(refreshButton),
+       alignment: 0.5,
+     );
+     await tester.pumpAndSettle();
      await tester.tap(refreshButton);
     await tester.pump();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
@@ -1581,7 +1585,8 @@ void main() {
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
      final refresh = find.byKey(const Key('refresh-local-library'));
-     await tester.ensureVisible(refresh);
+     await Scrollable.ensureVisible(tester.element(refresh), alignment: 0.5);
+     await tester.pumpAndSettle();
      await tester.tap(refresh);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));

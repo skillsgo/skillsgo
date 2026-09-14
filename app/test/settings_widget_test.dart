@@ -180,7 +180,7 @@ void main() {
     },
   );
 
-  testWidgets('Advanced Settings disables App updates without a feed', (
+   testWidgets('Advanced Settings uses the official App update feed', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -193,11 +193,8 @@ void main() {
 
     final check = find.byKey(const Key('check-app-update'));
     await tester.ensureVisible(check);
-    expect(
-      find.text('App updates are unavailable in this build.'),
-      findsOneWidget,
-    );
-    expect(tester.widget<SkillsButton>(check).enabled, isFalse);
+     expect(find.byKey(const Key('app-update-source')), findsOneWidget);
+     expect(tester.widget<SkillsButton>(check).enabled, isTrue);
   });
 
   testWidgets('App update controls recover when no update is applied', (
@@ -588,7 +585,8 @@ void main() {
     final projectLoads = gateway.projectLoads;
     final agentInspections = gateway.agentInspections;
 
-    await tester.ensureVisible(refresh);
+     await Scrollable.ensureVisible(tester.element(refresh), alignment: 0.5);
+     await tester.pumpAndSettle();
     await tester.tap(refresh);
     await tester.pumpAndSettle();
 

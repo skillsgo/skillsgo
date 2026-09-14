@@ -68,7 +68,7 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "opencode-dev.db"), kiloWorkspace)
 	t.Setenv("XDG_DATA_HOME", openCodeData)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
-   writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1788235200,"qwen_version":"1"}`)
+	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1788235200,"qwen_version":"1"}`)
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
@@ -119,7 +119,7 @@ func writeGooseFixture(t *testing.T, path, workspace string) {
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
 	_, err = database.Exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, working_dir TEXT NOT NULL, updated_at TIMESTAMP NOT NULL)`)
 	require.NoError(t, err)
-   _, err = database.Exec(`INSERT INTO sessions (id, working_dir, updated_at) VALUES ('1', ?, '2026-09-01 00:00:00')`, workspace)
+	_, err = database.Exec(`INSERT INTO sessions (id, working_dir, updated_at) VALUES ('1', ?, '2026-09-01 00:00:00')`, workspace)
 	require.NoError(t, err)
 }
 
