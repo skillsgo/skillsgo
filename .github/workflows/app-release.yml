@@ -1,4 +1,4 @@
-# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, the same-repository CLI source, persistent self-hosted macOS ARM64 and Linux X64 toolchains, optional Apple signing credentials, a configurable App update base URL, and scoped object-storage credentials.
+# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, the same-repository CLI source, GitHub-hosted macOS and Linux desktop toolchains, optional Apple signing credentials, a configurable App update base URL, and scoped object-storage credentials.
 # [OUTPUT]: Builds, applies either Developer ID or structurally complete ad-hoc App signing, optionally notarizes, verifies, stages architecture-specific channels through run-scoped object-storage keys, publishes immutable packages with checksums and mutable feeds, creates one immutable GitHub App Release, and removes staging objects.
 # [POS]: Serves as the tag-only production App release pipeline; pull requests and ordinary main pushes never publish through it.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,7 +19,7 @@ permissions:
 jobs:
   verify:
     name: Verify App release tag
-    runs-on: [self-hosted, Linux, X64, skillsgo-linux]
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -79,17 +79,17 @@ jobs:
       matrix:
         include:
           - name: macOS arm64
-            runner: '["self-hosted", "macOS", "ARM64", "skillsgo-macos"]'
+            runner: macos-14
             target: macos
             architecture: arm64
             channel: osx-arm64
           - name: macOS x64
-            runner: '["self-hosted", "macOS", "ARM64", "skillsgo-macos"]'
+            runner: macos-14
             target: macos
             architecture: x86_64
             channel: osx-x64
           - name: Linux x64
-            runner: '["self-hosted", "Linux", "X64", "skillsgo-linux"]'
+            runner: ubuntu-24.04
             target: linux
             architecture: x64
             channel: linux-x64
@@ -267,7 +267,7 @@ jobs:
   publish:
     name: Publish App release
     needs: [verify, build]
-    runs-on: [self-hosted, Linux, X64, skillsgo-linux]
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: app-release
     permissions:
