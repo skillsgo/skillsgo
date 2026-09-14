@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on three verified architecture-specific Velopack release directories, including drag-install macOS DMGs, produced by the App release build matrix.
+# [INPUT]: Depends on four verified architecture-specific Velopack release directories, including drag-install macOS DMGs and a Windows setup executable, produced by the App release build matrix.
 # [OUTPUT]: Collects one user-facing installer per supported platform and architecture, labeling unsigned macOS DMGs explicitly, then writes SHA-256 checksums.
 # [POS]: Serves as the deterministic release-channel-to-GitHub-assets boundary used by the tag-only App release workflow.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -67,6 +67,7 @@ channel_is_signed() {
 }
 
 shopt -s nullglob
+windows_installers=("${release_assets_root}/win-x64"/*-Setup.exe)
 linux_installers=("${release_assets_root}/linux-x64"/*.AppImage)
 macos_arm_installers=("${release_assets_root}/osx-arm64"/*.dmg)
 macos_x64_installers=("${release_assets_root}/osx-x64"/*.dmg)
@@ -76,6 +77,7 @@ readonly macos_arm_signed="$(channel_is_signed osx-arm64)"
 readonly macos_x64_signed="$(channel_is_signed osx-x64)"
 
 copy_exactly_one "Linux x64 AppImage" "$(basename "${linux_installers[0]:-missing}")" "${linux_installers[@]}"
+copy_exactly_one "Windows x64 installer" "$(basename "${windows_installers[0]:-missing}")" "${windows_installers[@]}"
 
 if [[ "${macos_arm_signed}" == "true" && "${macos_x64_signed}" == "true" ]]; then
   copy_exactly_one "signed macOS arm64 installer" "$(basename "${macos_arm_installers[0]:-missing}")" "${macos_arm_installers[@]}"
@@ -97,7 +99,7 @@ fi
 (
   cd "${release_downloads_dir}"
   shopt -s nullglob
-  downloads=(*.AppImage *.dmg *.zip)
+  downloads=(*.AppImage *.dmg *.zip *.exe)
   shopt -u nullglob
   for download in "${downloads[@]}"; do
     sha256sum "${download}"
@@ -105,12 +107,12 @@ fi
 )
 
 shopt -s nullglob
-release_downloads=("${release_downloads_dir}"/*.AppImage "${release_downloads_dir}"/*.dmg "${release_downloads_dir}"/*.zip)
+release_downloads=("${release_downloads_dir}"/*.AppImage "${release_downloads_dir}"/*.dmg "${release_downloads_dir}"/*.zip "${release_downloads_dir}"/*.exe)
 shopt -u nullglob
 readonly download_count="${#release_downloads[@]}"
-if [[ "${download_count}" != "3" ]]; then
-  echo "Expected three user-facing App downloads; found ${download_count}." >&2
+if [[ "${download_count}" != "4" ]]; then
+  echo "Expected four user-facing App downloads; found ${download_count}." >&2
   exit 1
 fi
 
-echo "Collected three App downloads in ${release_downloads_dir}."
+echo "Collected four App downloads in ${release_downloads_dir}."
