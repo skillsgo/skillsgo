@@ -1,0 +1,421 @@
+# [INPUT]: Depends on an app/vX.Y.Z tag reachable from main, the same-repository CLI source, persistent self-hosted macOS ARM64 and Linux X64 toolchains, optional Apple signing credentials, a configurable App update base URL, and scoped object-storage credentials.
+# [OUTPUT]: Builds, applies either Developer ID or structurally complete ad-hoc App signing, optionally notarizes, verifies, stages architecture-specific channels through run-scoped object-storage keys, publishes immutable packages with checksums and mutable feeds, creates one immutable GitHub App Release, and removes staging objects.
+# [POS]: Serves as the tag-only production App release pipeline; pull requests and ordinary main pushes never publish through it.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+name: App Release
+
+on:
+  push:
+    tags:
+      - app/v*
+
+concurrency:
+  group: app-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify App release tag
+    runs-on: [self-hosted, Linux, X64, skillsgo-linux]
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag, version, and main ancestry
+        id: version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "${TAG}" =~ ^app/v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?)$ ]]; then
+            echo "Invalid App release tag: ${TAG}" >&2
+            exit 1
+          fi
+          version="${TAG#app/v}"
+          workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' app/pubspec.yaml)"
+          if [[ "${version}" != "${workspace_version}" ]]; then
+            echo "Tag version ${version} does not match app/pubspec.yaml ${workspace_version}." >&2
+            exit 1
+          fi
+          git fetch origin main
+          release_commit="$(git rev-list -n 1 "${TAG}")"
+          if ! git merge-base --is-ancestor "${release_commit}" origin/main; then
+            echo "App release tag must reference a commit reachable from main." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+          cache: false
+
+      - name: Analyze and test App
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ fromJSON(matrix.runner) }}
+    timeout-minutes: 60
+    environment: app-release
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            runner: '["self-hosted", "macOS", "ARM64", "skillsgo-macos"]'
+            target: macos
+            architecture: arm64
+            channel: osx-arm64
+          - name: macOS x64
+            runner: '["self-hosted", "macOS", "ARM64", "skillsgo-macos"]'
+            target: macos
+            architecture: x86_64
+            channel: osx-x64
+          - name: Linux x64
+            runner: '["self-hosted", "Linux", "X64", "skillsgo-linux"]'
+            target: linux
+            architecture: x64
+            channel: linux-x64
+    env:
+      APP_UPDATE_BASE_URL: ${{ vars.APP_UPDATE_BASE_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.APP_STORAGE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.APP_STORAGE_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      APP_STORAGE_ENDPOINT: ${{ secrets.APP_STORAGE_ENDPOINT }}
+      APP_STORAGE_BUCKET: ${{ vars.APP_STORAGE_BUCKET }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+      RELEASE_CHANNEL: ${{ matrix.channel }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.6'
+          cache: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+          cache: false
+
+      - name: Set up .NET for Velopack
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Linux desktop dependencies
+        if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev squashfs-tools unzip
+
+      - name: Install AWS CLI on Linux
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          curl --fail --location --silent --show-error \
+            https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
+            --output "${RUNNER_TEMP}/awscliv2.zip"
+          unzip -q "${RUNNER_TEMP}/awscliv2.zip" -d "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/aws/install" \
+            --install-dir "${RUNNER_TEMP}/aws-cli" \
+            --bin-dir "${RUNNER_TEMP}/aws-bin"
+          echo "${RUNNER_TEMP}/aws-bin" >> "${GITHUB_PATH}"
+
+      - name: Select Xcode
+        if: matrix.target == 'macos'
+        run: echo "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer" >> "${GITHUB_ENV}"
+
+      - name: Install App dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Validate public update URL
+        working-directory: app
+        shell: bash
+        run: |
+          source="$(dart run ../scripts/validate-app-update-url.dart \
+            "${APP_UPDATE_BASE_URL%/}/app/${RELEASE_CHANNEL}/")"
+          echo "SKILLSGO_APP_UPDATE_URL=${source}" >> "${GITHUB_ENV}"
+
+      - name: Configure Apple signing and notarization
+        if: matrix.target == 'macos'
+        shell: bash
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APP_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_APPLICATION_IDENTITY }}
+          INSTALL_IDENTITY: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_IDENTITY }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+        run: |
+          for value in CERTIFICATE_BASE64 CERTIFICATE_PASSWORD APP_IDENTITY INSTALL_IDENTITY API_KEY_ID API_ISSUER_ID API_PRIVATE_KEY; do
+            if [[ -z "${!value}" ]]; then
+              echo "Apple signing credentials are incomplete; publishing an ad-hoc signed, unnotarized macOS channel."
+              exit 0
+            fi
+          done
+          certificate="${RUNNER_TEMP}/developer-id.p12"
+          keychain="${RUNNER_TEMP}/app-signing.keychain-db"
+          api_key="${RUNNER_TEMP}/AuthKey_${API_KEY_ID}.p8"
+          keychain_password="$(openssl rand -hex 24)"
+          printf '%s' "${CERTIFICATE_BASE64}" | base64 --decode > "${certificate}"
+          printf '%s' "${API_PRIVATE_KEY}" > "${api_key}"
+          security create-keychain -p "${keychain_password}" "${keychain}"
+          security set-keychain-settings -lut 21600 "${keychain}"
+          security unlock-keychain -p "${keychain_password}" "${keychain}"
+          security import "${certificate}" -k "${keychain}" -P "${CERTIFICATE_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${keychain_password}" "${keychain}"
+          security list-keychains -d user -s "${keychain}"
+          xcrun notarytool store-credentials skillsgo-notary \
+            --key "${api_key}" \
+            --key-id "${API_KEY_ID}" \
+            --issuer "${API_ISSUER_ID}" \
+            --keychain "${keychain}"
+          {
+            echo "SKILLSGO_MACOS_SIGN_APP_IDENTITY=${APP_IDENTITY}"
+            echo "SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY=${INSTALL_IDENTITY}"
+            echo "SKILLSGO_MACOS_NOTARY_PROFILE=skillsgo-notary"
+            echo "SKILLSGO_MACOS_KEYCHAIN=${keychain}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Build architecture-specific macOS App
+        if: matrix.target == 'macos'
+        env:
+          SKILLSGO_APP_BUILD_NAME: ${{ needs.verify.outputs.version }}
+          SKILLSGO_APP_BUILD_NUMBER: ${{ github.run_number }}
+        run: make build-app-macos-${{ matrix.architecture }}
+
+      - name: Build Linux App
+        if: matrix.target == 'linux'
+        working-directory: app
+        shell: bash
+        run: |
+          flutter build "${{ matrix.target }}" --release \
+            --build-name "${RELEASE_VERSION}" \
+            --build-number "${{ github.run_number }}" \
+            --dart-define "SKILLSGO_APP_UPDATE_URL=${SKILLSGO_APP_UPDATE_URL}" \
+            --dart-define "SKILLSGO_APP_UPDATE_CHANNEL=${RELEASE_CHANNEL}"
+
+      - name: Install pinned Velopack CLI
+        shell: bash
+        run: |
+          dotnet tool update --global vpk --version 1.2.0 \
+            || dotnet tool install --global vpk --version 1.2.0
+          echo "${HOME}/.dotnet/tools" >> "${GITHUB_PATH}"
+
+      - name: Hydrate prior public feed
+        shell: bash
+        run: |
+          dart scripts/sync-velopack-feed.dart \
+            "${SKILLSGO_APP_UPDATE_URL}" \
+            "${RELEASE_CHANNEL}" \
+            "app/build/velopack/${RELEASE_CHANNEL}"
+
+      - name: Package protected Velopack release
+        shell: bash
+        env:
+          SKILLSGO_APP_PACKAGE_APPEND: '1'
+          SKILLSGO_APP_PACKAGE_MODE: release
+          SKILLSGO_APP_PACKAGE_VERSION: ${{ needs.verify.outputs.version }}
+        run: ./scripts/package-app-candidate.sh ${{ matrix.target }} ${{ matrix.architecture }}
+
+      - name: Stage protected release channel in object storage
+        shell: bash
+        run: |
+          for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APP_STORAGE_ENDPOINT APP_STORAGE_BUCKET; do
+            if [[ -z "${!value}" ]]; then
+              echo "Missing required app-release object-storage configuration: ${value}" >&2
+              exit 1
+            fi
+          done
+          aws s3 sync \
+            "app/build/velopack/${RELEASE_CHANNEL}" \
+            "s3://${APP_STORAGE_BUCKET}/app/_staging/${GITHUB_RUN_ID}/${RELEASE_CHANNEL}/" \
+            --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+            --only-show-errors
+
+      - name: Clean up Apple signing material
+        if: always() && matrix.target == 'macos'
+        shell: bash
+        run: |
+          security delete-keychain "${SKILLSGO_MACOS_KEYCHAIN:-${RUNNER_TEMP}/app-signing.keychain-db}" || true
+          rm -f "${RUNNER_TEMP}/developer-id.p12" "${RUNNER_TEMP}"/AuthKey_*.p8
+
+  publish:
+    name: Publish App release
+    needs: [verify, build]
+    runs-on: [self-hosted, Linux, X64, skillsgo-linux]
+    timeout-minutes: 20
+    environment: app-release
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.APP_STORAGE_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.APP_STORAGE_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      APP_STORAGE_ENDPOINT: ${{ secrets.APP_STORAGE_ENDPOINT }}
+      APP_STORAGE_BUCKET: ${{ vars.APP_STORAGE_BUCKET }}
+      RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Install publication tools
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y gh unzip
+          fi
+          if ! command -v aws >/dev/null 2>&1; then
+            curl --fail --location --silent --show-error \
+              https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
+              --output "${RUNNER_TEMP}/awscliv2.zip"
+            unzip -q "${RUNNER_TEMP}/awscliv2.zip" -d "${RUNNER_TEMP}"
+            "${RUNNER_TEMP}/aws/install" \
+              --install-dir "${RUNNER_TEMP}/aws-cli" \
+              --bin-dir "${RUNNER_TEMP}/aws-bin"
+            echo "${RUNNER_TEMP}/aws-bin" >> "${GITHUB_PATH}"
+          fi
+
+      - name: Validate object-storage publication configuration
+        shell: bash
+        run: |
+          for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APP_STORAGE_ENDPOINT APP_STORAGE_BUCKET; do
+            if [[ -z "${!value}" ]]; then
+                echo "Missing required app-release object-storage configuration: ${value}" >&2
+              exit 1
+            fi
+          done
+          aws --version
+          gh --version
+
+      - name: Download staged release channels
+        shell: bash
+        run: |
+          for channel in osx-arm64 osx-x64 linux-x64; do
+            aws s3 sync \
+              "s3://${APP_STORAGE_BUCKET}/app/_staging/${GITHUB_RUN_ID}/${channel}/" \
+              "release-assets/${channel}" \
+              --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+              --only-show-errors
+          done
+
+      - name: Upload immutable objects
+        shell: bash
+        run: |
+          for channel in osx-arm64 osx-x64 linux-x64; do
+            for name in \
+              "SkillsGo-${RELEASE_VERSION}-${channel}-full.nupkg" \
+              "release-${RELEASE_VERSION}.json"; do
+              file="release-assets/${channel}/${name}"
+              if [[ ! -s "${file}" ]]; then
+                echo "Missing current immutable release object: ${file}" >&2
+                exit 1
+              fi
+              digest="$(sha256sum "${file}" | cut -d ' ' -f 1)"
+              head_error="${RUNNER_TEMP}/r2-head-error"
+              set +e
+              existing_digest="$(
+                aws s3api head-object \
+                   --bucket "${APP_STORAGE_BUCKET}" \
+                  --key "app/${channel}/${name}" \
+                   --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+                  --query 'Metadata.sha256' \
+                  --output text 2>"${head_error}"
+              )"
+              head_status=$?
+              set -e
+              if [[ "${head_status}" -ne 0 ]]; then
+                if ! grep -Eq '(404|Not Found|NoSuchKey)' "${head_error}"; then
+                  cat "${head_error}" >&2
+                  exit "${head_status}"
+                fi
+                existing_digest=""
+              fi
+              if [[ -n "${existing_digest}" ]]; then
+                if [[ "${existing_digest}" == "None" ]]; then
+                   echo "Refusing to overwrite immutable object without checksum metadata: ${channel}/${name}" >&2
+                  exit 1
+                fi
+                if [[ "${existing_digest}" != "${digest}" ]]; then
+                   echo "Refusing to overwrite immutable object with different content: ${channel}/${name}" >&2
+                  exit 1
+                fi
+                 echo "Immutable object already matches: ${channel}/${name}"
+                continue
+              fi
+               aws s3 cp "${file}" "s3://${APP_STORAGE_BUCKET}/app/${channel}/${name}" \
+                 --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+                --cache-control 'public,max-age=31536000,immutable' \
+                --metadata "sha256=${digest}" \
+                --only-show-errors
+            done
+          done
+
+      - name: Publish feed manifests last
+        shell: bash
+        run: |
+          for channel in osx-arm64 osx-x64 linux-x64; do
+            while IFS= read -r -d '' file; do
+              name="$(basename "${file}")"
+               aws s3 cp "${file}" "s3://${APP_STORAGE_BUCKET}/app/${channel}/${name}" \
+                 --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+                --cache-control 'no-cache' \
+                --only-show-errors
+            done < <(
+              find "release-assets/${channel}" -maxdepth 1 -type f \
+                \( -name 'releases.*.json' -o -name 'assets.*.json' -o -name 'RELEASES*' \) \
+                -print0
+            )
+          done
+
+      - name: Collect installer downloads
+        shell: bash
+        run: |
+          scripts/collect-app-release-downloads.sh \
+            release-assets \
+            release-downloads
+
+      - name: Publish immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "${TAG}" release-downloads/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --title "SkillsGo App v${RELEASE_VERSION}" \
+            --generate-notes
+
+      - name: Remove staged release channels
+        if: always()
+        shell: bash
+        run: |
+          aws s3 rm \
+             "s3://${APP_STORAGE_BUCKET}/app/_staging/${GITHUB_RUN_ID}/" \
+             --endpoint-url "${APP_STORAGE_ENDPOINT}" \
+            --recursive \
+            --only-show-errors

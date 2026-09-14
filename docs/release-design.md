@@ -6,6 +6,7 @@ SkillsGo publishes the CLI and Hub from independent version tags while keeping t
 
 | Unit | Source | Tag | Artifacts |
 | --- | --- | --- | --- |
+| App | `app/`, `cli/`, and `protocol/` | `app/vX.Y.Z` | Architecture-specific desktop packages, update manifests, and checksums |
 | CLI | `cli/` and `protocol/` | `cli/vX.Y.Z` | Standalone archives for macOS arm64/amd64, Linux arm64/amd64, and Windows amd64, plus checksums |
 | Hub | `hub/` and `protocol/` | `hub/vX.Y.Z` | Go release metadata and container image when enabled by the release workflow |
 

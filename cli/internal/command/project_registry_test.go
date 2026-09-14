@@ -54,10 +54,10 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	writeProjectFixture(t, filepath.Join(home, ".kimi", "kimi.json"), `{"work_dirs":[{"path":`+quotedJSON(kimiWorkspace)+`,"kaos":"local","last_session_id":"`+kimiSessionID+`"}]}`)
 	kimiHash := fmt.Sprintf("%x", md5.Sum([]byte(kimiWorkspace)))
 	writeProjectFixture(t, filepath.Join(home, ".kimi", "sessions", kimiHash, kimiSessionID, "context.jsonl"), `{}`)
-	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"1785628800000","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
+	writeProjectFixture(t, filepath.Join(home, ".continue", "sessions", "sessions.json"), `[{"sessionId":"1","dateCreated":"1788235200000","workspaceDirectory":`+quotedJSON(continueWorkspace)+`}]`)
 	writeProjectFixture(t, filepath.Join(home, ".vibe", "logs", "session", "session_1", "meta.json"), `{"environment":{"working_directory":`+quotedJSON(vibeWorkspace)+`}}`)
-	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1785628800000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
-	writeProjectFixture(t, rooIndexPath(home), `{"version":1,"updatedAt":1785628800000,"entries":[{"id":"1","ts":1785628800000,"workspace":`+quotedJSON(rooWorkspace)+`}]}`)
+	writeProjectFixture(t, filepath.Join(home, ".cline", "data", "state", "taskHistory.json"), `[{"id":"1","ts":1788235200000,"cwdOnTaskInitialization":`+quotedJSON(clineWorkspace)+`}]`)
+	writeProjectFixture(t, rooIndexPath(home), `{"version":1,"updatedAt":1788235200000,"entries":[{"id":"1","ts":1788235200000,"workspace":`+quotedJSON(rooWorkspace)+`}]}`)
 	gooseRoot := filepath.Join(home, "goose-root")
 	writeGooseFixture(t, filepath.Join(gooseRoot, "data", "sessions", "sessions.db"), gooseWorkspace)
 	t.Setenv("GOOSE_PATH_ROOT", gooseRoot)
@@ -68,7 +68,7 @@ func TestProjectBootstrapPersistsRecentAgentWorkspaces(t *testing.T) {
 	writeOpenCodeFixture(t, filepath.Join(openCodeData, "kilo", "opencode-dev.db"), kiloWorkspace)
 	t.Setenv("XDG_DATA_HOME", openCodeData)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
-	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1785628800,"qwen_version":"1"}`)
+	writeProjectFixture(t, filepath.Join(home, ".qwen", "projects", "project-id", "chats", "session.runtime.json"), `{"schema_version":1,"pid":1,"session_id":"session","work_dir":`+quotedJSON(qwenWorkspace)+`,"hostname":"localhost","started_at":1788235200,"qwen_version":"1"}`)
 	t.Setenv("HOME", home)
 
 	var output bytes.Buffer
@@ -107,7 +107,7 @@ func writeOpenCodeFixture(t *testing.T, path, workspace string) {
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
 	_, err = database.Exec(`CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL, time_updated INTEGER NOT NULL)`)
 	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO session (id, directory, time_updated) VALUES ('1', ?, 1785628800000)`, workspace)
+	_, err = database.Exec(`INSERT INTO session (id, directory, time_updated) VALUES ('1', ?, 1788235200000)`, workspace)
 	require.NoError(t, err)
 }
 
@@ -119,7 +119,7 @@ func writeGooseFixture(t *testing.T, path, workspace string) {
 	t.Cleanup(func() { require.NoError(t, database.Close()) })
 	_, err = database.Exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, working_dir TEXT NOT NULL, updated_at TIMESTAMP NOT NULL)`)
 	require.NoError(t, err)
-	_, err = database.Exec(`INSERT INTO sessions (id, working_dir, updated_at) VALUES ('1', ?, '2026-08-02 00:00:00')`, workspace)
+	_, err = database.Exec(`INSERT INTO sessions (id, working_dir, updated_at) VALUES ('1', ?, '2026-09-01 00:00:00')`, workspace)
 	require.NoError(t, err)
 }
 

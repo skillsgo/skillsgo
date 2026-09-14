@@ -1,0 +1,20 @@
+/*
+ * [INPUT]: Depends on all maintained rendered cross-platform App Journey registrations and the Flutter integration-test binding.
+ * [OUTPUT]: Registers every App E2E Journey in one Flutter test executable so the App and bundled CLI compile once per host platform suite.
+ * [POS]: Serves as the default aggregate entry point orchestrated by e2e/app/run.sh while individual Journey files remain focusable.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'package:integration_test/integration_test.dart';
+
+import 'package_update_check_test.dart' as package_update;
+import 'machine_failure_recovery_test.dart' as machine_failure;
+import 'repository_install_all_test.dart' as repository_install;
+import 'adoption_management_test.dart' as adoption;
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  repository_install.registerRepositoryInstallAllJourney();
+  package_update.registerPackageUpdatePreviewJourney();
+  adoption.registerAdoptionManagementJourney();
+  machine_failure.registerMachineFailureRecoveryJourney();
+}

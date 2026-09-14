@@ -1,0 +1,1219 @@
+{
+  "@@locale": "ru",
+  "libraryFilter": "Фильтр",
+  "discover": "Откройте для себя",
+  "discoverSkills": "Приятно узнать немного больше.",
+  "library": "Skill",
+  "libraryUsageCalculating": "Подсчёт",
+  "settings": "Настройки",
+  "appUpdateTitle": "Обновления приложения",
+  "appUpdateDescription": "Проверить наличие новой версии SkillsGo в канале выпусков.",
+  "appUpdateNotConfigured": "Обновления приложения недоступны в этой сборке.",
+  "appUpdateReady": "Проверяйте, когда удобно. SkillsGo не установит обновление без вашего действия.",
+  "appUpdateChecking": "Проверка обновления приложения…",
+  "appUpdateApplying": "Загрузка обновления. SkillsGo перезапустится, когда всё будет готово.",
+  "appUpdateCheckFailed": "Не удалось проверить обновление. Проверьте подключение и повторите попытку.",
+  "appUpdateAvailable": "Доступна версия SkillsGo {version}.",
+  "@appUpdateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCurrent": "Установлена актуальная версия SkillsGo {version}.",
+  "@appUpdateCurrent": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCheckAction": "Проверить обновления",
+  "appUpdateApplyAction": "Обновить и перезапустить",
+  "openSettings": "Открыть настройки",
+  "privacySettingsOpenFailed": "Не удалось открыть Системные настройки. Откройте их вручную и повторите попытку.",
+  "cliNeedsAttention": "Требуемый компонент SkillsGo требует внимания.",
+  "cliMissingBundled": "Необходимый компонент SkillsGo отсутствует или не может запуститься. Переустановите SkillsGo, чтобы восстановить его.",
+  "cliDamagedBundled": "Необходимый компонент SkillsGo поврежден. Переустановите SkillsGo, чтобы восстановить его.",
+  "cliIncompatibleBundled": "Требуемый компонент SkillsGo не соответствует этой версии приложения. Обновите или переустановите SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Найдите навык для своего следующего шага.",
+  "skillsLeaderboard": "Приятно узнать немного больше.",
+  "searchResultsFor": "Результаты для «{query}»",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Найдите навыки или вставьте ссылку Git…",
+  "search": "Поиск",
+  "ranking": "Рейтинг",
+  "trending": "Тенденции",
+  "hot": "Горячий",
+  "discoverNavigation": "Откройте для себя навигацию",
+  "allTimeRanking": "Рейтинг за все время",
+  "trendingNow": "Тенденции за последние 24 часа",
+  "hotNow": "Горячо сейчас",
+  "allTimeDescription": "Публичный Skills отсортирован по количеству принятых установок за все время.",
+  "trendingDescription": "Публичный Skills упорядочен по количеству принятых установок за последние 24 часа.",
+  "hotDescription": "Публичный Skills упорядочен по краткосрочной скорости установки и изменениям.",
+  "offlineTitle": "Не могу подключиться к SkillsGo",
+  "offlineMessage": "Проверьте подключение к Интернету и повторите попытку. Если вы используете прокси-сервер или специальный адрес службы, проверьте его в настройках.",
+  "searchFailedTitle": "Поиск наткнулся",
+  "validationTitle": "Проверьте, что вы ввели",
+  "validationMessage": "SkillsGo не смог использовать этот запрос. Проверьте введенные данные и повторите попытку.",
+  "serverTitle": "Сервис временно недоступен",
+  "serverMessage": "SkillsGo не может выполнить этот запрос прямо сейчас. Повторите попытку через минуту.",
+  "timeoutTitle": "Это занимает слишком много времени",
+  "timeoutMessage": "Служба не ответила вовремя. Проверьте подключение или повторите попытку.",
+  "invalidResponseTitle": "SkillsGo нуждается в обновлении",
+  "invalidResponseMessage": "Этот ответ не может быть прочитан вашей версией SkillsGo. Обновите приложение и повторите попытку.",
+  "invalidLocalDataTitle": "Не могу прочитать установленный навык",
+  "invalidLocalDataMessage": "Некоторая информация о локальной установке повреждена или несовместима. Обновите или переустановите SkillsGo, затем повторите попытку.",
+  "tryAgain": "Попробуйте еще раз",
+  "searchEmptyTitle": "Ищите, не прокручивайте.",
+  "searchEmptyMessage": "Введите способность, источник или задачу для поиска общедоступных навыков.",
+  "noSkillsTitle": "Навыки не найдены",
+  "noSkillsMessage": "Попробуйте использовать более широкую фразу или проверьте написание.",
+  "focusSearch": "Фокус поиска",
+  "skillsFromLink": "Skills по этой ссылке",
+  "skillCount": "{count, plural, one{{count} Skill} few{{count} Skill} many{{count} Skill} other{{count} Skill}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, one{{count} Skill из {source}} few{{count} Skill из {source}} many{{count} Skill из {source}} other{{count} Skill из {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Эта ссылка готова для проверки",
+  "sourceSearchEmptyMessage": "{source} нет в текущих результатах поиска. SkillsGo может проверить ссылку непосредственно на следующем шаге.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Посмотреть навыки можно по этой ссылке",
+  "collectionEmptyTitle": "В этой коллекции нет Skills.",
+  "collectionEmptyMessage": "Здесь пока ничего нет. Повторите попытку после дальнейших действий по установке.",
+  "loadMore": "Загрузить больше",
+  "install": "Установить",
+  "installAll": "Установить все навыки",
+  "latestCommit": "Последний коммит",
+  "installToMoreTargets": "Установить в других местах",
+  "localTargets": "{count} локальные цели",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} количество установок за все время",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} устанавливает / 24 часа",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} в этот час · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Непроверенный",
+  "trustCommunityVerified": "Сообщество проверено",
+  "trustPublisherVerified": "Издатель проверен",
+  "trustOfficial": "Официальный",
+  "trustWarned": "Предупреждён",
+  "trustDelisted": "исключен из списка",
+  "riskUnknown": "Риск неизвестен",
+  "riskLow": "Низкий риск",
+  "riskMedium": "Средний риск",
+  "riskHigh": "Высокий риск",
+  "riskCritical": "Критический риск",
+  "openSkill": "Открыть {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} устанавливает",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Не удалось загрузить Skill.",
+  "detailLoading": "Загрузка проверяемой детали Skill",
+  "artifactUnavailableTitle": "Артефакт недоступен",
+  "artifactUnavailableMessage": "Эта версия сейчас недоступна. Попробуйте еще раз или выберите другую версию.",
+  "detailInvalidTitle": "Метаданные артефакта не поддерживаются",
+  "detailInvalidMessage": "Некоторые сведения об этом навыке неполны или не могут быть прочитаны. Обновите SkillsGo и повторите попытку.",
+  "instructionsTab": "Инструкции",
+  "manifestTab": "Манифест",
+  "immutableVersionLabel": "Неизменяемый {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Зафиксировать {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Дерево {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Содержимое {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Доверие издателя подтверждает право собственности или обслуживание; он не подтверждает безопасность артефактов. Для этой неизменяемой версии риск оценивается отдельно.",
+  "knownInstallationTargets": "Известные цели установки",
+  "installationRange": "Установленный объем",
+  "targetDetails": "Показать сведения о цели",
+  "hideTargetDetails": "Скрыть сведения о цели",
+  "installedVersionLabel": "Версия {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Проект",
+  "fileContentUnavailable": "Двоичный или недоступный предварительный просмотр",
+  "fileContentTruncated": "Предварительный просмотр усечен до предела безопасности Hub.",
+  "retry": "Повторить попытку",
+  "backToSearch": "Вернуться к поиску",
+  "installForCodex": "Установить для Codex",
+  "cliNotDetected": "навыки (не обнаружено)",
+  "snapshotFiles": "Файлы снимков",
+  "globalCodex": "Глобальный · Codex",
+  "yourLibrary": "Все, что вы знаете, здесь.",
+  "libraryNavigation": "Навигация по библиотеке",
+  "all": "Все",
+  "allSkills": "Все Skills",
+  "libraryNeedsAttention": "Требует внимания",
+  "libraryBudgetInsights": "Обзор бюджета резидентных Skills",
+  "libraryResidentBudget": "Резидентный контекст",
+  "libraryResidentBudgetTooltip": "Количество символов в названиях и описаниях Skills текущей области. Поиск, фильтры и сортировка не влияют на это значение.",
+  "libraryUnusedBudget45Days": "Неактивный объём",
+  "libraryUnusedBudget45DaysTooltip": "Количество и доля символов, занятых Skills с доступными данными использования и без вызовов за последние 45 дней. Нажмите для фильтрации; ≥ означает, что часть данных недоступна.",
+  "libraryBudgetUnknown": "Недоступно",
+  "libraryBudgetCharacters": "символов",
+  "libraryFilterEmptyTitle": "Нет Skills, соответствующих этим фильтрам",
+  "libraryFilterEmptyMessage": "Измените условие управления или использования, чтобы увидеть больше Skills.",
+  "libraryUnusedEmptyTitle": "Нет неиспользуемых Skills",
+  "libraryUnusedEmptyMessage": "Каждый Skill с доступными данными об использовании вызывался в течение последних 45 дней.",
+  "libraryOtherEmptyTitle": "Нет других установок",
+  "libraryOtherEmptyMessage": "Каждый Skill в этом контексте управляется SkillsGo.",
+  "libraryUpdatesEmptyMessage": "В этом контексте нет доступных обновлений Package.",
+  "libraryUsageUnavailable": "Данные об использовании недоступны",
+  "libraryUsageNotSupported": "Not supported yet",
+  "libraryUsageContributionMessage": "SkillsGo is open source, but we cannot install and test every coding agent. Your coding agent can help us add usage support for {agents}.",
+  "@libraryUsageContributionMessage": {"placeholders": {"agents": {"type": "String"}}},
+  "libraryUsageContributionPrompt": "Hi! I would love your help improving local usage statistics support for {agents} in the open-source SkillsGo project. The repository is https://github.com/skillsgo/skillsgo. Before we get started, please read the root AGENTS.md and any nested AGENTS.md that applies to the files we inspect or change. The existing collectors in cli/internal/skillusage should be useful references. Let us keep the same privacy-preserving 45/90-day usage contract, add focused tests, and update the relevant English documentation when we are done. Please take care not to collect or expose prompt contents, secrets, or unrelated private data.",
+  "@libraryUsageContributionPrompt": {"placeholders": {"agents": {"type": "String"}}},
+  "libraryUsageCopyContributionPrompt": "Copy prompt",
+  "libraryUsageContributionPromptCopied": "Copied",
+  "libraryUsageOpenRepository": "Open GitHub",
+  "libraryUsageCount": "Вызовов: {count}",
+  "@libraryUsageCount": {"placeholders": {"count": {"type": "int"}}},
+  "librarySortPackageGrouped": "Сгруппировано по Package",
+  "librarySortDescending": "По убыванию",
+  "librarySortAscending": "По возрастанию",
+  "updatesOnly": "Обновления",
+  "allAgents": "Все Agents",
+  "allProjects": "Все проекты",
+  "specificProject": "Проект",
+  "globalScope": "Глобальный",
+  "addProject": "Добавить проект",
+  "removeFromList": "Удалить из списка",
+  "removeProjectTitle": "Удалить {name} из SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Будет удалена только ссылка на приложение. SkillsGo не будет изменять или удалять файлы в этом каталоге.",
+  "projectRailUnavailable": "{name} — недоступен",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Skills пока нет",
+  "browseSkills": "Просмотр Skills",
+  "projectMissingTitle": "Каталог проекта отсутствует",
+  "projectPermissionTitle": "Требуется разрешение проекта",
+  "projectInaccessibleTitle": "Каталог проекта недоступен",
+  "checking": "Проверка…",
+  "checkUpdates": "Проверить обновления",
+  "refresh": "Обновить",
+  "libraryUnavailable": "Библиотека недоступна",
+  "libraryEmpty": "Навыки еще не установлены",
+  "libraryEmptyMessage": "Установите Skill из Discover, и он появится здесь.",
+  "searchLibrary": "Поиск установленных навыков",
+  "libraryNoMatches": "Нет соответствия Skills",
+  "libraryNoMatchesMessage": "Попробуйте другое имя, источник, Agent, проект или версию.",
+  "librarySkillColumn": "Skill",
+  "libraryHits45Days": "45d",
+  "libraryHits90Days": "90d",
+  "libraryInstallationColumn": "Installation",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} проекты",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "версии {count}",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub управляемый",
+  "localManaged": "Локальное управление",
+  "externalInstallation": "Внешняя установка",
+  "readOnly": "Только чтение",
+  "unversioned": "Неверсированный",
+  "supportingFiles": "Дополнительные файлы",
+  "versionDivergence": "Расхождение версий",
+  "healthHealthy": "Здоровый",
+  "healthMissing": "Цель отсутствует",
+  "healthReplaced": "Цель заменена",
+  "healthLocalModification": "Локальная модификация",
+  "healthUnreadable": "Цель нечитаема",
+  "healthUndeclared": "Не заявлено",
+  "healthWorkspaceUnreadable": "Состояние рабочей области нечитаемо",
+  "healthLockMismatch": "Несоответствие блокировки",
+  "healthUnexpectedPath": "Неожиданный целевой путь",
+  "modeExternal": "Внешний",
+  "notLinked": "НЕ СВЯЗАНО",
+  "update": "Обновить",
+  "backToLibrary": "Вернуться в библиотеку",
+  "remove": "Удалить",
+  "skillsSelected": "{count} выбрано",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Очистить выбор",
+  "selectCurrentResults": "Выберите текущие результаты",
+  "clearCurrentResultSelection": "Очистить текущий выбор результатов",
+  "targetActionsSelected": "Выбрано {selected} из {total} целей",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmRemoveTarget": "Подтвердить удаление",
+  "managementProgressTitle": "Применение целевых действий",
+  "managementResultsTitle": "Целевые результаты действий",
+  "managementResultSummary": "{succeeded} удалось, {failed} не удалось.",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "targetContentPreserved": "Текущий целевой контент будет сохранен.",
+  "localReadFailed": "Не могу прочитать это Skill",
+  "localReadFailedMessage": "SkillsGo не удалось прочитать этот установленный Skill. Убедитесь, что папка существует и доступна, затем повторите попытку.",
+  "localConfiguration": "НАВЫКИGO НАСТРОЙКИ",
+  "settingsNavigation": "Навигация по настройкам",
+  "general": "Персонализация",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Политика установки",
+  "storage": "Хранение",
+  "colorScheme": "Цветовая схема",
+  "about": "О",
+  "colorSchemeInspectorTitle": "Сгенерированные цветовые роли Material",
+  "skillsColorTokensTitle": "Семантические цвета SkillsGo",
+  "skillsColorTokensDescription": "Цвета продуктов созданы на основе Radix Sand и организованы с помощью семантики Primer, где Folder является специальной пространственной иерархией.",
+  "colorSchemeInspectorDescription": "Предварительный просмотр каждого неустаревшего токена ColorScheme, сгенерированного из текущего начального числа. Щелкните цвет, чтобы скопировать его значение HEX.",
+  "colorSchemePairPreview": "Семантические пары",
+  "colorSchemePairPreviewDescription": "Роли переднего плана и фона визуализируются вместе, чтобы показать контраст и иерархию.",
+  "colorSchemeComponentPreview": "Предварительный просмотр компонента",
+  "colorSchemeComponentPreviewDescription": "Типичные элементы управления Material отображаются именно по этой схеме предварительного просмотра.",
+  "colorSchemeSampleTitle": "Название карты Skill",
+  "colorSchemeSampleBody": "Вторичная копия использует onSurfaceVariant.",
+  "colorSchemeCopied": "Скопировано",
+  "colorSchemeSampleGlyphs": "Аа 123",
+  "colorSchemeGroupPrimary": "Первичный",
+  "colorSchemeGroupPrimaryDescription": "Первичный акцент, контейнеры и фиксированные акцентные роли.",
+  "colorSchemeGroupSecondary": "вторичный",
+  "colorSchemeGroupSecondaryDescription": "Поддерживающие акценты и фиксированные второстепенные роли.",
+  "colorSchemeGroupTertiary": "Третичный",
+  "colorSchemeGroupTertiaryDescription": "Контрастные акценты и фиксированные третичные роли.",
+  "colorSchemeGroupSurface": "Поверхность",
+  "colorSchemeGroupSurfaceDescription": "Иерархия страницы, контейнера, высоты и переднего плана.",
+  "colorSchemeGroupUtility": "Схема и полезность",
+  "colorSchemeGroupUtilityDescription": "Границы, тени, сетки и обратные поверхности.",
+  "colorSchemeGroupError": "Ошибка",
+  "colorSchemeGroupErrorDescription": "Действия, сообщения и контейнеры при ошибках.",
+  "colorSchemeUsagePrimary": "Основные действия, фокус и акценты.",
+  "colorSchemeUsageSecondary": "Вспомогательные действия и акценты средней выразительности.",
+  "colorSchemeUsageTertiary": "Контрастные акценты, дополняющие основное и второстепенное.",
+  "colorSchemeUsageContentOn": "Текст и значки отображаются на {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Контейнер {family} с нижним выделением для выделений и акцентов.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Независимый от яркости фиксированный контейнер {family}.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Затемненный, независимый от яркости фиксированный контейнер {family}.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Выделенный контент в фиксированном контейнере {family}.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Содержимое с меньшим акцентом в фиксированном контейнере {family}.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Базовая страница и большая область поверхности.",
+  "colorSchemeUsageSurfaceDim": "Затемненная базовая поверхность используется с самым темным тоном поверхности.",
+  "colorSchemeUsageSurfaceBright": "Яркая базовая поверхность, используемая в самом светлом тоне поверхности.",
+  "colorSchemeUsageSurfaceElevation": "Высота надводного контейнера {level}.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "самый низкий",
+  "colorSchemeElevationLow": "низкий",
+  "colorSchemeElevationDefault": "по умолчанию",
+  "colorSchemeElevationHigh": "высокий",
+  "colorSchemeElevationHighest": "самый высокий",
+  "colorSchemeUsageOnSurface": "Основной текст и значки, отображаемые на поверхностях.",
+  "colorSchemeUsageOnSurfaceVariant": "Вторичный текст, надписи и приглушенные значки на поверхностях.",
+  "colorSchemeUsageSurfaceTint": "Оттенок высоты Material получен из основного.",
+  "colorSchemeUsageOutline": "Выраженные границы и четкие очертания компонентов.",
+  "colorSchemeUsageOutlineVariant": "Тонкие границы, разделители и контуры с низким акцентом.",
+  "colorSchemeUsageShadow": "Цвет тени для приподнятых поверхностей.",
+  "colorSchemeUsageScrim": "Модальное наложение используется для приглушения фонового содержимого.",
+  "colorSchemeUsageInverseSurface": "Поверхность с перевернутыми светлыми и темными акцентами.",
+  "colorSchemeUsageInversePrimary": "Основной акцент отображается на обратной поверхности.",
+  "colorSchemeUsageError": "Действия при ошибках, статус и обратная связь.",
+  "save": "Сохранить",
+  "advancedSettings": "Расширенный",
+  "remindersSettings": "Напоминания",
+  "remindersSettingsTitle": "Настройки напоминаний",
+  "remindersSettingsDescription": "Выберите, какие напоминания получать.",
+  "updateReminderTitle": "Обновить напоминания",
+  "updateReminderDescription": "Проверьте наличие обновлений, когда откроется библиотека.",
+  "securityReminderTitle": "Оповещения о высоком риске",
+  "securityReminderDescription": "Уведомлять вас о новых высоких или критических рисках в установленных навыках.",
+  "availableUpdatesReminder": "Установленные навыки {count} имеют обновления.",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Откройте представление доступных обновлений, чтобы просмотреть и обновить их.",
+  "securityAdvisoriesReminder": "Установленные навыки {count} требуют проверки безопасности",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Просмотрите информацию о рисках, прежде чем использовать или обновлять ее.",
+  "generalSettingsTitle": "Сделайте SkillsGo своим",
+  "generalSettingsDescription": "Интерфейс соответствует языку вашей системы, доступности и предпочтениям движения.",
+  "agentsSettingsTitle": "Среда выполнения Agent",
+  "hubSettingsTitle": "Hub Происхождение",
+  "hubSettingsDescription": "Используйте официальный Hub или самостоятельный источник HTTP(S), который реализует тот же протокол SkillsGo.",
+  "testConnection": "Тестовое соединение",
+  "saveOrigin": "Сохранить происхождение",
+  "resetDefault": "Сбросить настройки по умолчанию",
+  "connectionReady": "Подключение готово",
+  "connectionFailed": "Соединение не удалось",
+  "hubInvalidOrigin": "Введите действительный источник HTTP(S) без учетных данных, запроса или фрагмента.",
+  "hubHttpFailure": "Hub вернул HTTP {status}. Проверьте Origin и конфигурацию сервера.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Сервер не вернул протокол поиска SkillsGo Hub.",
+  "hubInvalidJson": "Hub вернул неверный JSON.",
+  "hubConnectionFailure": "Не удалось связаться с Hub. Проверьте источник, сеть, прокси и конфигурацию TLS.",
+  "hubConnectionTimeout": "Время ожидания соединения Hub истекло. Проверьте сеть или повторите попытку.",
+  "riskPolicyTitle": "Политика личного риска",
+  "riskPolicyDescription": "Правила безопасности применяются при установке или обновлении навыка.",
+  "confirmHighRisk": "Требовать подтверждения для высокого риска",
+  "confirmHighRiskDescription": "Артефакты высокого риска всегда требуют дополнительного подтверждения перед установкой.",
+  "allowCriticalOverride": "Разрешить явное переопределение критического риска",
+  "allowCriticalOverrideDescription": "Артефакты критического риска остаются заблокированными по умолчанию. Включите это только для того, чтобы предоставить отдельное ручное переопределение.",
+  "storageHealthy": "Читабельный",
+  "storageNotInitialized": "Не инициализирован",
+  "storageUnavailable": "Недоступно",
+  "storageInvalidResponse": "Входящий в комплект CLI вернул неподдерживаемый диагностический ответ.",
+  "aboutSettingsTitle": "Совместимость продукта",
+  "appVersion": "Версия приложения",
+  "cliVersion": "Комплектная версия CLI",
+  "compatible": "Совместимый",
+  "hubOriginSaved": "Hub Origin сохранен и применен.",
+  "policySaved": "Политика установки сохранена.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "ГОТОВО",
+  "unknown": "НЕИЗВЕСТНО",
+  "missing": "ОТСУТСТВУЕТ",
+  "incompatible": "НЕСОВМЕСТИМЫЙ",
+  "detecting": "Обнаружение…",
+  "customCliPath": "Пользовательский путь к исполняемому файлу",
+  "saveAndDetect": "Сохранить и обнаружить",
+  "detectAgain": "Обнаружить снова",
+  "agentInstalled": "Установлено",
+  "agentSupported": "Поддерживается",
+  "agentCatalogSummary": "{installed} установлен · {supported} поддерживается",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Установлено · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Не установлено · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Поддерживается SkillsGo, но не обнаружен на этом Mac.",
+  "agentDiscoveryRoots": "Skill Пути загрузки: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Данные обнаружения Agent недоступны. Запустите обнаружение еще раз.",
+  "noInstalledAgentsTitle": "Установленный Agents не обнаружен",
+  "noInstalledAgentsMessage": "Вы можете продолжать просматривать этот Skill, но цели для установки пока нет. Установите поддерживаемый Agent, затем снова запустите обнаружение.",
+  "clearCustomPath": "Очистить собственный путь",
+  "privacyProvenance": "Конфиденциальность и происхождение",
+  "language": "Язык",
+  "translatedContent": "Переведено",
+  "translatedFrom": "Переведено с языка: {language}",
+  "@translatedFrom": {"placeholders": {"language": {"type": "String"}}},
+  "sourceLanguageName": "{code, select, en {английский} zhHans {китайский, упрощенное письмо} zhHant {китайский, традиционное письмо} ja {японский} ko {корейский} fr {французский} de {немецкий} it {итальянский} es {испанский} pt {португальский} ru {русский} ar {арабский} hi {хинди} id {индонезийский} tr {турецкий} nl {нидерландский} pl {польский} th {тайский} vi {вьетнамский} ms {малайский} sv {шведский} uk {украинский} other {{code}}}",
+  "@sourceLanguageName": {"placeholders": {"code": {"type": "String"}}},
+  "showOriginalContent": "Показать оригинал",
+  "showTranslation": "Показать перевод",
+  "personalizationTheme": "Тема",
+  "folderColorTheme": "Цвет темы",
+  "folderColorThemeDescription": "Выберите цвет, который вам нравится. SkillsGo построит вокруг него согласованную палитру интерфейса.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Режим",
+  "appearanceModeDescription": "Следите за внешним видом вашей системы или всегда используйте светлую или темную тему.",
+  "followSystem": "Система",
+  "lightMode": "Свет",
+  "darkMode": "Темный",
+  "wallpaper": "Обои",
+  "wallpaperDescription": "Выберите небесный фон. Ваш выбор появится сразу за Folder.",
+  "wallpaperSun": "Солнце",
+  "wallpaperMercury": "Меркурий",
+  "wallpaperVenus": "Венера",
+  "wallpaperEarth": "Земля",
+  "wallpaperMars": "Марс",
+  "wallpaperJupiter": "Юпитер",
+  "wallpaperSaturn": "Сатурн",
+  "wallpaperUranus": "Уран",
+  "wallpaperNeptune": "Нептун",
+  "wallpaperPluto": "Плутон",
+  "wallpaperMoon": "Луна",
+  "folderThemeChoice": "{theme} Folder тема",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Телеметрия анонимной установки контролируется настройками SkillsGo. SkillsGo не связан с OpenAI или Codex.",
+  "commandCompleted": "Команда выполнена",
+  "commandFailed": "Команда не выполнена",
+  "commandExit": "Выход {code} · разверните журнал этого сеанса",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Команда",
+  "cancel": "Отмена",
+  "updateUnknown": "НЕИЗВЕСТНО",
+  "updateChecking": "ПРОВЕРКА",
+  "upToDate": "АКТУАЛЬНО",
+  "updateAvailable": "ОБНОВЛЕНИЕ",
+  "updateUnavailable": "НЕДОСТУПНО",
+  "updateCheckFailed": "ПРОВЕРКА НЕ удалась",
+  "installSkill": "Установить Skill",
+  "installLocationTitle": "Установить место установки",
+  "globalLevel": "Global",
+  "projectLevel": "Уровень проекта",
+  "projects": "Проекты",
+  "loading": "Загрузка…",
+  "repositoryParsing": "Разбор репозитория…",
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} проекты · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Результаты установки",
+  "installationInProgress": "Установка в процессе",
+  "installationSucceeded": "Установка завершена",
+  "installationSucceededMessage": "Skill теперь доступен в выбранных местах.",
+  "projectUnavailable": "Проект недоступен",
+  "installedCell": "Установлено",
+  "unsupportedCell": "Недоступно",
+  "confirmInstall": "Подтвердить установку",
+  "installAllPackageSkills": "Установите все навыки репозитория ({count})",
+  "installAllSkillsTo": "Установите все навыки, чтобы",
+  "@installAllPackageSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installPackageSkills": "Установите все навыки {packagePath} ({count})",
+  "@installPackageSkills": {
+    "placeholders": {
+      "packagePath": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Установите {skill} в",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Все проекты",
+  "availableInSelectedProjects": "Избранные проекты",
+  "usedBy": "Для Agents",
+  "backToTargets": "Вернуться к целям",
+  "stayHere": "Оставайся здесь",
+  "viewInLibrary": "Посмотреть в библиотеке",
+  "planCreateCount": "{count} создать",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} пропустить",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} заменить",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} конфликт",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "Риск {count} заблокирован",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Применить разрешения",
+  "replaceVersionConflict": "Замените установленную версию на этой цели.",
+  "replaceSkillIdCollision": "Замените другой идентификатор Skill в этой цели.",
+  "replaceLocalModification": "Отменить локальные модификации и заменить эту цель",
+  "sharedTargetConflict": "Этот путь используется другими целями Agent.",
+  "sharedTargetConflictDescription": "Вернитесь к целевой матрице и выберите каждый затронутый Agent перед заменой: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Замените конфликтующую цель",
+  "confirmHighRiskArtifact": "Подтверждение артефакта высокого риска",
+  "confirmCriticalRiskArtifact": "Подтверждение отмены критического риска",
+  "confirmRiskForSelectedTargets": "Я проверил файлы артефактов и принимаю этот риск для выбранных целей.",
+  "criticalRiskBlocked": "Установка критического риска заблокирована",
+  "criticalRiskOverrideDisabled": "Включите явное переопределение критического риска в настройках, прежде чем этот план сможет продолжиться.",
+  "workspaceManifestChanges": "Изменения Workspace Manifest",
+  "noWorkspaceManifestChanges": "Никакие файлы Workspace Manifest не изменятся.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "нет",
+  "planActionCreate": "Создать",
+  "planActionReplace": "Заменить",
+  "planActionSkip": "Пропустить",
+  "planActionConflict": "Конфликт",
+  "planActionBlockedByRisk": "Заблокировано из-за риска",
+  "installationResultSummary": "Цели {succeeded} установлены, {failed} не работает.",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Установка в процессе",
+  "installationProgressSummary": "{finished} из {total} целей завершен",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Ожидание",
+  "targetRunning": "Установка",
+  "retryFailedTargets": "{count, plural, one{Повторить {count} неудачную цель} few{Повторить {count} неудачные цели} many{Повторить {count} неудачных целей} other{Повторить {count} неудачной цели}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Выберите цели для обновления",
+  "updatePlanDescription": "Выберите точные цели установки. Невыбранный Agents и проекты остаются без изменений.",
+  "updateTargetsSelected": "Выбран {selected} из обновляемых целей {available}.",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Ссылка на источник: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Закреплено — нет перемещаемой ссылки",
+  "currentVersionTarget": "Актуально",
+  "updateCheckTargetFailed": "Проверка обновлений не удалась",
+  "reconcileWorkspaceManifestTarget": "Восстановить манифест рабочей области",
+  "updateSelectedTargets": "Обновить выбранные цели",
+  "updateProgressTitle": "Обновление целей",
+  "updateResultsTitle": "Обновить результаты",
+  "updateProgressSummary": "{finished} из {total} целей завершен",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, one{Повторить {count} неудачное обновление} few{Повторить {count} неудачных обновления} many{Повторить {count} неудачных обновлений} other{Повторить {count} неудачного обновления}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Ни для одной выбранной цели нет доступных обновлений.",
+  "closeUpdatePlan": "Закрыть",
+  "targetSucceeded": "Установлено",
+  "targetSkipped": "Пропущено",
+  "targetConflict": "Конфликт",
+  "targetFailed": "Не удалось",
+  "targetFailureRetryable": "Это местоположение невозможно изменить. Вы можете попробовать еще раз.",
+  "targetFailureNeedsAttention": "Прежде чем повторить попытку, это место требует вашего внимания.",
+  "installationTargetFailureMessage": "В этом месте ничего не менялось. Убедитесь, что папка доступна, и повторите попытку.",
+  "workspacePersistenceFailureMessage": "Ничего не менялось, потому что SkillsGo не смог сохранить настройки проекта. Убедитесь, что папка проекта доступна для записи, и повторите попытку.",
+  "installationStateChangedMessage": "Местоположение изменилось, пока вы его просматривали. Прежде чем повторить попытку, просмотрите последнее состояние.",
+  "updateTargetFailureMessage": "Не удалось обновить это местоположение. Другие местоположения не были затронуты, поэтому вы можете повторить попытку только для этого.",
+  "managementTargetFailureMessage": "Это действие не может быть выполнено здесь. Другие местоположения не были затронуты, поэтому вы можете повторить попытку только для этого.",
+  "technicalDetails": "Технические детали",
+  "targetPathExists": "По этому адресу уже существует другой предмет.",
+  "targetBlockedByRisk": "Ваши текущие настройки безопасности заблокировали установку в этом месте.",
+  "targetInstallFailed": "Навык не может быть установлен в этом месте.",
+  "targetWorkspaceUpdateFailed": "Навык установился, но настройки проекта обновить не удалось.",
+  "installationPlanFailed": "План установки не может быть продолжен.",
+  "installationFailed": "Установка не может быть завершена",
+  "localSource": "Местный источник",
+  "noDescriptionAvailable": "Нет описания",
+  "moreCoverage": "+{count} больше локаций",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionAction": "Управляйте существующими навыками",
+  "batchAdoptionActionCount": "Управление ({count})",
+  "@batchAdoptionActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionChecking": "Проверка имеющихся навыков…",
+  "batchAdoptionRetry": "Еще раз проверьте управляемые навыки",
+  "batchAdoptionEligibleCount": "{count} можно управлять",
+  "@batchAdoptionEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionPending": "Добавляем навыки управления…",
+  "batchAdoptionTitle": "Управлять имеющимися навыками с помощью SkillsGo?",
+  "batchAdoptionDescription": "SkillsGo добавит локальные записи управления без перемещения, перезаписи или загрузки файлов навыков. Неподдерживаемые или измененные элементы будут пропущены.",
+  "batchAdoptionStoryTitle": "Превратите разбросанные навыки в одну понятную библиотеку",
+  "batchAdoptionStoryDescription": "SkillsGo обнаружил здесь {count, plural, one{{count} существующий Skill} few{{count} существующих Skill} many{{count} существующих Skill} other{{count} существующего Skill}}, которыми можно управлять.",
+  "@batchAdoptionStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionBeforeSemantics": "Перед руководством неясно, где установлены существующие навыки, актуальны ли они, как их восстановить и используют ли проекты одну и ту же версию.",
+  "batchAdoptionPainLocation": "Неизвестное место установки",
+  "batchAdoptionPainFreshness": "Неизвестный статус обновления",
+  "batchAdoptionPainRecovery": "Нет восстановления при поломке",
+  "batchAdoptionPainVersionDrift": "Различные версии в разных проектах",
+  "batchAdoptionFolderTitle": "Существующий Skills",
+  "batchAdoptionFolderSubtitle": "Непонятный статус",
+  "batchAdoptionAfterLabel": "ПОСЛЕ",
+  "batchAdoptionAfterTitle": "Одна чистая библиотека",
+  "batchAdoptionLibraryTitle": "Библиотека SkillsGo",
+  "batchAdoptionBenefitLocation": "Очистить локации",
+  "batchAdoptionBenefitFreshness": "Обновления видны",
+  "batchAdoptionBenefitRecovery": "Легкое восстановление",
+  "batchAdoptionBenefitVersions": "Версии очищены",
+  "batchAdoptionManagedSection": "Управляется SkillsGo",
+  "batchAdoptionPendingSection": "Ожидается",
+  "batchAdoptionItemManaged": "{name} управляется SkillsGo.",
+  "@batchAdoptionItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionItemSkipped": "{name} не удалось добавить в управление.",
+  "@batchAdoptionItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionItemPending": "{name} ожидает управления",
+  "@batchAdoptionItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionAfterSemantics": "После добавления {count, plural, one{{count} Skill упорядочен} few{{count} Skill упорядочены} many{{count} Skill упорядочены} other{{count} Skill упорядочено}} в единой Library с понятным статусом управления.",
+  "@batchAdoptionAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionMoreSkills": "+{count} ещё",
+  "@batchAdoptionMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionTransitionSemantics": "Добавьте эти существующие навыки к управлению SkillsGo.",
+  "batchAdoptionTransitionLabel": "ОРГАНИЗОВАТЬ",
+  "batchAdoptionStatusTitle": "Статус управления",
+  "batchAdoptionStatusManaged": "Управляемый",
+  "batchAdoptionStatusProgress": "Организация",
+  "batchAdoptionStatusSkipped": "Пропущено",
+  "batchAdoptionStatusFilesStay": "Файлы Skill остаются в исходных местах.",
+  "batchAdoptionBoardSemantics": "Skills располагаются в полные строки и записываются SkillsGo без перемещения их файлов.",
+  "batchAdoptionBoardComplete": "ВСЕ ЧИСТО",
+  "batchAdoptionBoardPartial": "ПОЛНЫЙ",
+  "batchAdoptionStatusTotal": "Итого",
+  "batchAdoptionQueueComplete": "Никакие навыки не ждут",
+  "batchAdoptionQueueWaiting": "После проверки Skills появятся здесь",
+  "batchAdoptionNextLabel": "СЛЕДУЮЩИЙ",
+  "batchAdoptionFillerCount": "{count, plural, one{{count} блок-органайзер SkillsGo} few{{count} блока-органайзера SkillsGo} many{{count} блоков-органайзеров SkillsGo} other{{count} блока-органайзера SkillsGo}} завершают последние строки.",
+  "@batchAdoptionFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionPreservation": "Ваши файлы, пути и текущие рабочие процессы остаются там, где они есть. SkillsGo только заполняет свои локальные записи управления.",
+  "batchAdoptionLaterHint": "Если вы пропустите этот раздел, вы сможете в любое время воспользоваться функцией «Управление существующими навыками из библиотеки».",
+  "batchAdoptionSkip": "Не сейчас",
+  "batchAdoptionConfirm": "Добавить в управление",
+  "batchAdoptionExecutionRetry": "Повторить попытку",
+  "batchAdoptionResultTitle": "Skills добавлен в управление",
+  "batchAdoptionSummary": "Навыки {adopted} добавлены в управление, {skipped} пропущены.",
+  "@batchAdoptionSummary": {
+    "placeholders": {
+      "adopted": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionClose": "Закрыть",
+  "installMoreTargets": "Установить в большем количестве мест",
+  "detailPackageSource": "Источник пакета",
+  "detailStars": "Звезды",
+  "detailUpdated": "Обновлено",
+  "detailPackageSize": "Размер пакета",
+  "pathLabel": "Путь проекта",
+  "copyProjectPath": "Скопировать путь проекта",
+  "projectPathCopied": "Путь к проекту скопирован.",
+  "onboardingWelcomeTitle": "Добро пожаловать в SkillsGo",
+  "onboardingWelcomeDescription": "Находите, устанавливайте и управляйте Skills в Agents и проектах.",
+  "onboardingDetectedAgents": "Обнаруженные Agents",
+  "onboardingNoAgents": "Установленные Agents не обнаружены. Продолжить всё равно можно.",
+  "onboardingNext": "Далее",
+  "onboardingProjectsTitle": "Добавляйте свои проекты",
+  "onboardingProjectsDescription": "Выберите проекты, которыми будет управлять SkillsGo.",
+  "onboardingAddProject": "Добавить сейчас",
+  "onboardingAddProjectLater": "или позже",
+  "onboardingStartUsing": "Начните использовать SkillsGo",
+  "onboardingBack": "Назад",
+  "restartOnboardingTitle": "Регистрация",
+  "restartOnboardingDescription": "Просмотрите руководство по первому запуску еще раз, не удаляя проекты, настройки или данные Skills.",
+  "restartOnboardingAction": "Перезапустить регистрацию",
+  "restartOnboardingFailed": "SkillsGo не удалось перезапустить первоначальную настройку.",
+  "libraryRefreshSettingsTitle": "Обновить местную библиотеку",
+  "libraryRefreshSettingsDescription": "Повторно просканируйте установленный Skills, добавленные проекты, Agents и внешний Skills, которым можно управлять. При этом ничего не устанавливается, не обновляется и не удаляется.",
+  "libraryRefreshSettingsAction": "Обновить библиотеку",
+  "libraryRefreshSettingsPending": "Обновление библиотеки…",
+  "libraryRefreshSettingsSuccess": "Обновлена местная библиотека.",
+  "libraryRefreshSettingsFailed": "SkillsGo не удалось обновить локальную библиотеку.",
+  "onboardingProjectError": "SkillsGo не удалось добавить проекты из этого каталога.",
+  "onboardingProjectsLoadError": "SkillsGo не удалось загрузить добавленные вами проекты.",
+  "onboardingStartupError": "SkillsGo не удалось загрузить настройку.",
+  "onboardingStateError": "SkillsGo не удалось сохранить ход установки. Попробуйте еще раз.",
+  "onboardingCliErrorTitle": "SkillsGo CLI требует внимания",
+  "onboardingCliErrorDescription": "Восстановите прилагаемый CLI, затем повторите попытку, чтобы продолжить.",
+  "upgrade": "Обновление",
+  "downgrade": "Понизить версию",
+  "packageSkillsSwitchTogether": "Навыки из этого пакета будут переключать версии вместе.",
+  "switchVersion": "Переключить версию",
+  "upgradeToVersion": "Обновите до {version}",
+  "downgradeToVersion": "Понизить версию до {version}",
+  "libraryGlobalScope": "Глобальные навыки",
+  "libraryImportedSkills": "Управляются SkillsGo",
+  "libraryLocalSkills": "Установлены другим способом",
+  "libraryUnused45Days": "Не использовались 45 дней",
+  "libraryUnused90Days": "Не использовались 90 дней",
+  "libraryFilterTooltip": "Все установленные Skills в этой области",
+  "libraryManagementStatus": "Статус управления",
+  "libraryUsageStatus": "Статус использования",
+  "libraryAnyUsage": "Любое использование",
+  "libraryFilterManagedTooltip": "Можно обновлять и удалять через SkillsGo",
+  "libraryFilterOtherTooltip": "Перед обновлением добавьте их под управление SkillsGo",
+  "libraryFilterUnused45DaysTooltip": "Skills с доступной статистикой и без вызовов за последние 45 дней",
+  "libraryFilterUnused90DaysTooltip": "Skills с доступной статистикой и без вызовов за последние 90 дней",
+  "libraryFilterUpdatesTooltip": "Управляемые Skills с доступными обновлениями",
+  "libraryExternalScope": "Внешние навыки",
+  "libraryEmptyAddProject": "Перейти к добавлению проекта",
+  "globalSkills": "Глобальные навыки",
+  "projectMissingMessage": "Возможно, каталог был перемещен или его том отключен от сети. Проверьте путь или удалите ссылку на приложение.",
+  "projectPermissionMessage": "SkillsGo не может проверить корень этого проекта. Проверьте разрешения файловой системы или удалите ссылку на приложение.",
+  "projectInaccessibleMessage": "SkillsGo сохранил ссылку на этот проект. Проверьте путь или том или удалите ссылку на его приложение.",
+  "cloudHttpFailure": "Облако вернуло HTTP {status}. Проверьте Origin и конфигурацию сервиса.",
+  "cloudInvalidProtocol": "Сервер не вернул протокол ранжирования облака SkillsGo.",
+  "cloudInvalidJson": "Облако вернуло неверный JSON.",
+  "cloudConnectionFailure": "Не удалось связаться с Клаудом. Проверьте источник, сеть, прокси-сервер и конфигурацию TLS.",
+  "cloudConnectionTimeout": "Время подключения к облаку истекло. Проверьте сеть или повторите попытку.",
+  "privacySummary": "Текст поиска и содержимое навыков не регистрируются. Обработанные локальные диагностические данные хранятся до 7 дней и никогда не загружаются автоматически.",
+  "localScanPermissionTitle": "Прочитать эти папки",
+  "localScanPermissionDescription": "Используется для определения установленных Skill и их использования.",
+  "localScanPrivacySummary": "Обрабатывается только на этом устройстве. Файлы и разговоры никогда не загружаются.",
+  "localScanContinue": "Продолжить",
+  "localScanDefer": "Не сейчас",
+  "localScanDeferredTitle": "Проекты ещё не прочитаны",
+  "localScanDeferredMessage": "Разрешите доступ, чтобы определить установленные Skills и их использование.",
+  "localScanResume": "Продолжить чтение",
+  "diagnosticLogsTitle": "Журналы диагностики",
+  "diagnosticLogsDescription": "Локальное приложение и диагностика CLI используют {size}. Журналы меняются автоматически, хранятся до 7 дней и никогда не загружаются автоматически.",
+  "openLogFolder": "Открыть папку",
+  "viewLiveLogs": "Посмотреть в прямом эфире",
+  "exportLogs": "Экспорт журналов",
+  "clearLogs": "Очистить журналы",
+  "logsExported": "Журналы диагностики экспортированы.",
+  "logsCleared": "Журналы диагностики очищены.",
+  "logActionFailed": "Не удалось выполнить действие журнала диагностики.",
+  "logViewerLive": "Жить",
+  "logViewerPaused": "Приостановлено",
+  "searchLogs": "Поиск журналов",
+  "allLogLevels": "Все",
+  "warningLogs": "Предупреждения",
+  "errorLogs": "Ошибки",
+  "pauseLogFollow": "Пауза",
+  "resumeLogFollow": "Резюме",
+  "clearViewer": "Четкое представление",
+  "noDiagnosticLogs": "Соответствующих журналов пока нет.",
+  "backToLatestLog": "Последний",
+  "originalContent": "Оригинал",
+  "handExternalSkillsToSkillsGoManagementCount": "Разрешите SkillsGo управлять внешними навыками {count}",
+  "confirmSkillsGoManagementCount": "Подтвердите управление SkillsGo ({selected}/{total})",
+  "skillColumnLabel": "Навык",
+  "packageSourceColumnLabel": "Источник",
+  "versionColumnLabel": "Версия",
+  "packageMatching": "Соответствующие источники…",
+  "sourceMatchUnavailable": "Соответствие источника недоступно",
+  "noSourceMatches": "Нет подходящего источника",
+  "sourceMatchPercent": "{percent}% совпадений",
+  "versionPendingSelection": "Сначала выберите источник",
+  "batchAdoptionFailureSummary": "В управление добавлено {adopted} навыков, {failed} не удалось.",
+  "batchAdoptionStatusFailed": "Неуспешный",
+  "batchAdoptionItemFailed": "{name} не удалось",
+  "removeSkillsDescription": "Следующие навыки будут удалены",
+  "confirmRemoveSkillsInline": "Удалить {count} навыки?",
+  "removingSkillsProgress": "Удаление {finished}/{total}",
+  "confirmRemoveSkillsAction": "Удалить сейчас",
+  "viewRemovalDetails": "Посмотреть детали",
+  "hideRemovalDetails": "Скрыть детали",
+  "managedBackups": "Backups",
+  "adoptionBackupAvailable": "Original install backed up",
+  "adoptionBackupRetention": "Available to restore for 30 days",
+  "adoptionBackupRestore": "Restore original install",
+  "adoptionBackupRestoreTitle": "Restore original install?",
+  "adoptionBackupRestoreMessage": "This removes the managed version and restores the install and local changes from before management.",
+  "managedBackupsTitle": "Managed backups",
+  "managedBackupsDescription": "Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.",
+  "managedBackupsCount": "{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}",
+  "@managedBackupsCount": {"placeholders": {"count": {"type": "int"}}},
+  "managedBackupsEmpty": "No recoverable backups",
+  "managedBackupsLoadFailed": "Managed backups are unavailable",
+  "managedBackupRestoreFailed": "Restore failed — try again",
+  "managedBackupRestored": "Original install restored.",
+  "managedBackupExpiresAt": "Available until {date}",
+  "@managedBackupExpiresAt": {"placeholders": {"date": {"type": "String"}}}
+}

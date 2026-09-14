@@ -1,0 +1,121 @@
+/*
+ * [INPUT]: Uses the deep Installation Request controller with a controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies single-Skill success, all-target failure classification, atomic Repository snapshot submission without detail re-resolution, and exception capture.
+ * [POS]: Serves as the controller-level regression suite for installation orchestration independently of rendered selectors.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'package:flutter_test/flutter_test.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/ui/install_operation_controller.dart';
+
+import 'support/fake_skills_gateway.dart';
+
+const _selection = InstallationTargetSelection(
+  scope: InstallationScope.global,
+  agent: 'codex',
+);
+
+void main() {
+  test('single-Skill request exposes aggregate success', () async {
+    final gateway = FakeSkillsGateway();
+    final controller = InstallOperationController(gateway);
+    addTearDown(controller.dispose);
+
+    final state = await controller.submit(
+      InstallationRequest.skill(
+        defaultSearchResults.first,
+        'v1.2.3',
+        selections: [_selection],
+        riskPolicy: PersonalRiskPolicy(),
+      ),
+    );
+
+    expect(state.operating, isFalse);
+    expect(state.succeeded, isTrue);
+    expect(state.executions, hasLength(1));
+    expect(state.error, isNull);
+    expect(gateway.installCalls, 1);
+  });
+
+  test('an execution with no successful targets is a failed request', () async {
+    final gateway = FakeSkillsGateway(
+      installFailures: const [
+        <String>{'codex'},
+      ],
+    );
+    final controller = InstallOperationController(gateway);
+    addTearDown(controller.dispose);
+
+    final state = await controller.submit(
+      InstallationRequest.skill(
+        defaultSearchResults.first,
+        'v1.2.3',
+        selections: [_selection],
+        riskPolicy: PersonalRiskPolicy(),
+      ),
+    );
+
+    expect(state.succeeded, isFalse);
+    expect(state.executions.single.hasSuccess, isFalse);
+    expect(state.error, isA<StateError>());
+  });
+
+  test(
+    'Repository request submits every member through one atomic gateway call',
+    () async {
+      const second = SkillSummary(
+        packagePath: 'example/skills',
+        installName: 'second',
+        name: 'Second',
+        installs: 42,
+        latestVersion: 'main',
+      );
+      final gateway = FakeSkillsGateway();
+      final controller = InstallOperationController(gateway);
+      addTearDown(controller.dispose);
+
+      final state = await controller.submit(
+        InstallationRequest.module(
+          [defaultSearchResults.first, second],
+          selections: [_selection],
+          riskPolicy: PersonalRiskPolicy(),
+        ),
+      );
+
+      expect(state.succeeded, isTrue);
+      expect(state.executions, hasLength(2));
+      expect(state.executions.map((item) => item.packagePath), [
+        defaultSearchResults.first.packagePath,
+        second.packagePath,
+      ]);
+      expect(state.executions.map((item) => item.version), ['main', 'main']);
+      expect(gateway.detailLoads, 0);
+      expect(gateway.repositoryInstallCalls, 1);
+      expect(gateway.installCalls, 2);
+    },
+  );
+
+  test('gateway exception becomes stable request error state', () async {
+    final gateway = FakeSkillsGateway(
+      installPlanErrors: const [
+        SkillsException('conflict', kind: SkillsFailureKind.validation),
+      ],
+    );
+    final controller = InstallOperationController(gateway);
+    addTearDown(controller.dispose);
+
+    final state = await controller.submit(
+      InstallationRequest.skill(
+        defaultSearchResults.first,
+        'v1.2.3',
+        selections: [_selection],
+        riskPolicy: PersonalRiskPolicy(),
+      ),
+    );
+
+    expect(state.operating, isFalse);
+    expect(state.succeeded, isFalse);
+    expect(state.executions, isEmpty);
+    expect(state.error, isA<SkillsException>());
+  });
+}

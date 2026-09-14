@@ -1,0 +1,203 @@
+/*
+ * [INPUT]: Uses shared controls, local-scan paths, acceptance/deferral and privacy-settings recovery scenarios, and state from FakeSkillsGatewayCore plus domain gateway models.
+ * [OUTPUT]: Provides CLI detection, controllable atomic local-scan decisions and privacy-settings recovery, captured single/batch Find discovery including Package restrictions, Package update-check results, remote detail, and system status behavior.
+ * [POS]: Serves as one capability facet of the composable SkillsGateway test double.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+part of '../fake_skills_gateway.dart';
+
+mixin FakeGatewaySystem on FakeSkillsGatewayCore {
+  @override
+  Future<LocalScanNoticeDecision> loadLocalScanNoticeDecision() async =>
+      localScanNoticeDecision;
+
+  @override
+  Future<List<String>> loadLocalScanNoticePaths() async {
+    if (localScanNoticeRequirementErrors.isNotEmpty) {
+      throw localScanNoticeRequirementErrors.removeAt(0);
+    }
+    final pending = localScanNoticePathsCompleter;
+    if (pending != null) return pending.future;
+    return List.of(localScanNoticePaths);
+  }
+
+  @override
+  Future<void> saveLocalScanNoticeDecision(
+    LocalScanNoticeDecision decision,
+  ) async {
+    if (localScanNoticeAcknowledgeErrors.isNotEmpty) {
+      throw localScanNoticeAcknowledgeErrors.removeAt(0);
+    }
+    await localScanNoticeAcknowledgeCompleter?.future;
+    localScanNoticeDecision = decision;
+  }
+
+  @override
+  Future<bool> openLocalScanPrivacySettings() async {
+    localScanPrivacySettingsOpens += 1;
+    final error = localScanPrivacySettingsError;
+    if (error != null) throw error;
+    return localScanPrivacySettingsResult;
+  }
+
+  @override
+  Future<CliStatus> detectCli({String? customPath}) async => cliReady
+      ? CliStatus(
+          availability: CliAvailability.ready,
+          path: customPath?.isNotEmpty == true
+              ? customPath
+              : '/usr/local/bin/skills',
+          version: '1.5.17',
+        )
+      : const CliStatus(
+          availability: CliAvailability.missing,
+          message: 'raw process diagnostic',
+          issue: CliIssue.missing,
+        );
+
+  @override
+  Future<String?> loadCustomCliPath() async => savedPath;
+  @override
+  Future<void> saveCustomCliPath(String? path) async => savedPath = path;
+  @override
+  Future<String> loadFolderTheme() async => folderTheme;
+  @override
+  Future<void> saveFolderTheme(String theme) async => folderTheme = theme;
+
+  @override
+  Future<AppWallpaper> loadWallpaper() async => wallpaper;
+
+  @override
+  Future<void> saveWallpaper(AppWallpaper value) async => wallpaper = value;
+
+  @override
+  Future<AppThemeMode> loadThemeMode() async => themeMode;
+
+  @override
+  Future<void> saveThemeMode(AppThemeMode mode) async => themeMode = mode;
+
+  @override
+  Future<AppLanguage> loadLanguage() async => language;
+
+  @override
+  Future<void> saveLanguage(AppLanguage value) async => language = value;
+
+  @override
+  Future<ReminderSettings> loadReminderSettings() async => reminderSettings;
+
+  @override
+  Future<void> saveReminderSettings(ReminderSettings value) async {
+    reminderSettings = value;
+  }
+
+  @override
+  Future<String> loadHubOrigin() async => hubOrigin;
+  @override
+  Future<void> saveHubOrigin(String origin) async {
+    hubOrigin = origin;
+  }
+
+  @override
+  Future<void> resetHubOrigin() async {
+    hubOrigin = 'https://hub.skillsgo.ai';
+  }
+
+  @override
+  Future<HubStatus> testHubOrigin(String origin) async => HubStatus(
+    origin: origin,
+    state: hubTestState,
+    issue: hubTestState == HealthState.ready ? null : HubIssue.invalidProtocol,
+  );
+
+  @override
+  Future<PersonalRiskPolicy> loadRiskPolicy() async => riskPolicy;
+  @override
+  Future<void> saveRiskPolicy(PersonalRiskPolicy policy) async {
+    riskPolicy = policy;
+  }
+
+  @override
+  Future<String> loadAppVersion() async => appVersion;
+  @override
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int page = 0,
+    int perPage = 20,
+  }) async {
+    collections.add(collection);
+    requestedPages.add(page);
+    if (discoveryCompleters.isNotEmpty) {
+      return discoveryCompleters.removeAt(0).future;
+    }
+    if (discoveryError != null) throw discoveryError!;
+    final configuredError = discoveryErrors['${collection.name}:$page'];
+    if (configuredError != null) throw configuredError;
+    final configured = discoveryPages['${collection.name}:$page'];
+    if (configured != null) return configured;
+    if (collection == DiscoveryCollection.search) queries.add(query);
+    final skills = collection == DiscoveryCollection.search
+        ? await (searchCompleter?.future ?? Future.value(searchResults))
+        : searchResults;
+    return DiscoveryPage(skills: skills);
+  }
+
+  @override
+  Future<PackageUpdateCheckResult> checkPackageUpdate(
+    String packagePath,
+  ) async {
+    packageUpdateChecks.add(packagePath);
+    return packageUpdateCompleter?.future ?? packageUpdateResult;
+  }
+
+  @override
+  Future<List<List<AdoptionCandidate>>> findSources(
+    List<PackageFindQuery> requests, {
+    int limit = 10,
+  }) async {
+    queries.addAll(requests.map((request) => request.name));
+    sourceQueries.addAll(requests);
+    if (discoveryError != null) throw discoveryError!;
+    return requests
+        .map(
+          (request) => sourceCandidates
+              .where(
+                (skill) =>
+                    request.packagePath.isEmpty ||
+                    skill.packagePath == request.packagePath,
+              )
+              .take(limit)
+              .toList(growable: false),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<SkillDetail> loadRemoteDetail(
+    SkillSummary skill, {
+    bool source = false,
+  }) async {
+    detailLoads++;
+    if (detailErrors.isNotEmpty) throw detailErrors.removeAt(0);
+    return detailCompleter?.future ?? remoteDetail;
+  }
+
+  @override
+  Future<PackageDetail> loadPackageDetail(
+    String packagePath, {
+    String version = '',
+  }) async {
+    packageDetailLoads++;
+    if (packageDetailLoads > 1 && packageDetailRefreshCompleter != null) {
+      return packageDetailRefreshCompleter!.future;
+    }
+    return packageDetail;
+  }
+
+  @override
+  Future<String> loadPackageReadme(Uri readmeUrl) async {
+    packageReadmeRequests.add(readmeUrl);
+    if (packageReadmeError != null) throw packageReadmeError!;
+    return packageReadme;
+  }
+}

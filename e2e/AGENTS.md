@@ -5,6 +5,7 @@
 ## Members
 
 - `cli/`: black-box journeys spanning the released CLI contract, disposable Hub, isolated Agent/project state, and real persistence boundaries.
+- `app/`: rendered desktop journeys spanning the public App, bundled CLI, disposable Hub, and isolated local state.
 
 ## Validation
 

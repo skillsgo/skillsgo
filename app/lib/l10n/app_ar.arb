@@ -1,0 +1,1219 @@
+{
+  "@@locale": "ar",
+  "libraryFilter": "تصفية",
+  "discover": "اكتشف",
+  "discoverSkills": "من المفيد دائمًا معرفة المزيد.",
+  "library": "Skill",
+  "libraryUsageCalculating": "جارٍ الحساب",
+  "settings": "الإعدادات",
+  "appUpdateTitle": "تحديثات التطبيق",
+  "appUpdateDescription": "تحقق من موجز الإصدارات للحصول على إصدار أحدث من SkillsGo.",
+  "appUpdateNotConfigured": "تحديثات التطبيق غير متاحة في هذا الإصدار.",
+  "appUpdateReady": "تحقق عندما تكون مستعدًا. لن يثبت SkillsGo تحديثًا دون إجراء منك.",
+  "appUpdateChecking": "جارٍ التحقق من تحديث التطبيق…",
+  "appUpdateApplying": "جارٍ تنزيل التحديث. سيُعاد تشغيل SkillsGo عندما يصبح جاهزًا.",
+  "appUpdateCheckFailed": "تعذر على SkillsGo التحقق من التحديث. تحقق من الاتصال وحاول مرة أخرى.",
+  "appUpdateAvailable": "يتوفر SkillsGo {version}.",
+  "@appUpdateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCurrent": "SkillsGo {version} محدّث.",
+  "@appUpdateCurrent": {"placeholders": {"version": {"type": "String"}}},
+  "appUpdateCheckAction": "التحقق من تحديثات التطبيق",
+  "appUpdateApplyAction": "التحديث وإعادة التشغيل",
+  "openSettings": "افتح الإعدادات",
+  "privacySettingsOpenFailed": "تعذّر فتح إعدادات النظام. افتحها يدويًا ثم حاول مرة أخرى.",
+  "cliNeedsAttention": "يحتاج مكون SkillsGo المطلوب إلى الاهتمام.",
+  "cliMissingBundled": "أحد مكونات SkillsGo المطلوبة مفقود أو لا يمكن بدء تشغيله. أعد تثبيت SkillsGo لاستعادته.",
+  "cliDamagedBundled": "أحد مكونات SkillsGo المطلوبة تالف. أعد تثبيت SkillsGo لاستعادته.",
+  "cliIncompatibleBundled": "لا يتطابق مكون SkillsGo المطلوب مع إصدار التطبيق هذا. قم بتحديث أو إعادة تثبيت SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "اعثر على Skill لخطوتك التالية.",
+  "skillsLeaderboard": "من المفيد دائمًا معرفة المزيد.",
+  "searchResultsFor": "نتائج ل “⁨{query}⁩”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "ابحث عن Skills أو الصق رابط Git…",
+  "search": "بحث",
+  "ranking": "الترتيب",
+  "trending": "الرائجة",
+  "hot": "الأكثر رواجًا",
+  "discoverNavigation": "التنقل في قسم الاستكشاف",
+  "allTimeRanking": "الترتيب عبر جميع الفترات",
+  "trendingNow": "الرائجة خلال آخر 24 ساعة",
+  "hotNow": "الأكثر رواجًا الآن",
+  "allTimeDescription": "Skills عامة مرتبة حسب إجمالي عمليات التثبيت المقبولة.",
+  "trendingDescription": "Skills عامة مرتبة حسب عمليات التثبيت المقبولة خلال آخر 24 ساعة.",
+  "hotDescription": "Skills عامة مرتبة حسب سرعة التثبيت الأخيرة ومعدل تغيرها.",
+  "offlineTitle": "لا يمكن الاتصال بـ SkillsGo",
+  "offlineMessage": "تحقق من اتصالك بالإنترنت وحاول مرة أخرى. إذا كنت تستخدم وكيلًا أو عنوان خدمة مخصصًا، فراجعه في الإعدادات.",
+  "searchFailedTitle": "تعذر البحث",
+  "validationTitle": "تحقق مما قمت بإدخاله",
+  "validationMessage": "تعذر على SkillsGo استخدام هذا الطلب. راجع ما أدخلته وحاول مرة أخرى.",
+  "serverTitle": "الخدمة غير متاحة مؤقتا",
+  "serverMessage": "لا يستطيع SkillsGo إكمال هذا الطلب الآن. حاول مرة أخرى بعد قليل.",
+  "timeoutTitle": "هذا يستغرق وقتا طويلا",
+  "timeoutMessage": "الخدمة لم تستجب في الوقت المناسب. تحقق من اتصالك أو حاول مرة أخرى.",
+  "invalidResponseTitle": "يجب تحديث SkillsGo",
+  "invalidResponseMessage": "لا يمكن قراءة هذه الاستجابة بواسطة إصدار SkillsGo الخاص بك. قم بتحديث التطبيق، ثم حاول مرة أخرى.",
+  "invalidLocalDataTitle": "تعذرت قراءة Skill مثبتة",
+  "invalidLocalDataMessage": "بعض معلومات التثبيت المحلية تالفة أو غير متوافقة. قم بتحديث SkillsGo أو أعد تثبيته، ثم حاول مرة أخرى.",
+  "tryAgain": "حاول مرة أخرى",
+  "searchEmptyTitle": "ابحث بدلًا من التمرير.",
+  "searchEmptyMessage": "أدخل قدرة أو مصدرًا أو مهمة للبحث في Skills العامة.",
+  "noSkillsTitle": "لم يتم العثور على Skills",
+  "noSkillsMessage": "جرب عبارة أوسع أو تحقق من الإملاء.",
+  "focusSearch": "الانتقال إلى البحث",
+  "skillsFromLink": "Skills الموجودة في هذا الرابط",
+  "skillCount": "{count, plural, =0{لا توجد Skills} =1{Skill واحدة} =2{Skill اثنتان} few{⁨{count}⁩ Skills} many{⁨{count}⁩ Skill} other{⁨{count}⁩ Skill}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =0{لا توجد Skills من ⁨{source}⁩} =1{Skill واحدة من ⁨{source}⁩} =2{Skill اثنتان من ⁨{source}⁩} few{⁨{count}⁩ Skills من ⁨{source}⁩} many{⁨{count}⁩ Skill من ⁨{source}⁩} other{⁨{count}⁩ Skill من ⁨{source}⁩}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "هذا الرابط جاهز للفحص",
+  "sourceSearchEmptyMessage": "⁨{source}⁩ غير موجود في نتائج البحث الحالية. يمكن لـ SkillsGo فحص الرابط مباشرة في الخطوة التالية.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "عرض Skills الموجودة في هذا الرابط",
+  "collectionEmptyTitle": "لا توجد Skills في هذه المجموعة",
+  "collectionEmptyMessage": "لا يوجد شيء هنا بعد. حاول مرة أخرى بعد المزيد من أنشطة التثبيت.",
+  "loadMore": "تحميل المزيد",
+  "install": "تثبيت",
+  "installAll": "تثبيت جميع Skills",
+  "latestCommit": "أحدث Commit",
+  "installToMoreTargets": "التثبيت في مواقع إضافية",
+  "localTargets": "⁨{count}⁩ الأهداف المحلية",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "⁨{count}⁩ عملية تثبيت إجمالًا",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "⁨{count}⁩ عملية تثبيت خلال 24 ساعة",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "⁨{value}⁩ هذه الساعة · ⁨{change}⁩",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "غير موثّق",
+  "trustCommunityVerified": "موثّق من المجتمع",
+  "trustPublisherVerified": "موثّق من الناشر",
+  "trustOfficial": "رسمي",
+  "trustWarned": "عليه تحذير",
+  "trustDelisted": "أزيل من القائمة",
+  "riskUnknown": "خطر غير معروف",
+  "riskLow": "مخاطر منخفضة",
+  "riskMedium": "مخاطر متوسطة",
+  "riskHigh": "مخاطر عالية",
+  "riskCritical": "مخاطر حرجة",
+  "openSkill": "افتح ⁨{name}⁩",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "تثبيت ⁨{count}⁩",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "تعذر تحميل هذه Skill",
+  "detailLoading": "جارٍ تحميل تفاصيل Skill القابلة للتدقيق",
+  "artifactUnavailableTitle": "الـ Artifact غير متاح",
+  "artifactUnavailableMessage": "هذا الإصدار غير متاح حاليًا. حاول مجددًا أو اختر إصدارًا آخر.",
+  "detailInvalidTitle": "بيانات Artifact الوصفية غير مدعومة",
+  "detailInvalidMessage": "بعض التفاصيل الخاصة بهذه المهارة غير مكتملة أو لا يمكن قراءتها. قم بتحديث SkillsGo، ثم حاول مرة أخرى.",
+  "instructionsTab": "تعليمات",
+  "manifestTab": "ملف Manifest",
+  "immutableVersionLabel": "الإصدار الثابت ⁨{version}⁩",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Commit ⁨{sha}⁩",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Tree ⁨{sha}⁩",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "المحتوى ⁨{digest}⁩",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "توثيق الناشر يثبت الملكية أو الصيانة، لكنه لا يضمن سلامة Artifact. تُقيَّم المخاطر بشكل مستقل لهذا الإصدار الثابت.",
+  "knownInstallationTargets": "أهداف التثبيت المعروفة",
+  "installationRange": "نطاق التثبيت",
+  "targetDetails": "عرض تفاصيل الهدف",
+  "hideTargetDetails": "إخفاء تفاصيل الهدف",
+  "installedVersionLabel": "الإصدار ⁨{version}⁩",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "⁨{scope}⁩ / ⁨{agent}⁩ · ⁨{version}⁩",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "مشروع",
+  "fileContentUnavailable": "معاينة ثنائية أو غير متاحة",
+  "fileContentTruncated": "اقتُطعت المعاينة وفق حد الأمان في Hub.",
+  "retry": "أعد المحاولة",
+  "backToSearch": "العودة إلى البحث",
+  "installForCodex": "التثبيت لـ Codex",
+  "cliNotDetected": "skills (غير مكتشف)",
+  "snapshotFiles": "ملفات اللقطة",
+  "globalCodex": "عام · Codex",
+  "yourLibrary": "كل ما تديره في مكان واحد.",
+  "libraryNavigation": "التنقل في المكتبة",
+  "all": "الكل",
+  "allSkills": "جميع Skills",
+  "libraryNeedsAttention": "تحتاج إلى الانتباه",
+  "libraryBudgetInsights": "نظرة عامة على ميزانية المهارات المقيمة",
+  "libraryResidentBudget": "السياق المقيم",
+  "libraryResidentBudgetTooltip": "عدد أحرف أسماء المهارات وأوصافها في النطاق الحالي. لا يؤثر البحث أو التصفية أو الفرز في هذه القيمة.",
+  "libraryUnusedBudget45Days": "المساحة الخاملة",
+  "libraryUnusedBudget45DaysTooltip": "عدد الأحرف ونسبتها للمهارات ذات بيانات الاستخدام المتاحة ومن دون استدعاءات خلال آخر 45 يومًا. انقر للتصفية؛ تعني ≥ أن بعض بيانات الاستخدام غير متاحة.",
+  "libraryBudgetUnknown": "غير متاح",
+  "libraryBudgetCharacters": "حرف",
+  "libraryFilterEmptyTitle": "لا توجد Skills تطابق عوامل التصفية هذه",
+  "libraryFilterEmptyMessage": "غيّر شرط الإدارة أو الاستخدام لعرض المزيد من Skills.",
+  "libraryUnusedEmptyTitle": "لا توجد Skills غير مستخدمة",
+  "libraryUnusedEmptyMessage": "تم استدعاء كل Skill تتوفر له بيانات استخدام خلال آخر 45 يومًا.",
+  "libraryOtherEmptyTitle": "لا توجد عمليات تثبيت أخرى",
+  "libraryOtherEmptyMessage": "كل Skill في هذا السياق مُدار بواسطة SkillsGo.",
+  "libraryUpdatesEmptyMessage": "لا تتوفر تحديثات Packages في هذا السياق.",
+  "libraryUsageUnavailable": "بيانات الاستخدام غير متاحة",
+  "libraryUsageNotSupported": "Not supported yet",
+  "libraryUsageContributionMessage": "SkillsGo is open source, but we cannot install and test every coding agent. Your coding agent can help us add usage support for {agents}.",
+  "@libraryUsageContributionMessage": {"placeholders": {"agents": {"type": "String"}}},
+  "libraryUsageContributionPrompt": "Hi! I would love your help improving local usage statistics support for {agents} in the open-source SkillsGo project. The repository is https://github.com/skillsgo/skillsgo. Before we get started, please read the root AGENTS.md and any nested AGENTS.md that applies to the files we inspect or change. The existing collectors in cli/internal/skillusage should be useful references. Let us keep the same privacy-preserving 45/90-day usage contract, add focused tests, and update the relevant English documentation when we are done. Please take care not to collect or expose prompt contents, secrets, or unrelated private data.",
+  "@libraryUsageContributionPrompt": {"placeholders": {"agents": {"type": "String"}}},
+  "libraryUsageCopyContributionPrompt": "Copy prompt",
+  "libraryUsageContributionPromptCopied": "Copied",
+  "libraryUsageOpenRepository": "Open GitHub",
+  "libraryUsageCount": "{count} من الاستدعاءات",
+  "@libraryUsageCount": {"placeholders": {"count": {"type": "int"}}},
+  "librarySortPackageGrouped": "مجمّعة حسب Package",
+  "librarySortDescending": "تنازلي",
+  "librarySortAscending": "تصاعدي",
+  "updatesOnly": "التحديثات",
+  "allAgents": "جميع Agents",
+  "allProjects": "جميع المشاريع",
+  "specificProject": "مشروع",
+  "globalScope": "عام",
+  "addProject": "أضف المشروع",
+  "removeFromList": "إزالة من القائمة",
+  "removeProjectTitle": "إزالة ⁨{name}⁩ من SkillsGo؟",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "ستتم إزالة مرجع التطبيق فقط. لن يقوم SkillsGo بتغيير أو حذف أي ملفات في هذا الدليل.",
+  "projectRailUnavailable": "⁨{name}⁩ — غير متاح",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "لا توجد Skills بعد",
+  "browseSkills": "تصفح Skills",
+  "projectMissingTitle": "دليل المشروع مفقود",
+  "projectPermissionTitle": "يلزم إذن للوصول إلى مجلد المشروع",
+  "projectInaccessibleTitle": "دليل المشروع غير قابل للوصول",
+  "checking": "جارٍ التحقق…",
+  "checkUpdates": "التحقق من التحديثات",
+  "refresh": "تحديث",
+  "libraryUnavailable": "المكتبة غير متوفرة",
+  "libraryEmpty": "لم تُثبَّت أي Skills بعد",
+  "libraryEmptyMessage": "ثبّت Skill من قسم الاستكشاف وستظهر هنا.",
+  "searchLibrary": "بحث المهارات المثبتة",
+  "libraryNoMatches": "لا توجد Skills مطابقة",
+  "libraryNoMatchesMessage": "جرب اسمًا أو مصدرًا أو Agent أو مشروعًا أو إصدارًا مختلفًا.",
+  "librarySkillColumn": "Skill",
+  "libraryHits45Days": "45d",
+  "libraryHits90Days": "90d",
+  "libraryInstallationColumn": "Installation",
+  "agentsSummary": "⁨{count}⁩ Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "مشاريع ⁨{count}⁩",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "إصدارات ⁨{count}⁩",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "بإدارة Hub",
+  "localManaged": "مُدار محليًا",
+  "externalInstallation": "التثبيت الخارجي",
+  "readOnly": "للقراءة فقط",
+  "unversioned": "بلا إصدار",
+  "supportingFiles": "الملفات الداعمة",
+  "versionDivergence": "اختلاف الإصدار",
+  "healthHealthy": "صحي",
+  "healthMissing": "الهدف مفقود",
+  "healthReplaced": "تم استبدال الهدف",
+  "healthLocalModification": "التعديل المحلي",
+  "healthUnreadable": "الهدف غير قابل للقراءة",
+  "healthUndeclared": "لم يعلن",
+  "healthWorkspaceUnreadable": "حالة مساحة العمل غير قابلة للقراءة",
+  "healthLockMismatch": "عدم تطابق القفل",
+  "healthUnexpectedPath": "مسار هدف غير متوقع",
+  "modeExternal": "خارجي",
+  "notLinked": "غير مرتبط",
+  "update": "تحديث",
+  "backToLibrary": "العودة إلى المكتبة",
+  "remove": "إزالة",
+  "skillsSelected": "تم تحديد ⁨{count}⁩",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "مسح التحديد",
+  "selectCurrentResults": "حدد النتائج الحالية",
+  "clearCurrentResultSelection": "مسح تحديد النتيجة الحالية",
+  "targetActionsSelected": "تم تحديد أهداف ⁨{selected}⁩ لـ ⁨{total}⁩",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmRemoveTarget": "تأكيد الإزالة",
+  "managementProgressTitle": "تطبيق الإجراءات المستهدفة",
+  "managementResultsTitle": "نتائج إجراءات الأهداف",
+  "managementResultSummary": "نجح ⁨{succeeded}⁩، وفشل ⁨{failed}⁩",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "targetContentPreserved": "سيتم الحفاظ على المحتوى المستهدف الحالي.",
+  "localReadFailed": "تعذرت قراءة هذه Skill",
+  "localReadFailedMessage": "تعذر على SkillsGo قراءة Skill المثبتة. تأكد من وجود مجلدها وإمكانية الوصول إليه، ثم حاول مجددًا.",
+  "localConfiguration": "إعدادات SkillsGo",
+  "settingsNavigation": "التنقل في الإعدادات",
+  "general": "التخصيص",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "سياسة التثبيت",
+  "storage": "التخزين",
+  "colorScheme": "معاينة الألوان",
+  "about": "حول",
+  "colorSchemeInspectorTitle": "أدوار الألوان المُنشأة في Material",
+  "skillsColorTokensTitle": "ألوان SkillsGo الدلالية",
+  "skillsColorTokensDescription": "تم إنشاء ألوان المنتج من Radix Sand وتم تنظيمها باستخدام دلالات Primer، مع Folder كتسلسل هرمي مكاني مخصص.",
+  "colorSchemeInspectorDescription": "قم بمعاينة كل رمز ColorScheme غير المهمل الذي تم إنشاؤه من البذرة الحالية. انقر فوق لون لنسخ قيمته HEX.",
+  "colorSchemePairPreview": "أزواج الألوان الدلالية",
+  "colorSchemePairPreviewDescription": "يتم عرض الأدوار الأمامية والخلفية معًا لكشف التباين والتسلسل الهرمي.",
+  "colorSchemeComponentPreview": "معاينة المكونات",
+  "colorSchemeComponentPreviewDescription": "تم تقديم عناصر تحكم Material التمثيلية باستخدام نظام المعاينة الدقيق هذا.",
+  "colorSchemeSampleTitle": "عنوان بطاقة Skill",
+  "colorSchemeSampleBody": "تستخدم النسخة الثانوية onSurfaceVariant.",
+  "colorSchemeCopied": "تم النسخ",
+  "colorSchemeSampleGlyphs": "أأ 123",
+  "colorSchemeGroupPrimary": "اللون الأساسي",
+  "colorSchemeGroupPrimaryDescription": "التركيز الأساسي والحاويات وأدوار اللكنة الثابتة.",
+  "colorSchemeGroupSecondary": "اللون الثانوي",
+  "colorSchemeGroupSecondaryDescription": "دعم التركيز والأدوار الثانوية الثابتة.",
+  "colorSchemeGroupTertiary": "اللون الثالثي",
+  "colorSchemeGroupTertiaryDescription": "درجات لونية متباينة وأدوار ثابتة للون الثالثي.",
+  "colorSchemeGroupSurface": "السطح",
+  "colorSchemeGroupSurfaceDescription": "الصفحة والحاوية والارتفاع والتسلسل الهرمي الأمامي.",
+  "colorSchemeGroupUtility": "الحدود والأدوات",
+  "colorSchemeGroupUtilityDescription": "الحدود والظلال والخدوش والأسطح المعكوسة.",
+  "colorSchemeGroupError": "خطأ",
+  "colorSchemeGroupErrorDescription": "إجراءات الخطأ والرسائل والحاويات.",
+  "colorSchemeUsagePrimary": "الإجراءات الأساسية والتركيز واللهجات عالية التركيز.",
+  "colorSchemeUsageSecondary": "الإجراءات الداعمة واللهجات متوسطة التركيز.",
+  "colorSchemeUsageTertiary": "لهجات متناقضة تكمل الابتدائي والثانوي.",
+  "colorSchemeUsageContentOn": "النص والأيقونات المعروضة على ⁨{token}⁩.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "حاوية ⁨{family}⁩ ذات التركيز المنخفض للتحديدات واللهجات.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "حاوية ⁨{family}⁩ ثابتة ومستقلة عن السطوع.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "حاوية ⁨{family}⁩ ثابتة ومستقلة عن السطوع.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "محتوى عالي التركيز على حاوية ⁨{family}⁩ الثابتة.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "محتوى التركيز المنخفض على حاوية ⁨{family}⁩ الثابتة.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "الصفحة الأساسية وسطح المنطقة الكبيرة.",
+  "colorSchemeUsageSurfaceDim": "سطح قاعدة خافت يستخدم في أحلك درجة لون السطح.",
+  "colorSchemeUsageSurfaceBright": "سطح قاعدة ساطع يستخدم بأخف درجة لون للسطح.",
+  "colorSchemeUsageSurfaceElevation": "ارتفاع الحاوية السطحية ⁨{level}⁩.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "أدنى",
+  "colorSchemeElevationLow": "منخفض",
+  "colorSchemeElevationDefault": "افتراضي",
+  "colorSchemeElevationHigh": "مرتفع",
+  "colorSchemeElevationHighest": "الأعلى",
+  "colorSchemeUsageOnSurface": "النص الأساسي والأيقونات المعروضة على الأسطح.",
+  "colorSchemeUsageOnSurfaceVariant": "النص الثانوي والتسميات والأيقونات الخافتة على الأسطح.",
+  "colorSchemeUsageSurfaceTint": "لون الارتفاع Material مشتق من اللون الأساسي.",
+  "colorSchemeUsageOutline": "حدود بارزة ومخططات مكونات مركزة.",
+  "colorSchemeUsageOutlineVariant": "الحدود الدقيقة والفواصل والخطوط العريضة منخفضة التركيز.",
+  "colorSchemeUsageShadow": "لون الظل المسقط للأسطح المرتفعة.",
+  "colorSchemeUsageScrim": "طبقة تعتيم تقلل إبراز محتوى الخلفية عند عرض نافذة مشروطة.",
+  "colorSchemeUsageInverseSurface": "السطح مع التركيز على الضوء والظلام المعكوس.",
+  "colorSchemeUsageInversePrimary": "لهجة أساسية معروضة على سطح معكوس.",
+  "colorSchemeUsageError": "إجراءات الخطأ والحالة والتعليقات عالية التركيز.",
+  "save": "حفظ",
+  "advancedSettings": "متقدم",
+  "remindersSettings": "تذكيرات",
+  "remindersSettingsTitle": "إعدادات التذكير",
+  "remindersSettingsDescription": "اختر التذكيرات التي تريد تلقيها.",
+  "updateReminderTitle": "تحديث التذكيرات",
+  "updateReminderDescription": "التحقق من وجود تحديثات عند فتح المكتبة.",
+  "securityReminderTitle": "تنبيهات عالية المخاطر",
+  "securityReminderDescription": "إعلامك بالمخاطر العالية أو الحرجة الجديدة في المهارات المثبتة.",
+  "availableUpdatesReminder": "المهارات المثبتة ⁨{count}⁩ لها تحديثات",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "افتح عرض التحديثات المتاحة لمراجعتها وتحديثها.",
+  "securityAdvisoriesReminder": "تحتاج مهارات ⁨{count}⁩ المثبتة إلى مراجعة أمنية",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "قم بمراجعة معلومات المخاطر الخاصة بهم قبل استخدامها أو تحديثها.",
+  "generalSettingsTitle": "خصّص SkillsGo",
+  "generalSettingsDescription": "تتبع الواجهة لغة النظام وإمكانية الوصول وتفضيلات الحركة.",
+  "agentsSettingsTitle": "بيئات تشغيل Agents",
+  "hubSettingsTitle": "عنوان Hub",
+  "hubSettingsDescription": "استخدم Hub الرسمي أو عنوان HTTP(S) مستضافًا ذاتيًا يطبق بروتوكول SkillsGo نفسه.",
+  "testConnection": "اختبار الاتصال",
+  "saveOrigin": "حفظ العنوان",
+  "resetDefault": "إعادة التعيين إلى الوضع الافتراضي",
+  "connectionReady": "الاتصال جاهز",
+  "connectionFailed": "فشل الاتصال",
+  "hubInvalidOrigin": "أدخل عنوان HTTP(S) صالحًا من دون بيانات اعتماد أو استعلام أو جزء URL.",
+  "hubHttpFailure": "أعاد Hub حالة HTTP ⁨{status}⁩. تحقق من العنوان وإعدادات الخادم.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "لم يُرجع الخادم بروتوكول بحث SkillsGo Hub.",
+  "hubInvalidJson": "أعاد Hub بيانات JSON غير صالحة.",
+  "hubConnectionFailure": "تعذر الوصول إلى Hub. تحقق من العنوان والشبكة والوكيل وإعدادات TLS.",
+  "hubConnectionTimeout": "انتهت مهلة اتصال Hub. تحقق من الشبكة أو حاول مرة أخرى.",
+  "riskPolicyTitle": "سياسة المخاطر الشخصية",
+  "riskPolicyDescription": "تنطبق قواعد السلامة عند تثبيت مهارة ما أو تحديثها.",
+  "confirmHighRisk": "طلب تأكيد للمخاطر العالية",
+  "confirmHighRiskDescription": "تتطلب Artifacts عالية المخاطر دائمًا تأكيدًا إضافيًا قبل التثبيت.",
+  "allowCriticalOverride": "السماح بتجاوز صريح للمخاطر الحرجة",
+  "allowCriticalOverrideDescription": "تظل Artifacts ذات المخاطر الحرجة محظورة افتراضيًا. فعّل هذا الخيار فقط لإتاحة تجاوز يدوي منفصل.",
+  "storageHealthy": "قابل للقراءة",
+  "storageNotInitialized": "لم تتم التهيئة",
+  "storageUnavailable": "غير متاح",
+  "storageInvalidResponse": "أعاد CLI المرفق استجابة تشخيص غير مدعومة.",
+  "aboutSettingsTitle": "توافق المكونات",
+  "appVersion": "إصدار التطبيق",
+  "cliVersion": "إصدار CLI المرفق",
+  "compatible": "متوافق",
+  "hubOriginSaved": "تم حفظ أصل Hub وتطبيقه.",
+  "policySaved": "تم حفظ سياسة التثبيت.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "جاهز",
+  "unknown": "غير معروف",
+  "missing": "مفقود",
+  "incompatible": "غير متوافق",
+  "detecting": "جارٍ الاكتشاف…",
+  "customCliPath": "مسار قابل للتنفيذ مخصص",
+  "saveAndDetect": "حفظ واكتشاف",
+  "detectAgain": "إعادة الاكتشاف",
+  "agentInstalled": "تم التثبيت",
+  "agentSupported": "مدعوم",
+  "agentCatalogSummary": "مثبّت: ⁨{installed}⁩ · مدعوم: ⁨{supported}⁩",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "مثبّت · ⁨{count}⁩",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "غير مثبّت · ⁨{count}⁩",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "يدعمه SkillsGo، لكنه غير مكتشف على هذا الـ Mac.",
+  "agentDiscoveryRoots": "مسارات تحميل Skills: ⁨{paths}⁩",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "بيانات اكتشاف Agents غير متاحة. شغّل الاكتشاف مجددًا.",
+  "noInstalledAgentsTitle": "لم يُكتشف أي Agent مثبّت",
+  "noInstalledAgentsMessage": "يمكنك الاستمرار في تصفح Skill، ولكن لا يوجد هدف تثبيت حتى الآن. قم بتثبيت Agent المدعوم، ثم قم بتشغيل الكشف مرة أخرى.",
+  "clearCustomPath": "مسح المسار المخصص",
+  "privacyProvenance": "الخصوصية والمصدر",
+  "language": "اللغة",
+  "translatedContent": "مترجم",
+  "translatedFrom": "مترجم من {language}",
+  "@translatedFrom": {"placeholders": {"language": {"type": "String"}}},
+  "sourceLanguageName": "{code, select, en {الإنجليزية} zhHans {الصينية المبسطة} zhHant {الصينية التقليدية} ja {اليابانية} ko {الكورية} fr {الفرنسية} de {الألمانية} it {الإيطالية} es {الإسبانية} pt {البرتغالية} ru {الروسية} ar {العربية} hi {الهندية} id {الإندونيسية} tr {التركية} nl {الهولندية} pl {البولندية} th {التايلاندية} vi {الفيتنامية} ms {الماليزية} sv {السويدية} uk {الأوكرانية} other {{code}}}",
+  "@sourceLanguageName": {"placeholders": {"code": {"type": "String"}}},
+  "showOriginalContent": "عرض النص الأصلي",
+  "showTranslation": "عرض الترجمة",
+  "personalizationTheme": "السمة",
+  "folderColorTheme": "لون السمة",
+  "folderColorThemeDescription": "اختر اللون الذي تريده. سيقوم SkillsGo ببناء لوحة واجهة منسقة حوله.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "الوضع",
+  "appearanceModeDescription": "اتبع مظهر نظامك، أو استخدم دائمًا سمة فاتحة أو داكنة.",
+  "followSystem": "النظام",
+  "lightMode": "فاتح",
+  "darkMode": "داكن",
+  "wallpaper": "الخلفية",
+  "wallpaperDescription": "اختر خلفية سماوية تظهر مباشرة خلف Folder.",
+  "wallpaperSun": "الشمس",
+  "wallpaperMercury": "الزئبق",
+  "wallpaperVenus": "فينوس",
+  "wallpaperEarth": "الأرض",
+  "wallpaperMars": "المريخ",
+  "wallpaperJupiter": "كوكب المشتري",
+  "wallpaperSaturn": "زحل",
+  "wallpaperUranus": "أورانوس",
+  "wallpaperNeptune": "نبتون",
+  "wallpaperPluto": "بلوتو",
+  "wallpaperMoon": "القمر",
+  "folderThemeChoice": "سمة Folder: ⁨{theme}⁩",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "يتم التحكم في القياس عن بعد للتثبيت المجهول من خلال إعدادات SkillsGo. SkillsGo لا ينتمي إلى OpenAI أو Codex.",
+  "commandCompleted": "اكتمل الأمر",
+  "commandFailed": "فشل الأمر",
+  "commandExit": "انتهى الأمر بالرمز ⁨{code}⁩ · وسّع لعرض سجل هذه الجلسة",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "الأمر",
+  "cancel": "إلغاء",
+  "updateUnknown": "غير معروف",
+  "updateChecking": "جارٍ التحقق",
+  "upToDate": "محدّث",
+  "updateAvailable": "يتوفر تحديث",
+  "updateUnavailable": "غير متاح",
+  "updateCheckFailed": "تعذر التحقق",
+  "installSkill": "تثبيت Skill",
+  "installLocationTitle": "اختيار موقع التثبيت",
+  "globalLevel": "Global",
+  "projectLevel": "نطاق المشروع",
+  "projects": "المشاريع",
+  "loading": "جارٍ التحميل…",
+  "repositoryParsing": "جارٍ تحليل المستودع...",
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "مشاريع ⁨{projects}⁩ · ⁨{agents}⁩ Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "نتائج التثبيت",
+  "installationInProgress": "التثبيت قيد التقدم",
+  "installationSucceeded": "اكتمل التثبيت",
+  "installationSucceededMessage": "Skill متوفر الآن في المواقع المحددة.",
+  "projectUnavailable": "المشروع غير متاح",
+  "installedCell": "تم التثبيت",
+  "unsupportedCell": "غير متاح",
+  "confirmInstall": "تأكيد التثبيت",
+  "installAllPackageSkills": "تثبيت جميع مهارات المستودع (⁨{count}⁩)",
+  "installAllSkillsTo": "تثبيت جميع Skills في",
+  "@installAllPackageSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installPackageSkills": "تثبيت جميع مهارات ⁨{packagePath}⁩ (⁨{count}⁩)",
+  "@installPackageSkills": {
+    "placeholders": {
+      "packagePath": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "تثبيت ⁨{skill}⁩ في",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "جميع المشاريع",
+  "availableInSelectedProjects": "مشاريع مختارة",
+  "usedBy": "يستخدمه Agents",
+  "backToTargets": "العودة إلى الأهداف",
+  "stayHere": "البقاء هنا",
+  "viewInLibrary": "عرض في المكتبة",
+  "planCreateCount": "إنشاء ⁨{count}⁩",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "تخطي ⁨{count}⁩",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "استبدال ⁨{count}⁩",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "تعارض: ⁨{count}⁩",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "محظور بسبب المخاطر: ⁨{count}⁩",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "تطبيق القرارات",
+  "replaceVersionConflict": "استبدل الإصدار المثبت على هذا الهدف",
+  "replaceSkillIdCollision": "استبدل معرف Skill المختلف عند هذا الهدف",
+  "replaceLocalModification": "تجاهل التعديلات المحلية واستبدل هذا الهدف",
+  "sharedTargetConflict": "تتم مشاركة هذا المسار بواسطة أهداف Agent الأخرى",
+  "sharedTargetConflictDescription": "ارجع إلى المصفوفة المستهدفة وحدد كل Agent المتأثر قبل الاستبدال: ⁨{agents}⁩",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "استبدل الهدف المتعارض",
+  "confirmHighRiskArtifact": "تأكيد Artifact عالية المخاطر",
+  "confirmCriticalRiskArtifact": "تأكيد تجاوز المخاطر الحرجة",
+  "confirmRiskForSelectedTargets": "لقد قمت بمراجعة ملفات القطع الأثرية وأقبل هذه المخاطرة بالنسبة للأهداف المحددة",
+  "criticalRiskBlocked": "تم حظر التثبيت ذو المخاطر الحرجة",
+  "criticalRiskOverrideDisabled": "قم بتمكين تجاوز المخاطر الحرجة الصريح في الإعدادات قبل أن تتمكن من متابعة هذه الخطة.",
+  "workspaceManifestChanges": "تغييرات Workspace Manifest",
+  "noWorkspaceManifestChanges": "لن تتغير ملفات Workspace Manifest.",
+  "lockVersionChange": "⁨{from}⁩ → ⁨{to}⁩",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "غير موجود",
+  "planActionCreate": "إنشاء",
+  "planActionReplace": "استبدال",
+  "planActionSkip": "تخطي",
+  "planActionConflict": "تعارض",
+  "planActionBlockedByRisk": "محظور بسبب المخاطر",
+  "installationResultSummary": "نجح تثبيت ⁨{succeeded}⁩ من الأهداف، وفشل ⁨{failed}⁩.",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "التثبيت قيد التقدم",
+  "installationProgressSummary": "اكتمل ⁨{finished}⁩ من ⁨{total}⁩ هدفًا",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "في انتظار",
+  "targetRunning": "التثبيت",
+  "retryFailedTargets": "{count, plural, =0{لا توجد أهداف فاشلة لإعادة المحاولة} =1{إعادة محاولة هدف واحد فاشل} =2{إعادة محاولة هدفين فاشلين} few{إعادة محاولة ⁨{count}⁩ أهداف فاشلة} many{إعادة محاولة ⁨{count}⁩ هدفًا فاشلًا} other{إعادة محاولة ⁨{count}⁩ هدف فاشل}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "حدد الأهداف للتحديث",
+  "updatePlanDescription": "اختر أهداف التثبيت المحددة. ستبقى Agents والمشاريع غير المحددة دون تغيير.",
+  "updateTargetsSelected": "تم تحديد ⁨{selected}⁩ من ⁨{available}⁩ هدفًا قابلًا للتحديث",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "⁨{fromVersion}⁩ → ⁨{toVersion}⁩",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "مرجع المصدر: ⁨{reference}⁩",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "مثبّت — لا يوجد مرجع متحرك",
+  "currentVersionTarget": "محدّث",
+  "updateCheckTargetFailed": "فشل التحقق من التحديث",
+  "reconcileWorkspaceManifestTarget": "إصلاح Workspace Manifest",
+  "updateSelectedTargets": "تحديث الأهداف المحددة",
+  "updateProgressTitle": "تحديث الأهداف",
+  "updateResultsTitle": "تحديث النتائج",
+  "updateProgressSummary": "اكتمل ⁨{finished}⁩ من ⁨{total}⁩ هدفًا",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =0{لا توجد تحديثات فاشلة لإعادة المحاولة} =1{إعادة محاولة تحديث واحد فاشل} =2{إعادة محاولة تحديثين فاشلين} few{إعادة محاولة ⁨{count}⁩ تحديثات فاشلة} many{إعادة محاولة ⁨{count}⁩ تحديثًا فاشلًا} other{إعادة محاولة ⁨{count}⁩ تحديث فاشل}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "لا يوجد هدف محدد لديه تحديث متاح.",
+  "closeUpdatePlan": "إغلاق",
+  "targetSucceeded": "تم التثبيت",
+  "targetSkipped": "تم تخطيه",
+  "targetConflict": "تعارض",
+  "targetFailed": "فشل",
+  "targetFailureRetryable": "لا يمكن تغيير هذا الموقع. يمكنك المحاولة مرة أخرى.",
+  "targetFailureNeedsAttention": "يحتاج هذا الموقع إلى انتباهك قبل المحاولة مرة أخرى.",
+  "installationTargetFailureMessage": "لم يتغير شيء في هذا الموقع. تأكد من توفر المجلد ثم حاول مرة أخرى.",
+  "workspacePersistenceFailureMessage": "لم يتم تغيير أي شيء لأن SkillsGo لم يتمكن من حفظ إعدادات المشروع. تأكد من أن مجلد المشروع قابل للكتابة وحاول مرة أخرى.",
+  "installationStateChangedMessage": "تم تغيير هذا الموقع أثناء قيامك بمراجعته. قم بمراجعة أحدث حالة قبل المحاولة مرة أخرى.",
+  "updateTargetFailureMessage": "لا يمكن تحديث هذا الموقع. لم تتأثر المواقع الأخرى، لذا يمكنك إعادة محاولة هذا الموقع فقط.",
+  "managementTargetFailureMessage": "لا يمكن إكمال هذا الإجراء هنا. لم تتأثر المواقع الأخرى، لذا يمكنك إعادة محاولة هذا الموقع فقط.",
+  "technicalDetails": "التفاصيل الفنية",
+  "targetPathExists": "يوجد عنصر آخر بالفعل في هذا الموقع.",
+  "targetBlockedByRisk": "إعدادات الأمان الحالية الخاصة بك منعت التثبيت في هذا الموقع.",
+  "targetInstallFailed": "لا يمكن تثبيت المهارة في هذا الموقع.",
+  "targetWorkspaceUpdateFailed": "تم تثبيت المهارة، لكن تعذر تحديث إعدادات المشروع.",
+  "installationPlanFailed": "لا يمكن متابعة خطة التثبيت",
+  "installationFailed": "لا يمكن إكمال التثبيت",
+  "localSource": "مصدر محلي",
+  "noDescriptionAvailable": "لا يوجد وصف متاح",
+  "moreCoverage": "+⁨{count}⁩ المزيد من المواقع",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionAction": "إدارة المهارات الموجودة",
+  "batchAdoptionActionCount": "إدارة (⁨{count}⁩)",
+  "@batchAdoptionActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionChecking": "التحقق من المهارات الموجودة...",
+  "batchAdoptionRetry": "إعادة التحقق من Skills التي يمكن إدارتها",
+  "batchAdoptionEligibleCount": "يمكن إدارة ⁨{count}⁩",
+  "@batchAdoptionEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionPending": "إضافة مهارات إلى الإدارة...",
+  "batchAdoptionTitle": "إدارة المهارات الموجودة مع SkillsGo؟",
+  "batchAdoptionDescription": "سيضيف SkillsGo سجلات الإدارة المحلية دون نقل ملفات المهارات أو الكتابة فوقها أو تحميلها. سيتم تخطي العناصر غير المدعومة أو التي تم تغييرها.",
+  "batchAdoptionStoryTitle": "اجمع Skills المتفرقة في مكتبة واحدة واضحة",
+  "batchAdoptionStoryDescription": "عثر SkillsGo في هذا الموقع على {count, plural, =0{لا Skills حالية} =1{Skill واحدة حالية يمكنه إدارتها} =2{Skill اثنتين حاليتين يمكنه إدارتهما} few{⁨{count}⁩ Skills حالية يمكنه إدارتها} many{⁨{count}⁩ Skill حالية يمكنه إدارتها} other{⁨{count}⁩ Skill حالية يمكنه إدارتها}}.",
+  "@batchAdoptionStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionBeforeSemantics": "قبل الإدارة، ليس من الواضح أين يتم تثبيت المهارات الموجودة، وما إذا كانت حديثة، أو كيفية استعادتها، أو ما إذا كانت المشاريع تستخدم نفس الإصدار.",
+  "batchAdoptionPainLocation": "موقع التثبيت غير معروف",
+  "batchAdoptionPainFreshness": "حالة التحديث غير معروفة",
+  "batchAdoptionPainRecovery": "لا توجد استعادة عند حدوث تلف",
+  "batchAdoptionPainVersionDrift": "إصدارات مختلفة عبر المشاريع",
+  "batchAdoptionFolderTitle": "Skills موجودة",
+  "batchAdoptionFolderSubtitle": "الوضع غير واضح",
+  "batchAdoptionAfterLabel": "بعد",
+  "batchAdoptionAfterTitle": "مكتبة واحدة واضحة",
+  "batchAdoptionLibraryTitle": "مكتبة SkillsGo",
+  "batchAdoptionBenefitLocation": "مواقع واضحة",
+  "batchAdoptionBenefitFreshness": "التحديثات مرئية",
+  "batchAdoptionBenefitRecovery": "استعادة سهلة",
+  "batchAdoptionBenefitVersions": "الإصدارات واضحة",
+  "batchAdoptionManagedSection": "تحت إدارة SkillsGo",
+  "batchAdoptionPendingSection": "في انتظار",
+  "batchAdoptionItemManaged": "تتم إدارة ⁨{name}⁩ بواسطة SkillsGo",
+  "@batchAdoptionItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionItemSkipped": "لا يمكن إضافة ⁨{name}⁩ إلى الإدارة",
+  "@batchAdoptionItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionItemPending": "⁨{name}⁩ في انتظار إدارتها",
+  "@batchAdoptionItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchAdoptionAfterSemantics": "بعد إضافتها إلى الإدارة، تصبح {count, plural, =0{لا Skills منظّمة} =1{Skill واحدة منظّمة} =2{Skill اثنتان منظّمتان} few{⁨{count}⁩ Skills منظّمة} many{⁨{count}⁩ Skill منظّمة} other{⁨{count}⁩ Skill منظّمة}} في Library واحدة بحالة إدارة واضحة.",
+  "@batchAdoptionAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionMoreSkills": "+⁨{count}⁩ المزيد",
+  "@batchAdoptionMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionTransitionSemantics": "أضف هذه المهارات الموجودة إلى إدارة SkillsGo.",
+  "batchAdoptionTransitionLabel": "تنظيم",
+  "batchAdoptionStatusTitle": "حالة الإدارة",
+  "batchAdoptionStatusManaged": "مُدار",
+  "batchAdoptionStatusProgress": "جارٍ التنظيم",
+  "batchAdoptionStatusSkipped": "تم تخطيه",
+  "batchAdoptionStatusFilesStay": "تظل ملفات Skill في مواقعها الأصلية",
+  "batchAdoptionBoardSemantics": "يتم ترتيب Skills في صفوف كاملة ويتم تسجيلها بواسطة SkillsGo دون نقل ملفاتها.",
+  "batchAdoptionBoardComplete": "كل شيء واضح",
+  "batchAdoptionBoardPartial": "اكتمل جزئيًا",
+  "batchAdoptionStatusTotal": "المجموع",
+  "batchAdoptionQueueComplete": "لا توجد مهارات في الانتظار",
+  "batchAdoptionQueueWaiting": "ستظهر Skills هنا بعد التحقق",
+  "batchAdoptionNextLabel": "التالي",
+  "batchAdoptionFillerCount": "تُكمل {count, plural, =0{لا كتل تنظيم} =1{كتلة تنظيم واحدة من SkillsGo} =2{كتلتا تنظيم من SkillsGo} few{⁨{count}⁩ كتل تنظيم من SkillsGo} many{⁨{count}⁩ كتلة تنظيم من SkillsGo} other{⁨{count}⁩ كتلة تنظيم من SkillsGo}} الصفوف الأخيرة.",
+  "@batchAdoptionFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionPreservation": "تظل ملفاتك ومساراتك وسير العمل الحالي في مكانها تمامًا. SkillsGo يكمل فقط سجلات الإدارة المحلية الخاصة به.",
+  "batchAdoptionLaterHint": "إذا قمت بالتخطي، يمكنك استخدام إدارة المهارات الموجودة من المكتبة في أي وقت.",
+  "batchAdoptionSkip": "ليس الآن",
+  "batchAdoptionConfirm": "إضافة إلى الإدارة",
+  "batchAdoptionExecutionRetry": "أعد المحاولة",
+  "batchAdoptionResultTitle": "أُضيفت Skills إلى الإدارة",
+  "batchAdoptionSummary": "تمت إضافة مهارات ⁨{adopted}⁩ إلى الإدارة، وتم تخطي ⁨{skipped}⁩.",
+  "@batchAdoptionSummary": {
+    "placeholders": {
+      "adopted": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchAdoptionClose": "إغلاق",
+  "installMoreTargets": "تثبيت في المزيد من المواقع",
+  "detailPackageSource": "مصدر الحزمة",
+  "detailStars": "النجوم",
+  "detailUpdated": "تم التحديث",
+  "detailPackageSize": "حجم الحزمة",
+  "pathLabel": "مسار المشروع",
+  "copyProjectPath": "نسخ مسار المشروع",
+  "projectPathCopied": "تم نسخ مسار المشروع",
+  "onboardingWelcomeTitle": "مرحبًا بك في SkillsGo",
+  "onboardingWelcomeDescription": "اكتشف Skills وثبّتها وأدرها عبر Agents ومشاريعك.",
+  "onboardingDetectedAgents": "Agents المكتشفة",
+  "onboardingNoAgents": "لم يتم اكتشاف أي Agent مثبّت. لا يزال بإمكانك المتابعة.",
+  "onboardingNext": "التالي",
+  "onboardingProjectsTitle": "أضف مشاريعك",
+  "onboardingProjectsDescription": "اختر المشاريع التي تريد من SkillsGo إدارتها.",
+  "onboardingAddProject": "أضف الآن",
+  "onboardingAddProjectLater": "أو أضفها لاحقًا",
+  "onboardingStartUsing": "ابدأ باستخدام SkillsGo",
+  "onboardingBack": "العودة",
+  "restartOnboardingTitle": "الإعداد",
+  "restartOnboardingDescription": "اعرض إعداد بدء التشغيل مجددًا دون إزالة المشاريع أو الإعدادات أو بيانات Skills.",
+  "restartOnboardingAction": "إعادة تشغيل الإعداد",
+  "restartOnboardingFailed": "تعذر على SkillsGo إعادة تشغيل الإعداد الأولي.",
+  "libraryRefreshSettingsTitle": "تحديث المكتبة المحلية",
+  "libraryRefreshSettingsDescription": "أعد فحص تثبيت Skills والمشاريع المضافة وAgents وSkills الخارجية التي يمكن إدارتها. هذا لا يؤدي إلى تثبيت أو تحديث أو إزالة أي شيء.",
+  "libraryRefreshSettingsAction": "تحديث المكتبة",
+  "libraryRefreshSettingsPending": "جارٍ تحديث المكتبة…",
+  "libraryRefreshSettingsSuccess": "تم تحديث المكتبة المحلية.",
+  "libraryRefreshSettingsFailed": "تعذر على SkillsGo تحديث المكتبة المحلية.",
+  "onboardingProjectError": "تعذر على SkillsGo إضافة مشاريع من هذا الدليل.",
+  "onboardingProjectsLoadError": "تعذر على SkillsGo تحميل مشاريعك المضافة.",
+  "onboardingStartupError": "تعذر على SkillsGo تحميل برنامج الإعداد.",
+  "onboardingStateError": "تعذر على SkillsGo حفظ تقدم الإعداد. حاول ثانية.",
+  "onboardingCliErrorTitle": "SkillsGo CLI يحتاج إلى الاهتمام",
+  "onboardingCliErrorDescription": "أصلح CLI المرفق، ثم حاول مجددًا للمتابعة.",
+  "upgrade": "يرقي",
+  "downgrade": "الرجوع إلى إصدار سابق",
+  "packageSkillsSwitchTogether": "المهارات من هذه الحزمة سوف تقوم بتبديل الإصدار معًا.",
+  "switchVersion": "تبديل الإصدار",
+  "upgradeToVersion": "الترقية إلى {version}",
+  "downgradeToVersion": "الرجوع إلى {version}",
+  "libraryGlobalScope": "المهارات العالمية",
+  "libraryImportedSkills": "تديرها SkillsGo",
+  "libraryLocalSkills": "مثبتة بطريقة أخرى",
+  "libraryUnused45Days": "غير مستخدمة منذ 45 يومًا",
+  "libraryUnused90Days": "غير مستخدمة منذ 90 يومًا",
+  "libraryFilterTooltip": "كل المهارات المثبتة في هذا النطاق",
+  "libraryManagementStatus": "حالة الإدارة",
+  "libraryUsageStatus": "حالة الاستخدام",
+  "libraryAnyUsage": "أي استخدام",
+  "libraryFilterManagedTooltip": "يمكن لـ SkillsGo تحديثها وإزالتها",
+  "libraryFilterOtherTooltip": "يجب أن تدير SkillsGo هذه المهارات قبل تحديثها",
+  "libraryFilterUnused45DaysTooltip": "المهارات ذات إحصاءات الاستخدام المتاحة والتي لم يتم استدعاؤها خلال آخر 45 يومًا",
+  "libraryFilterUnused90DaysTooltip": "المهارات ذات إحصاءات الاستخدام المتاحة والتي لم يتم استدعاؤها خلال آخر 90 يومًا",
+  "libraryFilterUpdatesTooltip": "المهارات المُدارة ذات التحديثات المتاحة",
+  "libraryExternalScope": "المهارات الخارجية",
+  "libraryEmptyAddProject": "الانتقال إلى إضافة مشروع",
+  "globalSkills": "المهارات العالمية",
+  "projectMissingMessage": "ربما تم نقل الدليل أو قد يكون حجمه غير متصل. تحقق من المسار أو قم بإزالة مرجع التطبيق الخاص به.",
+  "projectPermissionMessage": "لا يمكن لـ SkillsGo فحص جذر المشروع هذا. تحقق من أذونات نظام الملفات الخاص به أو قم بإزالة مرجع التطبيق الخاص به.",
+  "projectInaccessibleMessage": "SkillsGo احتفظ بمرجع المشروع هذا. تحقق من المسار أو وحدة التخزين، أو قم بإزالة مرجع التطبيق الخاص به.",
+  "cloudHttpFailure": "عادت السحابة HTTP {status}. تحقق من الأصل وتكوين الخدمة.",
+  "cloudInvalidProtocol": "لم يُرجع الخادم بروتوكول التصنيف السحابي SkillsGo.",
+  "cloudInvalidJson": "أعادت السحابة JSON غير صالحة.",
+  "cloudConnectionFailure": "لا يمكن الوصول إلى السحابة. تحقق من تكوين الأصل، والشبكة، والوكيل، وTLS.",
+  "cloudConnectionTimeout": "انتهت مهلة الاتصال السحابي. تحقق من الشبكة أو حاول مرة أخرى.",
+  "privacySummary": "لا يتم تسجيل نص البحث ومحتوى المهارات. يتم الاحتفاظ بالتشخيصات المحلية المعقمة لمدة تصل إلى 7 أيام ولا يتم تحميلها تلقائيًا أبدًا.",
+  "localScanPermissionTitle": "قراءة هذه المجلدات",
+  "localScanPermissionDescription": "تُستخدم للتعرّف على Skills المثبتة واستخدامها.",
+  "localScanPrivacySummary": "تتم المعالجة على هذا الجهاز فقط. لا يتم رفع الملفات أو المحادثات.",
+  "localScanContinue": "متابعة",
+  "localScanDefer": "ليس الآن",
+  "localScanDeferredTitle": "لم تتم قراءة المشاريع بعد",
+  "localScanDeferredMessage": "اسمح بالوصول للتعرّف على Skills المثبتة واستخدامها.",
+  "localScanResume": "متابعة القراءة",
+  "diagnosticLogsTitle": "سجلات التشخيص",
+  "diagnosticLogsDescription": "يستخدم التطبيق المحلي وتشخيصات CLI {size}. يتم تدوير السجلات تلقائيًا، ويتم الاحتفاظ بها لمدة تصل إلى 7 أيام، ولا يتم تحميلها تلقائيًا أبدًا.",
+  "openLogFolder": "افتح المجلد",
+  "viewLiveLogs": "عرض مباشر",
+  "exportLogs": "سجلات التصدير",
+  "clearLogs": "مسح السجلات",
+  "logsExported": "تم تصدير سجلات التشخيص.",
+  "logsCleared": "تم مسح سجلات التشخيص.",
+  "logActionFailed": "تعذر إكمال إجراء سجل التشخيص.",
+  "logViewerLive": "يعيش",
+  "logViewerPaused": "متوقف مؤقتًا",
+  "searchLogs": "سجلات البحث",
+  "allLogLevels": "الجميع",
+  "warningLogs": "تحذيرات",
+  "errorLogs": "أخطاء",
+  "pauseLogFollow": "يوقف",
+  "resumeLogFollow": "سيرة ذاتية",
+  "clearViewer": "رؤية واضحة",
+  "noDiagnosticLogs": "لا توجد سجلات مطابقة حتى الآن.",
+  "backToLatestLog": "أحدث",
+  "originalContent": "إبداعي",
+  "handExternalSkillsToSkillsGoManagementCount": "اسمح لـ SkillsGo بإدارة {count} المهارات الخارجية",
+  "confirmSkillsGoManagementCount": "تأكيد إدارة SkillsGo ({selected}/{total})",
+  "skillColumnLabel": "مهارة",
+  "packageSourceColumnLabel": "مصدر",
+  "versionColumnLabel": "إصدار",
+  "packageMatching": "مطابقة المصادر...",
+  "sourceMatchUnavailable": "مطابقة المصدر غير متاحة",
+  "noSourceMatches": "لا يوجد مصدر مطابق",
+  "sourceMatchPercent": "{percent}% مطابقة",
+  "versionPendingSelection": "حدد مصدرًا أولاً",
+  "batchAdoptionFailureSummary": "تمت إضافة مهارات {adopted} إلى الإدارة، وفشلت {failed}.",
+  "batchAdoptionStatusFailed": "فشل",
+  "batchAdoptionItemFailed": "{name} فشل",
+  "removeSkillsDescription": "ستتم إزالة المهارات التالية",
+  "confirmRemoveSkillsInline": "هل تريد إزالة {count} المهارات؟",
+  "removingSkillsProgress": "إزالة {finished}/{total}",
+  "confirmRemoveSkillsAction": "إزالة الآن",
+  "viewRemovalDetails": "عرض التفاصيل",
+  "hideRemovalDetails": "إخفاء التفاصيل",
+  "managedBackups": "Backups",
+  "adoptionBackupAvailable": "Original install backed up",
+  "adoptionBackupRetention": "Available to restore for 30 days",
+  "adoptionBackupRestore": "Restore original install",
+  "adoptionBackupRestoreTitle": "Restore original install?",
+  "adoptionBackupRestoreMessage": "This removes the managed version and restores the install and local changes from before management.",
+  "managedBackupsTitle": "Managed backups",
+  "managedBackupsDescription": "Original installs saved when SkillsGo takes over a Skill. Available to restore for 30 days.",
+  "managedBackupsCount": "{count, plural, =1{1 recoverable backup} other{{count} recoverable backups}}",
+  "@managedBackupsCount": {"placeholders": {"count": {"type": "int"}}},
+  "managedBackupsEmpty": "No recoverable backups",
+  "managedBackupsLoadFailed": "Managed backups are unavailable",
+  "managedBackupRestoreFailed": "Restore failed — try again",
+  "managedBackupRestored": "Original install restored.",
+  "managedBackupExpiresAt": "Available until {date}",
+  "@managedBackupExpiresAt": {"placeholders": {"date": {"type": "String"}}}
+}
