@@ -247,7 +247,7 @@ jobs:
         run: |
           for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APP_STORAGE_ENDPOINT APP_STORAGE_BUCKET; do
             if [[ -z "${!value}" ]]; then
-              echo "Missing required app-release R2 configuration: ${value}" >&2
+              echo "Missing required app-release object-storage configuration: ${value}" >&2
               exit 1
             fi
           done
@@ -305,7 +305,7 @@ jobs:
         run: |
           for value in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APP_STORAGE_ENDPOINT APP_STORAGE_BUCKET; do
             if [[ -z "${!value}" ]]; then
-              echo "Missing required app-release R2 configuration: ${value}" >&2
+                echo "Missing required app-release object-storage configuration: ${value}" >&2
               exit 1
             fi
           done
