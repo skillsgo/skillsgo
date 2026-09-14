@@ -1,0 +1,20 @@
+# Settings Journey
+> F3 | Parent: `/app/lib/ui/AGENTS.md` | Workspace: `skillsgo`
+
+## Members
+
+- `settings_screen_core.dart`: owns settings-route state, lifecycle, single-flight startup/periodic/resume App-update scheduling, local Library refresh and diagnostic-log feedback, and secondary-body composition.
+- `settings_sections.dart`: renders the General, Reminders, Agents, Managed Backups, and Advanced route structure, including Onboarding re-entry, local Library refresh, bounded diagnostic-log controls, and the final Mermaid gallery entry.
+- `diagnostic_log_viewer.dart`: renders the bounded newest-first human-readable live diagnostic stream with filtering, search, pause/follow, local clear, mutation-safe per-entry copying, and latest-entry recovery.
+- `mermaid_gallery.dart`: renders a 32-type official Mermaid.js 11.16.0 audit gallery backed by the App's single shared WebView queue.
+- `appearance_settings.dart`: renders folder theme, appearance mode, wallpaper, and related controls.
+- `app_update_settings.dart`: renders the configured update address plus explicit check, current, available, applying, and failure states.
+- `integration_settings.dart`: renders CLI, the single Hub Origin, managed-backup listing and restore controls, storage, reminders, and recovery controls.
+- `language_selector.dart`: renders and persists Presentation Locale selection.
+- `agent_status_row.dart`: renders one detected or supported Agent state.
+
+## Architectural Boundary
+
+This module owns settings presentation and immediate user feedback. Preference and integration mutations cross `SkillsGateway`; widgets must not access SharedPreferences, HTTP, processes, or filesystem state directly.
+
+[PROTOCOL]: Update this header when this file changes, then review AGENTS.md

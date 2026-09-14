@@ -1,0 +1,163 @@
+# Third-Party Notices
+
+## Mermaid
+
+The official Mermaid 11.16.0 browser bundle is distributed as a maximum-level
+gzip archive from the immutable SkillsGo CDN path under
+`cdn.skillsgo.ai/app/mermaid/11.16.0/`. The App asynchronously downloads and
+integrity-checks it at startup, persists the compressed bytes locally, and
+decompresses them in memory on the first Mermaid render.
+
+Official package:
+https://github.com/mermaid-js/mermaid/tree/mermaid%4011.16.0
+
+MIT License
+
+Copyright (c) 2014-2026 Knut Sveidqvist
+
+## Radix Colors
+
+`lib/ui/design_system/radix_palette.dart` reproduces the exact sRGB values of
+the Sand light and dark scales and steps 3, 11, and 12 of the Blue, Green,
+Amber, Orange, and Red light and dark scales from `@radix-ui/colors` version
+3.0.0.
+
+Official package:
+https://www.npmjs.com/package/@radix-ui/colors/v/3.0.0
+
+Package integrity:
+`sha512-FUOsGBkHrYJwCSEtWRCIfQbZG7q1e6DgxCIOe1SUQzDe/7rXXeA47s8yCn6fuTNQAj1Zq4oTFi9Yjp3wzElcxg==`
+
+MIT License
+
+Copyright (c) 2021-2022 Modulz
+
+Copyright (c) 2022-Present WorkOS
+
+## Primer Primitives
+
+`lib/ui/design_system/skills_color_tokens.dart` and
+`lib/ui/design_system/skills_theme.dart` adapt the functional token vocabulary
+documented by `@primer/primitives` version 11.9.0, including
+`bgColor-default`, `bgColor-muted`, `bgColor-inset`, `fgColor-default`,
+`fgColor-muted`, `borderColor-default`, and `borderColor-muted`. SkillsGo does
+not copy GitHub's theme values; it maps these semantic roles onto its Radix
+Sand spatial foundation and adds Folder-specific roles.
+
+The component-state mapping in `skills_component_tokens.dart` is grounded in
+the package's `component/button.json5`, `functional/color/control.json5`,
+`component/card.json5`, `component/overlay.json5`,
+`component/sideNav.json5`, and `component/focus.json5` token sources.
+
+Official package:
+https://www.npmjs.com/package/@primer/primitives/v/11.9.0
+
+Package integrity:
+`sha512-yESOalhd7s7S3unV1V32v3Z0RszXiiz6pzy6hVI9xpdTh1q1Gt8vyDFxRlqIvuwc5ZaO1+gYQTDbjxb4nWBzMw==`
+
+MIT License
+
+Copyright (c) 2018 GitHub Inc.
+
+## Lobe Icons
+
+The Agent logo assets in `assets/agent-logos/` are adapted from Lobe Icons,
+Copyright (c) 2023 LobeHub, and used under the MIT License:
+https://github.com/lobehub/lobe-icons
+
+## Atlassian Rovo
+
+`assets/agent-logos/rovo.svg` is the official Rovo app icon distributed by
+Atlassian Design:
+https://atlassian.design/foundations/logos
+
+## iFlow CLI and Kimchi
+
+`assets/agent-logos/iflow-cli.svg` adapts the pixel mark shown in the official
+iFlow CLI repository's `assets/iflow-cli.jpg`:
+https://github.com/iflow-ai/iflow-cli
+
+`assets/agent-logos/kimchi.svg` adapts the pepper mark shown in the official
+Kimchi repository's `kimchi.png` and terminal welcome screen:
+https://github.com/getkimchi/kimchi
+
+The iFlow and Kimchi names and marks remain the property of their respective
+owners.
+
+## Circle Flags
+
+The language identity assets in `assets/language-flags/` are sourced from
+[HatScripts Circle Flags](https://github.com/HatScripts/circle-flags),
+released under the MIT License.
+
+## Portal Labs
+
+`lib/ui/primary_folder_shell.dart` is derived from the Folder Tabs component,
+`lib/ui/physics_collision_field.dart` vendors and modifies Physics Collision Card,
+`lib/ui/bloom_color_picker/` vendors and modifies Bloom Color Picker, and
+`lib/ui/discrete_tabs/` vendors and modifies Discrete Tabs. The
+`lib/ui/install_location_island/` component is derived from and substantially
+adapts Todo List Interaction for installation location selection, and
+`lib/ui/stacked_toast.dart` vendors and modifies Stacked Toast Interaction.
+`lib/ui/onboarding_screen.dart` consumes Premium Progress Stepper,
+`lib/ui/subscription_segmented_switch.dart` adapts Subscription Pricing Picker,
+and the App consumes Loading Shapes for Repository parsing. These components
+originate from the same package. Source:
+[lportals/portal_labs](https://github.com/lportals/portal_labs).
+
+MIT License
+
+Copyright (c) 2026 Luis Portal
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Loading Animation Widget
+
+The Discover refresh and automatic-pagination indicators use
+[`loading_animation_widget`](https://pub.dev/packages/loading_animation_widget).
+
+BSD 3-Clause License
+
+Copyright (c) 2021, Watery Desert
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

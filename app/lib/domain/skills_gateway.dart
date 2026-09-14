@@ -1,0 +1,126 @@
+/*
+ * [INPUT]: Depends on the focused domain model modules for discovery, installation, Library, updates, target management, settings, and process contracts.
+ * [OUTPUT]: Provides the stable SkillsGateway interface, optional analytics progress and invalidation capabilities, Package detail and CDN README presentation, the platform-sensitive one-time local-scan privacy notice, persisted deferral, and privacy-settings recovery boundary, and re-exports the complete App domain vocabulary for callers.
+ * [POS]: Serves as the narrow seam shared by UI journeys, production infrastructure, and test adapters while domain models remain locally organized.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'discovery_models.dart';
+import 'installation_models.dart';
+import 'library_models.dart';
+import 'presentation_language.dart';
+import 'system_models.dart';
+import 'target_management_models.dart';
+
+export 'discovery_models.dart';
+export 'installation_models.dart';
+export 'library_models.dart';
+export 'presentation_language.dart';
+export 'skill_coordinate.dart';
+export 'system_models.dart';
+export 'target_management_models.dart';
+
+abstract interface class AnalyticsInvalidationSource {
+  Stream<int> watchAnalyticsInvalidations();
+}
+
+abstract interface class AnalyticsProgressSource {
+  Stream<AnalyticsSyncProgress> watchAnalyticsProgress();
+}
+
+abstract interface class SkillsGateway {
+  Future<OnboardingState> loadOnboardingState();
+  Future<void> saveOnboardingStep(OnboardingStep step);
+  Future<void> completeOnboarding();
+  Future<void> resetOnboarding();
+  Future<LocalScanNoticeDecision> loadLocalScanNoticeDecision();
+  Future<List<String>> loadLocalScanNoticePaths();
+  Future<void> saveLocalScanNoticeDecision(LocalScanNoticeDecision decision);
+  Future<bool> openLocalScanPrivacySettings();
+  Future<CliStatus> detectCli({String? customPath});
+  Future<void> saveCustomCliPath(String? path);
+  Future<String?> loadCustomCliPath();
+  Future<String> loadHubOrigin();
+  Future<void> saveHubOrigin(String origin);
+  Future<void> resetHubOrigin();
+  Future<String> loadFolderTheme();
+  Future<void> saveFolderTheme(String theme);
+  Future<AppWallpaper> loadWallpaper();
+  Future<void> saveWallpaper(AppWallpaper wallpaper);
+  Future<AppThemeMode> loadThemeMode();
+  Future<void> saveThemeMode(AppThemeMode mode);
+  Future<AppLanguage> loadLanguage();
+  Future<void> saveLanguage(AppLanguage language);
+  Future<ReminderSettings> loadReminderSettings();
+  Future<void> saveReminderSettings(ReminderSettings settings);
+  Future<DiagnosticLogInfo> loadDiagnosticLogInfo();
+  Future<void> openDiagnosticLogDirectory();
+  Future<bool> exportDiagnosticLogs();
+  Future<void> clearDiagnosticLogs();
+  List<DiagnosticLogEntry> recentDiagnosticLogs({int limit = 200});
+  Stream<DiagnosticLogEntry> watchDiagnosticLogs();
+  Future<HubStatus> testHubOrigin(String origin);
+  Future<PersonalRiskPolicy> loadRiskPolicy();
+  Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
+  Future<String> loadAppVersion();
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int page = 0,
+    int perPage = 20,
+  });
+  Future<SkillDetail> loadRemoteDetail(
+    SkillSummary skill, {
+    bool source = false,
+  });
+  Future<PackageUpdateCheckResult> checkPackageUpdate(String packagePath);
+  Future<AgentCatalog> inspectOnboardingAgents();
+  Future<AgentCatalog> inspectAgents();
+  Future<List<AddedProject>> loadAddedProjects();
+  Future<AddedProject> resolveProjectIcon(AddedProject project);
+  Future<List<AddedProject>> addProjects();
+  Future<void> removeProject(String id);
+  Future<List<InstalledSkill>> listInstalled({
+    List<AddedProject> projects = const [],
+    bool includeUsage = false,
+  });
+  Future<List<List<AdoptionCandidate>>> findSources(
+    List<PackageFindQuery> queries, {
+    int limit = 10,
+  });
+  Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
+  Future<List<AdoptionBackup>> listAdoptionBackups();
+  Future<void> restoreAdoptionBackup(String backupId);
+  Future<TargetManagementPlan> preflightTargetManagement(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  );
+  Future<PackageDetail> loadPackageDetail(
+    String packagePath, {
+    String version = '',
+  });
+  Future<String> loadPackageReadme(Uri readmeUrl);
+  Future<BatchAdoptionResult> adopt(List<AdoptionRequestItem> items);
+  Future<InstallationExecution> installTargets(
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections, {
+    bool confirmRisk = false,
+    bool allowCritical = false,
+  });
+  Future<List<InstallationExecution>> installPackageTargets(
+    List<SkillSummary> skills,
+    List<InstallationTargetSelection> selections, {
+    bool confirmRisk = false,
+    bool allowCritical = false,
+  });
+  Future<TargetManagementExecution> executeTargetManagement(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  });
+  Future<void> updatePackage(InstalledSkill skill, {required String toVersion});
+  Future<Map<String, UpdateAvailability>> checkUpdates(
+    List<InstalledSkill> skills,
+  );
+  Future<UpdateCheckCache?> loadUpdateCheckCache();
+  Future<void> saveUpdateCheckCache(UpdateCheckCache cache);
+}

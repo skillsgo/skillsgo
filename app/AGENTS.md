@@ -1,0 +1,158 @@
+# SkillsGo App
+
+> F1 Domain Map + F2 Workspace Map | Parent: `/AGENTS.md` | Manifest: `pubspec.yaml`
+
+This map governs the open-source Flutter desktop application workspace. Read it with the OSS repository constitution and `CONTEXT.md` before changing application code.
+
+## Workspace Identity
+
+- Package: `skillsgo`
+- Runtime: Flutter desktop; release CI maintains macOS arm64, macOS x64, and Linux x64 build coverage on self-hosted runners, while Windows release publication is deferred until its self-hosted runner is enabled.
+- Entry points: `lib/main.dart` and `lib/app.dart`
+- Integration seam: `SkillsGateway`
+- Product responsibility: own the open-source Personal desktop product experience, explain local project and Skill-usage scanning once on first Library entry only when macOS protected-folder access is expected, preserve deferred users inside a restricted Library with inline recovery instead of repeating the modal, gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Package installation/update/removal and exact External removal intent, and delegate every Hub and local operation to the bundled public CLI.
+- Version boundary: the bundled CLI reports the App product version (for example `0.0.1`); Flutter's `+build` suffix remains platform packaging metadata and must not enter the CLI version contract.
+- Installer lifecycle: `lib/main.dart` must handle Velopack's four official fast-exit arguments before logging, Flutter binding, or UI initialization; normal first-run/restart environment launches continue through the standard App path.
+- Update runtime: `velopack_flutter` is the App's thin Flutter-to-Velopack 1.2.0 bridge. Ordinary starts initialize `VelopackApp` before Flutter UI; production and CI update operations pass their architecture channel explicitly because copied, portable, or legacy Apps may lack usable installed-channel metadata. The CI-only update source accepts loopback HTTP and must never become a production endpoint override.
+- Production update source: release CI embeds one stable public HTTPS channel directory through `SKILLSGO_APP_UPDATE_URL` and its matching architecture channel through `SKILLSGO_APP_UPDATE_CHANNEL`; versioned packages are immutable while the channel manifest is published last and remains mutable. Builds without a source keep App-update controls disabled and never guess a release host. Configured builds check once shortly after startup, every six hours while running, and when returning to the foreground; automatic failures remain non-blocking and all checks are single-flight.
+
+## Commands
+
+Run from `app/`:
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d macos
+flutter build macos --release
+./macos/scripts/build_arch.sh arm64
+./macos/scripts/build_arch.sh x86_64
+flutter build windows --release
+flutter build linux --release
+```
+
+OSS repository entry points run from the repository root:
+
+```bash
+make app-deps
+make check-app
+make test-app
+make dev-app
+```
+
+The App-bundled CLI is compiled from the same repository's `cli/` workspace; App code must not copy or fork the public CLI implementation.
+
+- `build-app-macos-arm64` produces an arm64-only App under `app/build/macos-arm64/Build/Products/Release/SkillsGo.app`.
+- `build-app-macos-x86_64` produces an x86_64-only App under `app/build/macos-x86_64/Build/Products/Release/SkillsGo.app`.
+- `build-app-macos` builds both independent architecture artifacts; macOS release packaging must not merge them into a Universal binary.
+- `package-app-candidate.sh`, update-rehearsal scripts, and `.github/workflows/app-release.yml` provide candidate, upgrade, signing, checksum, configurable object-storage publication, and GitHub Release automation.
+
+## Agent-Driven Runtime Interaction
+
+- Prefer Marionette for tasks whose evidence depends on interacting with the rendered debug App: inspect interactive elements, navigate flows, tap or scroll controls, enter text, capture screenshots, read runtime logs, hot reload, reproduce UI defects, and run focused smoke or semantics checks.
+- Connect Marionette to the VM service URI printed by the active `flutter run` process. The App already initializes `MarionetteBinding` in debug mode; never enable this instrumentation in profile or release builds.
+- Use Marionette to verify the real runtime behavior after UI or interaction changes when the environment can launch the App. Exercise the smallest relevant journey and inspect logs for exceptions instead of relying only on source inspection.
+- Prefer stable semantics, visible labels, and standard Material interaction surfaces so Marionette can discover and operate controls. When a custom control is not discoverable, improve its Flutter semantics rather than adding test-only coordinate knowledge.
+- Marionette complements but does not replace `flutter analyze`, widget tests, integration tests, or the cross-platform Journey suite. Use the narrowest deterministic automated test seam for regression coverage, and use Marionette for live interaction evidence.
+
+Common Marionette workflow:
+
+1. Start the debug App from `app/` with `flutter run -d macos` or the appropriate desktop device, and retain the printed VM service URI such as `ws://127.0.0.1:8181/ws`.
+2. Prefer the Marionette MCP server: install it with `dart pub global activate marionette_mcp`, register it for Codex with `codex mcp add marionette -- marionette_mcp`, then call `connect` with the VM service URI before using any other Marionette tool.
+3. Begin with `get_interactive_elements` to inspect the current surface. Target actions by `key` first, then Semantics `identifier`, then visible `text`; use coordinates only as a last resort.
+4. Use `tap`, `secondary_tap`, `double_tap`, `long_press`, `enter_text`, `press_key`, `scroll_to`, `swipe`, and `press_back_button` to exercise the journey. Re-run `get_interactive_elements` after navigation or a material state change.
+5. Use `take_screenshots` for visual evidence and `get_logs` to check runtime failures. Use `hot_reload` for ordinary code iteration and `hot_restart` when startup or reset state must be exercised.
+6. Disconnect when the live verification is complete.
+
+When MCP tools are unavailable, use the CLI fallback:
+
+```bash
+dart pub global activate marionette_cli
+marionette help-ai
+marionette --uri ws://127.0.0.1:8181/ws get-interactive-elements
+marionette --uri ws://127.0.0.1:8181/ws tap --text "Settings"
+marionette --uri ws://127.0.0.1:8181/ws take-screenshots --output ./marionette.png
+marionette --uri ws://127.0.0.1:8181/ws get-logs
+```
+
+For repeated CLI interactions, register the URI once with `marionette register skillsgo <uri>`, use `marionette -i skillsgo ...`, verify connectivity with `marionette doctor`, and remove the stale registration with `marionette unregister skillsgo` when finished.
+
+## Workspace Map
+
+| Path | Responsibility |
+| --- | --- |
+| `lib/domain/` | Product concepts and application-facing models. |
+| `lib/infrastructure/` | Bundled CLI adapter, structured process execution, platform integration, and preference persistence. |
+| `lib/ui/` | Screens, Package/Skill navigation, components, design tokens, and interaction state. |
+| `lib/l10n/` | Localization sources and generated localization interfaces. |
+| `test/` | Unit, widget, and adapter contract tests. |
+| `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS, Windows, and Linux Journeys orchestrated by `/e2e/app` against the pinned public CLI and Hub with Journey-isolated schema and filesystem boundaries. |
+| `macos/` | macOS runner, architecture-specific desktop packaging integration, and the build-time bundled CLI bridge. |
+| `windows/` | Windows x64 runner and build-time bundled CLI integration. |
+| `linux/` | Linux x64 runner and build-time bundled CLI integration. |
+| `docs/` | App-specific specifications, plans, and decisions. |
+| `THIRD_PARTY_NOTICES.md` | Licenses and attribution for vendored App UI code. |
+
+## Boundaries
+
+- After a one-shot compatibility handshake, the App invokes every Hub and local business operation through one typed long-lived CLI Server adapter and must not call public Hub APIs directly. It stores one Hub Origin.
+- The CLI owns local installation, update, removal, target detection, `skills.yaml`, `skills-lock.yaml`, Scope Package Stores, and Package Projections.
+- The Hub owns the complete public v1 route surface. Official and self-hosted Origins expose the same routes; community-data availability is expressed by valid responses rather than client-side deployment discovery.
+- Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
+- Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
+- Do not construct shell command strings from user input; pass arguments as a structured list.
+- Keep UI state and visual decisions out of CLI and Hub packages.
+
+## UI Component Policy
+
+- Use Flutter Material 3 primitives as the default foundation for controls, overlays, forms, feedback, semantics, and platform behavior.
+- Use HugeIcons `strokeRounded` icons for every authored App icon. Do not introduce Flutter Material `Icons.*`, Cupertino icons, or another icon family in App UI; preserve Material components while supplying HugeIcons widgets through their icon slots. Prefer a semantic HugeIcons glyph over a merely similar shape, and keep neighboring icon size and stroke weight consistent.
+- Build the application palette through the SkillsGo Design System: Primer-inspired semantic roles over Radix neutral scales, with Material 3 acting as the component adapter and the user seed controlling interaction accents.
+- Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or anchored installation-location selector.
+- Do not introduce a second component theme system. Product-specific colors may remain explicit only when they communicate stable status or brand meaning.
+
+## Theme Policy
+
+- Generate Light and Dark interaction accents from the same user-selected seed with `ColorScheme.fromSeed` and `DynamicSchemeVariant.fidelity`; keep the Folder hierarchy, neutral surfaces, readable foregrounds, and status colors stable through SkillsGo semantic tokens.
+- Support `ThemeMode.system`, `ThemeMode.light`, and `ThemeMode.dark`; default to the system appearance. Persist the preference through `SkillsGateway`, never by reading or writing `SharedPreferences` from UI code.
+- Use semantic `ColorScheme` roles for native Material components and `SkillsColorTokens` for product-specific Folder and spatial roles. A background role must use its matching foreground role.
+- Use `surface` and the tone-based `surfaceContainer*` roles for page backgrounds, large regions, cards, rails, and the Folder shell. Use `primary`, `primaryContainer`, secondary, and tertiary roles only for appropriately emphasized actions, focus, compact selections, and accents.
+- The active Folder body and tab are one foreground object and use `folderBody`; inactive Folder tabs use `folderTabInactive`.
+- Do not hard-code `Colors.white`, `Colors.black`, or a fixed dark page background for ordinary interface content. Explicit colors are allowed only for stable semantic status, source brand identity, raw user color previews, or other meaning that must not change with the theme.
+- Keep discovery cards neutral. Express themed hover state through borders, actions, focus, or restrained accent treatment instead of repainting a large card with an accent container.
+- Theme controls must update immediately, preserve the selected seed, support localization, and remain usable with keyboard and assistive technology.
+- Any new or materially changed UI component must be validated in Light and Dark modes with both low- and high-chroma seeds. Text and icon contrast must use the generated matching semantic roles rather than manual guesses.
+
+## Asynchronous Interaction Policy
+
+- User intent must receive visible feedback in the next rendered frame. Do not wait for Hub, CLI, filesystem, preference, or package operations before opening the requested destination, overlay, or operation surface.
+- Keep the App shell, navigation, dismissal, cancellation, and unrelated actions interactive while work is pending. Disable only controls that would duplicate or invalidate the in-flight operation.
+- Every remote, process, or filesystem-backed surface must implement five explicit states: `initialLoading`, `content`, `refreshing`, `empty`, and `error`. Do not encode loading as `null` when `null` can also mean empty or unavailable.
+- Use geometry-preserving skeletons only for cold loads with no usable content. When usable content already exists, retain it during refresh and expose restrained refresh progress instead of replacing it with a skeleton.
+- Independent data dependencies must render and fail independently. A slow optional dependency must not delay primary content or an interactive surface.
+- Preserve the last valid local Library inventory during Hub failures and the last valid discovery or detail content during refresh failures when its identity remains valid.
+- Long-running mutations may lock their own submit control, but must publish progress and keep safe navigation or cancellation paths available.
+- New journeys that depend on asynchronous data require widget tests proving next-frame feedback, stable content during refresh, explicit empty/error recovery, and accessibility semantics.
+
+## Documentation Routing
+
+- Read `CONTEXT.md` for App vocabulary, boundaries, public contracts, and current risks.
+- Read `docs/adr/AGENTS.md` before changing an App decision record.
+- Read the relevant specification or plan under `docs/` before implementing an approved product flow.
+
+## GEB Maintenance
+
+- Add an F3 Module Map when a stable App directory becomes a meaningful subsystem with multiple semantic members.
+- Add or update the F4 header in semantic Dart files, tests, and hand-maintained semantic configuration when those files are touched.
+- Generated localization files, ARB localization catalogs, generated plugin registrants, lockfiles, fixtures, binary assets, and platform-generated build files are exempt from F4 headers. ARB changes must still regenerate and validate the typed localization interface.
+- Apply migration on touch; do not mechanically rewrite untouched source files only to add headers.
+
+```text
+[INPUT]: External dependencies and assumptions consumed by this file.
+[OUTPUT]: Public behavior, symbols, or side effects provided by this file.
+[POS]: The file's architectural role inside its nearest F3 module.
+[PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+```
+
+[PROTOCOL]: Update this map when workspace structure, ownership, commands, or boundaries change.

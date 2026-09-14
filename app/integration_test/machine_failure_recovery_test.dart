@@ -1,0 +1,87 @@
+/*
+ * [INPUT]: Depends on the rendered App with bounded startup pumping, its bundled CLI, JourneyRuntime process/filesystem isolation, isolated preferences, and an intentionally unreachable Hub origin.
+ * [OUTPUT]: Exports and registers a reusable Journey that verifies a real CLI machine failure becomes App-owned localized recovery without exposing developer diagnostics as product copy.
+ * [POS]: Serves as the black-box App-to-CLI failure-contract journey orchestrated by e2e/app.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skillsgo/main.dart' as skillsgo;
+import 'package:window_manager/window_manager.dart';
+
+import 'support/journey_runtime.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  registerMachineFailureRecoveryJourney();
+}
+
+void registerMachineFailureRecoveryJourney() {
+  testWidgets(
+    'bundled CLI failure renders App-owned recovery',
+    runMachineFailureRecoveryJourney,
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
+}
+
+Future<void> runMachineFailureRecoveryJourney(WidgetTester tester) async {
+  final runtime = await JourneyRuntime.start(
+    'machine_failure_recovery',
+    startHub: false,
+  );
+  final preferences = await SharedPreferences.getInstance();
+  try {
+    await preferences.setBool('onboarding_completed_v1', true);
+    await preferences.setString('hub_origin', 'http://127.0.0.1:1');
+
+    await skillsgo.runSkillsGoApp(
+      initializeBinding: false,
+      gateway: runtime.gateway,
+    );
+    await windowManager.setSize(const Size(1400, 960));
+    await windowManager.center();
+    await tester.pump(const Duration(seconds: 2));
+
+    final search = find.byKey(const Key('skill-search-input'));
+    await _pumpUntil(tester, search, timeout: const Duration(seconds: 30));
+    expect(search, findsOneWidget);
+    await tester.enterText(
+      search,
+      'https://github.com/skillsgo/e2e-versioned-skills',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+
+    await _pumpUntil(
+      tester,
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            (widget.data?.contains('Check your internet connection') == true ||
+                widget.data?.contains('请检查网络连接') == true),
+      ),
+      timeout: const Duration(seconds: 60),
+    );
+    expect(find.textContaining('connection refused'), findsNothing);
+    expect(find.textContaining('dial tcp'), findsNothing);
+  } finally {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await preferences.remove('hub_origin');
+    await runtime.close();
+  }
+}
+
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  Finder finder, {
+  required Duration timeout,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(finder, findsWidgets);
+}

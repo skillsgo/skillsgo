@@ -1,0 +1,1002 @@
+/*
+ * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection visibility and callbacks, clipboard feedback, and scope popovers.
+ * [OUTPUT]: Provides installed Skill rows with descriptions and optional ranked-source identity, aligned 45/90-day evidence cells with per-Agent hover/tap details, low-friction open-source contribution actions and copy feedback, and distinct assistive labels, semantic Package-grouped/descending/ascending sort controls, geometry-preserving selection, Agent summaries, and project-target popovers.
+ * [POS]: Serves as the installed target presentation segment of the unified Library journey.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+part of '../library_screen.dart';
+
+const _usageColumnWidth = 80.0;
+final _skillsGoRepositoryUri = Uri.parse(
+  'https://github.com/skillsgo/skillsgo',
+);
+
+class _InstalledSkillRow extends StatelessWidget {
+  const _InstalledSkillRow({
+    required this.skill,
+    required this.projects,
+    required this.selected,
+    required this.agentLabel,
+    required this.onOpen,
+    required this.onSelectionChanged,
+    this.selectionVisible = true,
+    this.sourceLabel,
+  });
+
+  final InstalledSkill skill;
+  final List<AddedProject> projects;
+  final bool selected;
+  final String Function(String) agentLabel;
+  final VoidCallback onOpen;
+  final ValueChanged<bool> onSelectionChanged;
+  final bool selectionVisible;
+  final String? sourceLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final usageAgents =
+        <String>{
+          ...skill.agents,
+          ...skill.targets.map((target) => target.agent),
+          ...skill.visibility.map((item) => item.agent),
+          ...skill.usageByAgent.keys,
+        }.toList()..sort((left, right) {
+          final byLabel = agentLabel(left).compareTo(agentLabel(right));
+          return byLabel != 0 ? byLabel : left.compareTo(right);
+        });
+    return Semantics(
+      selected: selected,
+      child: AnimatedContainer(
+        key: ValueKey('library-row-${skill.inventoryKey}'),
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          color: selected ? scheme.surfaceContainer : Colors.transparent,
+          border: BorderDirectional(
+            start: BorderSide(
+              color: selected ? scheme.primary : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 10, 8),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: selectionVisible
+                      ? SkillsCheckbox(
+                          key: ValueKey('library-select-${skill.inventoryKey}'),
+                          value: selected,
+                          onChanged: onSelectionChanged,
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        skill.name,
+                        textDirection: contentTextDirection(skill.name),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (skill.description.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          skill.description.trim(),
+                          key: ValueKey(
+                            'library-skill-description-${skill.inventoryKey}',
+                          ),
+                          textDirection: contentTextDirection(
+                            skill.description,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                      if (sourceLabel != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          sourceLabel!,
+                          key: ValueKey(
+                            'library-ranked-source-${skill.inventoryKey}',
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                _UsageCountCell(
+                  key: ValueKey('library-usage-45-${skill.inventoryKey}'),
+                  windowLabel: context.l10n.libraryHits45Days,
+                  value: skill.hits45Days,
+                  state: skill.usageState,
+                  usageAgents: usageAgents,
+                  usageByAgent: skill.usageByAgent,
+                  usageError: skill.usageError,
+                  agentLabel: agentLabel,
+                  is90Days: false,
+                ),
+                _UsageCountCell(
+                  key: ValueKey('library-usage-90-${skill.inventoryKey}'),
+                  windowLabel: context.l10n.libraryHits90Days,
+                  value: skill.hits90Days,
+                  state: skill.usageState,
+                  usageAgents: usageAgents,
+                  usageByAgent: skill.usageByAgent,
+                  usageError: skill.usageError,
+                  agentLabel: agentLabel,
+                  is90Days: true,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _LibraryInstallationScopeSummary(
+                    skill: skill,
+                    projects: projects,
+                    agentLabel: agentLabel,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UsageCountCell extends StatelessWidget {
+  const _UsageCountCell({
+    super.key,
+    required this.windowLabel,
+    required this.value,
+    required this.state,
+    required this.usageAgents,
+    required this.usageByAgent,
+    required this.usageError,
+    required this.agentLabel,
+    required this.is90Days,
+  });
+
+  final String windowLabel;
+  final int value;
+  final SkillUsageState state;
+  final List<String> usageAgents;
+  final Map<String, SkillAgentUsage> usageByAgent;
+  final String usageError;
+  final String Function(String) agentLabel;
+  final bool is90Days;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final child = switch (state) {
+      SkillUsageState.loading => Text(
+        context.l10n.libraryUsageCalculating,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.outline,
+          fontSize: 13,
+        ),
+      ),
+      SkillUsageState.unavailable => Text(
+        '$value',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.outline,
+          fontSize: 13,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+      SkillUsageState.available => Text(
+        '$value',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: value == 0
+              ? Theme.of(context).colorScheme.outline
+              : Theme.of(context).colorScheme.onSurface,
+          fontSize: 13,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    };
+    final evidenceLabel = switch (state) {
+      SkillUsageState.loading => context.l10n.libraryUsageCalculating,
+      SkillUsageState.unavailable => context.l10n.libraryUsageUnavailable,
+      SkillUsageState.available => context.l10n.libraryUsageCount(value),
+    };
+    final cell = SizedBox(
+      width: _usageColumnWidth,
+      child: Center(child: child),
+    );
+    final content = state == SkillUsageState.loading
+        ? cell
+        : JustTooltip(
+            direction: TooltipDirection.bottom,
+            alignment: TooltipAlignment.center,
+            offset: 6,
+            screenMargin: 16,
+            enableTap: true,
+            enableHover: true,
+            interactive: true,
+            waitDuration: const Duration(milliseconds: 80),
+            animation: TooltipAnimation.fade,
+            animationDuration: const Duration(milliseconds: 100),
+            theme: JustTooltipTheme(
+              backgroundColor: context.skillsComponents.controlRest,
+              borderRadius: BorderRadius.circular(10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              borderColor: context.skillsComponents.controlBorder,
+              borderWidth: 1,
+              textStyle: TextStyle(color: scheme.onSurface),
+              elevation: 0,
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: 0.18),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+              showArrow: true,
+              arrowBaseWidth: 12,
+              arrowLength: 6,
+            ),
+            tooltipBuilder: (_) => _UsageEvidenceTooltip(
+              windowLabel: windowLabel,
+              aggregateValue: value,
+              usageAgents: usageAgents,
+              usageByAgent: usageByAgent,
+              usageError: usageError,
+              agentLabel: agentLabel,
+              is90Days: is90Days,
+            ),
+            child: cell,
+          );
+    return Semantics(
+      label: '$windowLabel: $evidenceLabel',
+      excludeSemantics: true,
+      child: content,
+    );
+  }
+}
+
+class _UsageEvidenceTooltip extends StatelessWidget {
+  const _UsageEvidenceTooltip({
+    required this.windowLabel,
+    required this.aggregateValue,
+    required this.usageAgents,
+    required this.usageByAgent,
+    required this.usageError,
+    required this.agentLabel,
+    required this.is90Days,
+  });
+
+  final String windowLabel;
+  final int aggregateValue;
+  final List<String> usageAgents;
+  final Map<String, SkillAgentUsage> usageByAgent;
+  final String usageError;
+  final String Function(String) agentLabel;
+  final bool is90Days;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final unsupportedAgentIds = usageAgents
+        .where((agent) => !usageByAgent.containsKey(agent))
+        .toList(growable: false);
+    final unsupportedAgentLabels = unsupportedAgentIds
+        .map(agentLabel)
+        .join(', ');
+    final unsupportedAgentIdentities = unsupportedAgentIds
+        .map((agent) => '${agentLabel(agent)} ($agent)')
+        .join(', ');
+    final maxWidth = math.min(
+      380.0,
+      math.max(220.0, MediaQuery.sizeOf(context).width - 52),
+    );
+    final titleStyle = TextStyle(
+      color: scheme.onSurfaceVariant,
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+    );
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: 280),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(windowLabel, style: titleStyle),
+            const SizedBox(height: 5),
+            if (usageAgents.isEmpty && usageByAgent.isEmpty)
+              Text(
+                context.l10n.libraryUsageCount(aggregateValue),
+                style: const TextStyle(fontSize: 12),
+              )
+            else
+              for (final agent in usageAgents) ...[
+                _UsageAgentEvidenceRow(
+                  agentId: agent,
+                  displayName: agentLabel(agent),
+                  usage: usageByAgent[agent],
+                  is90Days: is90Days,
+                ),
+                if (agent != usageAgents.last) const SizedBox(height: 6),
+              ],
+            if (unsupportedAgentIds.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Divider(height: 1, color: scheme.outlineVariant),
+              const SizedBox(height: 9),
+              _UsageContributionActions(
+                agentLabels: unsupportedAgentLabels,
+                agentIdentities: unsupportedAgentIdentities,
+              ),
+            ],
+            if (usageError.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Error: ${usageError.trim()}',
+                style: TextStyle(
+                  color: scheme.error,
+                  fontSize: 11,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UsageContributionActions extends StatefulWidget {
+  const _UsageContributionActions({
+    required this.agentLabels,
+    required this.agentIdentities,
+  });
+
+  final String agentLabels;
+  final String agentIdentities;
+
+  @override
+  State<_UsageContributionActions> createState() =>
+      _UsageContributionActionsState();
+}
+
+class _UsageContributionActionsState extends State<_UsageContributionActions> {
+  Timer? _copiedTimer;
+  bool _copied = false;
+
+  @override
+  void dispose() {
+    _copiedTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _copyPrompt() async {
+    _copiedTimer?.cancel();
+    setState(() => _copied = true);
+    await Clipboard.setData(
+      ClipboardData(
+        text: context.l10n.libraryUsageContributionPrompt(
+          widget.agentIdentities,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    _copiedTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const Key('library-usage-contribution-message'),
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.libraryUsageContributionMessage(widget.agentLabels),
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 11,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Wrap(
+            spacing: 2,
+            runSpacing: 2,
+            children: [
+              TextButton.icon(
+                key: const Key('library-usage-copy-contribution-prompt'),
+                onPressed: _copyPrompt,
+                icon: HugeIcon(
+                  icon: _copied
+                      ? HugeIcons.strokeRoundedCheckmarkCircle02
+                      : HugeIcons.strokeRoundedCopy01,
+                  size: 14,
+                ),
+                label: Text(
+                  _copied
+                      ? context.l10n.libraryUsageContributionPromptCopied
+                      : context.l10n.libraryUsageCopyContributionPrompt,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ),
+              TextButton.icon(
+                key: const Key('library-usage-open-contribution-repository'),
+                onPressed: () => launchUrl(
+                  _skillsGoRepositoryUri,
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedGithub,
+                  size: 14,
+                ),
+                label: Text(
+                  context.l10n.libraryUsageOpenRepository,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageAgentEvidenceRow extends StatelessWidget {
+  const _UsageAgentEvidenceRow({
+    required this.agentId,
+    required this.displayName,
+    required this.usage,
+    required this.is90Days,
+  });
+
+  final String agentId;
+  final String displayName;
+  final SkillAgentUsage? usage;
+  final bool is90Days;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final supportedUsage = usage;
+    final value = supportedUsage == null
+        ? context.l10n.libraryUsageNotSupported
+        : '${is90Days ? supportedUsage.hits90Days : supportedUsage.hits45Days}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AgentLogo(agentId: agentId, displayName: displayName, size: 18),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                '$displayName: $value',
+                style: const TextStyle(fontSize: 12, height: 1.3),
+              ),
+            ),
+            if (usage?.hasError ?? false)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(Icons.error_outline, size: 14, color: scheme.error),
+              ),
+          ],
+        ),
+        if (usage?.hasError ?? false)
+          Padding(
+            padding: const EdgeInsets.only(left: 25, top: 2),
+            child: Text(
+              'Error: ${usage!.error.trim()}',
+              style: TextStyle(color: scheme.error, fontSize: 11, height: 1.3),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _InstalledSkillColumnHeader extends StatelessWidget {
+  const _InstalledSkillColumnHeader({
+    required this.usageSort,
+    required this.usageSortDescending,
+    required this.onUsageSortChanged,
+  });
+
+  final _LibraryUsageSort usageSort;
+  final bool usageSortDescending;
+  final ValueChanged<_LibraryUsageSort> onUsageSortChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+    );
+    return Padding(
+      key: const Key('library-inventory-column-header'),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 10, 5),
+      child: Row(
+        children: [
+          const SizedBox(width: 44),
+          const SizedBox(width: 8),
+          Expanded(child: Text(context.l10n.librarySkillColumn, style: style)),
+          const SizedBox(width: 16),
+          _UsageSortHeader(
+            label: context.l10n.libraryHits45Days,
+            sort: _LibraryUsageSort.hits45Days,
+            active: usageSort == _LibraryUsageSort.hits45Days,
+            descending: usageSortDescending,
+            onPressed: onUsageSortChanged,
+          ),
+          _UsageSortHeader(
+            label: context.l10n.libraryHits90Days,
+            sort: _LibraryUsageSort.hits90Days,
+            active: usageSort == _LibraryUsageSort.hits90Days,
+            descending: usageSortDescending,
+            onPressed: onUsageSortChanged,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              context.l10n.libraryInstallationColumn,
+              textAlign: TextAlign.end,
+              style: style,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageSortHeader extends StatelessWidget {
+  const _UsageSortHeader({
+    required this.label,
+    required this.sort,
+    required this.active,
+    required this.descending,
+    required this.onPressed,
+  });
+
+  final String label;
+  final _LibraryUsageSort sort;
+  final bool active;
+  final bool descending;
+  final ValueChanged<_LibraryUsageSort> onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final stateLabel = !active
+        ? context.l10n.librarySortPackageGrouped
+        : descending
+        ? context.l10n.librarySortDescending
+        : context.l10n.librarySortAscending;
+    return Semantics(
+      label: label,
+      value: stateLabel,
+      button: true,
+      sortKey: OrdinalSortKey(sort == _LibraryUsageSort.hits45Days ? 2 : 3),
+      excludeSemantics: true,
+      child: SizedBox(
+        width: _usageColumnWidth,
+        child: TextButton(
+          key: ValueKey('library-sort-${sort.name}'),
+          onPressed: () => onPressed(sort),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(_usageColumnWidth, 28),
+            visualDensity: VisualDensity.compact,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11)),
+              const SizedBox(width: 2),
+              HugeIcon(
+                key: ValueKey('library-sort-icon-${sort.name}'),
+                icon: !active
+                    ? HugeIcons.strokeRoundedSorting01
+                    : descending
+                    ? HugeIcons.strokeRoundedArrowDown01
+                    : HugeIcons.strokeRoundedArrowUp01,
+                color: active
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outline,
+                size: 11,
+                strokeWidth: 1.8,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryInstallationScopeSummary extends StatelessWidget {
+  const _LibraryInstallationScopeSummary({
+    required this.skill,
+    required this.projects,
+    required this.agentLabel,
+  });
+
+  final InstalledSkill skill;
+  final List<AddedProject> projects;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _installationScopeGroups(skill, projects);
+    if (groups.isEmpty) return const SizedBox.shrink();
+    return Semantics(
+      label: groups.map((group) => group.semanticLabel(agentLabel)).join(', '),
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 18,
+        child: _InstallationScopeLine(
+          inventoryKey: skill.inventoryKey,
+          groups: groups,
+          agentLabel: agentLabel,
+        ),
+      ),
+    );
+  }
+}
+
+class _InstallationScopeLine extends StatelessWidget {
+  const _InstallationScopeLine({
+    required this.inventoryKey,
+    required this.groups,
+    required this.agentLabel,
+  });
+
+  final String inventoryKey;
+  final List<_InstallationScopeGroup> groups;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final visible = groups.take(2).toList(growable: false);
+    final hidden = groups.length - visible.length;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        for (var index = 0; index < visible.length; index++) ...[
+          if (index > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: scheme.outlineVariant,
+              ),
+            ),
+          Flexible(
+            child: _InstallationScopeSegment(
+              inventoryKey: inventoryKey,
+              group: visible[index],
+              agentLabel: agentLabel,
+            ),
+          ),
+        ],
+        if (hidden > 0) ...[
+          const SizedBox(width: 7),
+          Text(
+            '+$hidden',
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InstallationScopeSegment extends StatelessWidget {
+  const _InstallationScopeSegment({
+    required this.inventoryKey,
+    required this.group,
+    required this.agentLabel,
+  });
+
+  final String inventoryKey;
+  final _InstallationScopeGroup group;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final project = group.project;
+    final segment = KeyedSubtree(
+      key: ValueKey(
+        project == null
+            ? 'library-scope-global-agents-$inventoryKey'
+            : 'library-scope-project-agents-${project.id}',
+      ),
+      child: _ScopeAgentRow(agents: group.agents, agentLabel: agentLabel),
+    );
+    if (project == null) return segment;
+    return _ProjectScopePopover(
+      project: project,
+      agents: group.agents,
+      agentLabel: agentLabel,
+      child: segment,
+    );
+  }
+}
+
+class _ScopeAgentRow extends StatelessWidget {
+  const _ScopeAgentRow({required this.agents, required this.agentLabel});
+
+  final List<String> agents;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 18.0;
+    const gap = 5.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final visibleCount = constraints.maxWidth.isFinite
+            ? math.max(
+                1,
+                math.min(
+                  agents.length,
+                  ((constraints.maxWidth - 30 + gap) / (size + gap)).floor(),
+                ),
+              )
+            : agents.length;
+        final hiddenCount = agents.length - visibleCount;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < visibleCount; index++) ...[
+              if (index > 0) const SizedBox(width: gap),
+              Tooltip(
+                message: agentLabel(agents[index]),
+                child: AgentLogo(
+                  agentId: agents[index],
+                  displayName: agentLabel(agents[index]),
+                  size: size,
+                ),
+              ),
+            ],
+            if (hiddenCount > 0) ...[
+              const SizedBox(width: 7),
+              Text(
+                '+$hiddenCount',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ProjectScopePopover extends StatelessWidget {
+  const _ProjectScopePopover({
+    required this.project,
+    required this.agents,
+    required this.agentLabel,
+    required this.child,
+  });
+
+  final AddedProject project;
+  final List<String> agents;
+  final String Function(String) agentLabel;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return JustTooltip(
+      direction: TooltipDirection.bottom,
+      alignment: TooltipAlignment.endTargetCenter,
+      offset: 6,
+      screenMargin: 16,
+      enableTap: false,
+      enableHover: true,
+      interactive: true,
+      waitDuration: const Duration(milliseconds: 80),
+      animation: TooltipAnimation.fade,
+      animationDuration: const Duration(milliseconds: 100),
+      theme: JustTooltipTheme(
+        backgroundColor: context.skillsComponents.controlRest,
+        borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        borderColor: context.skillsComponents.controlBorder,
+        borderWidth: 1,
+        textStyle: TextStyle(color: scheme.onSurface),
+        elevation: 0,
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        showArrow: true,
+        arrowBaseWidth: 12,
+        arrowLength: 6,
+      ),
+      tooltipBuilder: (_) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: math.min(380, MediaQuery.sizeOf(context).width - 52),
+          maxHeight: 280,
+        ),
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.pathLabel,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              _CopyableProjectPath(project: project),
+              const SizedBox(height: 8),
+              Text(
+                context.l10n.agents,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final agent in agents)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AgentLogo(
+                        agentId: agent,
+                        displayName: agentLabel(agent),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        agentLabel(agent),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _CopyableProjectPath extends StatefulWidget {
+  const _CopyableProjectPath({required this.project});
+
+  final AddedProject project;
+
+  @override
+  State<_CopyableProjectPath> createState() => _CopyableProjectPathState();
+}
+
+class _CopyableProjectPathState extends State<_CopyableProjectPath> {
+  Timer? _feedbackTimer;
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    _feedbackTimer?.cancel();
+    setState(() => _copied = true);
+    _feedbackTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _copied = false);
+    });
+    await Clipboard.setData(ClipboardData(text: widget.project.path));
+  }
+
+  @override
+  void dispose() {
+    _feedbackTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            widget.project.path,
+            textDirection: TextDirection.ltr,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 5),
+        IconButton(
+          key: ValueKey(
+            _copied
+                ? 'copy-project-path-copied-${widget.project.id}'
+                : 'copy-project-path-${widget.project.id}',
+          ),
+          tooltip: _copied
+              ? context.l10n.projectPathCopied
+              : context.l10n.copyProjectPath,
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+          padding: EdgeInsets.zero,
+          onPressed: _copy,
+          icon: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 140),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeOut,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            ),
+            child: HugeIcon(
+              key: ValueKey(_copied),
+              icon: _copied
+                  ? HugeIcons.strokeRoundedCopyCheck
+                  : HugeIcons.strokeRoundedCopy01,
+              size: 15,
+              strokeWidth: 1.7,
+              color: _copied ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

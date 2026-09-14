@@ -1,0 +1,353 @@
+/*
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies Library selection, inline-confirmed multi-Skill removal without modal or decorative-animation stalls, and modified-target safety behavior.
+ * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:skillsgo/app.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/ui/native_components.dart';
+
+import 'support/fake_skills_gateway.dart';
+
+void main() {
+  testWidgets('Library select-all follows the current filtered results', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    InstalledSkill entry(String name) => InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills:$name',
+      name: name,
+      packagePath: 'github.com/example/skills',
+      path: '/Users/test/.codex/skills/$name',
+      agents: const ['codex'],
+      targetCount: 1,
+      versions: const ['v1'],
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.global,
+          path: '/Users/test/.codex/skills/$name',
+          version: 'v1',
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          libraryEntries: [entry('alpha'), entry('demo')],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    const selectAllKey = Key('library-select-visible');
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isFalse,
+    );
+    expect(
+      tester.getCenter(find.byKey(selectAllKey)).dy,
+      closeTo(
+        tester.getCenter(find.byKey(const Key('search-visual-icon'))).dy + 2,
+        1,
+      ),
+    );
+    expect(
+      tester.getCenter(find.byKey(selectAllKey)).dx,
+      closeTo(
+        tester
+            .getCenter(
+              find.byKey(
+                const ValueKey(
+                  'library-select-hub:github.com/example/skills:demo',
+                ),
+              ),
+            )
+            .dx,
+        1,
+      ),
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills:demo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).indeterminate,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(selectAllKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isTrue,
+    );
+    expect(find.text('2 selected'), findsOneWidget);
+
+    final search = find.descendant(
+      of: find.byKey(const Key('library-search')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(search, 'demo');
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isFalse,
+    );
+    expect(find.byKey(const Key('library-selection-bar')), findsNothing);
+
+    await tester.tap(find.byKey(selectAllKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isTrue,
+    );
+    expect(find.text('1 selected'), findsOneWidget);
+  });
+
+  testWidgets('Remove confirms all selected Skills inline', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          inventoryKey: 'external:/Users/test/.codex/skills/demo',
+          name: 'demo',
+          packagePath: 'github.com/example/skills',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          versions: [],
+          provenance: LibraryProvenance.external,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/Users/test/.codex/skills/demo',
+              version: '',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/work/demo',
+              path: '/work/demo/.claude/skills/demo',
+              version: '',
+            ),
+          ],
+        ),
+        InstalledSkill(
+          inventoryKey: 'external:/Users/test/.codex/skills/tools',
+          name: 'tools',
+          packagePath: 'github.com/example/tools',
+          path: '/Users/test/.codex/skills/tools',
+          agents: ['codex'],
+          targetCount: 1,
+          versions: [],
+          provenance: LibraryProvenance.external,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/Users/test/.codex/skills/tools',
+              version: '',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/demo',
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/tools',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('library-selection-bar')), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-selection-bar'))).dx,
+      closeTo(700, 1),
+    );
+    expect(find.text('Remove'), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,
+      closeTo(tester.getCenter(find.text('Remove')).dy, .5),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.text('Remove'), findsOneWidget);
+    expect(find.text('Remove now'), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Remove')).dy,
+      lessThan(tester.getCenter(find.text('Remove now')).dy),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+    expect(find.byKey(const Key('remove-targets-dialog')), findsNothing);
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.byKey(const Key('library-update-selected')), findsNothing);
+    expect(find.byKey(const Key('library-confirm-remove')), findsOneWidget);
+    expect(
+      tester.getCenter(find.byKey(const Key('library-remove-icon'))).dy,
+      closeTo(tester.getCenter(find.text('Remove now')).dy, .5),
+    );
+    await tester.tap(find.byKey(const Key('library-clear-selection')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('library-selection-bar')), findsNothing);
+    expect(gateway.managementTargetHistory, isEmpty);
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/demo',
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/tools',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
+    await tester.pumpAndSettle();
+
+    expect(gateway.managementTargetHistory, hasLength(1));
+    expect(gateway.managementTargetHistory.single, hasLength(2));
+    expect(
+      gateway.managementTargetHistory.single.values,
+      everyElement(TargetManagementAction.remove),
+    );
+    final remainingEntries = gateway.libraryEntries!;
+    expect(remainingEntries, hasLength(1));
+    expect(remainingEntries.single.name, 'demo');
+    expect(remainingEntries.single.targets, hasLength(1));
+    expect(
+      remainingEntries.single.targets.single.scope,
+      InstallationScope.project,
+    );
+  });
+
+  testWidgets('unhealthy targets offer no automatic mutation', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          inventoryKey: 'hub:github.com/example/skills:demo',
+          name: 'demo',
+          packagePath: 'github.com/example/skills',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          versions: ['v1'],
+          health: InstallationHealth.localModification,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/Users/test/.codex/skills/demo',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/work/demo',
+              path: '/work/demo/.claude/skills/demo',
+              version: 'v1',
+              health: InstallationHealth.localModification,
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills:demo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Repair'), findsNothing);
+    expect(find.byType(SkillsDialog), findsNothing);
+  });
+
+  testWidgets('modified managed targets are never overwritten automatically', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          inventoryKey: 'hub:github.com/example/skills:demo',
+          name: 'demo',
+          packagePath: 'github.com/example/skills',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex'],
+          targetCount: 1,
+          versions: ['v1'],
+          health: InstallationHealth.localModification,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/Users/test/.codex/skills/demo',
+              version: 'v1',
+              health: InstallationHealth.localModification,
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills:demo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-remove-selected')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-confirm-remove')));
+    await tester.pumpAndSettle();
+    expect(find.text('Repair'), findsNothing);
+    expect(gateway.managementTargetHistory, isEmpty);
+    expect(
+      gateway.libraryEntries!.single.targets.single.health,
+      InstallationHealth.localModification,
+    );
+  });
+}

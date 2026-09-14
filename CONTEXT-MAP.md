@@ -8,6 +8,7 @@ This file is the semantic context index. Structural routing is defined by the ro
 
 - [CLI](cli/CONTEXT.md) — owns local Skill execution, storage, Agent adaptation, installation targets, and project reproducibility.
 - [Hub](hub/CONTEXT.md) — resolves public Skill sources into immutable artifacts and serves search, ranking, metadata, download, and install-event APIs.
+- [App](app/CONTEXT.md) — presents public discovery and local Skill management through the bundled CLI.
 
 ## Relationships
 

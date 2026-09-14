@@ -1,0 +1,910 @@
+/*
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, the controllable SkillsGateway test double, and a fake native App updater.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, App updates, reminders, Agent, the single Hub Origin, risk-policy, local Library refresh, mutation-safe live diagnostic-log viewing, and official Mermaid.js gallery behavior.
+ * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:skillsgo/app.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/infrastructure/app_updater.dart';
+import 'package:skillsgo/ui/agent_logo.dart';
+import 'package:skillsgo/ui/nested_navigation.dart';
+import 'package:skillsgo/ui/mermaid_webview_diagram.dart';
+import 'package:skillsgo/ui/native_components.dart';
+import 'package:skillsgo/ui/settings_screen.dart';
+
+import 'support/fake_skills_gateway.dart';
+import 'support/widget_test_helpers.dart';
+
+void main() {
+  testWidgets('Advanced Settings checks and applies an App update', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final updater = _FakeAppUpdater();
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+        appUpdateChannel: 'osx-arm64',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('https://releases.example.com/app/osx-arm64/'),
+      findsOneWidget,
+    );
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    await tester.tap(check);
+    await tester.pumpAndSettle();
+
+    expect(updater.checkedRequests, [
+      (
+        source: Uri.parse('https://releases.example.com/app/osx-arm64/'),
+        channel: 'osx-arm64',
+      ),
+    ]);
+    expect(find.text('SkillsGo 0.0.2 is available.'), findsOneWidget);
+    final apply = find.byKey(const Key('apply-app-update'));
+    expect(apply, findsOneWidget);
+    await tester.ensureVisible(apply);
+    await tester.pumpAndSettle();
+    await tester.tap(apply);
+    await tester.pump();
+    expect(find.textContaining('Downloading the update'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(updater.appliedRequests, updater.checkedRequests);
+  });
+
+  testWidgets('App checks for updates on a timer without overlapping checks', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final updater = _FakeAppUpdater(checkDelay: const Duration(seconds: 2));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+        appUpdateChannel: 'osx-arm64',
+        appUpdateInitialDelay: const Duration(seconds: 1),
+        appUpdateCheckInterval: const Duration(seconds: 3),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(updater.checkedRequests, hasLength(1));
+    await tester.pump(const Duration(seconds: 2));
+    expect(updater.checkedRequests, hasLength(1));
+    await tester.pump(const Duration(seconds: 3));
+    expect(updater.checkedRequests, hasLength(2));
+    expect(
+      updater.checkedRequests,
+      everyElement((
+        source: Uri.parse('https://releases.example.com/app/osx-arm64/'),
+        channel: 'osx-arm64',
+      )),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('resume does not overlap an automatic App update check', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final pendingCheck = Completer<AppUpdateCheck>();
+    final updater = _FakeAppUpdater(pendingCheck: pendingCheck);
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+        appUpdateChannel: 'osx-arm64',
+        appUpdateInitialDelay: const Duration(seconds: 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    expect(updater.checkedRequests, hasLength(1));
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(updater.checkedRequests, hasLength(1));
+
+    pendingCheck.complete(
+      const AppUpdateCheck(currentVersion: '0.0.1', availableVersion: null),
+    );
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'automatic App update failures stay silent and remain retryable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      final updater = _FakeAppUpdater(checkError: Exception('offline'));
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(),
+          appUpdater: updater,
+          appUpdateSource: Uri.parse(
+            'https://releases.example.com/app/osx-arm64/',
+          ),
+          appUpdateChannel: 'osx-arm64',
+          appUpdateInitialDelay: const Duration(seconds: 1),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('primary-destination-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('unable to check'), findsNothing);
+      expect(find.textContaining('Check when you’re ready'), findsOneWidget);
+      expect(
+        tester
+            .widget<SkillsButton>(find.byKey(const Key('check-app-update')))
+            .enabled,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets('Advanced Settings disables App updates without a feed', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    expect(
+      find.text('App updates are unavailable in this build.'),
+      findsOneWidget,
+    );
+    expect(tester.widget<SkillsButton>(check).enabled, isFalse);
+  });
+
+  testWidgets('App update controls recover when no update is applied', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final updater = _FakeAppUpdater(applyResult: false);
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(),
+        appUpdater: updater,
+        appUpdateSource: Uri.parse(
+          'https://releases.example.com/app/osx-arm64/',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final check = find.byKey(const Key('check-app-update'));
+    await tester.ensureVisible(check);
+    await tester.tap(check);
+    await tester.pumpAndSettle();
+    final apply = find.byKey(const Key('apply-app-update'));
+    await tester.ensureVisible(apply);
+    await tester.pumpAndSettle();
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+
+    expect(find.text('SkillsGo 0.0.2 is available.'), findsOneWidget);
+    expect(tester.widget<SkillsButton>(check).enabled, isTrue);
+    expect(tester.widget<SkillsButton>(apply).enabled, isTrue);
+  });
+
+  testWidgets('Advanced Settings shows and filters live readable logs', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 820));
+    final gateway = FakeSkillsGateway();
+    gateway.emitDiagnosticLog(
+      DiagnosticLogEntry(
+        time: DateTime(2026, 7, 28, 11, 30),
+        level: DiagnosticLogLevel.info,
+        category: 'app.lifecycle',
+        event: 'launch_ready',
+        formatted: '2026-07-28 11:30:00.000 INFO  [app.lifecycle] launch_ready',
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    final liveButton = find.byKey(const Key('view-live-diagnostic-logs'));
+    await tester.ensureVisible(liveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(liveButton);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('launch_ready'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('diagnostic-log-list')),
+        matching: find.byType(SelectionArea),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('diagnostic-log-list')),
+        matching: find.byType(SelectableText),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('pause-diagnostic-logs')));
+    gateway.emitDiagnosticLog(
+      DiagnosticLogEntry(
+        time: DateTime(2026, 7, 28, 11, 31),
+        level: DiagnosticLogLevel.error,
+        category: 'gateway.cli',
+        event: 'invocation_failed',
+        formatted:
+            '2026-07-28 11:31:00.000 ERROR [gateway.cli] '
+            'invocation_failed | fatal',
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('invocation_failed'), findsOneWidget);
+    expect(find.text('Resume'), findsOneWidget);
+    final visibleLogs = tester
+        .widgetList<SelectableText>(
+          find.descendant(
+            of: find.byKey(const Key('diagnostic-log-list')),
+            matching: find.byType(SelectableText),
+          ),
+        )
+        .map((text) => text.data ?? '')
+        .toList();
+    expect(visibleLogs.first, contains('invocation_failed'));
+
+    await tester.enterText(
+      find.byKey(const Key('diagnostic-log-search')),
+      'fatal',
+    );
+    await tester.pump();
+    expect(find.textContaining('launch_ready'), findsNothing);
+    expect(find.textContaining('invocation_failed'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('clear-diagnostic-log-viewer')));
+    await tester.pump();
+    expect(find.text('No matching logs yet.'), findsOneWidget);
+  });
+
+  testWidgets('leaderboard tabs change selection without moving layout', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    final indicator = find.byKey(const Key('discover-tab-indicator'));
+    final hotIndicatorX = tester.getTopLeft(indicator).dx;
+    final rankingX = tester
+        .getTopLeft(find.byKey(const ValueKey('discover-tab-ranking')))
+        .dx;
+    await tester.tap(find.text('Ranking'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    final movingIndicatorX = tester.getTopLeft(indicator).dx;
+    expect(movingIndicatorX, lessThan(hotIndicatorX));
+    expect(movingIndicatorX, greaterThan(rankingX));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(indicator).dx, closeTo(rankingX, 0.01));
+    expect(isSemanticallySelected(tester, 'Ranking'), isTrue);
+    expect(find.text('It’s nice to know a little more.'), findsNothing);
+    expect(find.byKey(const Key('discovery-options-mode')), findsOneWidget);
+  });
+
+  testWidgets('keyboard focus can activate the first leaderboard tab', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(isSemanticallySelected(tester, 'Ranking'), isTrue);
+  });
+
+  testWidgets('Settings shows a missing CLI and accepts a custom path', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(cliReady: false);
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MISSING'), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('cli-path')),
+        matching: find.byType(EditableText),
+      ),
+      '/custom/skills',
+    );
+    await tester.ensureVisible(find.text('Save & detect'));
+    await tester.tap(find.text('Save & detect'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.savedPath, '/custom/skills');
+  });
+
+  testWidgets('Settings secondary body enters with a short depth motion', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Reminders'));
+    await tester.pump();
+
+    final body = find.byKey(const Key('skills-destination-body'));
+    final fade = tester.widget<FadeTransition>(body);
+    final slide = fade.child! as SlideTransition;
+    final scale = slide.child! as ScaleTransition;
+    expect(find.byKey(const Key('update-reminder-label')), findsOneWidget);
+    expect(fade.opacity.value, closeTo(.86, .001));
+    expect(slide.position.value.dy, closeTo(.012, .001));
+    expect(scale.scale.value, closeTo(.985, .001));
+
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(fade.opacity.value, inExclusiveRange(.86, 1));
+    expect(scale.scale.value, inExclusiveRange(.985, 1));
+
+    await tester.pumpAndSettle();
+    expect(fade.opacity.value, 1);
+    expect(slide.position.value, Offset.zero);
+    expect(scale.scale.value, 1);
+  });
+
+  testWidgets('Settings keeps infrequent controls behind one advanced route', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Theme'), findsOneWidget);
+    final settingsRail = find.byWidgetPredicate(
+      (widget) => widget is SkillsSideRail,
+      description: 'settings side rail',
+    );
+    expect(
+      find.descendant(of: settingsRail, matching: find.byType(HugeIcon)),
+      findsNWidgets(5),
+    );
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reminder settings'), findsNothing);
+    expect(find.text('Choose which reminders to receive.'), findsNothing);
+    final updateReminderLabel = tester.widget<Text>(
+      find.byKey(const Key('update-reminder-label')),
+    );
+    final securityReminderLabel = tester.widget<Text>(
+      find.byKey(const Key('security-reminder-label')),
+    );
+    expect(
+      updateReminderLabel.textSpan!.toPlainText(),
+      'Update reminders  Check for updates when Library opens.',
+    );
+    expect(
+      securityReminderLabel.textSpan!.toPlainText(),
+      'High-risk alerts  Notify you of new High or Critical risks in installed skills.',
+    );
+    expect(updateReminderLabel.maxLines, 1);
+    expect(securityReminderLabel.maxLines, 1);
+    expect(find.byKey(const Key('update-reminder')), findsOneWidget);
+    expect(find.byKey(const Key('security-reminder')), findsOneWidget);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hub Origin'), findsOneWidget);
+    expect(find.text('Personal risk policy'), findsOneWidget);
+    expect(find.text('Theme'), findsNothing);
+    expect(find.text('Storage'), findsNothing);
+    expect(find.text('Color Scheme'), findsNothing);
+    expect(find.text('About'), findsNothing);
+  });
+
+  testWidgets('Managed backups lists and restores an original install', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 820));
+    final gateway = FakeSkillsGateway(
+      adoptionBackups: [
+        AdoptionBackup(
+          id: 'backup-1',
+          name: 'action-demo',
+          packagePath: 'github.com/test/skills',
+          version: 'v1.2.3',
+          skillPath: 'skills/action-demo',
+          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          expiresAt: DateTime.now().add(const Duration(days: 10)),
+          status: 'ready',
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    final settingsRail = find.byWidgetPredicate(
+      (widget) => widget is SkillsSideRail,
+      description: 'settings side rail',
+    );
+    await tester.tap(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp(r'Backups, .*recoverable backup')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('managed-backup-backup-1')), findsOneWidget);
+    expect(find.text('action-demo'), findsOneWidget);
+    expect(
+      find.textContaining('github.com/test/skills@v1.2.3'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('managed-backups-count')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('managed-backup-restore-backup-1')));
+    await tester.pumpAndSettle();
+    expect(find.text('Restore original install?'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const Key('managed-backup-restore-confirm-backup-1')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(gateway.adoptionBackups, isEmpty);
+    expect(find.byKey(const Key('managed-backups-empty')), findsOneWidget);
+    expect(
+      find.descendant(of: settingsRail, matching: find.text('Backups')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: settingsRail,
+        matching: find.bySemanticsLabel(
+          RegExp(r'Backups, .*recoverable backup'),
+        ),
+      ),
+      findsNothing,
+    );
+    expect(find.text('Original install restored.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Advanced Settings can restart Onboarding without clearing data',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway();
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('primary-destination-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      final restartOnboarding = find.byKey(const Key('restart-onboarding'));
+      await tester.ensureVisible(restartOnboarding);
+      await tester.pumpAndSettle();
+      await tester.tap(restartOnboarding);
+      await tester.pumpAndSettle();
+
+      expect(gateway.onboardingResets, 1);
+      expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Advanced Settings ends with the Mermaid gallery entry', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1200));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final refresh = find.byKey(const Key('refresh-local-library'));
+    final restart = find.byKey(const Key('restart-onboarding'));
+    final mermaid = find.byKey(const Key('open-mermaid-gallery'));
+    expect(refresh, findsOneWidget);
+    expect(mermaid, findsOneWidget);
+    expect(
+      tester.getTopLeft(refresh).dy,
+      greaterThan(tester.getTopLeft(restart).dy),
+    );
+    expect(
+      tester.getTopLeft(mermaid).dy,
+      greaterThan(tester.getTopLeft(refresh).dy),
+    );
+    final projectLoads = gateway.projectLoads;
+    final agentInspections = gateway.agentInspections;
+
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    expect(gateway.projectLoads, projectLoads + 1);
+    expect(gateway.agentInspections, agentInspections + 1);
+    expect(find.text('Local Library refreshed.'), findsOneWidget);
+  });
+
+  testWidgets('reminder settings persist without a Library update banner', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      reminderSettings: const ReminderSettings(),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('library-update-reminder')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('update-reminder')));
+    await tester.pumpAndSettle();
+    expect(gateway.reminderSettings.updateAvailable, isFalse);
+  });
+
+  testWidgets('Agents settings separates detected and supported Agents', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final gateway = FakeSkillsGateway(
+      agentStatuses: const [
+        AgentStatus(
+          id: 'codex',
+          displayName: 'Codex',
+          installed: true,
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
+            path: '/Users/test/.codex/skills',
+            exists: true,
+          ),
+          discoveryRoots: [
+            '/Users/test/.codex/skills',
+            '/Users/test/.agents/skills',
+          ],
+        ),
+        AgentStatus(
+          id: 'cursor',
+          displayName: 'Cursor',
+          installed: false,
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
+            path: '/Users/test/.cursor/skills',
+            exists: false,
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Codex'), findsOneWidget);
+    expect(find.text('Cursor'), findsOneWidget);
+    expect(find.text('Installed · 1'), findsOneWidget);
+    expect(find.text('Not installed · 1'), findsOneWidget);
+    expect(find.byKey(const Key('installed-agents-group')), findsOneWidget);
+    expect(find.byKey(const Key('not-installed-agents-group')), findsOneWidget);
+    expect(find.byType(AgentLogo), findsNWidgets(2));
+    expect(find.textContaining('/Users/test/.codex/skills'), findsOneWidget);
+    expect(find.textContaining('/Users/test/.agents/skills'), findsOneWidget);
+  });
+
+  testWidgets('Agent inspection failure keeps detection retry actionable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      agentInspectionError: const SkillsException('malformed agents'),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Agent detection data is unavailable. Run detection again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Detect again'), findsOneWidget);
+    final inspectionsBeforeRetry = gateway.agentInspections;
+    await tester.tap(find.text('Detect again'));
+    await tester.pumpAndSettle();
+    expect(gateway.agentInspections, inspectionsBeforeRetry + 1);
+  });
+
+  testWidgets('Agents exposes CLI recovery when the runtime is missing', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(gateway: FakeSkillsGateway(cliReady: false)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MISSING'), findsOneWidget);
+    expect(find.text('INCOMPATIBLE'), findsNothing);
+    expect(
+      find.textContaining('required SkillsGo component is missing'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('Hub Origin can be tested, saved, and reset immediately', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin')),
+        matching: find.byType(EditableText),
+      ),
+      'https://self-hosted.example',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Test connection'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Connection ready'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Save Origin'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(gateway.hubOrigin, 'https://self-hosted.example');
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Reset to default'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
+  });
+
+  testWidgets('a Hub Origin is not saved when its protocol test fails', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(hubTestState: HealthState.invalid);
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin')),
+        matching: find.byType(EditableText),
+      ),
+      'https://incompatible.example',
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('hub-origin-settings')),
+        matching: find.text('Save Origin'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('did not return the SkillsGo Hub'),
+      findsOneWidget,
+    );
+    expect(gateway.hubOrigin, 'https://hub.skillsgo.ai');
+  });
+
+  testWidgets(
+    'Critical-risk override persists while High confirmation stays required',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway();
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Require confirmation for High risk'), findsOneWidget);
+      final criticalOverride = find.byKey(const Key('critical-risk-override'));
+      await tester.ensureVisible(criticalOverride);
+      await tester.pumpAndSettle();
+      await tester.tap(criticalOverride);
+      await tester.pumpAndSettle();
+
+      expect(gateway.riskPolicy.confirmHighRisk, isTrue);
+      expect(gateway.riskPolicy.allowCriticalOverride, isTrue);
+    },
+  );
+
+  test('Mermaid gallery samples cover all type families', () {
+    expect(mermaidGallerySamples, hasLength(32));
+    for (final sample in mermaidGallerySamples) {
+      for (final source in sample.sources) {
+        expect(
+          source,
+          isNotEmpty,
+          reason: '${sample.title} should have source',
+        );
+      }
+    }
+  });
+
+  testWidgets('Advanced Settings opens the Mermaid.js WebView gallery', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final entry = find.byKey(const Key('open-mermaid-gallery'));
+    expect(entry, findsOneWidget);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -700));
+    await tester.pumpAndSettle();
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('mermaid-gallery-title')), findsOneWidget);
+    expect(find.text('Mermaid.js WebView · 32'), findsOneWidget);
+    expect(find.byKey(const Key('mermaid-js-webview-gallery')), findsOneWidget);
+    expect(find.byType(MermaidWebViewDiagram), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('close-mermaid-gallery')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('open-mermaid-gallery')), findsOneWidget);
+  });
+}
+
+final class _FakeAppUpdater implements AppUpdater {
+  _FakeAppUpdater({
+    this.applyResult = true,
+    this.checkDelay = Duration.zero,
+    this.pendingCheck,
+    this.checkError,
+  });
+
+  final bool applyResult;
+  final Duration checkDelay;
+  final Completer<AppUpdateCheck>? pendingCheck;
+  final Object? checkError;
+  final checkedRequests = <({Uri source, String? channel})>[];
+  final appliedRequests = <({Uri source, String? channel})>[];
+
+  @override
+  Future<void> initializeRuntime() async {}
+
+  @override
+  Future<AppUpdateCheck> checkForUpdate(Uri source, {String? channel}) async {
+    checkedRequests.add((source: source, channel: channel));
+    if (pendingCheck != null) return pendingCheck!.future;
+    await Future<void>.delayed(checkDelay);
+    if (checkError != null) throw checkError!;
+    return const AppUpdateCheck(
+      currentVersion: '0.0.1',
+      availableVersion: '0.0.2',
+    );
+  }
+
+  @override
+  Future<bool> applyAvailableUpdateAndRestart(
+    Uri source, {
+    String? channel,
+  }) async {
+    appliedRequests.add((source: source, channel: channel));
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    return applyResult;
+  }
+}

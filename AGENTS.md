@@ -31,6 +31,7 @@ Do not add non-English documentation. When modifying an existing document, leave
 ```text
 skillsgo/
 ├── protocol/  Shared executable Go contracts for CLI and Hub
+├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
 ├── hub/       Go Hub, artifact protocol, identity, and search
 ├── e2e/       CLI/Hub end-to-end workspace
@@ -38,6 +39,7 @@ skillsgo/
 ```
 
 - Embedding applications may route Hub and local operations through the CLI's stable machine-readable contracts without importing CLI internals.
+- The App owns desktop presentation and routes all Hub and local business operations through the bundled CLI; it must not import CLI internals or call Hub HTTP directly.
 - The CLI owns local filesystem mutations, Agent Adapters, derived Scope Package Trees, Package Projections, Installation Targets, Workspace Manifests, Workspace Locks, and disposable read-through Package caches.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and the complete v1 route surface. Its standalone App injects empty community data, while an embedding application may inject another implementation through the exported public seam. The public repository does not document private consumers or production topology.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.

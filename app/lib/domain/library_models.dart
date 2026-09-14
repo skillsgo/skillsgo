@@ -1,0 +1,460 @@
+/*
+ * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
+ * [OUTPUT]: Provides server-ranked Adoption candidates with match confidence and exact reviewed mappings, lock-backed External Adoption Package hints, durable Adoption backup records, Agent catalogs, Added Projects, onboarding state, usage-aware unified Library entries with resolved Package avatars and per-Agent evidence, translation-aware Git Artifact Skill detail with immutable Package size plus exact Skill and Package-scope targets, and Batch Adoption presentation results.
+ * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'installation_models.dart';
+import 'system_models.dart';
+
+enum AnalyticsSyncPhase {
+  discovering,
+  preparingResync,
+  syncing,
+  copyingMetadata,
+  copyingOrphans,
+  reclassifying,
+  rebuildingSearch,
+  swappingDatabase,
+  done,
+  unknown,
+}
+
+class AnalyticsSyncProgress {
+  const AnalyticsSyncProgress({
+    required this.revision,
+    required this.phase,
+    this.detail = '',
+    this.resync = false,
+    this.stalled = false,
+    this.projectsTotal = 0,
+    this.projectsDone = 0,
+    this.sessionsTotal = 0,
+    this.sessionsDone = 0,
+    this.messagesIndexed = 0,
+    this.bytesTotal = 0,
+    this.bytesDone = 0,
+  });
+
+  final int revision;
+  final AnalyticsSyncPhase phase;
+  final String detail;
+  final bool resync;
+  final bool stalled;
+  final int projectsTotal;
+  final int projectsDone;
+  final int sessionsTotal;
+  final int sessionsDone;
+  final int messagesIndexed;
+  final int bytesTotal;
+  final int bytesDone;
+
+  bool get complete => phase == AnalyticsSyncPhase.done;
+
+  double? get fraction {
+    if (bytesTotal > 0) return (bytesDone / bytesTotal).clamp(0, 1);
+    if (sessionsTotal > 0) {
+      return (sessionsDone / sessionsTotal).clamp(0, 1);
+    }
+    if (projectsTotal > 0) {
+      return (projectsDone / projectsTotal).clamp(0, 1);
+    }
+    return complete ? 1 : null;
+  }
+}
+
+class AdoptionCandidate {
+  const AdoptionCandidate({
+    required this.packagePath,
+    required this.name,
+    required this.path,
+    required this.description,
+    required this.versions,
+    this.matchScore = 0,
+    this.imageUrl,
+  });
+
+  final String packagePath;
+  final String name;
+  final String path;
+  final String description;
+  final List<String> versions;
+  final double matchScore;
+  final String? imageUrl;
+}
+
+class AdoptionRequestItem {
+  const AdoptionRequestItem({
+    required this.inventoryKey,
+    required this.name,
+    required this.packagePath,
+    required this.version,
+    required this.skillPath,
+    required this.targets,
+  });
+
+  final String inventoryKey;
+  final String name;
+  final String packagePath;
+  final String version;
+  final String skillPath;
+  final List<AdoptionTarget> targets;
+}
+
+class AdoptionTarget {
+  const AdoptionTarget({
+    required this.agent,
+    required this.scope,
+    required this.path,
+    this.projectRoot = '',
+  });
+
+  final String agent;
+  final InstallationScope scope;
+  final String projectRoot;
+  final String path;
+}
+
+class BatchAdoptionResult {
+  const BatchAdoptionResult({
+    required this.adopted,
+    required this.failed,
+    this.items = const [],
+  });
+
+  final int adopted;
+  final int failed;
+  final List<BatchAdoptionItemResult> items;
+}
+
+enum BatchAdoptionItemStatus { adopted, failed }
+
+class BatchAdoptionItemResult {
+  const BatchAdoptionItemResult({
+    required this.name,
+    required this.skillId,
+    required this.status,
+    this.reason = '',
+    this.backupId = '',
+    this.backupExpiresAt,
+  });
+
+  final String name;
+  final String skillId;
+  final BatchAdoptionItemStatus status;
+  final String reason;
+  final String backupId;
+  final DateTime? backupExpiresAt;
+}
+
+class AdoptionBackup {
+  const AdoptionBackup({
+    required this.id,
+    required this.name,
+    required this.packagePath,
+    required this.version,
+    required this.skillPath,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.status,
+    this.scope = InstallationScope.global,
+    this.projectRoot = '',
+    this.targets = const [],
+  });
+
+  final String id;
+  final String name;
+  final String packagePath;
+  final String version;
+  final String skillPath;
+  final InstallationScope scope;
+  final String projectRoot;
+  final List<String> targets;
+  final DateTime createdAt;
+  final DateTime expiresAt;
+  final String status;
+
+  bool get isReady => status == 'ready';
+
+  bool get canRestore => status == 'ready' || status == 'restore-failed';
+}
+
+class SkillAgentUsage {
+  const SkillAgentUsage({
+    this.hits45Days = 0,
+    this.hits90Days = 0,
+    this.error = '',
+  });
+
+  final int hits45Days;
+  final int hits90Days;
+  final String error;
+
+  bool get hasError => error.trim().isNotEmpty;
+}
+
+class BatchAdoptionPreview {
+  const BatchAdoptionPreview({
+    required this.name,
+    required this.skillId,
+    required this.scope,
+    this.imageUrl,
+    this.projectRoot = '',
+  });
+
+  final String name;
+  final String skillId;
+  final InstallationScope scope;
+  final String? imageUrl;
+  final String projectRoot;
+}
+
+class AgentGlobalTarget {
+  const AgentGlobalTarget({required this.path, required this.exists});
+
+  final String path;
+  final bool exists;
+}
+
+class AgentStatus {
+  const AgentStatus({
+    required this.id,
+    required this.displayName,
+    required this.installed,
+    required this.supportedScopes,
+    this.globalTarget,
+    this.discoveryRoots = const [],
+  });
+
+  final String id;
+  final String displayName;
+  final bool installed;
+  final List<InstallationScope> supportedScopes;
+  final AgentGlobalTarget? globalTarget;
+  final List<String> discoveryRoots;
+}
+
+class AgentCatalog {
+  const AgentCatalog({required this.schemaVersion, required this.agents});
+
+  final int schemaVersion;
+  final List<AgentStatus> agents;
+
+  List<AgentStatus> get installed =>
+      agents.where((agent) => agent.installed).toList(growable: false);
+}
+
+class OnboardingState {
+  const OnboardingState({required this.completed, required this.step});
+
+  final bool completed;
+  final OnboardingStep step;
+
+  @override
+  bool operator ==(Object other) =>
+      other is OnboardingState &&
+      other.completed == completed &&
+      other.step == step;
+
+  @override
+  int get hashCode => Object.hash(completed, step);
+}
+
+class AddedProject {
+  const AddedProject({
+    required this.id,
+    required this.name,
+    this.description = '',
+    required this.path,
+    required this.accessState,
+    this.diagnostic,
+    this.icon,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final String path;
+  final ProjectAccessState accessState;
+  final String? diagnostic;
+  final ProjectIcon? icon;
+
+  bool get isAccessible => accessState == ProjectAccessState.accessible;
+
+  AddedProject copyWith({ProjectIcon? icon, bool clearIcon = false}) =>
+      AddedProject(
+        id: id,
+        name: name,
+        description: description,
+        path: path,
+        accessState: accessState,
+        diagnostic: diagnostic,
+        icon: clearIcon ? null : icon ?? this.icon,
+      );
+}
+
+class ProjectIcon {
+  const ProjectIcon({required this.path, required this.sourceFingerprint});
+
+  final String path;
+  final String sourceFingerprint;
+}
+
+class SkillDetail {
+  const SkillDetail({
+    required this.name,
+    this.path = '',
+    this.content = '',
+    this.packagePath = '',
+    this.version = '',
+    this.time,
+    this.packageSize = 0,
+    this.description = '',
+    this.sourceLanguage = '',
+    this.translated = false,
+    this.installationTargets = const [],
+    this.packageInstallationTargets = const [],
+  });
+
+  final String name;
+  final String path;
+  final String content;
+  final String packagePath;
+  final String version;
+  final DateTime? time;
+  final int packageSize;
+  final String description;
+  final String sourceLanguage;
+  final bool translated;
+  final List<SkillInstallationTarget> installationTargets;
+  final List<SkillInstallationTarget> packageInstallationTargets;
+}
+
+class InstalledSkill {
+  const InstalledSkill({
+    required this.name,
+    this.description = '',
+    required this.path,
+    required this.agents,
+    required this.targetCount,
+    this.inventoryKey = '',
+    this.packagePath = '',
+    this.imageUrl,
+    this.targets = const [],
+    this.visibility = const [],
+    this.provenance = LibraryProvenance.hub,
+    this.health = InstallationHealth.healthy,
+    this.projects = const [],
+    this.versions = const [],
+    this.versionDivergence = false,
+    this.adoptionPackagePath = '',
+    this.hits45Days = 0,
+    this.hits90Days = 0,
+    this.usageByAgent = const {},
+    this.usageError = '',
+    this.usageState = SkillUsageState.loading,
+  });
+
+  final String name;
+  final String description;
+  final String path;
+  final List<String> agents;
+  final int targetCount;
+  final String inventoryKey;
+  final String packagePath;
+  final String? imageUrl;
+  final List<SkillInstallationTarget> targets;
+  final List<SkillVisibility> visibility;
+  final LibraryProvenance provenance;
+  final InstallationHealth health;
+  final List<String> projects;
+  final List<String> versions;
+  final bool versionDivergence;
+  final String adoptionPackagePath;
+  final int hits45Days;
+  final int hits90Days;
+  final Map<String, SkillAgentUsage> usageByAgent;
+  final String usageError;
+  final SkillUsageState usageState;
+
+  bool get isLinkedToCodex =>
+      agents.any((agent) => agent.toLowerCase() == 'codex');
+
+  InstalledSkill withTargets(List<SkillInstallationTarget> selectedTargets) {
+    if (selectedTargets.isEmpty) {
+      throw ArgumentError.value(
+        selectedTargets,
+        'selectedTargets',
+        'A Library Entry must retain at least one target.',
+      );
+    }
+    final selectedAgents = <String>{};
+    final selectedProjects = <String>{};
+    final selectedVersions = <String>{};
+    var selectedHealth = InstallationHealth.healthy;
+    for (final target in selectedTargets) {
+      selectedAgents.add(target.agent);
+      if (target.projectRoot.isNotEmpty) {
+        selectedProjects.add(target.projectRoot);
+      }
+      if (target.version.isNotEmpty) {
+        selectedVersions.add(target.version);
+      }
+      if (selectedHealth == InstallationHealth.healthy &&
+          target.health != InstallationHealth.healthy) {
+        selectedHealth = target.health;
+      }
+    }
+    final versionList = selectedVersions.toList()..sort();
+    return InstalledSkill(
+      inventoryKey: inventoryKey,
+      name: name,
+      description: description,
+      path: selectedTargets.first.path,
+      agents: (selectedAgents.toList()..sort()),
+      targetCount: selectedTargets.length,
+      packagePath: packagePath,
+      imageUrl: imageUrl,
+      targets: List.unmodifiable(selectedTargets),
+      visibility: visibility,
+      provenance: provenance,
+      health: selectedHealth,
+      projects: (selectedProjects.toList()..sort()),
+      versions: versionList,
+      versionDivergence: versionList.length > 1,
+      adoptionPackagePath: adoptionPackagePath,
+      hits45Days: hits45Days,
+      hits90Days: hits90Days,
+      usageByAgent: usageByAgent,
+      usageError: usageError,
+      usageState: usageState,
+    );
+  }
+
+  InstalledSkill withUsageState(SkillUsageState nextState, {String? error}) =>
+      InstalledSkill(
+        inventoryKey: inventoryKey,
+        name: name,
+        description: description,
+        path: path,
+        agents: agents,
+        targetCount: targetCount,
+        packagePath: packagePath,
+        imageUrl: imageUrl,
+        targets: targets,
+        visibility: visibility,
+        provenance: provenance,
+        health: health,
+        projects: projects,
+        versions: versions,
+        versionDivergence: versionDivergence,
+        adoptionPackagePath: adoptionPackagePath,
+        hits45Days: hits45Days,
+        hits90Days: hits90Days,
+        usageByAgent: usageByAgent,
+        usageError: error ?? usageError,
+        usageState: nextState,
+      );
+}
+
+enum SkillUsageState { loading, available, unavailable }

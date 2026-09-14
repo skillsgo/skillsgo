@@ -1,0 +1,323 @@
+#!/usr/bin/env bash
+# [INPUT]: Depends on one native Flutter Release bundle, the matching bundled CLI, a workspace or explicit App version, Velopack CLI 1.2.0, optional prior channel packages, and optional release-mode signing/notarization credentials.
+# [OUTPUT]: Produces and verifies one platform-layout-aware Velopack candidate or production channel for Windows x64, Linux x64, macOS arm64, or macOS x64, rejects malformed macOS bundle signatures, adds and optionally signs/notarizes/staples a drag-install DMG for macOS, and optionally appends a version to an existing feed.
+# [POS]: Serves as the deterministic native-build-to-Velopack boundary shared by local rehearsals, candidate CI, and protected production release automation.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+set -euo pipefail
+
+readonly target="${1:-}"
+readonly architecture="${2:-}"
+readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly app_root="${repository_root}/app"
+readonly workspace_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' "${app_root}/pubspec.yaml")"
+readonly version="${SKILLSGO_APP_PACKAGE_VERSION:-${workspace_version}}"
+readonly append_to_feed="${SKILLSGO_APP_PACKAGE_APPEND:-0}"
+readonly package_mode="${SKILLSGO_APP_PACKAGE_MODE:-candidate}"
+
+if [[ -z "${version}" ]]; then
+  echo "Unable to read the App version from app/pubspec.yaml." >&2
+  exit 1
+fi
+if [[ "${package_mode}" != "candidate" && "${package_mode}" != "release" ]]; then
+  echo "SKILLSGO_APP_PACKAGE_MODE must be candidate or release." >&2
+  exit 64
+fi
+case "${target}:${architecture}" in
+  windows:x64)
+    readonly channel="win-x64"
+    readonly runtime="win-x64"
+    readonly pack_dir="${app_root}/build/windows/x64/runner/Release"
+    readonly main_exe="skillsgo.exe"
+    readonly bundled_cli="${pack_dir}/data/bin/skillsgo.exe"
+    readonly -a packaged_entries=(
+      "lib/app/skillsgo.exe"
+      "lib/app/data/bin/skillsgo.exe")
+    readonly portable_name="SkillsGo-${channel}-Portable.zip"
+    readonly installer_name="SkillsGo-${channel}-Setup.exe"
+    ;;
+  linux:x64)
+    readonly channel="linux-x64"
+    readonly runtime="linux-x64"
+    readonly pack_dir="${app_root}/build/linux/x64/release/bundle"
+    readonly main_exe="skillsgo"
+    readonly bundled_cli="${pack_dir}/data/bin/skillsgo"
+    # Velopack's official Linux release builder places the complete AppImage,
+    # rather than the expanded AppDir, inside the full update package.
+    readonly -a packaged_entries=("lib/app/SkillsGo.AppImage")
+    readonly portable_name="SkillsGo-${channel}.AppImage"
+    readonly installer_name=""
+    ;;
+  macos:arm64)
+    readonly channel="osx-arm64"
+    readonly runtime="osx-arm64"
+    readonly macos_derived_data="${SKILLSGO_MACOS_DERIVED_DATA:-${app_root}/build/macos-arm64}"
+    readonly pack_dir="${macos_derived_data}/Build/Products/Release/SkillsGo.app"
+    readonly main_exe="SkillsGo"
+    readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
+    readonly -a packaged_entries=(
+      "lib/app/Contents/MacOS/SkillsGo"
+      "lib/app/Contents/Resources/bin/skillsgo")
+    readonly portable_name="SkillsGo-${channel}-Portable.zip"
+    readonly installer_name=""
+    readonly macos_download_name="SkillsGo-macOS-arm64.dmg"
+    ;;
+  macos:x86_64)
+    readonly channel="osx-x64"
+    readonly runtime="osx-x64"
+    readonly macos_derived_data="${SKILLSGO_MACOS_DERIVED_DATA:-${app_root}/build/macos-x86_64}"
+    readonly pack_dir="${macos_derived_data}/Build/Products/Release/SkillsGo.app"
+    readonly main_exe="SkillsGo"
+    readonly bundled_cli="${pack_dir}/Contents/Resources/bin/skillsgo"
+    readonly -a packaged_entries=(
+      "lib/app/Contents/MacOS/SkillsGo"
+      "lib/app/Contents/Resources/bin/skillsgo")
+    readonly portable_name="SkillsGo-${channel}-Portable.zip"
+    readonly installer_name=""
+    readonly macos_download_name="SkillsGo-macOS-x64.dmg"
+    ;;
+  *)
+    echo "Usage: $0 <windows x64|linux x64|macos arm64|macos x86_64>" >&2
+    exit 64
+    ;;
+esac
+
+readonly output_dir="${app_root}/build/velopack/${channel}"
+macos_signing_enabled=false
+if [[ "${target}" == "macos" && "${package_mode}" == "release" && -n "${SKILLSGO_MACOS_SIGN_APP_IDENTITY:-}" && -n "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY:-}" && -n "${SKILLSGO_MACOS_NOTARY_PROFILE:-}" && -n "${SKILLSGO_MACOS_KEYCHAIN:-}" ]]; then
+  macos_signing_enabled=true
+fi
+if [[ "${append_to_feed}" != "1" ]]; then
+  rm -rf "${output_dir}"
+fi
+mkdir -p "${output_dir}"
+
+if [[ ! -x "${bundled_cli}" ]]; then
+  echo "Bundled CLI is missing or not executable: ${bundled_cli}" >&2
+  exit 1
+fi
+
+if [[ "${target}" == "macos" ]]; then
+  codesign --verify --deep --strict --verbose=2 "${pack_dir}"
+fi
+
+pack_args=(
+  pack
+  --packId SkillsGo
+  --packTitle SkillsGo
+  --packAuthors SkillsGo
+  --packVersion "${version}"
+  --packDir "${pack_dir}"
+  --mainExe "${main_exe}"
+  --runtime "${runtime}"
+  --channel "${channel}"
+  --outputDir "${output_dir}"
+  --delta None)
+
+case "${target}" in
+  windows)
+    pack_args+=(--icon "${app_root}/windows/runner/resources/app_icon.ico")
+    if [[ "${package_mode}" == "release" && -n "${SKILLSGO_WINDOWS_SIGN_PARAMS:-}" ]]; then
+      : "${SKILLSGO_WINDOWS_SIGN_PARAMS:?SKILLSGO_WINDOWS_SIGN_PARAMS is required for a Windows release}"
+      pack_args+=(--signParams "${SKILLSGO_WINDOWS_SIGN_PARAMS}")
+    fi
+    ;;
+  linux)
+    pack_args+=(--icon "${app_root}/linux/runner/resources/skillsgo.png")
+    ;;
+  macos)
+    if [[ "${macos_signing_enabled}" == "true" ]]; then
+      : "${SKILLSGO_MACOS_SIGN_APP_IDENTITY:?SKILLSGO_MACOS_SIGN_APP_IDENTITY is required for a macOS release}"
+      : "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY:?SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY is required for a macOS release}"
+      : "${SKILLSGO_MACOS_NOTARY_PROFILE:?SKILLSGO_MACOS_NOTARY_PROFILE is required for a macOS release}"
+      : "${SKILLSGO_MACOS_KEYCHAIN:?SKILLSGO_MACOS_KEYCHAIN is required for a macOS release}"
+      pack_args+=(
+        --signAppIdentity "${SKILLSGO_MACOS_SIGN_APP_IDENTITY}"
+        --signInstallIdentity "${SKILLSGO_MACOS_SIGN_INSTALL_IDENTITY}"
+        --notaryProfile "${SKILLSGO_MACOS_NOTARY_PROFILE}"
+        --keychain "${SKILLSGO_MACOS_KEYCHAIN}")
+    else
+      pack_args+=(--signAppIdentity -)
+    fi
+    ;;
+esac
+
+vpk "${pack_args[@]}"
+
+readonly release_manifest="${output_dir}/releases.${channel}.json"
+readonly full_package="${output_dir}/SkillsGo-${version}-${channel}-full.nupkg"
+readonly portable="${output_dir}/${portable_name}"
+
+for artifact in "${release_manifest}" "${full_package}" "${portable}"; do
+  if [[ ! -s "${artifact}" ]]; then
+    echo "Velopack candidate artifact is missing or empty: ${artifact}" >&2
+    exit 1
+  fi
+done
+
+for manifest_field in \
+  "\"PackageId\":\"SkillsGo\"" \
+  "\"Version\":\"${version}\"" \
+  "\"Type\":\"Full\"" \
+  "\"FileName\":\"$(basename "${full_package}")\""; do
+  if ! grep -Fq "${manifest_field}" "${release_manifest}"; then
+    echo "Velopack release manifest is missing ${manifest_field}: ${release_manifest}" >&2
+    exit 1
+  fi
+done
+
+readonly package_entries="$(unzip -Z1 "${full_package}")"
+for package_entry in "${packaged_entries[@]}"; do
+  if ! grep -Fxq "${package_entry}" <<<"${package_entries}"; then
+    echo "Velopack full package is missing ${package_entry}: ${full_package}" >&2
+    exit 1
+  fi
+done
+
+if [[ -n "${installer_name}" && ! -s "${output_dir}/${installer_name}" ]]; then
+  echo "Velopack installer is missing or empty: ${output_dir}/${installer_name}" >&2
+  exit 1
+fi
+if [[ "${target}" == "macos" ]]; then
+  shopt -s nullglob
+  macos_installers=("${output_dir}"/*.pkg)
+  shopt -u nullglob
+  if [[ "${#macos_installers[@]}" -ne 1 || ! -s "${macos_installers[0]}" ]]; then
+    echo "Expected exactly one macOS PKG in ${output_dir}." >&2
+    exit 1
+  fi
+  readonly macos_installer="${macos_installers[0]}"
+  readonly macos_installer_entries="$(pkgutil --payload-files "${macos_installer}")"
+  for installer_entry in \
+    "./SkillsGo.app/Contents/MacOS/SkillsGo" \
+    "./SkillsGo.app/Contents/Resources/bin/skillsgo"; do
+    if ! grep -Fxq "${installer_entry}" <<<"${macos_installer_entries}"; then
+      echo "macOS PKG is missing ${installer_entry}: ${macos_installer}" >&2
+      exit 1
+    fi
+  done
+  if [[ "${macos_signing_enabled}" == "true" ]]; then
+    pkgutil --check-signature "${macos_installer}"
+    xcrun stapler validate "${macos_installer}"
+  else
+    set +e
+    macos_signature_status="$(pkgutil --check-signature "${macos_installer}" 2>&1)"
+    macos_signature_exit=$?
+    set -e
+    readonly macos_signature_status macos_signature_exit
+    if [[ "${macos_signature_exit}" -ne 1 ]] || ! grep -Fxq '   Status: no signature' <<<"${macos_signature_status}"; then
+      printf '%s\n' "${macos_signature_status}" >&2
+      echo "Expected an unsigned macOS PKG: ${macos_installer}" >&2
+      exit 1
+    fi
+  fi
+
+  readonly macos_dmg="${output_dir}/${macos_download_name}"
+  readonly dmg_stage="$(mktemp -d "${TMPDIR:-/tmp}/skillsgo-dmg-stage.XXXXXX")"
+  readonly dmg_mount="$(mktemp -d "${TMPDIR:-/tmp}/skillsgo-dmg-mount.XXXXXX")"
+  dmg_attached=false
+  dmg_device=""
+  cleanup_dmg() {
+    local cleanup_status=0
+    if [[ "${dmg_attached}" == "true" ]]; then
+      if hdiutil detach "${dmg_device:-${dmg_mount}}" -quiet; then
+        dmg_attached=false
+      else
+        echo "Unable to detach macOS DMG from ${dmg_mount}; leaving the mount point intact." >&2
+        cleanup_status=1
+      fi
+    fi
+    rm -rf "${dmg_stage}"
+    if [[ "${dmg_attached}" == "false" ]]; then
+      rm -rf "${dmg_mount}"
+    fi
+    return "${cleanup_status}"
+  }
+  finish_dmg() {
+    local exit_status=$?
+    trap - EXIT INT TERM
+    if ! cleanup_dmg; then
+      exit_status=1
+    fi
+    exit "${exit_status}"
+  }
+  trap finish_dmg EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  ditto -x -k "${portable}" "${dmg_stage}"
+  rm -rf "${dmg_stage}/__MACOSX"
+  if [[ ! -d "${dmg_stage}/SkillsGo.app" ]]; then
+    echo "Velopack portable package does not contain SkillsGo.app: ${portable}" >&2
+    exit 1
+  fi
+  codesign --verify --deep --strict --verbose=2 "${dmg_stage}/SkillsGo.app"
+  ln -s /Applications "${dmg_stage}/Applications"
+  hdiutil create \
+    -quiet \
+    -volname SkillsGo \
+    -srcfolder "${dmg_stage}" \
+    -format UDZO \
+    -ov \
+    "${macos_dmg}"
+
+  if [[ "${macos_signing_enabled}" == "true" ]]; then
+    codesign \
+      --force \
+      --timestamp \
+      --sign "${SKILLSGO_MACOS_SIGN_APP_IDENTITY}" \
+      --keychain "${SKILLSGO_MACOS_KEYCHAIN}" \
+      "${macos_dmg}"
+    xcrun notarytool submit "${macos_dmg}" \
+      --keychain-profile "${SKILLSGO_MACOS_NOTARY_PROFILE}" \
+      --keychain "${SKILLSGO_MACOS_KEYCHAIN}" \
+      --wait
+    xcrun stapler staple "${macos_dmg}"
+    xcrun stapler validate "${macos_dmg}"
+    codesign --verify --verbose=2 "${macos_dmg}"
+  fi
+
+  hdiutil verify -quiet "${macos_dmg}"
+  readonly dmg_attach_output="$(hdiutil attach \
+    -readonly \
+    -nobrowse \
+    -mountpoint "${dmg_mount}" \
+    "${macos_dmg}")"
+  dmg_attached=true
+  dmg_device="$(awk '$1 ~ /^\/dev\// { device = $1 } END { print device }' <<<"${dmg_attach_output}")"
+  if [[ -z "${dmg_device}" ]]; then
+    echo "Unable to identify the mounted macOS DMG device: ${macos_dmg}" >&2
+    exit 1
+  fi
+  if [[ ! -d "${dmg_mount}/SkillsGo.app" ]]; then
+    echo "macOS DMG is missing SkillsGo.app: ${macos_dmg}" >&2
+    exit 1
+  fi
+  codesign --verify --deep --strict --verbose=2 "${dmg_mount}/SkillsGo.app"
+  if [[ "$(readlink "${dmg_mount}/Applications")" != "/Applications" ]]; then
+    echo "macOS DMG is missing the Applications drag target: ${macos_dmg}" >&2
+    exit 1
+  fi
+  hdiutil detach "${dmg_device}" -quiet
+  dmg_attached=false
+  cleanup_dmg
+  trap - EXIT INT TERM
+fi
+
+readonly metadata_name="$([[ "${package_mode}" == "release" ]] && echo "release-${version}" || echo candidate)"
+signed=false
+if [[ "${package_mode}" == "release" ]]; then
+  case "${target}" in
+    windows)
+      [[ -n "${SKILLSGO_WINDOWS_SIGN_PARAMS:-}" ]] && signed=true
+      ;;
+    macos)
+      [[ "${macos_signing_enabled}" == "true" ]] && signed=true
+      ;;
+  esac
+fi
+cat >"${output_dir}/${metadata_name}.json" <<EOF
+{"schemaVersion":1,"appId":"SkillsGo","version":"${version}","channel":"${channel}","runtime":"${runtime}","mode":"${package_mode}","signed":${signed}}
+EOF
+
+echo "Packaged SkillsGo ${version} ${package_mode} for ${channel}: ${output_dir}"
