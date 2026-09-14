@@ -22,7 +22,9 @@ const appUpdateProductionBaseUrl = 'https://cdn.skillsgo.ai/app';
 Uri? appUpdateProductionSource([String? raw]) {
   final configuredRaw =
       raw ??
-      (appUpdateProductionUrl.trim().isNotEmpty ? appUpdateProductionUrl : '');
+      (appUpdateProductionUrl.trim().isNotEmpty
+          ? appUpdateProductionUrl
+          : '$appUpdateProductionBaseUrl/${appUpdateProductionChannel()}/');
   final configured = configuredRaw.trim();
   if (configured.isEmpty) return null;
 

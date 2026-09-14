@@ -178,6 +178,14 @@ jobs:
             xvfb-run -a flutter test -d linux integration_test/bundled_cli_smoke_test.dart
           else
             flutter test -d "${{ matrix.target }}" integration_test/bundled_cli_smoke_test.dart
+      - name: Upload App artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: skillsgo-app-${{ matrix.target }}-${{ matrix.architecture }}
+          path: |
+            app/build/macos-${{ matrix.architecture }}/Build/Products/Release/SkillsGo.app
+            app/build/linux/x64/release/bundle
+          if-no-files-found: error
           fi
 
   required:
