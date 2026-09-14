@@ -1504,20 +1504,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('local-skill'), findsOneWidget);
 
-    final refresh = Completer<List<InstalledSkill>>();
-    gateway.libraryCompleter = refresh;
+    final refreshCompleter = Completer<List<InstalledSkill>>();
+    gateway.libraryCompleter = refreshCompleter;
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('refresh-local-library')));
+     final refreshButton = find.byKey(const Key('refresh-local-library'));
+     await tester.ensureVisible(refreshButton);
+     await tester.tap(refreshButton);
     await tester.pump();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pump();
 
     expect(find.text('local-skill'), findsOneWidget);
     expect(find.byKey(const ValueKey('library-skeleton')), findsNothing);
-    refresh.completeError(const SkillsException('refresh failed'));
+     refreshCompleter.completeError(const SkillsException('refresh failed'));
     await tester.pumpAndSettle();
     expect(find.text('local-skill'), findsOneWidget);
   });
@@ -1535,7 +1537,7 @@ void main() {
 
     final refresh = Completer<List<InstalledSkill>>();
     gateway.libraryCompleter = refresh;
-    await tester.tap(find.byKey(const Key('library-refresh')));
+     await tester.tap(find.byKey(const Key('library-refresh')));
     await tester.pump();
 
     expect(find.text('local-skill'), findsOneWidget);
@@ -1547,7 +1549,7 @@ void main() {
       findsOneWidget,
     );
 
-    refresh.complete(const []);
+     refresh.complete(const []);
     await tester.pumpAndSettle();
 
     expect(find.text('local-skill'), findsNothing);
@@ -1578,7 +1580,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('refresh-local-library')));
+     final refresh = find.byKey(const Key('refresh-local-library'));
+     await tester.ensureVisible(refresh);
+     await tester.tap(refresh);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();

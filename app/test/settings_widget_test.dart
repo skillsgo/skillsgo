@@ -588,6 +588,7 @@ void main() {
     final projectLoads = gateway.projectLoads;
     final agentInspections = gateway.agentInspections;
 
+    await tester.ensureVisible(refresh);
     await tester.tap(refresh);
     await tester.pumpAndSettle();
 

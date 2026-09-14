@@ -315,7 +315,7 @@ void main() {
     await tester.enterText(searchInput(), 'install');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Flutter Pro'));
+     await tester.tap(find.text('Flutter Pro').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Install'));
     await tester.pumpAndSettle();
@@ -326,7 +326,7 @@ void main() {
 
     install.complete(successCommand(['skillsgo', 'add']));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Flutter Pro'));
+     await tester.tap(find.text('Flutter Pro').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Installation results'), findsOneWidget);

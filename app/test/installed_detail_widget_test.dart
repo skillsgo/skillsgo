@@ -198,7 +198,7 @@ void main() {
           version: 'v1',
           skillPath: 'skills/action-demo',
           createdAt: DateTime.utc(2026, 8, 1),
-          expiresAt: DateTime.utc(2026, 9, 1),
+           expiresAt: DateTime.utc(2026, 12, 1),
           status: 'ready',
         ),
       ],

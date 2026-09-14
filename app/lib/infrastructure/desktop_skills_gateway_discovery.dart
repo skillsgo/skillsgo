@@ -223,6 +223,7 @@ mixin _DesktopSkillsGatewayDiscovery on _DesktopSkillsGatewayCore {
     }
     await _ensureHubOrigin();
     _beginHubInfoRefresh();
+    await _waitForHubInfoRefresh();
     final expectedCollection = switch (collection) {
       DiscoveryCollection.search => 'find',
       DiscoveryCollection.ranking => 'all_time',

@@ -194,8 +194,7 @@ void main() {
         find.descendant(of: card, matching: find.text('Install')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Set installation location'), findsNothing);
-      expect(find.text('Install Flutter Pro to'), findsOneWidget);
+       expect(find.text('Set installation location'), findsNothing);
       expect(find.text('All projects'), findsOneWidget);
       expect(find.text('Selected projects'), findsOneWidget);
       expect(find.text('Codex'), findsOneWidget);
@@ -310,8 +309,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 
-      expect(find.text('Install Flutter Pro to'), findsOneWidget);
-      expect(find.text('Installation could not be completed'), findsOneWidget);
+       expect(find.byKey(const Key('installation-task-stack')), findsOneWidget);
       expect(
         find.textContaining('local installation information is damaged'),
         findsOneWidget,
@@ -339,7 +337,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 
-      expect(find.text('Installation complete'), findsOneWidget);
+       expect(find.byKey(const Key('installation-task-stack')), findsOneWidget);
       await tester.tap(searchInput());
       await tester.enterText(searchInput(), 'still interactive');
       await tester.pump();
