@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter Material buttons, HugeIcons, progress, shape/state properties, and SkillsGo component tokens.
- * [OUTPUT]: Provides skeleton boxes plus fixed-height capsule buttons with control-specific label geometry, optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
+ * [OUTPUT]: Provides skeleton boxes, a compact pending-activity indicator that spins while statistics are being computed and settles into a determinate ring once work is measurable, plus fixed-height capsule buttons with control-specific label geometry, optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
  * [POS]: Serves as the action and cold-loading segment of the native component library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -346,3 +346,103 @@ class SkillsButton extends StatelessWidget {
     return SizedBox(width: width, height: height, child: button);
   }
 }
+
+/// A compact activity indicator for statistics that are still being computed.
+///
+/// A known [fraction] renders a determinate ring so measurable archive work
+/// reads as bounded progress; otherwise one HugeIcons arc rotates until the
+/// observation completes, and holds still when the platform disables
+/// animations. The caller owns the adjacent label, so the indicator keeps
+/// itself out of the accessibility tree.
+class SkillsPendingSpinner extends StatelessWidget {
+  const SkillsPendingSpinner({
+    super.key,
+    this.size = 12,
+    this.color,
+    this.fraction,
+  });
+
+  final double size;
+  final Color? color;
+  final double? fraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedColor =
+        color ??
+        IconTheme.of(context).color ??
+        Theme.of(context).colorScheme.onSurfaceVariant;
+    final fraction = this.fraction;
+    if (fraction != null) {
+      return ExcludeSemantics(
+        child: SizedBox.square(
+          dimension: size,
+          child: CircularProgressIndicator(
+            value: fraction.clamp(0.0, 1.0),
+            strokeWidth: size <= 12 ? 1.6 : 2,
+            color: resolvedColor,
+            backgroundColor: resolvedColor.withValues(alpha: 0.14),
+          ),
+        ),
+      );
+    }
+    return _PendingSpinnerGlyph(size: size, color: resolvedColor);
+  }
+}
+
+class _PendingSpinnerGlyph extends StatefulWidget {
+  const _PendingSpinnerGlyph({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  State<_PendingSpinnerGlyph> createState() => _PendingSpinnerGlyphState();
+}
+
+class _PendingSpinnerGlyphState extends State<_PendingSpinnerGlyph>
+    with SingleTickerProviderStateMixin {
+  static const _turn = Duration(milliseconds: 900);
+
+  late final AnimationController _rotation = AnimationController(
+    vsync: this,
+    duration: _turn,
+  );
+
+  @override
+  void dispose() {
+    _rotation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rotate =
+        debugPendingIndicatorMotionEnabled &&
+        !MediaQuery.disableAnimationsOf(context);
+    if (rotate && !_rotation.isAnimating) {
+      _rotation.repeat();
+    } else if (!rotate && _rotation.isAnimating) {
+      _rotation.stop();
+      _rotation.value = 0;
+    }
+    return ExcludeSemantics(
+      child: RotationTransition(
+        turns: _rotation,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedLoading03,
+          size: widget.size,
+          strokeWidth: 1.8,
+          color: widget.color,
+        ),
+      ),
+    );
+  }
+}
+
+/// Freezes the pending-indicator rotation so rendered suites can settle.
+///
+/// Rendered tests keep this `false`; production keeps `true` and the platform
+/// reduced-motion setting remains the user-facing control.
+@visibleForTesting
+bool debugPendingIndicatorMotionEnabled = true;

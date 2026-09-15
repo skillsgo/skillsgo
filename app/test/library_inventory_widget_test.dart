@@ -75,6 +75,54 @@ void main() {
     );
   });
 
+  testWidgets('Library marks counting statistics with a pending icon', (
+    tester,
+  ) async {
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          inventoryKey: 'pending',
+          name: 'pending',
+          description: 'Pending usage',
+          path: '/tmp/pending',
+          packagePath: 'github.com/acme/skills',
+          agents: ['codex'],
+          targetCount: 1,
+          usageState: SkillUsageState.loading,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.global,
+              path: '/tmp/pending',
+              version: 'v1',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('library-budget-pending-spinner')),
+      findsOneWidget,
+    );
+    expect(find.text('Counting'), findsNWidgets(3));
+    expect(
+      find.byKey(const Key('library-usage-pending-spinner')),
+      findsNWidgets(2),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('library-budget-pending-spinner')),
+        matching: find.byType(RotationTransition),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'Library budget follows context and toggles the 45-day usage filter',
     (tester) async {
@@ -1510,20 +1558,20 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-     final refreshButton = find.byKey(const Key('refresh-local-library'));
-     await Scrollable.ensureVisible(
-       tester.element(refreshButton),
-       alignment: 0.5,
-     );
-     await tester.pumpAndSettle();
-     await tester.tap(refreshButton);
+    final refreshButton = find.byKey(const Key('refresh-local-library'));
+    await Scrollable.ensureVisible(
+      tester.element(refreshButton),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(refreshButton);
     await tester.pump();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pump();
 
     expect(find.text('local-skill'), findsOneWidget);
     expect(find.byKey(const ValueKey('library-skeleton')), findsNothing);
-     refreshCompleter.completeError(const SkillsException('refresh failed'));
+    refreshCompleter.completeError(const SkillsException('refresh failed'));
     await tester.pumpAndSettle();
     expect(find.text('local-skill'), findsOneWidget);
   });
@@ -1541,7 +1589,7 @@ void main() {
 
     final refresh = Completer<List<InstalledSkill>>();
     gateway.libraryCompleter = refresh;
-     await tester.tap(find.byKey(const Key('library-refresh')));
+    await tester.tap(find.byKey(const Key('library-refresh')));
     await tester.pump();
 
     expect(find.text('local-skill'), findsOneWidget);
@@ -1553,7 +1601,7 @@ void main() {
       findsOneWidget,
     );
 
-     refresh.complete(const []);
+    refresh.complete(const []);
     await tester.pumpAndSettle();
 
     expect(find.text('local-skill'), findsNothing);
@@ -1584,10 +1632,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-     final refresh = find.byKey(const Key('refresh-local-library'));
-     await Scrollable.ensureVisible(tester.element(refresh), alignment: 0.5);
-     await tester.pumpAndSettle();
-     await tester.tap(refresh);
+    final refresh = find.byKey(const Key('refresh-local-library'));
+    await Scrollable.ensureVisible(tester.element(refresh), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(refresh);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();

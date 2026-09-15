@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter Material primitives, HugeIcons, and SkillsGo semantic component and typography tokens.
- * [OUTPUT]: Provides reusable native desktop buttons including primary capsule actions with optional custom labels and trailing content, cards, dialogs, fields, alerts, skeleton placeholders, progress, toggles, dividers, and tooltips.
+ * [OUTPUT]: Provides reusable native desktop buttons including primary capsule actions with optional custom labels and trailing content, cards, dialogs, fields, alerts, skeleton placeholders, progress, a spinning pending-activity indicator, toggles, dividers, and tooltips.
  * [POS]: Serves as the Material-only component layer between product screens and Flutter widgets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
