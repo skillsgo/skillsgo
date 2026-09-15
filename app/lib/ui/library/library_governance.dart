@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Library content mode, context-scoped Skill metadata and usage evidence, localized governance copy, HugeIcons, and semantic theme roles.
- * [OUTPUT]: Provides the content-level All Skills / Needs Attention switcher, responsive resident-budget insights with readable tooltips, Library-local count badges with update alerts, and actionable unused, Other Installation, and update governance entries with compact update previews.
+ * [OUTPUT]: Provides the content-level All Skills / Needs Attention switcher, responsive resident-budget insights that pair readable tooltips with a spinning pending indicator while statistics are still being computed, Library-local count badges with update alerts, and actionable unused, Other Installation, and update governance entries with compact update previews.
  * [POS]: Serves as the stable Library governance navigation surface above inventory and governance bodies.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -169,6 +169,10 @@ class _LibraryBudgetInsights extends StatelessWidget {
                 budget!,
                 analyticsProgress,
               ),
+              pending:
+                  budget!.skillCount > 0 &&
+                  budget!.availableUsageCount == 0 &&
+                  (analyticsProgress?.complete ?? false) == false,
               selected: unusedSelected,
               onPressed: budget!.availableUsageCount == 0
                   ? null
@@ -202,6 +206,7 @@ class _LibraryBudgetMetric extends StatelessWidget {
     required this.secondaryLabel,
     required this.secondaryValue,
     required this.tooltip,
+    this.pending = false,
     this.progress,
     this.selected = false,
     this.onPressed,
@@ -213,6 +218,7 @@ class _LibraryBudgetMetric extends StatelessWidget {
   final String secondaryLabel;
   final String secondaryValue;
   final String tooltip;
+  final bool pending;
   final AnalyticsSyncProgress? progress;
   final bool selected;
   final VoidCallback? onPressed;
@@ -297,17 +303,14 @@ class _LibraryBudgetMetric extends StatelessWidget {
                       height: 1.15,
                     ),
                   ),
-                  if (progress != null && !progress!.complete)
-                    ExcludeSemantics(
-                      child: SizedBox.square(
-                        dimension: 12,
-                        child: CircularProgressIndicator(
-                          value: progress!.fraction,
-                          strokeWidth: 1.6,
-                          color: valueColor,
-                          backgroundColor: valueColor.withValues(alpha: 0.14),
-                        ),
-                      ),
+                  if (pending)
+                    SkillsPendingSpinner(
+                      key: const Key('library-budget-pending-spinner'),
+                      size: 12,
+                      color: valueColor,
+                      fraction: progress?.complete == false
+                          ? progress!.fraction
+                          : null,
                     ),
                   Text(
                     secondaryValue,

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on versioned NDJSON requests, command.ExecuteWithInput, stable command exit-code classification, and process-local analytics invalidations.
- * [OUTPUT]: Provides a writer-preferring long-lived CLI Server with bounded concurrent reads, exclusive mutations, serialized response frames, isolated machine responses, and unsolicited versioned analytics invalidations.
+ * [INPUT]: Depends on versioned NDJSON requests, command.ExecuteWithInput, stable command exit-code classification, and process-local analytics progress plus invalidations.
+ * [OUTPUT]: Provides a writer-preferring long-lived CLI Server with bounded concurrent reads, exclusive mutations, serialized response frames, isolated machine responses, and unsolicited versioned analytics progress plus completion invalidations.
  * [POS]: Serves as the reusable App process boundary above ordinary CLI command execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -138,14 +138,24 @@ type serverAnalyticsInvalidation struct {
 	Revision      uint64 `json:"revision"`
 }
 
+type serverAnalyticsProgress struct {
+	SchemaVersion int                     `json:"schemaVersion"`
+	Type          string                  `json:"type"`
+	Revision      uint64                  `json:"revision"`
+	Progress      skillusage.SyncProgress `json:"progress"`
+}
+
 func Serve(input io.Reader, output io.Writer) error {
 	return serveWithExecutor(input, output, ExecuteWithInput)
 }
 
 func serveWithExecutor(input io.Reader, output io.Writer, execute serverExecuteFunc) error {
 	analyticsEvents, cancelAnalyticsEvents := skillusage.SubscribeAnalyticsInvalidations()
+	progressEvents, cancelProgressEvents := skillusage.SubscribeAnalyticsProgress()
 	return serveWithExecutorAndAnalytics(
-		input, output, execute, analyticsEvents, cancelAnalyticsEvents,
+		input, output, execute,
+		analyticsEvents, cancelAnalyticsEvents,
+		progressEvents, cancelProgressEvents,
 	)
 }
 
@@ -155,12 +165,14 @@ func serveWithExecutorAndAnalytics(
 	execute serverExecuteFunc,
 	analyticsEvents <-chan skillusage.AnalyticsInvalidation,
 	cancelAnalyticsEvents func(),
+	progressEvents <-chan skillusage.AnalyticsProgress,
+	cancelProgressEvents func(),
 ) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 64*1024), serverMaxRequestBytes)
 	encoder := &serverEncoder{encoder: json.NewEncoder(output), failed: make(chan struct{})}
 	var notifications sync.WaitGroup
-	notifications.Add(1)
+	notifications.Add(2)
 	go func() {
 		defer notifications.Done()
 		for event := range analyticsEvents {
@@ -168,6 +180,19 @@ func serveWithExecutorAndAnalytics(
 				SchemaVersion: serverSchemaVersion,
 				Type:          "analytics.invalidated",
 				Revision:      event.Revision,
+			}) != nil {
+				return
+			}
+		}
+	}()
+	go func() {
+		defer notifications.Done()
+		for event := range progressEvents {
+			if encoder.Encode(serverAnalyticsProgress{
+				SchemaVersion: serverSchemaVersion,
+				Type:          "analytics.progress",
+				Revision:      event.Revision,
+				Progress:      event.Progress,
 			}) != nil {
 				return
 			}
@@ -220,6 +245,7 @@ accepting:
 	}
 	requests.Wait()
 	cancelAnalyticsEvents()
+	cancelProgressEvents()
 	notifications.Wait()
 	if err := encoder.Err(); err != nil {
 		return fmt.Errorf("encode CLI Server response: %w", err)

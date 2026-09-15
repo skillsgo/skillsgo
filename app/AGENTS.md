@@ -86,7 +86,7 @@ For repeated CLI interactions, register the URI once with `marionette register s
 | `lib/infrastructure/` | Bundled CLI adapter, structured process execution, platform integration, and preference persistence. |
 | `lib/ui/` | Screens, Package/Skill navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
-| `test/` | Unit, widget, and adapter contract tests. |
+| `test/` | Unit, widget, and adapter contract tests, bootstrapped by `flutter_test_config.dart` so the pending-indicator rotation stays frozen and rendered suites always settle. |
 | `integration_test/` | Cross-platform bundled-CLI startup smoke coverage plus rendered macOS, Windows, and Linux Journeys orchestrated by `/e2e/app` against the pinned public CLI and Hub with Journey-isolated schema and filesystem boundaries. |
 | `macos/` | macOS runner, architecture-specific desktop packaging integration, and the build-time bundled CLI bridge. |
 | `windows/` | Windows x64 runner and build-time bundled CLI integration. |

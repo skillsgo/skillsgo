@@ -261,6 +261,7 @@ func TestServeStreamsStdoutBeforeTheFinalResult(t *testing.T) {
 func TestServePublishesAnalyticsInvalidation(t *testing.T) {
 	inputReader, inputWriter := io.Pipe()
 	events := make(chan skillusage.AnalyticsInvalidation, 1)
+	progressEvents := make(chan skillusage.AnalyticsProgress)
 	var output lockedBuffer
 	done := make(chan error, 1)
 	go func() {
@@ -268,6 +269,7 @@ func TestServePublishesAnalyticsInvalidation(t *testing.T) {
 			inputReader, &output,
 			func(_ []string, _ io.Reader, _, _ io.Writer) error { return nil },
 			events, func() { close(events) },
+			progressEvents, func() { close(progressEvents) },
 		)
 	}()
 	require.NoError(t, json.NewEncoder(inputWriter).Encode(serverRequest{
@@ -278,6 +280,43 @@ func TestServePublishesAnalyticsInvalidation(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return strings.Contains(output.String(), `"type":"analytics.invalidated"`) &&
 			strings.Contains(output.String(), `"revision":42`)
+	}, time.Second, time.Millisecond)
+	require.NoError(t, inputWriter.Close())
+	require.NoError(t, <-done)
+}
+
+func TestServePublishesAnalyticsProgress(t *testing.T) {
+	inputReader, inputWriter := io.Pipe()
+	invalidations := make(chan skillusage.AnalyticsInvalidation)
+	progress := make(chan skillusage.AnalyticsProgress, 1)
+	var output lockedBuffer
+	done := make(chan error, 1)
+	go func() {
+		done <- serveWithExecutorAndAnalytics(
+			inputReader, &output,
+			func(_ []string, _ io.Reader, _, _ io.Writer) error { return nil },
+			invalidations, func() { close(invalidations) },
+			progress, func() { close(progress) },
+		)
+	}()
+	require.NoError(t, json.NewEncoder(inputWriter).Encode(serverRequest{
+		SchemaVersion: serverSchemaVersion, ID: "ready", Arguments: []string{"list"},
+	}))
+	require.Eventually(t, func() bool { return strings.Contains(output.String(), `"id":"ready"`) }, time.Second, time.Millisecond)
+	progress <- skillusage.AnalyticsProgress{
+		Revision: 7,
+		Progress: skillusage.SyncProgress{
+			Phase:         "syncing",
+			SessionsDone:  3,
+			SessionsTotal: 5,
+		},
+	}
+	require.Eventually(t, func() bool {
+		value := output.String()
+		return strings.Contains(value, `"type":"analytics.progress"`) &&
+			strings.Contains(value, `"revision":7`) &&
+			strings.Contains(value, `"sessionsDone":3`) &&
+			strings.Contains(value, `"sessionsTotal":5`)
 	}, time.Second, time.Millisecond)
 	require.NoError(t, inputWriter.Close())
 	require.NoError(t, <-done)

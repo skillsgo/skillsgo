@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection visibility and callbacks, clipboard feedback, and scope popovers.
- * [OUTPUT]: Provides installed Skill rows with descriptions and optional ranked-source identity, aligned 45/90-day evidence cells with per-Agent hover/tap details, low-friction open-source contribution actions and copy feedback, and distinct assistive labels, semantic Package-grouped/descending/ascending sort controls, geometry-preserving selection, Agent summaries, and project-target popovers.
+ * [OUTPUT]: Provides installed Skill rows with descriptions and optional ranked-source identity, aligned 45/90-day evidence cells that pair a spinning pending indicator with localized in-progress copy and per-Agent hover/tap details, low-friction open-source contribution actions and copy feedback, and distinct assistive labels, semantic Package-grouped/descending/ascending sort controls, geometry-preserving selection, Agent summaries, and project-target popovers.
  * [POS]: Serves as the installed target presentation segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -193,13 +193,26 @@ class _UsageCountCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final child = switch (state) {
-      SkillUsageState.loading => Text(
-        context.l10n.libraryUsageCalculating,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.outline,
-          fontSize: 13,
-        ),
+      SkillUsageState.loading => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SkillsPendingSpinner(
+            key: const Key('library-usage-pending-spinner'),
+            size: 12,
+            color: Theme.of(context).colorScheme.outline,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              context.l10n.libraryUsageCalculating,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
       SkillUsageState.unavailable => Text(
         '$value',

@@ -240,8 +240,8 @@ github.com/shirou/gopsutil/v4 v4.26.6 h1:Mzr/npDtQC/xpeEuQKHZt8Zo9CmPvhTj8nkR8w5
 github.com/shirou/gopsutil/v4 v4.26.6/go.mod h1:LZ6ewCSkBqUpvSOf+LsTGnRinC6iaNUNMGBtDkJBaLQ=
 github.com/sirupsen/logrus v1.9.4 h1:TsZE7l11zFCLZnZ+teH4Umoq5BhEIfIzfRDZ1Uzql2w=
 github.com/sirupsen/logrus v1.9.4/go.mod h1:ftWc9WdOfJ0a92nsE2jF5u5ZwH8Bv2zdeOC42RjbV2g=
-github.com/skillsgo/agentsview v0.40.3-skillsgo.9 h1:BL4wPXI06jNpGmwKRBVVOKH1AqWzhPJIDfAp2Yvx/QM=
-github.com/skillsgo/agentsview v0.40.3-skillsgo.9/go.mod h1:7OMWGh2F+tJzmvclq6XcDwggNyrVABCfOuyRBBmGhls=
+github.com/skillsgo/agentsview v0.40.3-skillsgo.9.0.20260827131618-ef1e82b83c7b h1:cuQrhhHf5RyqWXE8fyVM/Y+NIhESSdKzKK0FdoCezC4=
+github.com/skillsgo/agentsview v0.40.3-skillsgo.9.0.20260827131618-ef1e82b83c7b/go.mod h1:7OMWGh2F+tJzmvclq6XcDwggNyrVABCfOuyRBBmGhls=
 github.com/skillsgo/skillsgo/protocol v0.0.0-20260810082224-4c04092230d8 h1:f5dEAfUjQo07g7Ag/6xqLUyYUdTBKRATkiZ0Rtx/ETQ=
 github.com/skillsgo/skillsgo/protocol v0.0.0-20260810082224-4c04092230d8/go.mod h1:L2dfZr/TnB5BBuo9tKNjQYgg/JNvSq8+psLkaj8mLBk=
 github.com/spf13/cobra v1.10.2 h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=
